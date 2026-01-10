@@ -71,8 +71,8 @@ const PatientsPage = () => {
       (p) =>
         p.firstName.toLowerCase().includes(query) ||
         p.lastName.toLowerCase().includes(query) ||
-        p.idNumber.toLowerCase().includes(query) ||
-        p.email.toLowerCase().includes(query)
+        p.email.toLowerCase().includes(query) ||
+        p.phone.includes(query)
     );
   }, [patients, searchQuery]);
 
@@ -103,7 +103,22 @@ const PatientsPage = () => {
     };
 
     if (editingPatient) {
-      const updated = updatePatient(editingPatient.id, patientData);
+      // Only update mutable fields - protect immutable fields from being changed
+      const mutableUpdates = {
+        phone: formData.phone,
+        email: formData.email,
+        address: formData.address,
+        city: formData.city,
+        postalCode: formData.postalCode,
+        medicalHistory: {
+          allergies: formData.allergies.split(",").map((s) => s.trim()).filter(Boolean),
+          medications: formData.medications.split(",").map((s) => s.trim()).filter(Boolean),
+          conditions: formData.conditions.split(",").map((s) => s.trim()).filter(Boolean),
+        },
+        // Note: firstName, lastName, dateOfBirth, idNumber, gender, consent are immutable
+      };
+      
+      const updated = updatePatient(editingPatient.id, mutableUpdates);
       if (updated) {
         setPatients(getPatients());
         addAuditLog({
@@ -351,53 +366,98 @@ const PatientsPage = () => {
             </div>
 
             <form onSubmit={handleSubmit} className="p-6 space-y-6">
+              {/* Immutable fields notice when editing */}
+              {editingPatient && (
+                <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+                  <div className="flex items-start gap-3">
+                    <svg className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                    </svg>
+                    <div>
+                      <p className="text-sm font-medium text-amber-800">Campos protegidos</p>
+                      <p className="text-sm text-amber-700 mt-0.5">
+                        Los campos con 🔒 no pueden ser modificados después de la creación para garantizar la integridad de los datos.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {/* Personal Info */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-[#1a1a1a] mb-1">
+                  <label className="block text-sm font-medium text-[#1a1a1a] mb-1 flex items-center gap-1">
                     {t.patients.firstName} *
+                    {editingPatient && <span title="Este campo no puede ser modificado">🔒</span>}
                   </label>
                   <input
                     type="text"
                     required
                     value={formData.firstName}
-                    onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:border-[#1a1a1a] focus:ring-1 focus:ring-[#1a1a1a]"
+                    onChange={(e) => !editingPatient && setFormData({ ...formData, firstName: e.target.value })}
+                    disabled={!!editingPatient}
+                    className={`w-full px-3 py-2 border rounded-lg focus:outline-none ${
+                      editingPatient 
+                        ? "bg-gray-100 border-gray-200 text-gray-500 cursor-not-allowed" 
+                        : "border-gray-200 focus:border-[#1a1a1a] focus:ring-1 focus:ring-[#1a1a1a]"
+                    }`}
+                    title={editingPatient ? "Este campo no puede ser modificado después de la creación del paciente" : ""}
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-[#1a1a1a] mb-1">
+                  <label className="block text-sm font-medium text-[#1a1a1a] mb-1 flex items-center gap-1">
                     {t.patients.lastName} *
+                    {editingPatient && <span title="Este campo no puede ser modificado">🔒</span>}
                   </label>
                   <input
                     type="text"
                     required
                     value={formData.lastName}
-                    onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:border-[#1a1a1a] focus:ring-1 focus:ring-[#1a1a1a]"
+                    onChange={(e) => !editingPatient && setFormData({ ...formData, lastName: e.target.value })}
+                    disabled={!!editingPatient}
+                    className={`w-full px-3 py-2 border rounded-lg focus:outline-none ${
+                      editingPatient 
+                        ? "bg-gray-100 border-gray-200 text-gray-500 cursor-not-allowed" 
+                        : "border-gray-200 focus:border-[#1a1a1a] focus:ring-1 focus:ring-[#1a1a1a]"
+                    }`}
+                    title={editingPatient ? "Este campo no puede ser modificado después de la creación del paciente" : ""}
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-[#1a1a1a] mb-1">
+                  <label className="block text-sm font-medium text-[#1a1a1a] mb-1 flex items-center gap-1">
                     {t.patients.dateOfBirth} *
+                    {editingPatient && <span title="Este campo no puede ser modificado">🔒</span>}
                   </label>
                   <input
                     type="date"
                     required
                     value={formData.dateOfBirth}
-                    onChange={(e) => setFormData({ ...formData, dateOfBirth: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:border-[#1a1a1a] focus:ring-1 focus:ring-[#1a1a1a]"
+                    onChange={(e) => !editingPatient && setFormData({ ...formData, dateOfBirth: e.target.value })}
+                    disabled={!!editingPatient}
+                    className={`w-full px-3 py-2 border rounded-lg focus:outline-none ${
+                      editingPatient 
+                        ? "bg-gray-100 border-gray-200 text-gray-500 cursor-not-allowed" 
+                        : "border-gray-200 focus:border-[#1a1a1a] focus:ring-1 focus:ring-[#1a1a1a]"
+                    }`}
+                    title={editingPatient ? "Este campo no puede ser modificado después de la creación del paciente" : ""}
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-[#1a1a1a] mb-1">
+                  <label className="block text-sm font-medium text-[#1a1a1a] mb-1 flex items-center gap-1">
                     {t.patients.gender} *
+                    {editingPatient && <span title="Este campo no puede ser modificado">🔒</span>}
                   </label>
                   <select
                     required
                     value={formData.gender}
-                    onChange={(e) => setFormData({ ...formData, gender: e.target.value as "male" | "female" | "other" })}
-                    className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:border-[#1a1a1a] focus:ring-1 focus:ring-[#1a1a1a]"
+                    onChange={(e) => !editingPatient && setFormData({ ...formData, gender: e.target.value as "male" | "female" | "other" })}
+                    disabled={!!editingPatient}
+                    className={`w-full px-3 py-2 border rounded-lg focus:outline-none ${
+                      editingPatient 
+                        ? "bg-gray-100 border-gray-200 text-gray-500 cursor-not-allowed" 
+                        : "border-gray-200 focus:border-[#1a1a1a] focus:ring-1 focus:ring-[#1a1a1a]"
+                    }`}
+                    title={editingPatient ? "Este campo no puede ser modificado después de la creación del paciente" : ""}
                   >
                     <option value="male">{t.patients.male}</option>
                     <option value="female">{t.patients.female}</option>
@@ -405,15 +465,22 @@ const PatientsPage = () => {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-[#1a1a1a] mb-1">
+                  <label className="block text-sm font-medium text-[#1a1a1a] mb-1 flex items-center gap-1">
                     {t.patients.idNumber} *
+                    {editingPatient && <span title="Este campo no puede ser modificado">🔒</span>}
                   </label>
                   <input
                     type="text"
                     required
                     value={formData.idNumber}
-                    onChange={(e) => setFormData({ ...formData, idNumber: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:border-[#1a1a1a] focus:ring-1 focus:ring-[#1a1a1a]"
+                    onChange={(e) => !editingPatient && setFormData({ ...formData, idNumber: e.target.value })}
+                    disabled={!!editingPatient}
+                    className={`w-full px-3 py-2 border rounded-lg focus:outline-none ${
+                      editingPatient 
+                        ? "bg-gray-100 border-gray-200 text-gray-500 cursor-not-allowed" 
+                        : "border-gray-200 focus:border-[#1a1a1a] focus:ring-1 focus:ring-[#1a1a1a]"
+                    }`}
+                    title={editingPatient ? "Este campo no puede ser modificado después de la creación del paciente" : ""}
                   />
                 </div>
                 <div>
@@ -517,14 +584,21 @@ const PatientsPage = () => {
 
               {/* Consent */}
               <div>
-                <label className="flex items-center gap-3 cursor-pointer">
+                <label className={`flex items-center gap-3 ${editingPatient ? "cursor-not-allowed" : "cursor-pointer"}`}>
                   <input
                     type="checkbox"
                     checked={formData.consentGiven}
-                    onChange={(e) => setFormData({ ...formData, consentGiven: e.target.checked })}
-                    className="w-5 h-5 rounded border-gray-300 text-[#1a1a1a] focus:ring-[#1a1a1a]"
+                    onChange={(e) => !editingPatient && setFormData({ ...formData, consentGiven: e.target.checked })}
+                    disabled={!!editingPatient}
+                    className={`w-5 h-5 rounded border-gray-300 focus:ring-[#1a1a1a] ${
+                      editingPatient ? "text-gray-400 cursor-not-allowed" : "text-[#1a1a1a]"
+                    }`}
+                    title={editingPatient ? "Este campo no puede ser modificado después de la creación del paciente" : ""}
                   />
-                  <span className="text-sm font-medium text-[#1a1a1a]">{t.patients.consentGiven}</span>
+                  <span className="text-sm font-medium text-[#1a1a1a] flex items-center gap-1">
+                    {t.patients.consentGiven}
+                    {editingPatient && <span title="Este campo no puede ser modificado">🔒</span>}
+                  </span>
                 </label>
               </div>
 
@@ -609,7 +683,7 @@ const PatientsPage = () => {
                 <thead>
                   <tr className="border-b border-gray-100">
                     <th className="text-left px-6 py-4 text-sm font-semibold text-[#1a1a1a]">Paciente</th>
-                    <th className="text-left px-6 py-4 text-sm font-semibold text-[#1a1a1a]">{t.patients.idNumber}</th>
+                    <th className="text-left px-6 py-4 text-sm font-semibold text-[#1a1a1a]">{t.patients.email}</th>
                     <th className="text-left px-6 py-4 text-sm font-semibold text-[#1a1a1a]">{t.patients.phone}</th>
                     <th className="text-left px-6 py-4 text-sm font-semibold text-[#1a1a1a]">{t.patients.totalSessions}</th>
                     <th className="text-right px-6 py-4 text-sm font-semibold text-[#1a1a1a]">{t.common.actions}</th>
@@ -632,11 +706,10 @@ const PatientsPage = () => {
                             <p className="font-medium text-[#1a1a1a]">
                               {patient.firstName} {patient.lastName}
                             </p>
-                            <p className="text-sm text-gray-500">{patient.email}</p>
                           </div>
                         </button>
                       </td>
-                      <td className="px-6 py-4 text-sm text-gray-600">{patient.idNumber}</td>
+                      <td className="px-6 py-4 text-sm text-gray-600">{patient.email}</td>
                       <td className="px-6 py-4 text-sm text-gray-600">{patient.phone}</td>
                       <td className="px-6 py-4 text-sm text-gray-600">
                         {getSessionsByPatient(patient.id).length}

@@ -11,6 +11,9 @@ import SessionsPage from "./sessions-page";
 import CreditsPage from "./credits-page";
 import SettingsPage from "./settings-page";
 import AuditLogPage from "./audit-log-page";
+import UsersManagementPage from "./users-page";
+import ClinicManagementPage from "./clinic-page";
+import AdminCreditsPage from "./admin-credits-page";
 
 // Super Admin Dashboard - focused on Users, Credits, Settings
 const SuperAdminDashboard = () => {
@@ -530,111 +533,6 @@ const DashboardHome = () => {
   return <PodiatristDashboard />;
 };
 
-// Users Page (Super Admin and Admin)
-const UsersPage = () => {
-  const { t } = useLanguage();
-  const { user } = useAuth();
-  const credits = getUserCredits(user?.id || "");
-  const allUsers = getAllUsers();
-  
-  return (
-    <MainLayout title={t.nav.users} credits={credits}>
-      <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
-        <table className="w-full">
-          <thead>
-            <tr className="border-b border-gray-100">
-              <th className="text-left px-6 py-4 text-sm font-semibold text-[#1a1a1a]">Usuario</th>
-              <th className="text-left px-6 py-4 text-sm font-semibold text-[#1a1a1a]">Email</th>
-              <th className="text-left px-6 py-4 text-sm font-semibold text-[#1a1a1a]">Rol</th>
-              <th className="text-left px-6 py-4 text-sm font-semibold text-[#1a1a1a]">Créditos</th>
-            </tr>
-          </thead>
-          <tbody>
-            {allUsers.map((u) => {
-              const userCredits = getUserCredits(u.id);
-              const roleLabel = {
-                super_admin: t.roles.superAdmin,
-                clinic_admin: t.roles.clinicAdmin,
-                admin: t.roles.admin,
-                podiatrist: t.roles.podiatrist,
-              }[u.role];
-              
-              return (
-                <tr key={u.id} className="border-b border-gray-50 hover:bg-gray-50">
-                  <td className="px-6 py-4">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center">
-                        <span className="font-medium text-[#1a1a1a]">
-                          {u.name.charAt(0)}
-                        </span>
-                      </div>
-                      <span className="font-medium text-[#1a1a1a]">{u.name}</span>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 text-sm text-gray-600">{u.email}</td>
-                  <td className="px-6 py-4">
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                      u.role === "super_admin" ? "bg-[#1a1a1a] text-white" :
-                      u.role === "clinic_admin" ? "bg-blue-100 text-blue-700" :
-                      u.role === "admin" ? "bg-orange-100 text-orange-700" :
-                      "bg-gray-100 text-gray-700"
-                    }`}>
-                      {roleLabel}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 text-sm text-gray-600">
-                    {u.role === "podiatrist" ? userCredits.monthlyCredits + userCredits.extraCredits : "-"}
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
-    </MainLayout>
-  );
-};
-
-// Clinic Management Page (placeholder for clinic_admin)
-const ClinicPage = () => {
-  const { t } = useLanguage();
-  const { user } = useAuth();
-  const credits = getUserCredits(user?.id || "");
-  const allUsers = getAllUsers();
-  const clinicPodiatrists = allUsers.filter(u => u.role === "podiatrist" && u.clinicId === user?.clinicId);
-  
-  return (
-    <MainLayout title={t.nav.clinicManagement} credits={credits}>
-      <div className="space-y-6">
-        <div className="bg-white rounded-xl border border-gray-100 p-6">
-          <h3 className="text-lg font-semibold text-[#1a1a1a] mb-4">Podólogos de la Clínica</h3>
-          <div className="divide-y divide-gray-50">
-            {clinicPodiatrists.map((pod) => {
-              const podCredits = getUserCredits(pod.id);
-              return (
-                <div key={pod.id} className="py-4 flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center">
-                      <span className="font-medium text-[#1a1a1a]">{pod.name.charAt(0)}</span>
-                    </div>
-                    <div>
-                      <p className="font-medium text-[#1a1a1a]">{pod.name}</p>
-                      <p className="text-sm text-gray-500">{pod.email}</p>
-                    </div>
-                  </div>
-                  <span className="text-sm text-gray-600">
-                    {podCredits.monthlyCredits + podCredits.extraCredits} créditos
-                  </span>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      </div>
-    </MainLayout>
-  );
-};
-
 const Dashboard = () => {
   const { isSuperAdmin, isClinicAdmin, isAdmin, isPodiatrist } = usePermissions();
 
@@ -643,14 +541,15 @@ const Dashboard = () => {
       <Route path="/" component={DashboardHome} />
       
       {/* Super Admin routes */}
-      {isSuperAdmin && <Route path="/users" component={UsersPage} />}
+      {isSuperAdmin && <Route path="/users" component={UsersManagementPage} />}
       {isSuperAdmin && <Route path="/audit-log" component={AuditLogPage} />}
       
       {/* Admin routes */}
-      {isAdmin && <Route path="/users" component={UsersPage} />}
+      {isAdmin && <Route path="/users" component={UsersManagementPage} />}
+      {isAdmin && <Route path="/credits" component={AdminCreditsPage} />}
       
       {/* Clinic Admin routes */}
-      {isClinicAdmin && <Route path="/clinic" component={ClinicPage} />}
+      {isClinicAdmin && <Route path="/clinic" component={ClinicManagementPage} />}
       {isClinicAdmin && <Route path="/patients" component={PatientsPage} />}
       {isClinicAdmin && <Route path="/patients/:id" component={PatientsPage} />}
       {isClinicAdmin && <Route path="/sessions" component={SessionsPage} />}

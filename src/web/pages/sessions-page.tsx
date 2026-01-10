@@ -260,6 +260,9 @@ const SessionsPage = () => {
     const patient = getPatientById(session.patientId);
     if (!patient) return;
     
+    // Get clinic logo from localStorage
+    const clinicLogo = localStorage.getItem("podoadmin_clinic_logo");
+    
     const printWindow = window.open("", "_blank");
     if (!printWindow) return;
     
@@ -272,7 +275,9 @@ const SessionsPage = () => {
           body { font-family: Arial, sans-serif; padding: 40px; max-width: 800px; margin: 0 auto; }
           h1 { font-size: 24px; margin-bottom: 8px; }
           h2 { font-size: 18px; margin-top: 24px; margin-bottom: 12px; border-bottom: 1px solid #ddd; padding-bottom: 4px; }
-          .header { border-bottom: 2px solid #1a1a1a; padding-bottom: 20px; margin-bottom: 20px; }
+          .header { border-bottom: 2px solid #1a1a1a; padding-bottom: 20px; margin-bottom: 20px; display: flex; align-items: center; gap: 20px; }
+          .header-logo { max-height: 60px; max-width: 180px; object-fit: contain; }
+          .header-text { flex: 1; }
           .section { margin-bottom: 16px; }
           .label { font-weight: bold; color: #666; }
           .value { margin-top: 4px; }
@@ -284,8 +289,11 @@ const SessionsPage = () => {
       </head>
       <body>
         <div class="header">
-          <h1>PodoAdmin - Historia Clínica</h1>
-          <p>Fecha: ${new Date(session.sessionDate).toLocaleDateString("es-ES")}</p>
+          ${clinicLogo ? `<img src="${clinicLogo}" alt="Logo de la clínica" class="header-logo" />` : ''}
+          <div class="header-text">
+            <h1>${clinicLogo ? 'Historia Clínica' : 'PodoAdmin - Historia Clínica'}</h1>
+            <p>Fecha: ${new Date(session.sessionDate).toLocaleDateString("es-ES")}</p>
+          </div>
         </div>
         
         <h2>Datos del Paciente</h2>
@@ -452,12 +460,14 @@ const SessionsPage = () => {
                     {t.common.edit}
                   </button>
                 )}
-                <button
-                  onClick={() => handleExport(selectedSession)}
-                  className="flex-1 py-2 bg-gray-100 text-[#1a1a1a] rounded-lg hover:bg-gray-200 transition-colors font-medium text-sm"
-                >
-                  {t.common.export} JSON
-                </button>
+                {isSuperAdmin && (
+                  <button
+                    onClick={() => handleExport(selectedSession)}
+                    className="flex-1 py-2 bg-gray-100 text-[#1a1a1a] rounded-lg hover:bg-gray-200 transition-colors font-medium text-sm"
+                  >
+                    {t.common.export} JSON
+                  </button>
+                )}
                 <button
                   onClick={() => handlePrint(selectedSession)}
                   className="flex-1 py-2 bg-[#1a1a1a] text-white rounded-lg hover:bg-[#2a2a2a] transition-colors font-medium text-sm"
@@ -780,15 +790,17 @@ const SessionsPage = () => {
                         </button>
                       </>
                     )}
-                    <button
-                      onClick={() => handleExport(session)}
-                      className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-                      title={t.common.export}
-                    >
-                      <svg className="w-4 h-4 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                      </svg>
-                    </button>
+                    {isSuperAdmin && (
+                      <button
+                        onClick={() => handleExport(session)}
+                        className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                        title={t.common.export}
+                      >
+                        <svg className="w-4 h-4 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        </svg>
+                      </button>
+                    )}
                     <button
                       onClick={() => handlePrint(session)}
                       className="p-2 hover:bg-gray-100 rounded-lg transition-colors"

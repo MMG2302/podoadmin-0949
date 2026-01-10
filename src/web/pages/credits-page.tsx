@@ -180,6 +180,103 @@ const CreditsPage = () => {
           </div>
         )}
 
+        {/* Whop.io Integration - Super Admin Only */}
+        {isSuperAdmin && (
+          <div className="bg-white rounded-xl border border-gray-100 p-6">
+            <div className="flex items-start gap-4 mb-6">
+              <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-pink-500 rounded-xl flex items-center justify-center flex-shrink-0">
+                <svg className="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+                </svg>
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold text-[#1a1a1a]">Integración Whop.io</h3>
+                <p className="text-sm text-gray-500 mt-1">
+                  Conecta con Whop.io para automatizar la gestión de créditos, suscripciones y pagos.
+                </p>
+              </div>
+            </div>
+
+            {/* Status Badge */}
+            <div className="flex items-center gap-2 mb-6">
+              <span className="w-2 h-2 bg-yellow-500 rounded-full animate-pulse"></span>
+              <span className="text-sm font-medium text-yellow-700">No conectado</span>
+            </div>
+
+            {/* Setup Instructions */}
+            <div className="bg-gray-50 rounded-lg p-4 mb-6">
+              <h4 className="text-sm font-semibold text-[#1a1a1a] mb-2">Instrucciones de configuración</h4>
+              <ol className="text-sm text-gray-600 space-y-2 list-decimal list-inside">
+                <li>Crea una cuenta en <a href="https://whop.com" target="_blank" rel="noopener noreferrer" className="text-blue-600 underline">whop.com</a></li>
+                <li>Configura tus productos de créditos en el panel de Whop</li>
+                <li>Obtén tu API Key desde la configuración de desarrollador</li>
+                <li>Ingresa los datos a continuación para activar la integración</li>
+              </ol>
+            </div>
+
+            {/* API Configuration Fields */}
+            <div className="space-y-4 mb-6">
+              <div>
+                <label className="block text-sm font-medium text-[#1a1a1a] mb-1">
+                  Webhook URL
+                </label>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value="https://api.podoadmin.com/webhooks/whop"
+                    readOnly
+                    className="flex-1 px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-gray-500 text-sm"
+                  />
+                  <button className="px-4 py-2.5 bg-gray-100 text-[#1a1a1a] rounded-lg text-sm font-medium hover:bg-gray-200 transition-colors">
+                    Copiar
+                  </button>
+                </div>
+                <p className="text-xs text-gray-400 mt-1">Configura esta URL en tu panel de Whop para recibir notificaciones</p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-[#1a1a1a] mb-1">
+                  API Key
+                </label>
+                <input
+                  type="password"
+                  placeholder="whop_api_xxxxxxxxxxxxxxxx"
+                  className="w-full px-4 py-2.5 border border-gray-200 rounded-lg text-sm focus:border-[#1a1a1a] focus:ring-1 focus:ring-[#1a1a1a] outline-none transition-colors"
+                  disabled
+                />
+                <p className="text-xs text-gray-400 mt-1">Tu clave API de Whop (obtenerla en la configuración de desarrollador)</p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-[#1a1a1a] mb-1">
+                  Company ID
+                </label>
+                <input
+                  type="text"
+                  placeholder="biz_xxxxxxxx"
+                  className="w-full px-4 py-2.5 border border-gray-200 rounded-lg text-sm focus:border-[#1a1a1a] focus:ring-1 focus:ring-[#1a1a1a] outline-none transition-colors"
+                  disabled
+                />
+              </div>
+            </div>
+
+            {/* Connect Button */}
+            <button
+              disabled
+              className="w-full px-4 py-3 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-lg font-medium opacity-50 cursor-not-allowed flex items-center justify-center gap-2"
+            >
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+              </svg>
+              Conectar con Whop.io (Próximamente)
+            </button>
+
+            <p className="text-xs text-center text-gray-400 mt-4">
+              La integración con Whop.io estará disponible en una próxima actualización.
+            </p>
+          </div>
+        )}
+
         {/* Transaction History */}
         <div>
           <h3 className="text-lg font-semibold text-[#1a1a1a] mb-4">{t.credits.creditHistory}</h3>

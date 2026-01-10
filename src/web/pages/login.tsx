@@ -28,6 +28,13 @@ const Login = () => {
     setIsLoading(false);
   };
 
+  const testCredentials = [
+    { role: t.roles.superAdmin, email: "admin@podoadmin.com", password: "admin123" },
+    { role: t.roles.clinicAdmin, email: "manager@clinic.com", password: "manager123" },
+    { role: t.roles.admin, email: "support@podoadmin.com", password: "support123" },
+    { role: t.roles.podiatrist, email: "doctor1@clinic.com", password: "doctor123" },
+  ];
+
   return (
     <div className="min-h-screen bg-white flex">
       {/* Left Panel - Branding */}
@@ -162,17 +169,22 @@ const Login = () => {
 
             <div className="mt-10 pt-8 border-t border-gray-100">
               <p className="text-gray-400 text-sm text-center mb-4">{t.auth.testCredentials}</p>
-              <div className="grid grid-cols-2 gap-4 text-xs">
-                <div className="bg-gray-50 p-4 rounded-lg">
-                  <div className="font-semibold text-[#1a1a1a] mb-1">{t.auth.superAdmin}</div>
-                  <div className="text-gray-500">admin@podoadmin.com</div>
-                  <div className="text-gray-500">admin123</div>
-                </div>
-                <div className="bg-gray-50 p-4 rounded-lg">
-                  <div className="font-semibold text-[#1a1a1a] mb-1">{t.auth.podiatrist}</div>
-                  <div className="text-gray-500">doctor@podoadmin.com</div>
-                  <div className="text-gray-500">doctor123</div>
-                </div>
+              <div className="grid grid-cols-2 gap-3 text-xs">
+                {testCredentials.map((cred, index) => (
+                  <button
+                    key={index}
+                    type="button"
+                    onClick={() => {
+                      setEmail(cred.email);
+                      setPassword(cred.password);
+                    }}
+                    className="bg-gray-50 p-3 rounded-lg text-left hover:bg-gray-100 transition-colors"
+                  >
+                    <div className="font-semibold text-[#1a1a1a] mb-1">{cred.role}</div>
+                    <div className="text-gray-500 truncate">{cred.email}</div>
+                    <div className="text-gray-400">{cred.password}</div>
+                  </button>
+                ))}
               </div>
             </div>
           </div>

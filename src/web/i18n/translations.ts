@@ -67,6 +67,7 @@ export interface Translations {
     users: string;
     auditLog: string;
     profile: string;
+    clinicManagement: string;
   };
   
   // Dashboard
@@ -186,8 +187,12 @@ export interface Translations {
   // Roles
   roles: {
     superAdmin: string;
+    clinicAdmin: string;
+    admin: string;
     podiatrist: string;
     superAdminDesc: string;
+    clinicAdminDesc: string;
+    adminDesc: string;
     podiatristDesc: string;
   };
   
@@ -285,6 +290,7 @@ export const translations: Record<Language, Translations> = {
       users: "Usuarios",
       auditLog: "Registro de auditoría",
       profile: "Perfil",
+      clinicManagement: "Gestión de Clínica",
     },
     dashboard: {
       title: "Panel principal",
@@ -392,8 +398,12 @@ export const translations: Record<Language, Translations> = {
     },
     roles: {
       superAdmin: "Super Administrador",
+      clinicAdmin: "Administrador de Clínica",
+      admin: "Soporte",
       podiatrist: "Podólogo",
-      superAdminDesc: "Acceso completo a todas las funciones del sistema",
+      superAdminDesc: "Gestión de usuarios, créditos y configuración del sistema",
+      clinicAdminDesc: "Gestión de podólogos y pacientes de la clínica",
+      adminDesc: "Ajustes de créditos y soporte técnico",
       podiatristDesc: "Gestión de pacientes y sesiones clínicas",
     },
     errors: {
@@ -484,6 +494,7 @@ export const translations: Record<Language, Translations> = {
       users: "Users",
       auditLog: "Audit Log",
       profile: "Profile",
+      clinicManagement: "Clinic Management",
     },
     dashboard: {
       title: "Dashboard",
@@ -591,8 +602,12 @@ export const translations: Record<Language, Translations> = {
     },
     roles: {
       superAdmin: "Super Admin",
+      clinicAdmin: "Clinic Administrator",
+      admin: "Support",
       podiatrist: "Podiatrist",
-      superAdminDesc: "Full access to all system features",
+      superAdminDesc: "User management, credits, and system configuration",
+      clinicAdminDesc: "Clinic podiatrists and patients management",
+      adminDesc: "Credit adjustments and technical support",
       podiatristDesc: "Patient and clinical session management",
     },
     errors: {
@@ -683,6 +698,7 @@ export const translations: Record<Language, Translations> = {
       users: "Usuários",
       auditLog: "Log de Auditoria",
       profile: "Perfil",
+      clinicManagement: "Gestão da Clínica",
     },
     dashboard: {
       title: "Painel",
@@ -790,8 +806,12 @@ export const translations: Record<Language, Translations> = {
     },
     roles: {
       superAdmin: "Super Administrador",
+      clinicAdmin: "Administrador de Clínica",
+      admin: "Suporte",
       podiatrist: "Podólogo",
-      superAdminDesc: "Acesso completo a todos os recursos do sistema",
+      superAdminDesc: "Gestão de usuários, créditos e configuração do sistema",
+      clinicAdminDesc: "Gestão de podólogos e pacientes da clínica",
+      adminDesc: "Ajustes de créditos e suporte técnico",
       podiatristDesc: "Gestão de pacientes e sessões clínicas",
     },
     errors: {
@@ -882,6 +902,7 @@ export const translations: Record<Language, Translations> = {
       users: "Utilisateurs",
       auditLog: "Journal d'audit",
       profile: "Profil",
+      clinicManagement: "Gestion de Clinique",
     },
     dashboard: {
       title: "Tableau de bord",
@@ -989,8 +1010,12 @@ export const translations: Record<Language, Translations> = {
     },
     roles: {
       superAdmin: "Super Administrateur",
+      clinicAdmin: "Administrateur de Clinique",
+      admin: "Support",
       podiatrist: "Podologue",
-      superAdminDesc: "Accès complet à toutes les fonctionnalités du système",
+      superAdminDesc: "Gestion des utilisateurs, crédits et configuration du système",
+      clinicAdminDesc: "Gestion des podologues et patients de la clinique",
+      adminDesc: "Ajustements de crédits et support technique",
       podiatristDesc: "Gestion des patients et des séances cliniques",
     },
     errors: {

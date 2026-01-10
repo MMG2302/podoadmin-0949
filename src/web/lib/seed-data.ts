@@ -99,6 +99,14 @@ const randomDate = (start: Date, end: Date): string => {
   return date.toISOString().split("T")[0];
 };
 
+// Podiatrist user IDs (matching auth context)
+const podiatristIds = [
+  "user_podiatrist_001",
+  "user_podiatrist_002",
+  "user_podiatrist_003",
+  "user_podiatrist_004",
+];
+
 export const seedDatabase = () => {
   // Check if already seeded
   if (localStorage.getItem(STORAGE_KEYS.SEEDED)) {
@@ -106,12 +114,13 @@ export const seedDatabase = () => {
     return false;
   }
 
-  // Generate patients
+  // Generate patients - distributed among podiatrists
   const patients: Patient[] = [];
-  for (let i = 0; i < 12; i++) {
+  for (let i = 0; i < 15; i++) {
     const firstName = randomElement(spanishNames.firstNames);
     const lastName = `${randomElement(spanishNames.lastNames)} ${randomElement(spanishNames.lastNames)}`;
     const gender = Math.random() > 0.5 ? "female" : "male";
+    const createdBy = randomElement(podiatristIds);
     
     patients.push({
       id: generateId(),
@@ -136,11 +145,11 @@ export const seedDatabase = () => {
       },
       createdAt: randomDate(new Date(2024, 0, 1), new Date()).concat("T10:00:00.000Z"),
       updatedAt: new Date().toISOString(),
-      createdBy: Math.random() > 0.5 ? "user_super_admin_001" : "user_podiatrist_001",
+      createdBy,
     });
   }
 
-  // Generate sessions
+  // Generate sessions - created by podiatrists only
   const sessions: ClinicalSession[] = [];
   const today = new Date();
   
@@ -165,21 +174,39 @@ export const seedDatabase = () => {
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
         completedAt: isCompleted ? new Date().toISOString() : null,
-        createdBy: Math.random() > 0.5 ? "user_super_admin_001" : "user_podiatrist_001",
+        createdBy: patient.createdBy, // Session created by the same podiatrist who owns the patient
         creditReservedAt: null,
       });
     }
   });
 
-  // Generate credits
+  // Generate credits for all user types
   const credits: UserCredits[] = [
+    // Super Admin doesn't need clinical credits (manages platform, not patients)
     {
       userId: "user_super_admin_001",
-      monthlyCredits: 1000,
-      extraCredits: 500,
+      monthlyCredits: 0,
+      extraCredits: 0,
       reservedCredits: 0,
       lastMonthlyReset: new Date().toISOString(),
     },
+    // Clinic Admin manages clinic, doesn't need credits for sessions
+    {
+      userId: "user_clinic_admin_001",
+      monthlyCredits: 0,
+      extraCredits: 0,
+      reservedCredits: 0,
+      lastMonthlyReset: new Date().toISOString(),
+    },
+    // Admin (Support) doesn't need credits
+    {
+      userId: "user_admin_001",
+      monthlyCredits: 0,
+      extraCredits: 0,
+      reservedCredits: 0,
+      lastMonthlyReset: new Date().toISOString(),
+    },
+    // Podiatrists get credits
     {
       userId: "user_podiatrist_001",
       monthlyCredits: 250,
@@ -187,46 +214,56 @@ export const seedDatabase = () => {
       reservedCredits: 0,
       lastMonthlyReset: new Date().toISOString(),
     },
+    {
+      userId: "user_podiatrist_002",
+      monthlyCredits: 250,
+      extraCredits: 30,
+      reservedCredits: 0,
+      lastMonthlyReset: new Date().toISOString(),
+    },
+    {
+      userId: "user_podiatrist_003",
+      monthlyCredits: 200,
+      extraCredits: 0,
+      reservedCredits: 0,
+      lastMonthlyReset: new Date().toISOString(),
+    },
+    {
+      userId: "user_podiatrist_004",
+      monthlyCredits: 150,
+      extraCredits: 25,
+      reservedCredits: 0,
+      lastMonthlyReset: new Date().toISOString(),
+    },
   ];
 
-  // Generate credit transactions
-  const transactions: CreditTransaction[] = [
-    {
+  // Generate credit transactions for podiatrists
+  const transactions: CreditTransaction[] = [];
+  
+  podiatristIds.forEach((userId, index) => {
+    transactions.push({
       id: generateId(),
-      userId: "user_super_admin_001",
+      userId,
       type: "monthly_allocation",
-      amount: 1000,
+      amount: [250, 250, 200, 150][index],
       description: "Asignación mensual de créditos - Enero 2025",
       createdAt: new Date(2025, 0, 1).toISOString(),
-    },
-    {
-      id: generateId(),
-      userId: "user_super_admin_001",
-      type: "purchase",
-      amount: 500,
-      description: "Compra de créditos extra",
-      createdAt: new Date(2025, 0, 5).toISOString(),
-    },
-    {
-      id: generateId(),
-      userId: "user_podiatrist_001",
-      type: "monthly_allocation",
-      amount: 250,
-      description: "Asignación mensual de créditos - Enero 2025",
-      createdAt: new Date(2025, 0, 1).toISOString(),
-    },
-    {
-      id: generateId(),
-      userId: "user_podiatrist_001",
-      type: "purchase",
-      amount: 50,
-      description: "Compra de créditos extra",
-      createdAt: new Date(2025, 0, 10).toISOString(),
-    },
-  ];
+    });
+    
+    if (index < 3) {
+      transactions.push({
+        id: generateId(),
+        userId,
+        type: "purchase",
+        amount: [50, 30, 0, 25][index],
+        description: "Compra de créditos extra",
+        createdAt: new Date(2025, 0, 5 + index * 3).toISOString(),
+      });
+    }
+  });
 
   // Add consumption transactions for some sessions
-  sessions.filter(s => s.status === "completed").slice(0, 8).forEach((session) => {
+  sessions.filter(s => s.status === "completed").slice(0, 10).forEach((session) => {
     transactions.push({
       id: generateId(),
       userId: session.createdBy,
@@ -241,11 +278,18 @@ export const seedDatabase = () => {
   // Generate audit logs
   const auditLogs: AuditLog[] = [];
   
-  patients.slice(0, 5).forEach((patient) => {
+  patients.slice(0, 8).forEach((patient) => {
+    const userName = {
+      user_podiatrist_001: "Dra. María García",
+      user_podiatrist_002: "Dr. Antonio López",
+      user_podiatrist_003: "Dra. Elena Martínez",
+      user_podiatrist_004: "Dr. Pedro Sánchez",
+    }[patient.createdBy] || "Podólogo";
+    
     auditLogs.push({
       id: generateId(),
       userId: patient.createdBy,
-      userName: patient.createdBy.includes("admin") ? "Super Administrador" : "Dr. María García",
+      userName,
       action: "CREATE",
       entityType: "PATIENT",
       entityId: patient.id,
@@ -254,12 +298,19 @@ export const seedDatabase = () => {
     });
   });
 
-  sessions.filter(s => s.status === "completed").slice(0, 5).forEach((session) => {
+  sessions.filter(s => s.status === "completed").slice(0, 8).forEach((session) => {
     const patient = patients.find(p => p.id === session.patientId);
+    const userName = {
+      user_podiatrist_001: "Dra. María García",
+      user_podiatrist_002: "Dr. Antonio López",
+      user_podiatrist_003: "Dra. Elena Martínez",
+      user_podiatrist_004: "Dr. Pedro Sánchez",
+    }[session.createdBy] || "Podólogo";
+    
     auditLogs.push({
       id: generateId(),
       userId: session.createdBy,
-      userName: session.createdBy.includes("admin") ? "Super Administrador" : "Dr. María García",
+      userName,
       action: "COMPLETE",
       entityType: "SESSION",
       entityId: session.id,

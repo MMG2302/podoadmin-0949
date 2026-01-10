@@ -225,6 +225,32 @@ export interface Translations {
     access: string;
     secure: string;
   };
+  
+  // Notifications
+  notifications: {
+    title: string;
+    all: string;
+    unread: string;
+    read: string;
+    markAsRead: string;
+    markAllAsRead: string;
+    noNotifications: string;
+    viewAll: string;
+    delete: string;
+    reassignment: string;
+    appointment: string;
+    credit: string;
+    system: string;
+    patientReassignedFrom: string;
+    patientReassignedTo: string;
+    reassignedBy: string;
+    reason: string;
+    agoMinutes: string;
+    agoHours: string;
+    agoDays: string;
+    yesterday: string;
+    justNow: string;
+  };
 }
 
 export const translations: Record<Language, Translations> = {
@@ -430,6 +456,30 @@ export const translations: Record<Language, Translations> = {
       access: "Acceso",
       secure: "Seguro",
     },
+    notifications: {
+      title: "Notificaciones",
+      all: "Todas",
+      unread: "No leídas",
+      read: "Leídas",
+      markAsRead: "Marcar como leída",
+      markAllAsRead: "Marcar todas como leídas",
+      noNotifications: "No hay notificaciones",
+      viewAll: "Ver todas",
+      delete: "Eliminar",
+      reassignment: "Reasignación",
+      appointment: "Cita",
+      credit: "Créditos",
+      system: "Sistema",
+      patientReassignedFrom: "Paciente reasignado desde ti",
+      patientReassignedTo: "Paciente asignado a ti",
+      reassignedBy: "Reasignado por",
+      reason: "Motivo",
+      agoMinutes: "hace {n} min",
+      agoHours: "hace {n} h",
+      agoDays: "hace {n} días",
+      yesterday: "Ayer",
+      justNow: "Justo ahora",
+    },
   },
   
   en: {
@@ -633,6 +683,30 @@ export const translations: Record<Language, Translations> = {
       digital: "Digital",
       access: "Access",
       secure: "Secure",
+    },
+    notifications: {
+      title: "Notifications",
+      all: "All",
+      unread: "Unread",
+      read: "Read",
+      markAsRead: "Mark as read",
+      markAllAsRead: "Mark all as read",
+      noNotifications: "No notifications",
+      viewAll: "View all",
+      delete: "Delete",
+      reassignment: "Reassignment",
+      appointment: "Appointment",
+      credit: "Credits",
+      system: "System",
+      patientReassignedFrom: "Patient reassigned from you",
+      patientReassignedTo: "Patient assigned to you",
+      reassignedBy: "Reassigned by",
+      reason: "Reason",
+      agoMinutes: "{n} min ago",
+      agoHours: "{n}h ago",
+      agoDays: "{n} days ago",
+      yesterday: "Yesterday",
+      justNow: "Just now",
     },
   },
   
@@ -838,6 +912,30 @@ export const translations: Record<Language, Translations> = {
       access: "Acesso",
       secure: "Seguro",
     },
+    notifications: {
+      title: "Notificações",
+      all: "Todas",
+      unread: "Não lidas",
+      read: "Lidas",
+      markAsRead: "Marcar como lida",
+      markAllAsRead: "Marcar todas como lidas",
+      noNotifications: "Sem notificações",
+      viewAll: "Ver todas",
+      delete: "Excluir",
+      reassignment: "Reatribuição",
+      appointment: "Consulta",
+      credit: "Créditos",
+      system: "Sistema",
+      patientReassignedFrom: "Paciente reatribuído de você",
+      patientReassignedTo: "Paciente atribuído a você",
+      reassignedBy: "Reatribuído por",
+      reason: "Motivo",
+      agoMinutes: "há {n} min",
+      agoHours: "há {n}h",
+      agoDays: "há {n} dias",
+      yesterday: "Ontem",
+      justNow: "Agora mesmo",
+    },
   },
   
   fr: {
@@ -1041,6 +1139,30 @@ export const translations: Record<Language, Translations> = {
       digital: "Numérique",
       access: "Accès",
       secure: "Sécurisé",
+    },
+    notifications: {
+      title: "Notifications",
+      all: "Toutes",
+      unread: "Non lues",
+      read: "Lues",
+      markAsRead: "Marquer comme lue",
+      markAllAsRead: "Tout marquer comme lu",
+      noNotifications: "Aucune notification",
+      viewAll: "Voir tout",
+      delete: "Supprimer",
+      reassignment: "Réaffectation",
+      appointment: "Rendez-vous",
+      credit: "Crédits",
+      system: "Système",
+      patientReassignedFrom: "Patient réaffecté depuis vous",
+      patientReassignedTo: "Patient qui vous est attribué",
+      reassignedBy: "Réaffecté par",
+      reason: "Raison",
+      agoMinutes: "il y a {n} min",
+      agoHours: "il y a {n}h",
+      agoDays: "il y a {n} jours",
+      yesterday: "Hier",
+      justNow: "À l'instant",
     },
   },
 };

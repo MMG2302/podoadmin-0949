@@ -25,6 +25,14 @@ export interface Patient {
   createdBy: string;
 }
 
+export type AppointmentReason = 
+  | "routine_checkup"
+  | "treatment_continuation"
+  | "post_procedure_review"
+  | "new_symptoms"
+  | "follow_up"
+  | "other";
+
 export interface ClinicalSession {
   id: string;
   patientId: string;
@@ -41,6 +49,10 @@ export interface ClinicalSession {
   completedAt: string | null;
   createdBy: string;
   creditReservedAt: string | null;
+  // Follow-up fields
+  nextAppointmentDate: string | null;
+  followUpNotes: string | null;
+  appointmentReason: AppointmentReason | null;
 }
 
 export interface CreditTransaction {
@@ -329,6 +341,80 @@ export const addAuditLog = (log: Omit<AuditLog, "id" | "createdAt">): AuditLog =
   logs.unshift(newLog); // Add to beginning
   setItem(KEYS.AUDIT_LOG, logs.slice(0, 500)); // Keep only last 500 entries
   return newLog;
+};
+
+// Notifications
+export type NotificationType = "reassignment" | "appointment" | "credit" | "system";
+
+export interface Notification {
+  id: string;
+  userId: string; // recipient
+  type: NotificationType;
+  title: string;
+  message: string;
+  read: boolean;
+  createdAt: string;
+  metadata?: {
+    fromUserId?: string;
+    fromUserName?: string;
+    toUserId?: string;
+    toUserName?: string;
+    patientId?: string;
+    patientName?: string;
+    reassignedById?: string;
+    reassignedByName?: string;
+    creditAmount?: number;
+    appointmentDate?: string;
+    reason?: string;
+  };
+}
+
+const NOTIFICATIONS_KEY = "podoadmin_notifications";
+
+export const getNotifications = (userId?: string): Notification[] => {
+  const notifications = getItem<Notification[]>(NOTIFICATIONS_KEY, []);
+  if (!userId) return notifications;
+  return notifications.filter(n => n.userId === userId);
+};
+
+export const getUnreadNotificationCount = (userId: string): number => {
+  return getNotifications(userId).filter(n => !n.read).length;
+};
+
+export const addNotification = (notification: Omit<Notification, "id" | "createdAt" | "read">): Notification => {
+  const notifications = getItem<Notification[]>(NOTIFICATIONS_KEY, []);
+  const newNotification: Notification = {
+    ...notification,
+    id: generateId(),
+    read: false,
+    createdAt: new Date().toISOString(),
+  };
+  notifications.unshift(newNotification);
+  setItem(NOTIFICATIONS_KEY, notifications.slice(0, 500)); // Keep max 500
+  return newNotification;
+};
+
+export const markNotificationAsRead = (notificationId: string): void => {
+  const notifications = getItem<Notification[]>(NOTIFICATIONS_KEY, []);
+  const index = notifications.findIndex(n => n.id === notificationId);
+  if (index !== -1) {
+    notifications[index].read = true;
+    setItem(NOTIFICATIONS_KEY, notifications);
+  }
+};
+
+export const markAllNotificationsAsRead = (userId: string): void => {
+  const notifications = getItem<Notification[]>(NOTIFICATIONS_KEY, []);
+  notifications.forEach(n => {
+    if (n.userId === userId) n.read = true;
+  });
+  setItem(NOTIFICATIONS_KEY, notifications);
+};
+
+export const deleteNotification = (notificationId: string): void => {
+  const notifications = getItem<Notification[]>(NOTIFICATIONS_KEY, []);
+  const filtered = notifications.filter(n => n.id !== notificationId);
+  setItem(NOTIFICATIONS_KEY, filtered);
 };
 
 // Theme settings

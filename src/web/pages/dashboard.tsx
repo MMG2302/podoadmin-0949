@@ -14,6 +14,8 @@ import AuditLogPage from "./audit-log-page";
 import UsersManagementPage from "./users-page";
 import ClinicManagementPage from "./clinic-page";
 import AdminCreditsPage from "./admin-credits-page";
+import NotificationsPage from "./notifications-page";
+import CalendarPage from "./calendar-page";
 
 // Super Admin Dashboard - focused on Users, Credits, Settings
 const SuperAdminDashboard = () => {
@@ -554,16 +556,19 @@ const Dashboard = () => {
       {isClinicAdmin && <Route path="/patients/:id" component={PatientsPage} />}
       {isClinicAdmin && <Route path="/sessions" component={SessionsPage} />}
       {isClinicAdmin && <Route path="/sessions/:id" component={SessionsPage} />}
+      {isClinicAdmin && <Route path="/calendar" component={CalendarPage} />}
       
       {/* Podiatrist routes */}
       {isPodiatrist && <Route path="/patients" component={PatientsPage} />}
       {isPodiatrist && <Route path="/patients/:id" component={PatientsPage} />}
       {isPodiatrist && <Route path="/sessions" component={SessionsPage} />}
       {isPodiatrist && <Route path="/sessions/:id" component={SessionsPage} />}
+      {isPodiatrist && <Route path="/calendar" component={CalendarPage} />}
       
       {/* Common routes */}
       <Route path="/credits" component={CreditsPage} />
       <Route path="/settings" component={SettingsPage} />
+      <Route path="/notifications" component={NotificationsPage} />
       
       <Route component={DashboardHome} />
     </Switch>

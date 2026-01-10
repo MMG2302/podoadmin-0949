@@ -7,6 +7,7 @@ import {
   getPatients, 
   getSessions,
   addAuditLog,
+  addNotification,
   Patient,
   ClinicalSession,
 } from "../lib/storage";
@@ -258,6 +259,12 @@ const ClinicPage = () => {
     const patients = getPatients();
     const sessions = getSessions();
     
+    const patient = patientsWithPodiatrist.find(p => p.id === patientId);
+    const previousPodiatristId = patient?.createdBy || "";
+    const previousPodiatrist = clinicPodiatrists.find(p => p.id === previousPodiatristId);
+    const newPodiatrist = clinicPodiatrists.find(p => p.id === newPodiatristId);
+    const patientFullName = `${patient?.firstName} ${patient?.lastName}`;
+    
     // Update patient
     const updatedPatients = patients.map(p => {
       if (p.id === patientId) {
@@ -278,16 +285,51 @@ const ClinicPage = () => {
     localStorage.setItem("podoadmin_patients", JSON.stringify(updatedPatients));
     localStorage.setItem("podoadmin_sessions", JSON.stringify(updatedSessions));
     
-    const patient = patientsWithPodiatrist.find(p => p.id === patientId);
-    const newPodiatrist = clinicPodiatrists.find(p => p.id === newPodiatristId);
-    
     addAuditLog({
       userId: currentUser?.id || "",
       userName: currentUser?.name || "",
       action: "REASSIGN",
       entityType: "PATIENT",
       entityId: patientId,
-      details: `Paciente ${patient?.firstName} ${patient?.lastName} reasignado a ${newPodiatrist?.name}`,
+      details: `Paciente ${patientFullName} reasignado de ${previousPodiatrist?.name} a ${newPodiatrist?.name}`,
+    });
+
+    // Send notification to previous podiatrist (losing the patient)
+    if (previousPodiatristId && previousPodiatristId !== newPodiatristId) {
+      addNotification({
+        userId: previousPodiatristId,
+        type: "reassignment",
+        title: "Paciente reasignado",
+        message: `El paciente ${patientFullName} ha sido reasignado de ti a ${newPodiatrist?.name} por ${currentUser?.name}.`,
+        metadata: {
+          fromUserId: previousPodiatristId,
+          fromUserName: previousPodiatrist?.name,
+          toUserId: newPodiatristId,
+          toUserName: newPodiatrist?.name,
+          patientId: patientId,
+          patientName: patientFullName,
+          reassignedById: currentUser?.id,
+          reassignedByName: currentUser?.name,
+        },
+      });
+    }
+
+    // Send notification to new podiatrist (receiving the patient)
+    addNotification({
+      userId: newPodiatristId,
+      type: "reassignment",
+      title: "Nuevo paciente asignado",
+      message: `El paciente ${patientFullName} te ha sido asignado desde ${previousPodiatrist?.name || "sin asignar"} por ${currentUser?.name}.`,
+      metadata: {
+        fromUserId: previousPodiatristId,
+        fromUserName: previousPodiatrist?.name,
+        toUserId: newPodiatristId,
+        toUserName: newPodiatrist?.name,
+        patientId: patientId,
+        patientName: patientFullName,
+        reassignedById: currentUser?.id,
+        reassignedByName: currentUser?.name,
+      },
     });
   };
 

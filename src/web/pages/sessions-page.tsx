@@ -19,6 +19,7 @@ import {
   addAuditLog,
   ClinicalSession,
   Patient,
+  AppointmentReason,
 } from "../lib/storage";
 
 interface SessionFormData {
@@ -30,6 +31,9 @@ interface SessionFormData {
   diagnosis: string;
   treatmentPlan: string;
   images: string[];
+  nextAppointmentDate: string;
+  followUpNotes: string;
+  appointmentReason: AppointmentReason | "";
 }
 
 const emptyForm: SessionFormData = {
@@ -41,7 +45,19 @@ const emptyForm: SessionFormData = {
   diagnosis: "",
   treatmentPlan: "",
   images: [],
+  nextAppointmentDate: "",
+  followUpNotes: "",
+  appointmentReason: "",
 };
+
+const appointmentReasons: { value: AppointmentReason; label: string }[] = [
+  { value: "routine_checkup", label: "Revisión rutinaria" },
+  { value: "treatment_continuation", label: "Continuación de tratamiento" },
+  { value: "post_procedure_review", label: "Revisión post-procedimiento" },
+  { value: "new_symptoms", label: "Nuevos síntomas" },
+  { value: "follow_up", label: "Seguimiento" },
+  { value: "other", label: "Otro" },
+];
 
 const SessionsPage = () => {
   const { t } = useLanguage();
@@ -133,6 +149,9 @@ const SessionsPage = () => {
       completedAt: asDraft ? null : new Date().toISOString(),
       createdBy: user?.id || "",
       creditReservedAt: null,
+      nextAppointmentDate: formData.nextAppointmentDate || null,
+      followUpNotes: formData.followUpNotes || null,
+      appointmentReason: formData.appointmentReason || null,
     };
 
     if (editingSession) {
@@ -204,6 +223,9 @@ const SessionsPage = () => {
       diagnosis: session.diagnosis,
       treatmentPlan: session.treatmentPlan,
       images: session.images,
+      nextAppointmentDate: session.nextAppointmentDate || "",
+      followUpNotes: session.followUpNotes || "",
+      appointmentReason: session.appointmentReason || "",
     });
     setShowForm(true);
   };
@@ -647,6 +669,55 @@ const SessionsPage = () => {
                 <p className="text-xs text-gray-500 mt-2">{t.sessions.maxImages}</p>
               </div>
 
+              {/* Follow-up Section */}
+              <div className="border-t border-gray-100 pt-6">
+                <h4 className="text-sm font-semibold text-[#1a1a1a] mb-4">Seguimiento</h4>
+                
+                <div className="grid grid-cols-2 gap-4 mb-4">
+                  <div>
+                    <label className="block text-sm font-medium text-[#1a1a1a] mb-1">
+                      Próxima cita
+                    </label>
+                    <input
+                      type="date"
+                      value={formData.nextAppointmentDate}
+                      onChange={(e) => setFormData({ ...formData, nextAppointmentDate: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:border-[#1a1a1a] focus:ring-1 focus:ring-[#1a1a1a]"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-[#1a1a1a] mb-1">
+                      Motivo de la cita
+                    </label>
+                    <select
+                      value={formData.appointmentReason}
+                      onChange={(e) => setFormData({ ...formData, appointmentReason: e.target.value as AppointmentReason })}
+                      className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:border-[#1a1a1a] focus:ring-1 focus:ring-[#1a1a1a]"
+                    >
+                      <option value="">Sin motivo específico</option>
+                      {appointmentReasons.map((reason) => (
+                        <option key={reason.value} value={reason.value}>
+                          {reason.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-[#1a1a1a] mb-1">
+                    Instrucciones de seguimiento
+                  </label>
+                  <textarea
+                    rows={2}
+                    value={formData.followUpNotes}
+                    onChange={(e) => setFormData({ ...formData, followUpNotes: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:border-[#1a1a1a] focus:ring-1 focus:ring-[#1a1a1a]"
+                    placeholder="Instrucciones para el paciente, medicación, cuidados..."
+                  />
+                </div>
+              </div>
+
               {/* Actions */}
               <div className="flex gap-3 pt-4 border-t border-gray-100">
                 <button
@@ -723,6 +794,104 @@ const SessionsPage = () => {
           </button>
         </div>
 
+        {/* Upcoming/Overdue Appointments Alert Banner */}
+        {(() => {
+          const today = new Date();
+          today.setHours(0, 0, 0, 0);
+          const nextWeek = new Date(today);
+          nextWeek.setDate(nextWeek.getDate() + 7);
+          
+          const upcomingAppointments = sessions.filter(s => {
+            if (!s.nextAppointmentDate) return false;
+            const nextDate = new Date(s.nextAppointmentDate);
+            return nextDate >= today && nextDate <= nextWeek;
+          }).map(s => ({
+            session: s,
+            patient: getPatientById(s.patientId),
+            daysUntil: Math.ceil((new Date(s.nextAppointmentDate!).getTime() - today.getTime()) / (1000 * 60 * 60 * 24))
+          }));
+          
+          const overdueAppointments = sessions.filter(s => {
+            if (!s.nextAppointmentDate) return false;
+            const nextDate = new Date(s.nextAppointmentDate);
+            return nextDate < today;
+          }).map(s => ({
+            session: s,
+            patient: getPatientById(s.patientId),
+            daysOverdue: Math.ceil((today.getTime() - new Date(s.nextAppointmentDate!).getTime()) / (1000 * 60 * 60 * 24))
+          }));
+          
+          if (upcomingAppointments.length === 0 && overdueAppointments.length === 0) return null;
+          
+          return (
+            <div className="space-y-3">
+              {overdueAppointments.length > 0 && (
+                <div className="bg-red-50 border border-red-200 rounded-xl p-4">
+                  <div className="flex items-start gap-3">
+                    <div className="w-8 h-8 bg-red-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                      <svg className="w-4 h-4 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                      </svg>
+                    </div>
+                    <div className="flex-1">
+                      <h4 className="font-medium text-red-800 mb-1">
+                        Citas atrasadas ({overdueAppointments.length})
+                      </h4>
+                      <div className="space-y-1.5">
+                        {overdueAppointments.slice(0, 3).map(({ session, patient, daysOverdue }) => (
+                          <div key={session.id} className="flex items-center justify-between text-sm">
+                            <span className="text-red-700">
+                              {patient?.firstName} {patient?.lastName} - {daysOverdue} días atrasado
+                            </span>
+                            <button
+                              onClick={() => {
+                                setFormData({ ...emptyForm, patientId: session.patientId });
+                                setShowForm(true);
+                              }}
+                              className="text-xs font-medium text-red-600 hover:text-red-800"
+                            >
+                              Programar cita →
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+              
+              {upcomingAppointments.length > 0 && (
+                <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
+                  <div className="flex items-start gap-3">
+                    <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                      <svg className="w-4 h-4 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                      </svg>
+                    </div>
+                    <div className="flex-1">
+                      <h4 className="font-medium text-blue-800 mb-1">
+                        Próximas citas (7 días) - {upcomingAppointments.length}
+                      </h4>
+                      <div className="space-y-1.5">
+                        {upcomingAppointments.slice(0, 3).map(({ session, patient, daysUntil }) => (
+                          <div key={session.id} className="flex items-center justify-between text-sm">
+                            <span className="text-blue-700">
+                              {patient?.firstName} {patient?.lastName} - {daysUntil === 0 ? "Hoy" : daysUntil === 1 ? "Mañana" : `En ${daysUntil} días`}
+                            </span>
+                            <span className="text-xs text-blue-500">
+                              {new Date(session.nextAppointmentDate!).toLocaleDateString("es-ES", { weekday: "short", day: "numeric", month: "short" })}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          );
+        })()}
+
         {/* Session List */}
         {filteredSessions.length === 0 ? (
           <div className="bg-white rounded-xl border border-gray-100 p-12 text-center">
@@ -760,10 +929,40 @@ const SessionsPage = () => {
                       }`}>
                         {session.status === "completed" ? t.sessions.completed : t.sessions.draft}
                       </span>
+                      {/* Follow-up status badge */}
+                      {(() => {
+                        if (!session.nextAppointmentDate) return null;
+                        const today = new Date();
+                        today.setHours(0, 0, 0, 0);
+                        const nextDate = new Date(session.nextAppointmentDate);
+                        const daysUntil = Math.ceil((nextDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+                        
+                        if (daysUntil < 0) {
+                          return (
+                            <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-700 flex items-center gap-1">
+                              <span className="w-1.5 h-1.5 bg-red-500 rounded-full"></span>
+                              Atrasado
+                            </span>
+                          );
+                        } else if (daysUntil <= 7) {
+                          return (
+                            <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-700 flex items-center gap-1">
+                              <span className="w-1.5 h-1.5 bg-yellow-500 rounded-full"></span>
+                              Próxima cita
+                            </span>
+                          );
+                        }
+                        return null;
+                      })()}
                     </div>
                     <p className="text-sm text-gray-500 mb-2">{formatDate(session.sessionDate)}</p>
                     {session.diagnosis && (
                       <p className="text-sm text-gray-600 line-clamp-2">{session.diagnosis}</p>
+                    )}
+                    {session.nextAppointmentDate && (
+                      <p className="text-xs text-gray-400 mt-1">
+                        📅 Próxima cita: {new Date(session.nextAppointmentDate).toLocaleDateString("es-ES", { day: "numeric", month: "short", year: "numeric" })}
+                      </p>
                     )}
                   </div>
                   

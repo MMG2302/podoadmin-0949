@@ -37,6 +37,12 @@ const NotificationIcon = ({ type, size = "md" }: { type: NotificationType; size?
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
         </svg>
       );
+    case "admin_message":
+      return (
+        <svg className={sizeClass} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+        </svg>
+      );
     case "system":
     default:
       return (
@@ -180,6 +186,7 @@ const NotificationsPage = () => {
       case "reassignment": return t.notifications.reassignment;
       case "appointment": return t.notifications.appointment;
       case "credit": return t.notifications.credit;
+      case "admin_message": return t.notifications.adminMessage;
       case "system": return t.notifications.system;
       default: return type;
     }
@@ -244,6 +251,7 @@ const NotificationsPage = () => {
               <option value="reassignment">{t.notifications.reassignment}</option>
               <option value="appointment">{t.notifications.appointment}</option>
               <option value="credit">{t.notifications.credit}</option>
+              <option value="admin_message">{t.notifications.adminMessage}</option>
               <option value="system">{t.notifications.system}</option>
             </select>
 
@@ -337,6 +345,7 @@ const NotificationsPage = () => {
                     notification.type === "reassignment" ? "bg-blue-100 text-blue-600" :
                     notification.type === "appointment" ? "bg-green-100 text-green-600" :
                     notification.type === "credit" ? "bg-yellow-100 text-yellow-600" :
+                    notification.type === "admin_message" ? "bg-purple-100 text-purple-600" :
                     "bg-gray-100 text-gray-600"
                   }`}>
                     <NotificationIcon type={notification.type} />

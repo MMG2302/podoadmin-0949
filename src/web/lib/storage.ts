@@ -344,7 +344,7 @@ export const addAuditLog = (log: Omit<AuditLog, "id" | "createdAt">): AuditLog =
 };
 
 // Notifications
-export type NotificationType = "reassignment" | "appointment" | "credit" | "system";
+export type NotificationType = "reassignment" | "appointment" | "credit" | "system" | "admin_message";
 
 export interface Notification {
   id: string;
@@ -363,9 +363,19 @@ export interface Notification {
     patientName?: string;
     reassignedById?: string;
     reassignedByName?: string;
+    // Clinic admin reassignment metadata
+    clinicAdminId?: string;
+    clinicAdminName?: string;
+    reassignmentDate?: string;
     creditAmount?: number;
     appointmentDate?: string;
     reason?: string;
+    // Admin message metadata
+    senderId?: string;
+    senderName?: string;
+    messageId?: string;
+    sentAt?: string;
+    subject?: string;
   };
 }
 
@@ -381,6 +391,13 @@ export const getUnreadNotificationCount = (userId: string): number => {
   return getNotifications(userId).filter(n => !n.read).length;
 };
 
+// Dispatch custom event when notifications change (for real-time updates)
+const dispatchNotificationUpdate = () => {
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new CustomEvent("notification-update"));
+  }
+};
+
 export const addNotification = (notification: Omit<Notification, "id" | "createdAt" | "read">): Notification => {
   const notifications = getItem<Notification[]>(NOTIFICATIONS_KEY, []);
   const newNotification: Notification = {
@@ -391,6 +408,7 @@ export const addNotification = (notification: Omit<Notification, "id" | "created
   };
   notifications.unshift(newNotification);
   setItem(NOTIFICATIONS_KEY, notifications.slice(0, 500)); // Keep max 500
+  dispatchNotificationUpdate();
   return newNotification;
 };
 
@@ -400,6 +418,7 @@ export const markNotificationAsRead = (notificationId: string): void => {
   if (index !== -1) {
     notifications[index].read = true;
     setItem(NOTIFICATIONS_KEY, notifications);
+    dispatchNotificationUpdate();
   }
 };
 
@@ -409,12 +428,14 @@ export const markAllNotificationsAsRead = (userId: string): void => {
     if (n.userId === userId) n.read = true;
   });
   setItem(NOTIFICATIONS_KEY, notifications);
+  dispatchNotificationUpdate();
 };
 
 export const deleteNotification = (notificationId: string): void => {
   const notifications = getItem<Notification[]>(NOTIFICATIONS_KEY, []);
   const filtered = notifications.filter(n => n.id !== notificationId);
   setItem(NOTIFICATIONS_KEY, filtered);
+  dispatchNotificationUpdate();
 };
 
 // Theme settings
@@ -489,5 +510,49 @@ export const exportPatientData = (patientId: string, tenantId: string = "tenant_
         createdBy: s.createdBy,
       },
     })),
+  };
+};
+
+// Admin Messages (Sent Messages tracking)
+export interface SentMessage {
+  id: string;
+  senderId: string;
+  senderName: string;
+  subject: string;
+  body: string;
+  recipientIds: string[];
+  recipientType: "all" | "specific" | "single";
+  sentAt: string;
+}
+
+const SENT_MESSAGES_KEY = "podoadmin_sent_messages";
+
+export const getSentMessages = (): SentMessage[] => {
+  return getItem<SentMessage[]>(SENT_MESSAGES_KEY, []);
+};
+
+export const addSentMessage = (message: Omit<SentMessage, "id" | "sentAt">): SentMessage => {
+  const messages = getSentMessages();
+  const newMessage: SentMessage = {
+    ...message,
+    id: generateId(),
+    sentAt: new Date().toISOString(),
+  };
+  messages.unshift(newMessage);
+  setItem(SENT_MESSAGES_KEY, messages.slice(0, 200)); // Keep max 200
+  return newMessage;
+};
+
+// Get read status count for a sent message
+export const getSentMessageReadStatus = (messageId: string): { total: number; read: number; unread: number } => {
+  const notifications = getItem<Notification[]>(NOTIFICATIONS_KEY, []);
+  const messageNotifications = notifications.filter(
+    n => n.type === "admin_message" && n.metadata?.messageId === messageId
+  );
+  const read = messageNotifications.filter(n => n.read).length;
+  return {
+    total: messageNotifications.length,
+    read,
+    unread: messageNotifications.length - read,
   };
 };

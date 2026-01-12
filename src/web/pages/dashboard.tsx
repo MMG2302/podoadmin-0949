@@ -16,6 +16,7 @@ import ClinicManagementPage from "./clinic-page";
 import AdminCreditsPage from "./admin-credits-page";
 import NotificationsPage from "./notifications-page";
 import CalendarPage from "./calendar-page";
+import MessagesPage from "./messages-page";
 
 // Super Admin Dashboard - focused on Users, Credits, Settings
 const SuperAdminDashboard = () => {
@@ -544,6 +545,7 @@ const Dashboard = () => {
       
       {/* Super Admin routes */}
       {isSuperAdmin && <Route path="/users" component={UsersManagementPage} />}
+      {isSuperAdmin && <Route path="/messages" component={MessagesPage} />}
       {isSuperAdmin && <Route path="/audit-log" component={AuditLogPage} />}
       
       {/* Admin routes */}

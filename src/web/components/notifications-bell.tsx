@@ -31,6 +31,12 @@ const NotificationIcon = ({ type }: { type: NotificationType }) => {
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
         </svg>
       );
+    case "admin_message":
+      return (
+        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+        </svg>
+      );
     case "system":
     default:
       return (
@@ -75,7 +81,27 @@ export const NotificationsBell = () => {
     loadNotifications();
     // Refresh notifications every 30 seconds
     const interval = setInterval(loadNotifications, 30000);
-    return () => clearInterval(interval);
+    
+    // Listen for localStorage changes to update in real-time
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === "podoadmin_notifications") {
+        loadNotifications();
+      }
+    };
+    
+    // Also listen for custom event for same-tab updates
+    const handleNotificationUpdate = () => {
+      loadNotifications();
+    };
+    
+    window.addEventListener("storage", handleStorageChange);
+    window.addEventListener("notification-update", handleNotificationUpdate);
+    
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener("storage", handleStorageChange);
+      window.removeEventListener("notification-update", handleNotificationUpdate);
+    };
   }, [user]);
 
   // Close dropdown when clicking outside
@@ -161,6 +187,7 @@ export const NotificationsBell = () => {
                       notification.type === "reassignment" ? "bg-blue-100 text-blue-600" :
                       notification.type === "appointment" ? "bg-green-100 text-green-600" :
                       notification.type === "credit" ? "bg-yellow-100 text-yellow-600" :
+                      notification.type === "admin_message" ? "bg-purple-100 text-purple-600" :
                       "bg-gray-100 text-gray-600"
                     }`}>
                       <NotificationIcon type={notification.type} />

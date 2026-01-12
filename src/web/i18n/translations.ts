@@ -241,6 +241,7 @@ export interface Translations {
     appointment: string;
     credit: string;
     system: string;
+    adminMessage: string;
     patientReassignedFrom: string;
     patientReassignedTo: string;
     reassignedBy: string;
@@ -250,6 +251,38 @@ export interface Translations {
     agoDays: string;
     yesterday: string;
     justNow: string;
+  };
+  
+  // Messaging (Super Admin)
+  messaging: {
+    title: string;
+    sendMessage: string;
+    newMessage: string;
+    sentMessages: string;
+    recipient: string;
+    recipients: string;
+    allUsers: string;
+    selectSpecific: string;
+    singleUser: string;
+    subject: string;
+    subjectPlaceholder: string;
+    messageBody: string;
+    messagePlaceholder: string;
+    preview: string;
+    send: string;
+    sending: string;
+    sent: string;
+    sentAt: string;
+    recipientsCount: string;
+    readCount: string;
+    unreadCount: string;
+    noMessages: string;
+    selectRecipients: string;
+    messageSent: string;
+    messageRequired: string;
+    subjectRequired: string;
+    recipientRequired: string;
+    fromAdmin: string;
   };
 }
 
@@ -479,6 +512,37 @@ export const translations: Record<Language, Translations> = {
       agoDays: "hace {n} días",
       yesterday: "Ayer",
       justNow: "Justo ahora",
+      adminMessage: "Mensaje del Administrador",
+    },
+    messaging: {
+      title: "Mensajes",
+      sendMessage: "Enviar mensaje",
+      newMessage: "Nuevo mensaje",
+      sentMessages: "Mensajes enviados",
+      recipient: "Destinatario",
+      recipients: "Destinatarios",
+      allUsers: "Todos los usuarios",
+      selectSpecific: "Seleccionar usuarios específicos",
+      singleUser: "Usuario individual",
+      subject: "Asunto",
+      subjectPlaceholder: "Escribe el asunto del mensaje...",
+      messageBody: "Contenido del mensaje",
+      messagePlaceholder: "Escribe tu mensaje aquí...",
+      preview: "Vista previa",
+      send: "Enviar",
+      sending: "Enviando...",
+      sent: "Enviado",
+      sentAt: "Enviado el",
+      recipientsCount: "destinatarios",
+      readCount: "leídos",
+      unreadCount: "no leídos",
+      noMessages: "No hay mensajes enviados",
+      selectRecipients: "Selecciona los destinatarios",
+      messageSent: "Mensaje enviado correctamente",
+      messageRequired: "El contenido del mensaje es obligatorio",
+      subjectRequired: "El asunto es obligatorio",
+      recipientRequired: "Selecciona al menos un destinatario",
+      fromAdmin: "Mensaje del Administrador",
     },
   },
   
@@ -707,6 +771,37 @@ export const translations: Record<Language, Translations> = {
       agoDays: "{n} days ago",
       yesterday: "Yesterday",
       justNow: "Just now",
+      adminMessage: "Admin Message",
+    },
+    messaging: {
+      title: "Messages",
+      sendMessage: "Send message",
+      newMessage: "New message",
+      sentMessages: "Sent messages",
+      recipient: "Recipient",
+      recipients: "Recipients",
+      allUsers: "All users",
+      selectSpecific: "Select specific users",
+      singleUser: "Single user",
+      subject: "Subject",
+      subjectPlaceholder: "Write the message subject...",
+      messageBody: "Message content",
+      messagePlaceholder: "Write your message here...",
+      preview: "Preview",
+      send: "Send",
+      sending: "Sending...",
+      sent: "Sent",
+      sentAt: "Sent on",
+      recipientsCount: "recipients",
+      readCount: "read",
+      unreadCount: "unread",
+      noMessages: "No messages sent",
+      selectRecipients: "Select recipients",
+      messageSent: "Message sent successfully",
+      messageRequired: "Message content is required",
+      subjectRequired: "Subject is required",
+      recipientRequired: "Select at least one recipient",
+      fromAdmin: "Admin Message",
     },
   },
   
@@ -935,6 +1030,37 @@ export const translations: Record<Language, Translations> = {
       agoDays: "há {n} dias",
       yesterday: "Ontem",
       justNow: "Agora mesmo",
+      adminMessage: "Mensagem do Administrador",
+    },
+    messaging: {
+      title: "Mensagens",
+      sendMessage: "Enviar mensagem",
+      newMessage: "Nova mensagem",
+      sentMessages: "Mensagens enviadas",
+      recipient: "Destinatário",
+      recipients: "Destinatários",
+      allUsers: "Todos os usuários",
+      selectSpecific: "Selecionar usuários específicos",
+      singleUser: "Usuário individual",
+      subject: "Assunto",
+      subjectPlaceholder: "Escreva o assunto da mensagem...",
+      messageBody: "Conteúdo da mensagem",
+      messagePlaceholder: "Escreva sua mensagem aqui...",
+      preview: "Visualizar",
+      send: "Enviar",
+      sending: "Enviando...",
+      sent: "Enviada",
+      sentAt: "Enviada em",
+      recipientsCount: "destinatários",
+      readCount: "lidas",
+      unreadCount: "não lidas",
+      noMessages: "Nenhuma mensagem enviada",
+      selectRecipients: "Selecione os destinatários",
+      messageSent: "Mensagem enviada com sucesso",
+      messageRequired: "O conteúdo da mensagem é obrigatório",
+      subjectRequired: "O assunto é obrigatório",
+      recipientRequired: "Selecione pelo menos um destinatário",
+      fromAdmin: "Mensagem do Administrador",
     },
   },
   
@@ -1163,6 +1289,37 @@ export const translations: Record<Language, Translations> = {
       agoDays: "il y a {n} jours",
       yesterday: "Hier",
       justNow: "À l'instant",
+      adminMessage: "Message de l'Administrateur",
+    },
+    messaging: {
+      title: "Messages",
+      sendMessage: "Envoyer un message",
+      newMessage: "Nouveau message",
+      sentMessages: "Messages envoyés",
+      recipient: "Destinataire",
+      recipients: "Destinataires",
+      allUsers: "Tous les utilisateurs",
+      selectSpecific: "Sélectionner des utilisateurs spécifiques",
+      singleUser: "Utilisateur unique",
+      subject: "Sujet",
+      subjectPlaceholder: "Écrivez le sujet du message...",
+      messageBody: "Contenu du message",
+      messagePlaceholder: "Écrivez votre message ici...",
+      preview: "Aperçu",
+      send: "Envoyer",
+      sending: "Envoi en cours...",
+      sent: "Envoyé",
+      sentAt: "Envoyé le",
+      recipientsCount: "destinataires",
+      readCount: "lus",
+      unreadCount: "non lus",
+      noMessages: "Aucun message envoyé",
+      selectRecipients: "Sélectionnez les destinataires",
+      messageSent: "Message envoyé avec succès",
+      messageRequired: "Le contenu du message est obligatoire",
+      subjectRequired: "Le sujet est obligatoire",
+      recipientRequired: "Sélectionnez au moins un destinataire",
+      fromAdmin: "Message de l'Administrateur",
     },
   },
 };

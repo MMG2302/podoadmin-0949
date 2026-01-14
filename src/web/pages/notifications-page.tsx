@@ -330,7 +330,11 @@ const NotificationsPage = () => {
                 <div
                   key={notification.id}
                   className={`flex items-start gap-4 px-4 py-4 border-b border-gray-50 hover:bg-gray-50 transition-colors ${
-                    !notification.read ? "bg-blue-50/30" : ""
+                    notification.type === "admin_message" 
+                      ? !notification.read 
+                        ? "bg-purple-50 border-l-4 border-l-purple-500" 
+                        : "bg-purple-50/30 border-l-4 border-l-purple-300"
+                      : !notification.read ? "bg-blue-50/30" : ""
                   }`}
                 >
                   <input
@@ -395,6 +399,27 @@ const NotificationsPage = () => {
                         )}
                       </div>
                     )}
+                    
+                    {/* Metadata for admin messages */}
+                    {notification.type === "admin_message" && notification.metadata && (
+                      <div className="mt-2 p-2 bg-purple-50 rounded-lg border border-purple-100">
+                        {notification.metadata.senderName && (
+                          <p className="text-xs text-purple-700 font-medium">
+                            <span className="inline-flex items-center gap-1">
+                              <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                              </svg>
+                              {t.notifications.from}: {notification.metadata.senderName}
+                            </span>
+                          </p>
+                        )}
+                        {notification.metadata.sentAt && (
+                          <p className="text-[10px] text-purple-500 mt-1">
+                            {new Date(notification.metadata.sentAt).toLocaleString("es-ES")}
+                          </p>
+                        )}
+                      </div>
+                    )}
                   </div>
 
                   {/* Type Badge */}
@@ -403,6 +428,7 @@ const NotificationsPage = () => {
                       notification.type === "reassignment" ? "bg-blue-100 text-blue-700" :
                       notification.type === "appointment" ? "bg-green-100 text-green-700" :
                       notification.type === "credit" ? "bg-yellow-100 text-yellow-700" :
+                      notification.type === "admin_message" ? "bg-purple-100 text-purple-700" :
                       "bg-gray-100 text-gray-700"
                     }`}>
                       <NotificationIcon type={notification.type} size="sm" />

@@ -178,7 +178,11 @@ export const NotificationsBell = () => {
                 <div
                   key={notification.id}
                   className={`px-4 py-3 border-b border-gray-50 hover:bg-gray-50 transition-colors ${
-                    !notification.read ? "bg-blue-50/30" : ""
+                    notification.type === "admin_message" 
+                      ? !notification.read 
+                        ? "bg-purple-50 border-l-4 border-l-purple-500" 
+                        : "bg-purple-50/30 border-l-4 border-l-purple-300"
+                      : !notification.read ? "bg-blue-50/30" : ""
                   }`}
                 >
                   <div className="flex gap-3">
@@ -217,6 +221,12 @@ export const NotificationsBell = () => {
                       <p className="text-xs text-gray-600 mt-0.5 line-clamp-2">
                         {notification.message}
                       </p>
+                      {/* Show sender for admin messages */}
+                      {notification.type === "admin_message" && notification.metadata?.senderName && (
+                        <p className="text-[10px] text-purple-600 font-medium mt-1">
+                          {t.notifications.from}: {notification.metadata.senderName}
+                        </p>
+                      )}
                       <p className="text-[10px] text-gray-400 mt-1">
                         {formatTimeAgo(notification.createdAt, t)}
                       </p>

@@ -251,6 +251,7 @@ export interface Translations {
     agoDays: string;
     yesterday: string;
     justNow: string;
+    from: string;
   };
   
   // Messaging (Super Admin)
@@ -513,6 +514,7 @@ export const translations: Record<Language, Translations> = {
       yesterday: "Ayer",
       justNow: "Justo ahora",
       adminMessage: "Mensaje del Administrador",
+      from: "De",
     },
     messaging: {
       title: "Mensajes",
@@ -772,6 +774,7 @@ export const translations: Record<Language, Translations> = {
       yesterday: "Yesterday",
       justNow: "Just now",
       adminMessage: "Admin Message",
+      from: "From",
     },
     messaging: {
       title: "Messages",
@@ -1031,6 +1034,7 @@ export const translations: Record<Language, Translations> = {
       yesterday: "Ontem",
       justNow: "Agora mesmo",
       adminMessage: "Mensagem do Administrador",
+      from: "De",
     },
     messaging: {
       title: "Mensagens",
@@ -1290,6 +1294,7 @@ export const translations: Record<Language, Translations> = {
       yesterday: "Hier",
       justNow: "À l'instant",
       adminMessage: "Message de l'Administrateur",
+      from: "De",
     },
     messaging: {
       title: "Messages",

@@ -4,6 +4,7 @@ import {
   CreditTransaction,
   UserCredits,
   AuditLog,
+  Clinic,
   generateId,
 } from "./storage";
 
@@ -13,6 +14,7 @@ const STORAGE_KEYS = {
   CREDITS: "podoadmin_credits",
   CREDIT_TRANSACTIONS: "podoadmin_credit_transactions",
   AUDIT_LOG: "podoadmin_audit_log",
+  CLINICS: "podoadmin_clinics",
   SEEDED: "podoadmin_seeded",
 };
 
@@ -319,6 +321,22 @@ export const seedDatabase = () => {
     });
   });
 
+  // Generate clinics
+  const clinics: Clinic[] = [
+    {
+      clinicId: "clinic_001",
+      clinicName: "Clínica Podológica Mendoza",
+      ownerId: "user_clinic_admin_001", // Carlos Mendoza
+      createdAt: new Date(2024, 0, 15).toISOString(),
+    },
+    {
+      clinicId: "clinic_002",
+      clinicName: "Centro Podológico Salud",
+      ownerId: "user_clinic_admin_002", // Different admin (not in mock users but ready for expansion)
+      createdAt: new Date(2024, 2, 1).toISOString(),
+    },
+  ];
+
   // Save to localStorage
   localStorage.setItem(STORAGE_KEYS.PATIENTS, JSON.stringify(patients));
   localStorage.setItem(STORAGE_KEYS.SESSIONS, JSON.stringify(sessions));
@@ -327,6 +345,7 @@ export const seedDatabase = () => {
   localStorage.setItem(STORAGE_KEYS.AUDIT_LOG, JSON.stringify(auditLogs.sort((a, b) => 
     new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
   )));
+  localStorage.setItem(STORAGE_KEYS.CLINICS, JSON.stringify(clinics));
   localStorage.setItem(STORAGE_KEYS.SEEDED, "true");
 
   console.log("Database seeded successfully!");
@@ -334,6 +353,7 @@ export const seedDatabase = () => {
   console.log(`- ${sessions.length} sessions`);
   console.log(`- ${transactions.length} transactions`);
   console.log(`- ${auditLogs.length} audit logs`);
+  console.log(`- ${clinics.length} clinics`);
 
   return true;
 };

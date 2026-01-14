@@ -556,3 +556,87 @@ export const getSentMessageReadStatus = (messageId: string): { total: number; re
     unread: messageNotifications.length - read,
   };
 };
+
+// ============================================
+// CLINIC MANAGEMENT
+// ============================================
+
+export interface Clinic {
+  clinicId: string;
+  clinicName: string;
+  ownerId: string; // clinic_admin user id
+  createdAt: string;
+  logo?: string; // base64 logo
+}
+
+const CLINICS_KEY = "podoadmin_clinics";
+
+export const getClinics = (): Clinic[] => {
+  return getItem<Clinic[]>(CLINICS_KEY, []);
+};
+
+export const getClinicById = (clinicId: string): Clinic | undefined => {
+  return getClinics().find(c => c.clinicId === clinicId);
+};
+
+export const getClinicByOwnerId = (ownerId: string): Clinic | undefined => {
+  return getClinics().find(c => c.ownerId === ownerId);
+};
+
+export const saveClinic = (clinic: Clinic): void => {
+  const clinics = getClinics();
+  const index = clinics.findIndex(c => c.clinicId === clinic.clinicId);
+  if (index >= 0) {
+    clinics[index] = clinic;
+  } else {
+    clinics.push(clinic);
+  }
+  setItem(CLINICS_KEY, clinics);
+};
+
+export const updateClinic = (clinicId: string, updates: Partial<Clinic>): Clinic | null => {
+  const clinics = getClinics();
+  const index = clinics.findIndex(c => c.clinicId === clinicId);
+  if (index === -1) return null;
+  
+  clinics[index] = { ...clinics[index], ...updates };
+  setItem(CLINICS_KEY, clinics);
+  return clinics[index];
+};
+
+// Clinic logo management
+export const saveClinicLogo = (clinicId: string, logoData: string): void => {
+  const clinic = getClinicById(clinicId);
+  if (clinic) {
+    updateClinic(clinicId, { logo: logoData });
+  }
+};
+
+export const getClinicLogo = (clinicId: string): string | undefined => {
+  const clinic = getClinicById(clinicId);
+  return clinic?.logo;
+};
+
+// Get logo for a user (checks clinic membership)
+export const getLogoForUserById = (userId: string, clinicId?: string): string | undefined => {
+  // If user belongs to a clinic, return clinic logo
+  if (clinicId) {
+    const clinicLogo = getClinicLogo(clinicId);
+    if (clinicLogo) return clinicLogo;
+  }
+  // Independent users or super_admin don't have clinic logos through this system
+  return undefined;
+};
+
+// Get clinic info for display
+export const getClinicInfo = (clinicId: string): { clinicName: string; ownerId: string } | null => {
+  const clinic = getClinicById(clinicId);
+  if (!clinic) return null;
+  return { clinicName: clinic.clinicName, ownerId: clinic.ownerId };
+};
+
+// Get which clinic a user belongs to (for podiatrists)
+export const getUserClinic = (userId: string, userClinicId?: string): Clinic | undefined => {
+  if (!userClinicId) return undefined;
+  return getClinicById(userClinicId);
+};

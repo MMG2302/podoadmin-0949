@@ -17,6 +17,8 @@ import {
   releaseCredit,
   exportPatientData,
   addAuditLog,
+  getClinicLogo,
+  getClinicById,
   ClinicalSession,
   Patient,
   AppointmentReason,
@@ -282,8 +284,14 @@ const SessionsPage = () => {
     const patient = getPatientById(session.patientId);
     if (!patient) return;
     
-    // Get clinic logo from localStorage
-    const clinicLogo = localStorage.getItem("podoadmin_clinic_logo");
+    // Get clinic logo based on user's clinic membership
+    let clinicLogo: string | undefined = undefined;
+    if (user?.clinicId) {
+      clinicLogo = getClinicLogo(user.clinicId);
+    }
+    // Get clinic name for header
+    const clinic = user?.clinicId ? getClinicById(user.clinicId) : null;
+    const clinicName = clinic?.clinicName || "";
     
     const printWindow = window.open("", "_blank");
     if (!printWindow) return;
@@ -313,7 +321,8 @@ const SessionsPage = () => {
         <div class="header">
           ${clinicLogo ? `<img src="${clinicLogo}" alt="Logo de la clínica" class="header-logo" />` : ''}
           <div class="header-text">
-            <h1>${clinicLogo ? 'Historia Clínica' : 'PodoAdmin - Historia Clínica'}</h1>
+            <h1>${clinicName || (clinicLogo ? 'Historia Clínica' : 'PodoAdmin - Historia Clínica')}</h1>
+            ${clinicName ? '<p style="margin: 0; color: #666;">Historia Clínica</p>' : ''}
             <p>Fecha: ${new Date(session.sessionDate).toLocaleDateString("es-ES")}</p>
           </div>
         </div>

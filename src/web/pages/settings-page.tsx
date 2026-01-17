@@ -7,6 +7,8 @@ import {
   getClinicById, 
   updateClinic, 
   getClinicLogo,
+  setClinicLogo,
+  removeClinicLogo,
   Clinic 
 } from "../lib/storage";
 
@@ -151,10 +153,15 @@ const SettingsPage = () => {
   const handleSaveLogo = () => {
     if (!canUploadLogo || !logoPreview || !user?.clinicId) return;
     
-    // Save logo to the clinic structure
-    updateClinic(user.clinicId, { logo: logoPreview });
+    // Save logo to separate storage key (podoadmin_clinic_logos)
+    setClinicLogo(user.clinicId, logoPreview);
     setCurrentLogo(logoPreview);
+    // Clear preview after successful save
     setLogoPreview(null);
+    // Clear file input
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);
   };
@@ -162,8 +169,8 @@ const SettingsPage = () => {
   const handleRemoveLogo = () => {
     if (!canUploadLogo || !user?.clinicId) return;
     
-    // Remove logo from clinic
-    updateClinic(user.clinicId, { logo: undefined });
+    // Remove logo from separate storage key
+    removeClinicLogo(user.clinicId);
     setCurrentLogo(null);
     setLogoPreview(null);
     if (fileInputRef.current) {

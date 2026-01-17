@@ -644,18 +644,51 @@ export const updateClinic = (clinicId: string, updates: Partial<Clinic>): Clinic
   return clinics[index];
 };
 
-// Clinic logo management
-export const saveClinicLogo = (clinicId: string, logoData: string): void => {
-  const clinic = getClinicById(clinicId);
-  if (clinic) {
-    updateClinic(clinicId, { logo: logoData });
-  }
+// ============================================
+// CLINIC LOGO MANAGEMENT - SEPARATE STORAGE
+// ============================================
+// Logos are stored in a separate localStorage key to prevent 
+// JSON serialization issues with large base64 images
+
+const CLINIC_LOGOS_KEY = "podoadmin_clinic_logos";
+
+interface ClinicLogos {
+  [clinicId: string]: string; // clinicId -> base64 logo data
+}
+
+// Get all logos from separate storage
+const getClinicLogos = (): ClinicLogos => {
+  return getItem<ClinicLogos>(CLINIC_LOGOS_KEY, {});
 };
 
-export const getClinicLogo = (clinicId: string): string | undefined => {
-  const clinic = getClinicById(clinicId);
-  return clinic?.logo;
+// Save logo to separate storage key
+export const setClinicLogo = (clinicId: string, logoData: string): void => {
+  const logos = getClinicLogos();
+  logos[clinicId] = logoData;
+  setItem(CLINIC_LOGOS_KEY, logos);
+  console.log(`[Storage] Logo saved to ${CLINIC_LOGOS_KEY} for clinic: ${clinicId}`);
 };
+
+// Get logo from separate storage key
+export const getClinicLogo = (clinicId: string): string | undefined => {
+  const logos = getClinicLogos();
+  const logo = logos[clinicId];
+  if (logo) {
+    console.log(`[Storage] Logo retrieved from ${CLINIC_LOGOS_KEY} for clinic: ${clinicId}`);
+  }
+  return logo;
+};
+
+// Remove logo from separate storage
+export const removeClinicLogo = (clinicId: string): void => {
+  const logos = getClinicLogos();
+  delete logos[clinicId];
+  setItem(CLINIC_LOGOS_KEY, logos);
+  console.log(`[Storage] Logo removed from ${CLINIC_LOGOS_KEY} for clinic: ${clinicId}`);
+};
+
+// Legacy alias for backwards compatibility
+export const saveClinicLogo = setClinicLogo;
 
 // Get logo for a user (checks clinic membership)
 export const getLogoForUserById = (userId: string, clinicId?: string): string | undefined => {

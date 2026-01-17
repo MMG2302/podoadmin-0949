@@ -1,4 +1,4 @@
-import { useState, useRef, useMemo } from "react";
+import { useState, useRef, useMemo, useEffect } from "react";
 import { MainLayout } from "../components/layout/main-layout";
 import { useLanguage } from "../contexts/language-context";
 import { useAuth } from "../contexts/auth-context";
@@ -9,6 +9,16 @@ import {
   getClinicLogo,
   Clinic 
 } from "../lib/storage";
+
+interface ClinicInfoForm {
+  phone: string;
+  email: string;
+  address: string;
+  city: string;
+  postalCode: string;
+  licenseNumber: string;
+  website: string;
+}
 
 // Get clinic name from storage
 const getClinicName = (clinicId: string): string => {
@@ -57,9 +67,57 @@ const SettingsPage = () => {
   const [logoError, setLogoError] = useState<string | null>(null);
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  
+  // Clinic information form state (for clinic admins)
+  const [clinicInfoForm, setClinicInfoForm] = useState<ClinicInfoForm>({
+    phone: "",
+    email: "",
+    address: "",
+    city: "",
+    postalCode: "",
+    licenseNumber: "",
+    website: "",
+  });
+  const [clinicInfoSaved, setClinicInfoSaved] = useState(false);
+  
+  // Initialize clinic info form from existing clinic data
+  useEffect(() => {
+    if (userClinic) {
+      setClinicInfoForm({
+        phone: userClinic.phone || "",
+        email: userClinic.email || "",
+        address: userClinic.address || "",
+        city: userClinic.city || "",
+        postalCode: userClinic.postalCode || "",
+        licenseNumber: userClinic.licenseNumber || "",
+        website: userClinic.website || "",
+      });
+    }
+  }, [userClinic]);
 
   // Clinic name for display
   const clinicName = userClinic?.clinicName || (user?.clinicId ? getClinicName(user.clinicId) : "");
+  
+  const handleClinicInfoChange = (field: keyof ClinicInfoForm, value: string) => {
+    setClinicInfoForm(prev => ({ ...prev, [field]: value }));
+  };
+  
+  const handleSaveClinicInfo = () => {
+    if (!canUploadLogo || !user?.clinicId) return;
+    
+    updateClinic(user.clinicId, {
+      phone: clinicInfoForm.phone,
+      email: clinicInfoForm.email,
+      address: clinicInfoForm.address,
+      city: clinicInfoForm.city,
+      postalCode: clinicInfoForm.postalCode,
+      licenseNumber: clinicInfoForm.licenseNumber,
+      website: clinicInfoForm.website,
+    });
+    
+    setClinicInfoSaved(true);
+    setTimeout(() => setClinicInfoSaved(false), 2000);
+  };
 
   const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!canUploadLogo) return;
@@ -327,6 +385,198 @@ const SettingsPage = () => {
                 </div>
               </>
             ) : null}
+          </div>
+        )}
+        
+        {/* Clinic Information - Only for Clinic Admin (editable) or Podiatrists with clinic (read-only) */}
+        {(canUploadLogo || isPodiatristWithClinic) && userClinic && (
+          <div className="bg-white rounded-xl border border-gray-100 p-6">
+            <h3 className="text-lg font-semibold text-[#1a1a1a] mb-2">Información de la Clínica</h3>
+            
+            {canUploadLogo ? (
+              // Clinic Admin can edit clinic information
+              <div className="space-y-4">
+                <p className="text-sm text-gray-500">
+                  Completa la información de tu clínica. Estos datos aparecerán en los documentos PDF generados.
+                </p>
+                
+                <div className="grid gap-4">
+                  {/* Clinic Name - Read Only */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-500 mb-1 flex items-center gap-2">
+                      Nombre de la Clínica
+                      <svg className="w-3.5 h-3.5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                      </svg>
+                    </label>
+                    <input
+                      type="text"
+                      value={userClinic.clinicName}
+                      disabled
+                      className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-gray-500 cursor-not-allowed"
+                    />
+                  </div>
+                  
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Teléfono</label>
+                      <input
+                        type="tel"
+                        value={clinicInfoForm.phone}
+                        onChange={(e) => handleClinicInfoChange("phone", e.target.value)}
+                        placeholder="+34 912 345 678"
+                        className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#1a1a1a] focus:border-transparent transition-all"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                      <input
+                        type="email"
+                        value={clinicInfoForm.email}
+                        onChange={(e) => handleClinicInfoChange("email", e.target.value)}
+                        placeholder="info@clinica.es"
+                        className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#1a1a1a] focus:border-transparent transition-all"
+                      />
+                    </div>
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Dirección</label>
+                    <input
+                      type="text"
+                      value={clinicInfoForm.address}
+                      onChange={(e) => handleClinicInfoChange("address", e.target.value)}
+                      placeholder="Calle Gran Vía, 45, 2º Izquierda"
+                      className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#1a1a1a] focus:border-transparent transition-all"
+                    />
+                  </div>
+                  
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Ciudad</label>
+                      <input
+                        type="text"
+                        value={clinicInfoForm.city}
+                        onChange={(e) => handleClinicInfoChange("city", e.target.value)}
+                        placeholder="Madrid"
+                        className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#1a1a1a] focus:border-transparent transition-all"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Código Postal</label>
+                      <input
+                        type="text"
+                        value={clinicInfoForm.postalCode}
+                        onChange={(e) => handleClinicInfoChange("postalCode", e.target.value)}
+                        placeholder="28001"
+                        className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#1a1a1a] focus:border-transparent transition-all"
+                      />
+                    </div>
+                  </div>
+                  
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Nº Licencia/Registro</label>
+                      <input
+                        type="text"
+                        value={clinicInfoForm.licenseNumber}
+                        onChange={(e) => handleClinicInfoChange("licenseNumber", e.target.value)}
+                        placeholder="CS-28/2024-POD-001"
+                        className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#1a1a1a] focus:border-transparent transition-all"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Sitio Web (opcional)</label>
+                      <input
+                        type="url"
+                        value={clinicInfoForm.website}
+                        onChange={(e) => handleClinicInfoChange("website", e.target.value)}
+                        placeholder="https://www.clinica.es"
+                        className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#1a1a1a] focus:border-transparent transition-all"
+                      />
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-center gap-4 pt-4 border-t border-gray-100">
+                    <button
+                      onClick={handleSaveClinicInfo}
+                      className="px-6 py-2.5 bg-[#1a1a1a] text-white rounded-lg text-sm font-medium hover:bg-[#2a2a2a] transition-colors"
+                    >
+                      Guardar información
+                    </button>
+                    {clinicInfoSaved && (
+                      <span className="flex items-center gap-2 text-green-600 text-sm font-medium">
+                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                        </svg>
+                        Guardado
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ) : (
+              // Podiatrists view clinic info as read-only
+              <div className="space-y-4">
+                <div className="bg-blue-50 border border-blue-100 rounded-lg p-4 flex items-start gap-3">
+                  <svg className="w-5 h-5 text-blue-500 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <div>
+                    <p className="text-sm text-blue-700 font-medium">Detalles de tu clínica</p>
+                    <p className="text-sm text-blue-600 mt-1">
+                      Esta información es gestionada por el administrador de la clínica.
+                    </p>
+                  </div>
+                </div>
+                
+                <div className="grid gap-3 text-sm">
+                  <div className="flex">
+                    <span className="w-32 text-gray-500">Nombre:</span>
+                    <span className="font-medium text-[#1a1a1a]">{userClinic.clinicName}</span>
+                  </div>
+                  {userClinic.phone && (
+                    <div className="flex">
+                      <span className="w-32 text-gray-500">Teléfono:</span>
+                      <span className="font-medium text-[#1a1a1a]">{userClinic.phone}</span>
+                    </div>
+                  )}
+                  {userClinic.email && (
+                    <div className="flex">
+                      <span className="w-32 text-gray-500">Email:</span>
+                      <span className="font-medium text-[#1a1a1a]">{userClinic.email}</span>
+                    </div>
+                  )}
+                  {userClinic.address && (
+                    <div className="flex">
+                      <span className="w-32 text-gray-500">Dirección:</span>
+                      <span className="font-medium text-[#1a1a1a]">
+                        {userClinic.address}{userClinic.city && `, ${userClinic.city}`}{userClinic.postalCode && ` ${userClinic.postalCode}`}
+                      </span>
+                    </div>
+                  )}
+                  {userClinic.licenseNumber && (
+                    <div className="flex">
+                      <span className="w-32 text-gray-500">Licencia:</span>
+                      <span className="font-medium text-[#1a1a1a]">{userClinic.licenseNumber}</span>
+                    </div>
+                  )}
+                  {userClinic.website && (
+                    <div className="flex">
+                      <span className="w-32 text-gray-500">Web:</span>
+                      <a 
+                        href={userClinic.website} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="font-medium text-blue-600 hover:underline"
+                      >
+                        {userClinic.website}
+                      </a>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
         )}
         

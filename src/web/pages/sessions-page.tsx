@@ -284,14 +284,24 @@ const SessionsPage = () => {
     const patient = getPatientById(session.patientId);
     if (!patient) return;
     
-    // Get clinic logo based on user's clinic membership
+    // Get clinic logo and full info based on user's clinic membership
     let clinicLogo: string | undefined = undefined;
-    if (user?.clinicId) {
-      clinicLogo = getClinicLogo(user.clinicId);
-    }
-    // Get clinic name for header
     const clinic = user?.clinicId ? getClinicById(user.clinicId) : null;
+    if (clinic) {
+      clinicLogo = clinic.logo;
+    }
+    
+    // Build clinic contact info for header
     const clinicName = clinic?.clinicName || "";
+    const clinicPhone = clinic?.phone || "";
+    const clinicEmail = clinic?.email || "";
+    const clinicAddress = clinic?.address 
+      ? `${clinic.address}${clinic.city ? `, ${clinic.city}` : ""}${clinic.postalCode ? ` ${clinic.postalCode}` : ""}`
+      : "";
+    const hasClinicInfo = !!(clinicName || clinicPhone || clinicEmail || clinicAddress);
+    
+    // For independent doctors, show their name as the header
+    const isIndependent = !clinic;
     
     const printWindow = window.open("", "_blank");
     if (!printWindow) return;
@@ -302,38 +312,78 @@ const SessionsPage = () => {
       <head>
         <title>Historia Clínica - ${patient.firstName} ${patient.lastName}</title>
         <style>
-          body { font-family: Arial, sans-serif; padding: 40px; max-width: 800px; margin: 0 auto; }
-          h1 { font-size: 24px; margin-bottom: 8px; }
-          h2 { font-size: 18px; margin-top: 24px; margin-bottom: 12px; border-bottom: 1px solid #ddd; padding-bottom: 4px; }
-          .header { border-bottom: 2px solid #1a1a1a; padding-bottom: 20px; margin-bottom: 20px; display: flex; align-items: center; gap: 20px; }
-          .header-logo { max-height: 60px; max-width: 180px; object-fit: contain; }
+          body { font-family: Arial, sans-serif; padding: 40px; max-width: 800px; margin: 0 auto; color: #1a1a1a; }
+          h1 { font-size: 22px; margin-bottom: 4px; }
+          h2 { font-size: 16px; margin-top: 20px; margin-bottom: 10px; border-bottom: 1px solid #ddd; padding-bottom: 4px; color: #333; }
+          .header { border-bottom: 2px solid #1a1a1a; padding-bottom: 16px; margin-bottom: 16px; }
+          .header-content { display: flex; align-items: flex-start; gap: 20px; }
+          .header-logo { max-height: 60px; max-width: 160px; object-fit: contain; }
           .header-text { flex: 1; }
-          .section { margin-bottom: 16px; }
-          .label { font-weight: bold; color: #666; }
+          .clinic-contact { font-size: 12px; color: #666; margin-top: 4px; line-height: 1.4; }
+          .folio-bar { background: #f5f5f5; padding: 10px 16px; margin: 12px 0; border-radius: 4px; text-align: center; }
+          .folio-bar span.label { font-size: 12px; color: #666; margin-right: 8px; }
+          .folio-bar span.value { font-size: 16px; font-weight: bold; color: #1a1a1a; letter-spacing: 1px; }
+          .patient-header { display: flex; align-items: center; gap: 16px; margin-bottom: 12px; }
+          .patient-name { font-size: 18px; font-weight: 600; }
+          .patient-folio { font-size: 12px; color: #666; background: #f0f0f0; padding: 2px 8px; border-radius: 4px; }
+          .section { margin-bottom: 14px; }
+          .label { font-weight: bold; color: #555; }
           .value { margin-top: 4px; }
-          .footer { margin-top: 40px; padding-top: 20px; border-top: 1px solid #ddd; font-size: 12px; color: #666; }
+          .patient-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 14px; }
+          .patient-grid p { margin: 0; }
+          .footer { margin-top: 40px; padding-top: 16px; border-top: 1px solid #ddd; font-size: 11px; color: #666; }
           .images { display: flex; gap: 16px; margin-top: 12px; }
-          .images img { max-width: 300px; max-height: 200px; border: 1px solid #ddd; }
-          @media print { body { padding: 20px; } }
+          .images img { max-width: 280px; max-height: 180px; border: 1px solid #ddd; border-radius: 4px; }
+          @media print { 
+            body { padding: 20px; } 
+            .folio-bar { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+          }
         </style>
       </head>
       <body>
         <div class="header">
-          ${clinicLogo ? `<img src="${clinicLogo}" alt="Logo de la clínica" class="header-logo" />` : ''}
-          <div class="header-text">
-            <h1>${clinicName || (clinicLogo ? 'Historia Clínica' : 'PodoAdmin - Historia Clínica')}</h1>
-            ${clinicName ? '<p style="margin: 0; color: #666;">Historia Clínica</p>' : ''}
-            <p>Fecha: ${new Date(session.sessionDate).toLocaleDateString("es-ES")}</p>
+          <div class="header-content">
+            ${clinicLogo ? `<img src="${clinicLogo}" alt="Logo" class="header-logo" />` : ''}
+            <div class="header-text">
+              ${isIndependent 
+                ? `<h1>${user?.name || "Profesional Independiente"}</h1>
+                   <p style="margin: 0; color: #666; font-size: 14px;">Historia Clínica Podológica</p>`
+                : `<h1>${clinicName}</h1>
+                   ${hasClinicInfo ? `
+                     <div class="clinic-contact">
+                       ${clinicPhone ? `<div>Tel: ${clinicPhone}</div>` : ''}
+                       ${clinicEmail ? `<div>Email: ${clinicEmail}</div>` : ''}
+                       ${clinicAddress ? `<div>${clinicAddress}</div>` : ''}
+                     </div>
+                   ` : ''}
+                  `
+              }
+            </div>
+          </div>
+          <!-- Folio prominently displayed below header -->
+          <div class="folio-bar">
+            <span class="label">FOLIO:</span>
+            <span class="value">${patient.folio || "—"}</span>
           </div>
         </div>
         
         <h2>Datos del Paciente</h2>
         <div class="section">
-          <p><span class="label">Nombre:</span> ${patient.firstName} ${patient.lastName}</p>
-          <p><span class="label">DNI/NIE:</span> ${patient.idNumber}</p>
-          <p><span class="label">Fecha de nacimiento:</span> ${new Date(patient.dateOfBirth).toLocaleDateString("es-ES")}</p>
-          <p><span class="label">Teléfono:</span> ${patient.phone}</p>
+          <div class="patient-header">
+            <span class="patient-name">${patient.firstName} ${patient.lastName}</span>
+            <span class="patient-folio">Folio: ${patient.folio || "—"}</span>
+          </div>
+          <div class="patient-grid">
+            <p><span class="label">DNI/NIE:</span> ${patient.idNumber}</p>
+            <p><span class="label">Fecha de nacimiento:</span> ${new Date(patient.dateOfBirth).toLocaleDateString("es-ES")}</p>
+            <p><span class="label">Teléfono:</span> ${patient.phone}</p>
+            <p><span class="label">Email:</span> ${patient.email || "—"}</p>
+          </div>
         </div>
+        
+        <p style="font-size: 13px; color: #666; margin-bottom: 16px;">
+          <strong>Fecha de sesión:</strong> ${new Date(session.sessionDate).toLocaleDateString("es-ES", { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+        </p>
         
         <h2>Anamnesis</h2>
         <div class="section value">${session.anamnesis || "N/A"}</div>
@@ -351,16 +401,16 @@ const SessionsPage = () => {
         <div class="section value">${session.clinicalNotes || "N/A"}</div>
         
         ${session.images.length > 0 ? `
-          <h2>Imágenes</h2>
+          <h2>Imágenes Clínicas</h2>
           <div class="images">
             ${session.images.map((img) => `<img src="${img}" alt="Imagen clínica" />`).join("")}
           </div>
         ` : ""}
         
         <div class="footer">
-          <p>Documento generado por PodoAdmin</p>
+          <p><strong>Documento generado por PodoAdmin</strong></p>
           <p>Profesional: ${user?.name} | Fecha de impresión: ${new Date().toLocaleString("es-ES")}</p>
-          <p>ID Sesión: ${session.id}</p>
+          <p>ID Sesión: ${session.id} | Folio Paciente: ${patient.folio || "—"}</p>
         </div>
       </body>
       </html>

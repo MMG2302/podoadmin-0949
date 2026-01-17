@@ -1,6 +1,7 @@
 // Types for all data structures
 export interface Patient {
   id: string;
+  folio: string; // Unique medical record number - format: CLINIC_CODE-YEAR-SEQUENCE
   firstName: string;
   lastName: string;
   dateOfBirth: string;
@@ -120,10 +121,38 @@ export const getPatientById = (id: string): Patient | undefined => {
   return getPatients().find((p) => p.id === id);
 };
 
-export const savePatient = (patient: Omit<Patient, "id" | "createdAt" | "updatedAt">): Patient => {
+// Generate unique folio for patient
+// Format: CLINIC_CODE-YEAR-SEQUENCE (e.g., PREM-2026-00001)
+// For independent podiatrists: IND-YEAR-SEQUENCE
+export const generateFolio = (clinicCode: string | null): string => {
+  const year = new Date().getFullYear();
+  const prefix = clinicCode || "IND";
   const patients = getPatients();
+  
+  // Find the highest sequence number for this prefix and year
+  const folioPattern = new RegExp(`^${prefix}-${year}-(\\d+)$`);
+  let maxSequence = 0;
+  
+  patients.forEach(p => {
+    if (p.folio) {
+      const match = p.folio.match(folioPattern);
+      if (match) {
+        const seq = parseInt(match[1], 10);
+        if (seq > maxSequence) maxSequence = seq;
+      }
+    }
+  });
+  
+  const nextSequence = (maxSequence + 1).toString().padStart(5, "0");
+  return `${prefix}-${year}-${nextSequence}`;
+};
+
+export const savePatient = (patient: Omit<Patient, "id" | "createdAt" | "updatedAt" | "folio">, clinicCode: string | null): Patient => {
+  const patients = getPatients();
+  const folio = generateFolio(clinicCode);
   const newPatient: Patient = {
     ...patient,
+    folio,
     id: generateId(),
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
@@ -465,8 +494,10 @@ export const exportPatientData = (patientId: string, tenantId: string = "tenant_
   return {
     tenantId,
     patientId: patient.id,
+    folio: patient.folio,
     exportedAt: new Date().toISOString(),
     patient: {
+      folio: patient.folio,
       demographics: {
         firstName: patient.firstName,
         lastName: patient.lastName,
@@ -564,9 +595,18 @@ export const getSentMessageReadStatus = (messageId: string): { total: number; re
 export interface Clinic {
   clinicId: string;
   clinicName: string;
+  clinicCode: string; // Short code for folio generation (e.g., "PREM", "CPOD", "PINT")
   ownerId: string; // clinic_admin user id
   createdAt: string;
   logo?: string; // base64 logo
+  // Contact information
+  phone?: string;
+  email?: string;
+  address?: string;
+  city?: string;
+  postalCode?: string;
+  licenseNumber?: string;
+  website?: string;
 }
 
 const CLINICS_KEY = "podoadmin_clinics";

@@ -13,6 +13,7 @@ import {
   getUserCredits,
   Patient,
   addAuditLog,
+  getClinicById,
 } from "../lib/storage";
 
 interface PatientFormData {
@@ -131,7 +132,11 @@ const PatientsPage = () => {
         });
       }
     } else {
-      const newPatient = savePatient(patientData);
+      // Get clinic code for folio generation
+      const clinic = user?.clinicId ? getClinicById(user.clinicId) : null;
+      const clinicCode = clinic?.clinicCode || null;
+      
+      const newPatient = savePatient(patientData, clinicCode);
       setPatients(getPatients());
       addAuditLog({
         userId: user?.id || "",
@@ -139,7 +144,7 @@ const PatientsPage = () => {
         action: "CREATE",
         entityType: "PATIENT",
         entityId: newPatient.id,
-        details: `Nuevo paciente: ${newPatient.firstName} ${newPatient.lastName}`,
+        details: `Nuevo paciente: ${newPatient.firstName} ${newPatient.lastName} (Folio: ${newPatient.folio})`,
       });
     }
 
@@ -194,16 +199,23 @@ const PatientsPage = () => {
       {selectedPatient && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 overflow-y-auto">
           <div className="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="sticky top-0 bg-white border-b border-gray-100 p-6 flex items-center justify-between">
-              <h3 className="text-xl font-semibold text-[#1a1a1a]">{t.patients.patientDetails}</h3>
-              <button
-                onClick={() => setSelectedPatient(null)}
-                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-              >
-                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
+            <div className="sticky top-0 bg-white border-b border-gray-100 p-6">
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="text-xl font-semibold text-[#1a1a1a]">{t.patients.patientDetails}</h3>
+                <button
+                  onClick={() => setSelectedPatient(null)}
+                  className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                >
+                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+              {/* Folio prominently displayed */}
+              <div className="flex items-center gap-2 bg-gray-50 px-3 py-2 rounded-lg">
+                <span className="text-sm text-gray-600 font-medium">FOLIO:</span>
+                <span className="text-base font-bold text-[#1a1a1a] tracking-wide">{selectedPatient.folio || "—"}</span>
+              </div>
             </div>
             
             <div className="p-6 space-y-6">

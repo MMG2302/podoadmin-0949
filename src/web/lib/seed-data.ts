@@ -129,8 +129,15 @@ const randomDate = (start: Date, end: Date): string => {
   return date.toISOString().split("T")[0];
 };
 
+// Clinic codes for folio generation
+const clinicCodes: Record<string, string> = {
+  clinic_001: "PREM",
+  clinic_002: "CPOD",
+  clinic_003: "PINT",
+};
+
 // All podiatrist user IDs (clinic and independent)
-const clinicPodiatrists = {
+const clinicPodiatrists: Record<string, string[]> = {
   clinic_001: ["user_podiatrist_001", "user_podiatrist_002", "user_podiatrist_003"],
   clinic_002: ["user_podiatrist_004", "user_podiatrist_005", "user_podiatrist_006"],
   clinic_003: ["user_podiatrist_007", "user_podiatrist_008", "user_podiatrist_009"],
@@ -149,6 +156,26 @@ const allPodiatrists = [
   ...clinicPodiatrists.clinic_003,
   ...independentPodiatrists,
 ];
+
+// Get clinic code for a podiatrist
+const getClinicCodeForPodiatrist = (podiatristId: string): string | null => {
+  for (const [clinicId, podiatrists] of Object.entries(clinicPodiatrists)) {
+    if (podiatrists.includes(podiatristId)) {
+      return clinicCodes[clinicId];
+    }
+  }
+  return null; // Independent podiatrist
+};
+
+// Get clinic ID for a podiatrist
+const getClinicIdForPodiatrist = (podiatristId: string): string | null => {
+  for (const [clinicId, podiatrists] of Object.entries(clinicPodiatrists)) {
+    if (podiatrists.includes(podiatristId)) {
+      return clinicId;
+    }
+  }
+  return null;
+};
 
 const podiatristNames: Record<string, string> = {
   user_podiatrist_001: "Dra. Ana Belén Ruiz",
@@ -201,6 +228,24 @@ const generateClinicLogo = (clinicId: string): string => {
   return logos[clinicId] || logos.clinic_001;
 };
 
+// Folio tracking per clinic/year for sequential numbering
+const folioCounters: Record<string, number> = {};
+
+const generateFolioForSeed = (clinicCode: string | null, createdAt: string): string => {
+  const date = new Date(createdAt);
+  const year = date.getFullYear();
+  const prefix = clinicCode || "IND";
+  const key = `${prefix}-${year}`;
+  
+  if (!folioCounters[key]) {
+    folioCounters[key] = 0;
+  }
+  folioCounters[key]++;
+  
+  const sequence = folioCounters[key].toString().padStart(5, "0");
+  return `${prefix}-${year}-${sequence}`;
+};
+
 export const seedDatabase = () => {
   // Check if already seeded
   if (localStorage.getItem(STORAGE_KEYS.SEEDED)) {
@@ -213,6 +258,7 @@ export const seedDatabase = () => {
   
   allPodiatrists.forEach((podiatristId) => {
     const patientCount = 8 + Math.floor(Math.random() * 3); // 8-10 patients
+    const clinicCode = getClinicCodeForPodiatrist(podiatristId);
     
     for (let i = 0; i < patientCount; i++) {
       const firstName = randomElement(spanishNames.firstNames);
@@ -220,8 +266,13 @@ export const seedDatabase = () => {
       const gender = Math.random() > 0.5 ? "female" : "male";
       const city = randomElement(cities);
       
+      // Generate creation date (for retroactive folio generation)
+      const createdAt = randomDate(new Date(2024, 0, 1), new Date()).concat("T10:00:00.000Z");
+      const folio = generateFolioForSeed(clinicCode, createdAt);
+      
       patients.push({
         id: generateId(),
+        folio,
         firstName,
         lastName,
         dateOfBirth: randomDate(new Date(1945, 0, 1), new Date(2005, 0, 1)),
@@ -241,12 +292,15 @@ export const seedDatabase = () => {
           given: Math.random() > 0.05,
           date: Math.random() > 0.05 ? new Date().toISOString() : null,
         },
-        createdAt: randomDate(new Date(2024, 0, 1), new Date()).concat("T10:00:00.000Z"),
+        createdAt,
         updatedAt: new Date().toISOString(),
         createdBy: podiatristId,
       });
     }
   });
+
+  // Sort patients by createdAt to maintain folio order consistency
+  patients.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
 
   // Generate sessions - 15-20 per podiatrist
   const sessions: ClinicalSession[] = [];
@@ -279,7 +333,6 @@ export const seedDatabase = () => {
         id: generateId(),
         patientId: patient.id,
         sessionDate,
-        sessionType: randomElement(sessionTypes),
         status: isCompleted ? "completed" : "draft",
         clinicalNotes: "Paciente colaborador. Se programa siguiente revisión según evolución.",
         anamnesis: anamnesisList[sessionIndex],
@@ -287,7 +340,9 @@ export const seedDatabase = () => {
         diagnosis: diagnoses[sessionIndex],
         treatmentPlan: treatments[sessionIndex],
         images: [],
-        followUpDate: Math.random() > 0.3 ? randomDate(today, futureDate) : null,
+        nextAppointmentDate: Math.random() > 0.3 ? randomDate(today, futureDate) : null,
+        followUpNotes: null,
+        appointmentReason: null,
         createdAt: new Date(sessionDate + "T09:00:00.000Z").toISOString(),
         updatedAt: new Date().toISOString(),
         completedAt: isCompleted ? new Date(sessionDate + "T10:30:00.000Z").toISOString() : null,
@@ -340,7 +395,7 @@ export const seedDatabase = () => {
   ];
   
   // Add credits for all podiatrists
-  allPodiatrists.forEach((userId, index) => {
+  allPodiatrists.forEach((userId) => {
     credits.push({
       userId,
       monthlyCredits: 200 + Math.floor(Math.random() * 100),
@@ -403,7 +458,7 @@ export const seedDatabase = () => {
       action: "CREATE",
       entityType: "PATIENT",
       entityId: patient.id,
-      details: `Nuevo paciente registrado: ${patient.firstName} ${patient.lastName}`,
+      details: `Nuevo paciente registrado: ${patient.firstName} ${patient.lastName} (Folio: ${patient.folio})`,
       createdAt: patient.createdAt,
     });
   });
@@ -424,28 +479,55 @@ export const seedDatabase = () => {
     });
   });
 
-  // Generate clinics with distinct logos
+  // Generate clinics with complete contact information and distinct logos
   const clinics: Clinic[] = [
     {
       clinicId: "clinic_001",
       clinicName: "Clínica Podológica Premium",
+      clinicCode: "PREM",
       ownerId: "user_clinic_admin_001",
       logo: generateClinicLogo("clinic_001"),
       createdAt: new Date(2024, 0, 15).toISOString(),
+      // Contact information
+      phone: "+34 912 345 678",
+      email: "info@clinicapremium.es",
+      address: "Calle Gran Vía, 45, 2º Izquierda",
+      city: "Madrid",
+      postalCode: "28013",
+      licenseNumber: "CS-28/2024-POD-001",
+      website: "https://www.clinicapodologicapremium.es",
     },
     {
       clinicId: "clinic_002",
       clinicName: "Centro Médico Podológico",
+      clinicCode: "CPOD",
       ownerId: "user_clinic_admin_002",
       logo: generateClinicLogo("clinic_002"),
       createdAt: new Date(2024, 2, 1).toISOString(),
+      // Contact information
+      phone: "+34 933 456 789",
+      email: "contacto@centropodologico.com",
+      address: "Avenida Diagonal, 234, 1º",
+      city: "Barcelona",
+      postalCode: "08018",
+      licenseNumber: "CS-08/2024-POD-042",
+      website: "https://www.centromedicopodologico.com",
     },
     {
       clinicId: "clinic_003",
       clinicName: "Podología Integral Plus",
+      clinicCode: "PINT",
       ownerId: "user_clinic_admin_003",
       logo: generateClinicLogo("clinic_003"),
       createdAt: new Date(2024, 4, 10).toISOString(),
+      // Contact information
+      phone: "+34 963 567 890",
+      email: "citas@podologiaintegral.es",
+      address: "Plaza del Ayuntamiento, 12, Bajo",
+      city: "Valencia",
+      postalCode: "46002",
+      licenseNumber: "CS-46/2024-POD-018",
+      website: "https://www.podologiaintegralplus.es",
     },
   ];
 
@@ -461,8 +543,8 @@ export const seedDatabase = () => {
   localStorage.setItem(STORAGE_KEYS.SEEDED, "true");
 
   console.log(`Database seeded successfully:
-    - ${clinics.length} clinics with logos
-    - ${patients.length} patients
+    - ${clinics.length} clinics with complete contact info
+    - ${patients.length} patients with folios
     - ${sessions.length} clinical sessions
     - ${credits.length} credit records
     - ${transactions.length} credit transactions

@@ -690,14 +690,55 @@ export const removeClinicLogo = (clinicId: string): void => {
 // Legacy alias for backwards compatibility
 export const saveClinicLogo = setClinicLogo;
 
-// Get logo for a user (checks clinic membership)
+// Professional logos for independent podiatrists (no clinic affiliation)
+const PROFESSIONAL_LOGOS_KEY = "podoadmin_professional_logos";
+
+interface ProfessionalLogos {
+  [userId: string]: string; // userId -> base64 logo data
+}
+
+// Get all professional logos from storage
+const getProfessionalLogos = (): ProfessionalLogos => {
+  return getItem<ProfessionalLogos>(PROFESSIONAL_LOGOS_KEY, {});
+};
+
+// Save professional logo for independent doctor
+export const setProfessionalLogo = (userId: string, logoData: string): void => {
+  const logos = getProfessionalLogos();
+  logos[userId] = logoData;
+  setItem(PROFESSIONAL_LOGOS_KEY, logos);
+  console.log(`[Storage] Professional logo saved for user: ${userId}`);
+};
+
+// Get professional logo for independent doctor
+export const getProfessionalLogo = (userId: string): string | undefined => {
+  const logos = getProfessionalLogos();
+  const logo = logos[userId];
+  if (logo) {
+    console.log(`[Storage] Professional logo retrieved for user: ${userId}`);
+  }
+  return logo;
+};
+
+// Remove professional logo
+export const removeProfessionalLogo = (userId: string): void => {
+  const logos = getProfessionalLogos();
+  delete logos[userId];
+  setItem(PROFESSIONAL_LOGOS_KEY, logos);
+  console.log(`[Storage] Professional logo removed for user: ${userId}`);
+};
+
+// Get logo for a user (checks clinic membership first, then professional logo)
 export const getLogoForUserById = (userId: string, clinicId?: string): string | undefined => {
   // If user belongs to a clinic, return clinic logo
   if (clinicId) {
     const clinicLogo = getClinicLogo(clinicId);
     if (clinicLogo) return clinicLogo;
   }
-  // Independent users or super_admin don't have clinic logos through this system
+  // For independent users, check professional logo
+  const professionalLogo = getProfessionalLogo(userId);
+  if (professionalLogo) return professionalLogo;
+  
   return undefined;
 };
 

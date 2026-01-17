@@ -9,6 +9,9 @@ import {
   getClinicLogo,
   setClinicLogo,
   removeClinicLogo,
+  getProfessionalLogo,
+  setProfessionalLogo,
+  removeProfessionalLogo,
   Clinic 
 } from "../lib/storage";
 
@@ -36,6 +39,9 @@ export const getLogoForUser = (userId: string, clinicId?: string): string | null
     const logo = getClinicLogo(clinicId);
     if (logo) return logo;
   }
+  // For independent users, return professional logo
+  const professionalLogo = getProfessionalLogo(userId);
+  if (professionalLogo) return professionalLogo;
   return null;
 };
 
@@ -61,14 +67,29 @@ const SettingsPage = () => {
   
   const [saved, setSaved] = useState(false);
   const [currentLogo, setCurrentLogo] = useState<string | null>(() => {
+    // Initial load: check clinic logo first, then professional logo
     if (user?.clinicId) {
       return getClinicLogo(user.clinicId) || null;
+    }
+    if (isPodiatristIndependent && user?.id) {
+      return getProfessionalLogo(user.id) || null;
     }
     return null;
   });
   const [logoError, setLogoError] = useState<string | null>(null);
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  
+  // Load clinic logo when user.clinicId changes (for podiatrists with clinic)
+  useEffect(() => {
+    if (user?.clinicId) {
+      const logo = getClinicLogo(user.clinicId);
+      setCurrentLogo(logo || null);
+    } else if (isPodiatristIndependent && user?.id) {
+      const logo = getProfessionalLogo(user.id);
+      setCurrentLogo(logo || null);
+    }
+  }, [user?.clinicId, user?.id, isPodiatristIndependent]);
   
   // Clinic information form state (for clinic admins)
   const [clinicInfoForm, setClinicInfoForm] = useState<ClinicInfoForm>({
@@ -171,6 +192,61 @@ const SettingsPage = () => {
     
     // Remove logo from separate storage key
     removeClinicLogo(user.clinicId);
+    setCurrentLogo(null);
+    setLogoPreview(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+  };
+
+  // Professional logo upload handler for independent podiatrists
+  const handleProfessionalLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!isPodiatristIndependent) return;
+    
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    const validTypes = ["image/png", "image/jpeg", "image/jpg", "image/svg+xml"];
+    if (!validTypes.includes(file.type)) {
+      setLogoError("Formato no válido. Use PNG, JPG o SVG.");
+      return;
+    }
+
+    // Validate file size (max 2MB)
+    if (file.size > 2 * 1024 * 1024) {
+      setLogoError("El archivo es demasiado grande. Máximo 2MB.");
+      return;
+    }
+
+    setLogoError(null);
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const base64 = event.target?.result as string;
+      setLogoPreview(base64);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleSaveProfessionalLogo = () => {
+    if (!isPodiatristIndependent || !logoPreview || !user?.id) return;
+    
+    // Save logo to professional logos storage key
+    setProfessionalLogo(user.id, logoPreview);
+    setCurrentLogo(logoPreview);
+    setLogoPreview(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+    setSaved(true);
+    setTimeout(() => setSaved(false), 2000);
+  };
+
+  const handleRemoveProfessionalLogo = () => {
+    if (!isPodiatristIndependent || !user?.id) return;
+    
+    removeProfessionalLogo(user.id);
     setCurrentLogo(null);
     setLogoPreview(null);
     if (fileInputRef.current) {
@@ -392,6 +468,105 @@ const SettingsPage = () => {
                 </div>
               </>
             ) : null}
+          </div>
+        )}
+
+        {/* Professional Logo Upload - Only for Independent Podiatrists (no clinic) */}
+        {isPodiatristIndependent && (
+          <div className="bg-white rounded-xl border border-gray-100 p-6">
+            <h3 className="text-lg font-semibold text-[#1a1a1a] mb-2">Logo Profesional</h3>
+            <p className="text-sm text-gray-500 mb-4">
+              Sube tu logo profesional personal. Este logo se mostrará en los documentos PDF que generes. Dimensiones recomendadas: 200x80px
+            </p>
+            
+            <div className="space-y-4">
+              {/* Current/Preview Logo */}
+              <div className="flex items-center gap-6">
+                <div className="w-40 h-20 bg-gray-50 border-2 border-dashed border-gray-200 rounded-xl flex items-center justify-center overflow-hidden">
+                  {logoPreview ? (
+                    <img 
+                      src={logoPreview} 
+                      alt="Preview" 
+                      className="max-w-full max-h-full object-contain"
+                    />
+                  ) : currentLogo ? (
+                    <img 
+                      src={currentLogo} 
+                      alt="Professional Logo" 
+                      className="max-w-full max-h-full object-contain"
+                    />
+                  ) : (
+                    <div className="text-center">
+                      <svg className="w-8 h-8 text-gray-300 mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                      </svg>
+                      <span className="text-xs text-gray-400 mt-1 block">Sin logo</span>
+                    </div>
+                  )}
+                </div>
+                
+                <div className="flex-1">
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/png,image/jpeg,image/jpg,image/svg+xml"
+                    onChange={handleProfessionalLogoUpload}
+                    className="hidden"
+                    id="professional-logo-upload"
+                  />
+                  <label
+                    htmlFor="professional-logo-upload"
+                    className="inline-flex items-center gap-2 px-4 py-2.5 bg-gray-100 text-[#1a1a1a] rounded-lg text-sm font-medium hover:bg-gray-200 transition-colors cursor-pointer"
+                  >
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                    </svg>
+                    Subir imagen
+                  </label>
+                  
+                  {logoError && (
+                    <p className="text-sm text-red-600 mt-2">{logoError}</p>
+                  )}
+                  
+                  <p className="text-xs text-gray-400 mt-2">
+                    PNG, JPG o SVG. Máximo 2MB.
+                  </p>
+                </div>
+              </div>
+
+              {/* Actions */}
+              {(logoPreview || currentLogo) && (
+                <div className="flex gap-3 pt-4 border-t border-gray-100">
+                  {logoPreview && (
+                    <button
+                      onClick={handleSaveProfessionalLogo}
+                      className="px-4 py-2 bg-[#1a1a1a] text-white rounded-lg text-sm font-medium hover:bg-[#2a2a2a] transition-colors"
+                    >
+                      Guardar logo
+                    </button>
+                  )}
+                  {logoPreview && (
+                    <button
+                      onClick={() => {
+                        setLogoPreview(null);
+                        if (fileInputRef.current) fileInputRef.current.value = "";
+                      }}
+                      className="px-4 py-2 bg-gray-100 text-[#1a1a1a] rounded-lg text-sm font-medium hover:bg-gray-200 transition-colors"
+                    >
+                      Cancelar
+                    </button>
+                  )}
+                  {currentLogo && !logoPreview && (
+                    <button
+                      onClick={handleRemoveProfessionalLogo}
+                      className="px-4 py-2 text-red-600 hover:bg-red-50 rounded-lg text-sm font-medium transition-colors"
+                    >
+                      Eliminar logo
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
           </div>
         )}
         

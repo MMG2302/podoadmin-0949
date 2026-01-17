@@ -18,6 +18,7 @@ import {
   exportPatientData,
   addAuditLog,
   getClinicLogo,
+  getProfessionalLogo,
   getClinicById,
   ClinicalSession,
   Patient,
@@ -287,8 +288,12 @@ const SessionsPage = () => {
     // Get clinic logo and full info based on user's clinic membership
     let clinicLogo: string | undefined = undefined;
     const clinic = user?.clinicId ? getClinicById(user.clinicId) : null;
-    if (clinic) {
-      clinicLogo = clinic.logo;
+    if (user?.clinicId) {
+      // Get logo from separate storage key (not clinic.logo)
+      clinicLogo = getClinicLogo(user.clinicId);
+    } else if (user?.id) {
+      // For independent doctors, get their professional logo
+      clinicLogo = getProfessionalLogo(user.id);
     }
     
     // Build clinic contact info for header

@@ -754,3 +754,131 @@ export const getUserClinic = (userId: string, userClinicId?: string): Clinic | u
   if (!userClinicId) return undefined;
   return getClinicById(userClinicId);
 };
+
+// ============================================
+// PROFESSIONAL INFO (for independent podiatrists)
+// ============================================
+
+export interface ProfessionalInfo {
+  name: string;
+  phone: string;
+  email: string;
+  address: string;
+  city: string;
+  postalCode: string;
+  licenseNumber: string; // Clinic/practice license
+  professionalLicense: string; // Cédula profesional / individual license
+}
+
+const PROFESSIONAL_INFO_KEY = "podoadmin_professional_info";
+
+interface ProfessionalInfoStore {
+  [userId: string]: ProfessionalInfo;
+}
+
+export const getProfessionalInfo = (userId: string): ProfessionalInfo | null => {
+  const store = getItem<ProfessionalInfoStore>(PROFESSIONAL_INFO_KEY, {});
+  return store[userId] || null;
+};
+
+export const saveProfessionalInfo = (userId: string, data: ProfessionalInfo): void => {
+  const store = getItem<ProfessionalInfoStore>(PROFESSIONAL_INFO_KEY, {});
+  store[userId] = data;
+  setItem(PROFESSIONAL_INFO_KEY, store);
+};
+
+// ============================================
+// PROFESSIONAL LICENSES (for all podiatrists)
+// ============================================
+
+const PROFESSIONAL_LICENSES_KEY = "podoadmin_professional_licenses";
+
+interface ProfessionalLicensesStore {
+  [userId: string]: string;
+}
+
+export const getProfessionalLicense = (userId: string): string | null => {
+  const store = getItem<ProfessionalLicensesStore>(PROFESSIONAL_LICENSES_KEY, {});
+  return store[userId] || null;
+};
+
+export const saveProfessionalLicense = (userId: string, license: string): void => {
+  const store = getItem<ProfessionalLicensesStore>(PROFESSIONAL_LICENSES_KEY, {});
+  store[userId] = license;
+  setItem(PROFESSIONAL_LICENSES_KEY, store);
+};
+
+export const getAllProfessionalLicenses = (): ProfessionalLicensesStore => {
+  return getItem<ProfessionalLicensesStore>(PROFESSIONAL_LICENSES_KEY, {});
+};
+
+// ============================================
+// PRESCRIPTIONS / RECIPES
+// ============================================
+
+export interface Prescription {
+  id: string;
+  sessionId: string;
+  patientId: string;
+  patientName: string;
+  patientDob: string;
+  patientDni: string;
+  podiatristId: string;
+  podiatristName: string;
+  podiatristLicense: string | null;
+  prescriptionDate: string;
+  prescriptionText: string;
+  medications: string;
+  nextVisitDate: string | null;
+  notes: string;
+  folio: string; // Prescription folio
+  createdAt: string;
+  createdBy: string;
+}
+
+const PRESCRIPTIONS_KEY = "podoadmin_prescriptions";
+
+export const getPrescriptions = (): Prescription[] => {
+  return getItem<Prescription[]>(PRESCRIPTIONS_KEY, []);
+};
+
+export const getPrescriptionById = (id: string): Prescription | undefined => {
+  return getPrescriptions().find(p => p.id === id);
+};
+
+export const getPrescriptionsBySession = (sessionId: string): Prescription[] => {
+  return getPrescriptions().filter(p => p.sessionId === sessionId);
+};
+
+export const getPrescriptionsByPatient = (patientId: string): Prescription[] => {
+  return getPrescriptions().filter(p => p.patientId === patientId);
+};
+
+export const generatePrescriptionFolio = (): string => {
+  const year = new Date().getFullYear();
+  const prescriptions = getPrescriptions();
+  const thisYearPrescriptions = prescriptions.filter(p => p.folio.includes(`RX-${year}`));
+  const nextSeq = (thisYearPrescriptions.length + 1).toString().padStart(5, "0");
+  return `RX-${year}-${nextSeq}`;
+};
+
+export const savePrescription = (prescription: Omit<Prescription, "id" | "createdAt" | "folio">): Prescription => {
+  const prescriptions = getPrescriptions();
+  const newPrescription: Prescription = {
+    ...prescription,
+    id: generateId(),
+    folio: generatePrescriptionFolio(),
+    createdAt: new Date().toISOString(),
+  };
+  prescriptions.push(newPrescription);
+  setItem(PRESCRIPTIONS_KEY, prescriptions);
+  return newPrescription;
+};
+
+export const deletePrescription = (id: string): boolean => {
+  const prescriptions = getPrescriptions();
+  const filtered = prescriptions.filter(p => p.id !== id);
+  if (filtered.length === prescriptions.length) return false;
+  setItem(PRESCRIPTIONS_KEY, filtered);
+  return true;
+};

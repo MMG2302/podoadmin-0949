@@ -8,6 +8,7 @@ import {
   getSessions,
   addAuditLog,
   addNotification,
+  getAllProfessionalLicenses,
   Patient,
   ClinicalSession,
 } from "../lib/storage";
@@ -17,6 +18,7 @@ interface PodiatristStats {
   patientCount: number;
   sessionCount: number;
   sessionsThisMonth: number;
+  license: string | null;
   credits: {
     monthly: number;
     extra: number;
@@ -177,6 +179,7 @@ const ClinicPage = () => {
     const now = new Date();
     const thisMonth = now.getMonth();
     const thisYear = now.getFullYear();
+    const allLicenses = getAllProfessionalLicenses();
 
     return clinicPodiatrists.map(pod => {
       const podCredits = getUserCredits(pod.id);
@@ -192,6 +195,7 @@ const ClinicPage = () => {
         patientCount: patients.length,
         sessionCount: sessions.length,
         sessionsThisMonth: sessionsThisMonth.length,
+        license: allLicenses[pod.id] || null,
         credits: {
           monthly: podCredits.monthlyCredits,
           extra: podCredits.extraCredits,
@@ -464,6 +468,7 @@ const ClinicPage = () => {
                 <tr className="border-b border-gray-100 bg-gray-50">
                   <th className="text-left px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Podólogo</th>
                   <th className="text-left px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Email</th>
+                  <th className="text-left px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Licencia</th>
                   <th className="text-left px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Pacientes</th>
                   <th className="text-left px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Sesiones (mes)</th>
                   <th className="text-left px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Créditos</th>
@@ -481,6 +486,13 @@ const ClinicPage = () => {
                       </div>
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-600">{stat.user.email}</td>
+                    <td className="px-6 py-4 text-sm">
+                      {stat.license ? (
+                        <span className="font-mono text-[#1a1a1a]">{stat.license}</span>
+                      ) : (
+                        <span className="text-gray-400 italic text-xs">No registrada</span>
+                      )}
+                    </td>
                     <td className="px-6 py-4 text-sm text-[#1a1a1a] font-medium">{stat.patientCount}</td>
                     <td className="px-6 py-4 text-sm text-[#1a1a1a] font-medium">{stat.sessionsThisMonth}</td>
                     <td className="px-6 py-4">

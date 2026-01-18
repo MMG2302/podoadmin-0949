@@ -20,9 +20,15 @@ import {
   getClinicLogo,
   getProfessionalLogo,
   getClinicById,
+  getProfessionalLicense,
+  getProfessionalInfo,
+  getPrescriptionsBySession,
+  savePrescription,
+  deletePrescription,
   ClinicalSession,
   Patient,
   AppointmentReason,
+  Prescription,
 } from "../lib/storage";
 
 interface SessionFormData {
@@ -82,6 +88,16 @@ const SessionsPage = () => {
     filterPatientId ? { ...emptyForm, patientId: filterPatientId } : emptyForm
   );
   const [selectedSession, setSelectedSession] = useState<ClinicalSession | null>(null);
+  
+  // Prescription state
+  const [showPrescriptionForm, setShowPrescriptionForm] = useState(false);
+  const [prescriptionData, setPrescriptionData] = useState({
+    prescriptionText: "",
+    medications: "",
+    nextVisitDate: "",
+    notes: "",
+  });
+  const [sessionPrescriptions, setSessionPrescriptions] = useState<Prescription[]>([]);
 
   const filteredSessions = useMemo(() => {
     let filtered = sessions;
@@ -296,6 +312,17 @@ const SessionsPage = () => {
       clinicLogo = getProfessionalLogo(user.id);
     }
     
+    // Get professional license
+    let podiatristLicense: string | null = null;
+    if (user?.id) {
+      podiatristLicense = getProfessionalLicense(user.id);
+      // For independent podiatrists, also check professionalInfo
+      if (!podiatristLicense && !user?.clinicId) {
+        const profInfo = getProfessionalInfo(user.id);
+        podiatristLicense = profInfo?.professionalLicense || null;
+      }
+    }
+    
     // Build clinic contact info for header
     const clinicName = clinic?.clinicName || "";
     const clinicPhone = clinic?.phone || "";
@@ -304,9 +331,11 @@ const SessionsPage = () => {
       ? `${clinic.address}${clinic.city ? `, ${clinic.city}` : ""}${clinic.postalCode ? ` ${clinic.postalCode}` : ""}`
       : "";
     const hasClinicInfo = !!(clinicName || clinicPhone || clinicEmail || clinicAddress);
+    const clinicLicenseNumber = clinic?.licenseNumber || "";
     
-    // For independent doctors, show their name as the header
+    // For independent doctors, get their professional info
     const isIndependent = !clinic;
+    const profInfo = isIndependent && user?.id ? getProfessionalInfo(user.id) : null;
     
     const printWindow = window.open("", "_blank");
     if (!printWindow) return;
@@ -351,9 +380,19 @@ const SessionsPage = () => {
             ${clinicLogo ? `<img src="${clinicLogo}" alt="Logo" class="header-logo" />` : ''}
             <div class="header-text">
               ${isIndependent 
-                ? `<h1>${user?.name || "Profesional Independiente"}</h1>
-                   <p style="margin: 0; color: #666; font-size: 14px;">Historia Clínica Podológica</p>`
+                ? `<h1>${profInfo?.name || user?.name || "Profesional Independiente"}</h1>
+                   ${podiatristLicense ? `<p style="margin: 0; color: #333; font-size: 13px; font-weight: 500;">Lic. ${podiatristLicense}</p>` : ''}
+                   <p style="margin: 0; color: #666; font-size: 14px;">Historia Clínica Podológica</p>
+                   ${profInfo ? `
+                     <div class="clinic-contact">
+                       ${profInfo.phone ? `<div>Tel: ${profInfo.phone}</div>` : ''}
+                       ${profInfo.email ? `<div>Email: ${profInfo.email}</div>` : ''}
+                       ${profInfo.address ? `<div>${profInfo.address}${profInfo.city ? `, ${profInfo.city}` : ""}${profInfo.postalCode ? ` ${profInfo.postalCode}` : ""}</div>` : ''}
+                       ${profInfo.licenseNumber ? `<div>Reg. Sanitario: ${profInfo.licenseNumber}</div>` : ''}
+                     </div>
+                   ` : ''}`
                 : `<h1>${clinicName}</h1>
+                   ${clinicLicenseNumber ? `<p style="margin: 0; color: #555; font-size: 12px;">Reg. Sanitario: ${clinicLicenseNumber}</p>` : ''}
                    ${hasClinicInfo ? `
                      <div class="clinic-contact">
                        ${clinicPhone ? `<div>Tel: ${clinicPhone}</div>` : ''}
@@ -414,7 +453,7 @@ const SessionsPage = () => {
         
         <div class="footer">
           <p><strong>Documento generado por PodoAdmin</strong></p>
-          <p>Profesional: ${user?.name} | Fecha de impresión: ${new Date().toLocaleString("es-ES")}</p>
+          <p>Profesional: ${user?.name}${podiatristLicense ? ` | Lic. ${podiatristLicense}` : ''} | Fecha de impresión: ${new Date().toLocaleString("es-ES")}</p>
           <p>ID Sesión: ${session.id} | Folio Paciente: ${patient.folio || "—"}</p>
         </div>
       </body>
@@ -445,6 +484,207 @@ const SessionsPage = () => {
   const getPatientName = (patientId: string) => {
     const patient = getPatientById(patientId);
     return patient ? `${patient.firstName} ${patient.lastName}` : "Paciente desconocido";
+  };
+  
+  // Load prescriptions when session is selected
+  const loadSessionPrescriptions = (session: ClinicalSession) => {
+    const prescriptions = getPrescriptionsBySession(session.id);
+    setSessionPrescriptions(prescriptions);
+  };
+  
+  // Create prescription handler
+  const handleCreatePrescription = () => {
+    if (!selectedSession || !user) return;
+    
+    const patient = getPatientById(selectedSession.patientId);
+    if (!patient) return;
+    
+    // Get professional license
+    let license: string | null = null;
+    if (user.id) {
+      license = getProfessionalLicense(user.id);
+      if (!license && !user.clinicId) {
+        const profInfo = getProfessionalInfo(user.id);
+        license = profInfo?.professionalLicense || null;
+      }
+    }
+    
+    const newPrescription = savePrescription({
+      sessionId: selectedSession.id,
+      patientId: patient.id,
+      patientName: `${patient.firstName} ${patient.lastName}`,
+      patientDob: patient.dateOfBirth,
+      patientDni: patient.idNumber,
+      podiatristId: user.id,
+      podiatristName: user.name,
+      podiatristLicense: license,
+      prescriptionDate: new Date().toISOString().split("T")[0],
+      prescriptionText: prescriptionData.prescriptionText,
+      medications: prescriptionData.medications,
+      nextVisitDate: prescriptionData.nextVisitDate || null,
+      notes: prescriptionData.notes,
+      createdBy: user.id,
+    });
+    
+    setSessionPrescriptions(prev => [...prev, newPrescription]);
+    setPrescriptionData({ prescriptionText: "", medications: "", nextVisitDate: "", notes: "" });
+    setShowPrescriptionForm(false);
+    
+    addAuditLog({
+      userId: user.id,
+      userName: user.name,
+      action: "CREATE",
+      entityType: "PRESCRIPTION",
+      entityId: newPrescription.id,
+      details: `Receta creada para paciente ${patient.firstName} ${patient.lastName}`,
+    });
+  };
+  
+  // Print prescription
+  const handlePrintPrescription = (prescription: Prescription) => {
+    // Get clinic/professional info
+    let clinicLogo: string | undefined = undefined;
+    const clinic = user?.clinicId ? getClinicById(user.clinicId) : null;
+    if (user?.clinicId) {
+      clinicLogo = getClinicLogo(user.clinicId);
+    } else if (user?.id) {
+      clinicLogo = getProfessionalLogo(user.id);
+    }
+    
+    const isIndependent = !clinic;
+    const profInfo = isIndependent && user?.id ? getProfessionalInfo(user.id) : null;
+    
+    const clinicName = clinic?.clinicName || profInfo?.name || user?.name || "";
+    const clinicPhone = clinic?.phone || profInfo?.phone || "";
+    const clinicEmail = clinic?.email || profInfo?.email || "";
+    const clinicAddress = clinic?.address 
+      ? `${clinic.address}${clinic.city ? `, ${clinic.city}` : ""}${clinic.postalCode ? ` ${clinic.postalCode}` : ""}`
+      : profInfo?.address 
+        ? `${profInfo.address}${profInfo.city ? `, ${profInfo.city}` : ""}${profInfo.postalCode ? ` ${profInfo.postalCode}` : ""}`
+        : "";
+    const clinicLicenseNumber = clinic?.licenseNumber || profInfo?.licenseNumber || "";
+    
+    const printWindow = window.open("", "_blank");
+    if (!printWindow) return;
+    
+    printWindow.document.write(`
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>Receta - ${prescription.patientName}</title>
+        <style>
+          body { font-family: Arial, sans-serif; padding: 40px; max-width: 800px; margin: 0 auto; color: #1a1a1a; }
+          .header { border-bottom: 2px solid #1a1a1a; padding-bottom: 16px; margin-bottom: 20px; }
+          .header-content { display: flex; align-items: flex-start; gap: 20px; }
+          .header-logo { max-height: 60px; max-width: 160px; object-fit: contain; }
+          .header-text h1 { margin: 0 0 4px; font-size: 22px; }
+          .clinic-contact { font-size: 12px; color: #666; margin-top: 4px; line-height: 1.4; }
+          .license { font-size: 13px; color: #333; font-weight: 500; margin: 4px 0; }
+          .folio-bar { background: #f5f5f5; padding: 10px 16px; margin: 12px 0 20px; border-radius: 4px; text-align: center; }
+          .folio-bar span.label { font-size: 12px; color: #666; margin-right: 8px; }
+          .folio-bar span.value { font-size: 16px; font-weight: bold; color: #1a1a1a; letter-spacing: 1px; }
+          .patient-section { background: #f9f9f9; padding: 16px; border-radius: 8px; margin-bottom: 20px; }
+          .patient-section h3 { margin: 0 0 12px; font-size: 14px; color: #666; }
+          .patient-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 14px; }
+          .patient-grid p { margin: 0; }
+          .label { font-weight: bold; color: #555; }
+          .section { margin-bottom: 20px; }
+          .section h2 { font-size: 16px; margin-bottom: 10px; border-bottom: 1px solid #ddd; padding-bottom: 4px; color: #333; }
+          .section-content { min-height: 80px; padding: 12px; background: #fafafa; border-radius: 6px; white-space: pre-wrap; }
+          .signature-area { margin-top: 60px; text-align: center; }
+          .signature-line { border-top: 1px solid #333; width: 300px; margin: 0 auto; padding-top: 8px; }
+          .footer { margin-top: 40px; padding-top: 16px; border-top: 1px solid #ddd; font-size: 11px; color: #666; }
+          @media print { 
+            body { padding: 20px; } 
+            .folio-bar, .patient-section { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+          }
+        </style>
+      </head>
+      <body>
+        <div class="header">
+          <div class="header-content">
+            ${clinicLogo ? `<img src="${clinicLogo}" alt="Logo" class="header-logo" />` : ''}
+            <div class="header-text">
+              <h1>${clinicName}</h1>
+              ${prescription.podiatristLicense ? `<p class="license">Lic. ${prescription.podiatristLicense}</p>` : ''}
+              ${clinicLicenseNumber ? `<p style="margin: 0; color: #555; font-size: 12px;">Reg. Sanitario: ${clinicLicenseNumber}</p>` : ''}
+              <div class="clinic-contact">
+                ${clinicPhone ? `<div>Tel: ${clinicPhone}</div>` : ''}
+                ${clinicEmail ? `<div>Email: ${clinicEmail}</div>` : ''}
+                ${clinicAddress ? `<div>${clinicAddress}</div>` : ''}
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <div class="folio-bar">
+          <span class="label">FOLIO RECETA:</span>
+          <span class="value">${prescription.folio}</span>
+        </div>
+        
+        <div class="patient-section">
+          <h3>DATOS DEL PACIENTE</h3>
+          <div class="patient-grid">
+            <p><span class="label">Nombre:</span> ${prescription.patientName}</p>
+            <p><span class="label">DNI/NIE:</span> ${prescription.patientDni}</p>
+            <p><span class="label">Fecha de nacimiento:</span> ${new Date(prescription.patientDob).toLocaleDateString("es-ES")}</p>
+            <p><span class="label">Fecha de la receta:</span> ${new Date(prescription.prescriptionDate).toLocaleDateString("es-ES")}</p>
+          </div>
+        </div>
+        
+        <div class="section">
+          <h2>Prescripción / Indicaciones</h2>
+          <div class="section-content">${prescription.prescriptionText || "—"}</div>
+        </div>
+        
+        ${prescription.medications ? `
+          <div class="section">
+            <h2>Medicamentos / Tratamientos</h2>
+            <div class="section-content">${prescription.medications}</div>
+          </div>
+        ` : ''}
+        
+        ${prescription.nextVisitDate ? `
+          <div class="section">
+            <h2>Próxima Visita</h2>
+            <p style="font-size: 14px;">${new Date(prescription.nextVisitDate).toLocaleDateString("es-ES", { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
+          </div>
+        ` : ''}
+        
+        ${prescription.notes ? `
+          <div class="section">
+            <h2>Notas Adicionales</h2>
+            <div class="section-content">${prescription.notes}</div>
+          </div>
+        ` : ''}
+        
+        <div class="signature-area">
+          <div class="signature-line">
+            <p style="margin: 0; font-size: 12px;">Firma del Profesional</p>
+            <p style="margin: 4px 0 0; font-size: 14px; font-weight: 500;">${prescription.podiatristName}</p>
+            ${prescription.podiatristLicense ? `<p style="margin: 0; font-size: 12px; color: #666;">Lic. ${prescription.podiatristLicense}</p>` : ''}
+          </div>
+        </div>
+        
+        <div class="footer">
+          <p><strong>Receta generada por PodoAdmin</strong></p>
+          <p>Fecha de impresión: ${new Date().toLocaleString("es-ES")}</p>
+        </div>
+      </body>
+      </html>
+    `);
+    
+    printWindow.document.close();
+    printWindow.print();
+    
+    addAuditLog({
+      userId: user?.id || "",
+      userName: user?.name || "",
+      action: "PRINT",
+      entityType: "PRESCRIPTION",
+      entityId: prescription.id,
+      details: `Receta impresa - Folio: ${prescription.folio}`,
+    });
   };
 
   return (
@@ -534,6 +774,45 @@ const SessionsPage = () => {
                 </div>
               )}
               
+              {/* Prescriptions Section */}
+              <div className="pt-4 border-t border-gray-100">
+                <div className="flex items-center justify-between mb-3">
+                  <h4 className="font-medium text-[#1a1a1a]">Recetas / Prescripciones</h4>
+                  <button
+                    onClick={() => setShowPrescriptionForm(true)}
+                    className="flex items-center gap-1 text-sm text-[#1a1a1a] hover:underline"
+                  >
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                    </svg>
+                    Nueva receta
+                  </button>
+                </div>
+                
+                {sessionPrescriptions.length > 0 ? (
+                  <div className="space-y-2">
+                    {sessionPrescriptions.map((rx) => (
+                      <div key={rx.id} className="flex items-center justify-between bg-gray-50 rounded-lg p-3">
+                        <div>
+                          <p className="font-medium text-sm text-[#1a1a1a]">Folio: {rx.folio}</p>
+                          <p className="text-xs text-gray-500">
+                            {new Date(rx.prescriptionDate).toLocaleDateString("es-ES")} - {rx.prescriptionText.substring(0, 50)}...
+                          </p>
+                        </div>
+                        <button
+                          onClick={() => handlePrintPrescription(rx)}
+                          className="px-3 py-1.5 bg-[#1a1a1a] text-white text-xs rounded-lg hover:bg-[#2a2a2a] transition-colors"
+                        >
+                          Imprimir
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm text-gray-400 italic">No hay recetas para esta sesión</p>
+                )}
+              </div>
+              
               <div className="flex gap-3 pt-4 border-t border-gray-100">
                 {selectedSession.status === "draft" && (
                   <button
@@ -561,6 +840,105 @@ const SessionsPage = () => {
                   {t.common.print}
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+      
+      {/* Prescription Form Modal */}
+      {showPrescriptionForm && selectedSession && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[60] p-4">
+          <div className="bg-white rounded-2xl max-w-xl w-full">
+            <div className="p-6 border-b border-gray-100">
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-semibold text-[#1a1a1a]">Nueva Receta</h3>
+                <button
+                  onClick={() => {
+                    setShowPrescriptionForm(false);
+                    setPrescriptionData({ prescriptionText: "", medications: "", nextVisitDate: "", notes: "" });
+                  }}
+                  className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                >
+                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+              <p className="text-sm text-gray-500 mt-1">
+                Paciente: {getPatientName(selectedSession.patientId)}
+              </p>
+            </div>
+            
+            <div className="p-6 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Prescripción / Indicaciones *
+                </label>
+                <textarea
+                  value={prescriptionData.prescriptionText}
+                  onChange={(e) => setPrescriptionData(prev => ({ ...prev, prescriptionText: e.target.value }))}
+                  rows={4}
+                  placeholder="Describa las indicaciones y recomendaciones para el paciente..."
+                  className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#1a1a1a] focus:border-transparent resize-none"
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Medicamentos / Tratamientos
+                </label>
+                <textarea
+                  value={prescriptionData.medications}
+                  onChange={(e) => setPrescriptionData(prev => ({ ...prev, medications: e.target.value }))}
+                  rows={3}
+                  placeholder="Liste los medicamentos o tratamientos recomendados..."
+                  className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#1a1a1a] focus:border-transparent resize-none"
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Próxima Visita
+                </label>
+                <input
+                  type="date"
+                  value={prescriptionData.nextVisitDate}
+                  onChange={(e) => setPrescriptionData(prev => ({ ...prev, nextVisitDate: e.target.value }))}
+                  className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#1a1a1a] focus:border-transparent"
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Notas Adicionales
+                </label>
+                <textarea
+                  value={prescriptionData.notes}
+                  onChange={(e) => setPrescriptionData(prev => ({ ...prev, notes: e.target.value }))}
+                  rows={2}
+                  placeholder="Notas adicionales..."
+                  className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#1a1a1a] focus:border-transparent resize-none"
+                />
+              </div>
+            </div>
+            
+            <div className="p-6 border-t border-gray-100 flex gap-3">
+              <button
+                onClick={() => {
+                  setShowPrescriptionForm(false);
+                  setPrescriptionData({ prescriptionText: "", medications: "", nextVisitDate: "", notes: "" });
+                }}
+                className="flex-1 py-2.5 bg-gray-100 text-[#1a1a1a] rounded-lg hover:bg-gray-200 transition-colors font-medium"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleCreatePrescription}
+                disabled={!prescriptionData.prescriptionText.trim()}
+                className="flex-1 py-2.5 bg-[#1a1a1a] text-white rounded-lg hover:bg-[#2a2a2a] transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Crear Receta
+              </button>
             </div>
           </div>
         </div>
@@ -981,7 +1359,10 @@ const SessionsPage = () => {
                 className="bg-white rounded-xl border border-gray-100 p-5 hover:border-gray-200 transition-colors"
               >
                 <div className="flex items-start justify-between gap-4">
-                  <div className="flex-1" onClick={() => setSelectedSession(session)}>
+                  <div className="flex-1" onClick={() => {
+                    setSelectedSession(session);
+                    loadSessionPrescriptions(session);
+                  }}>
                     <div className="flex items-center gap-3 mb-2 cursor-pointer">
                       <h4 className="font-medium text-[#1a1a1a]">
                         {getPatientName(session.patientId)}

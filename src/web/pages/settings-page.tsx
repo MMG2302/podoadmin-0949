@@ -12,6 +12,11 @@ import {
   getProfessionalLogo,
   setProfessionalLogo,
   removeProfessionalLogo,
+  getProfessionalInfo,
+  saveProfessionalInfo,
+  getProfessionalLicense,
+  saveProfessionalLicense,
+  ProfessionalInfo,
   Clinic 
 } from "../lib/storage";
 
@@ -103,6 +108,23 @@ const SettingsPage = () => {
   });
   const [clinicInfoSaved, setClinicInfoSaved] = useState(false);
   
+  // Professional Info state (for independent podiatrists)
+  const [professionalInfoForm, setProfessionalInfoForm] = useState<ProfessionalInfo>({
+    name: user?.name || "",
+    phone: "",
+    email: user?.email || "",
+    address: "",
+    city: "",
+    postalCode: "",
+    licenseNumber: "",
+    professionalLicense: "",
+  });
+  const [professionalInfoSaved, setProfessionalInfoSaved] = useState(false);
+  
+  // Professional License state (for all podiatrists)
+  const [professionalLicense, setProfessionalLicenseState] = useState<string>("");
+  const [licenseSaved, setLicenseSaved] = useState(false);
+  
   // Initialize clinic info form from existing clinic data
   useEffect(() => {
     if (userClinic) {
@@ -117,6 +139,35 @@ const SettingsPage = () => {
       });
     }
   }, [userClinic]);
+  
+  // Initialize professional info for independent podiatrists
+  useEffect(() => {
+    if (isPodiatristIndependent && user?.id) {
+      const info = getProfessionalInfo(user.id);
+      if (info) {
+        setProfessionalInfoForm(info);
+      } else {
+        setProfessionalInfoForm({
+          name: user?.name || "",
+          phone: "",
+          email: user?.email || "",
+          address: "",
+          city: "",
+          postalCode: "",
+          licenseNumber: "",
+          professionalLicense: "",
+        });
+      }
+    }
+  }, [isPodiatristIndependent, user?.id, user?.name, user?.email]);
+  
+  // Initialize professional license for all podiatrists
+  useEffect(() => {
+    if (user?.role === "podiatrist" && user?.id) {
+      const license = getProfessionalLicense(user.id);
+      setProfessionalLicenseState(license || "");
+    }
+  }, [user?.role, user?.id]);
 
   // Clinic name for display
   const clinicName = userClinic?.clinicName || (user?.clinicId ? getClinicName(user.clinicId) : "");
@@ -140,6 +191,26 @@ const SettingsPage = () => {
     
     setClinicInfoSaved(true);
     setTimeout(() => setClinicInfoSaved(false), 2000);
+  };
+  
+  // Professional info handlers (for independent podiatrists)
+  const handleProfessionalInfoChange = (field: keyof ProfessionalInfo, value: string) => {
+    setProfessionalInfoForm(prev => ({ ...prev, [field]: value }));
+  };
+  
+  const handleSaveProfessionalInfo = () => {
+    if (!isPodiatristIndependent || !user?.id) return;
+    saveProfessionalInfo(user.id, professionalInfoForm);
+    setProfessionalInfoSaved(true);
+    setTimeout(() => setProfessionalInfoSaved(false), 2000);
+  };
+  
+  // Professional license handler (for all podiatrists)
+  const handleSaveProfessionalLicense = () => {
+    if (user?.role !== "podiatrist" || !user?.id) return;
+    saveProfessionalLicense(user.id, professionalLicense);
+    setLicenseSaved(true);
+    setTimeout(() => setLicenseSaved(false), 2000);
   };
 
   const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -762,18 +833,166 @@ const SettingsPage = () => {
           </div>
         )}
         
-        {/* Info for Independent Podiatrist - no clinic */}
+        {/* Consultorio Information - Only for Independent Podiatrists (no clinic) */}
         {isPodiatristIndependent && (
-          <div className="bg-amber-50 rounded-xl border border-amber-100 p-6">
-            <div className="flex items-start gap-3">
-              <svg className="w-5 h-5 text-amber-500 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-              </svg>
+          <div className="bg-white rounded-xl border border-gray-100 p-6">
+            <h3 className="text-lg font-semibold text-[#1a1a1a] mb-2">Información del Consultorio</h3>
+            <p className="text-sm text-gray-500 mb-4">
+              Completa la información de tu consultorio profesional. Estos datos aparecerán en los documentos PDF que generes.
+            </p>
+            
+            <div className="space-y-4">
+              <div className="grid gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Nombre Profesional</label>
+                  <input
+                    type="text"
+                    value={professionalInfoForm.name}
+                    onChange={(e) => handleProfessionalInfoChange("name", e.target.value)}
+                    placeholder="Dr. Juan Pérez García"
+                    className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#1a1a1a] focus:border-transparent transition-all"
+                  />
+                </div>
+                
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Teléfono</label>
+                    <input
+                      type="tel"
+                      value={professionalInfoForm.phone}
+                      onChange={(e) => handleProfessionalInfoChange("phone", e.target.value)}
+                      placeholder="+34 912 345 678"
+                      className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#1a1a1a] focus:border-transparent transition-all"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                    <input
+                      type="email"
+                      value={professionalInfoForm.email}
+                      onChange={(e) => handleProfessionalInfoChange("email", e.target.value)}
+                      placeholder="doctor@consultorio.es"
+                      className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#1a1a1a] focus:border-transparent transition-all"
+                    />
+                  </div>
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Dirección</label>
+                  <input
+                    type="text"
+                    value={professionalInfoForm.address}
+                    onChange={(e) => handleProfessionalInfoChange("address", e.target.value)}
+                    placeholder="Calle Gran Vía, 45, 2º Izquierda"
+                    className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#1a1a1a] focus:border-transparent transition-all"
+                  />
+                </div>
+                
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Ciudad</label>
+                    <input
+                      type="text"
+                      value={professionalInfoForm.city}
+                      onChange={(e) => handleProfessionalInfoChange("city", e.target.value)}
+                      placeholder="Madrid"
+                      className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#1a1a1a] focus:border-transparent transition-all"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Código Postal</label>
+                    <input
+                      type="text"
+                      value={professionalInfoForm.postalCode}
+                      onChange={(e) => handleProfessionalInfoChange("postalCode", e.target.value)}
+                      placeholder="28001"
+                      className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#1a1a1a] focus:border-transparent transition-all"
+                    />
+                  </div>
+                </div>
+                
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Nº Registro Sanitario</label>
+                    <input
+                      type="text"
+                      value={professionalInfoForm.licenseNumber}
+                      onChange={(e) => handleProfessionalInfoChange("licenseNumber", e.target.value)}
+                      placeholder="CS-28/2024-POD-001"
+                      className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#1a1a1a] focus:border-transparent transition-all"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Cédula Profesional</label>
+                    <input
+                      type="text"
+                      value={professionalInfoForm.professionalLicense}
+                      onChange={(e) => handleProfessionalInfoChange("professionalLicense", e.target.value)}
+                      placeholder="12345678"
+                      className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#1a1a1a] focus:border-transparent transition-all"
+                    />
+                  </div>
+                </div>
+                
+                <div className="flex items-center gap-4 pt-4 border-t border-gray-100">
+                  <button
+                    onClick={handleSaveProfessionalInfo}
+                    className="px-6 py-2.5 bg-[#1a1a1a] text-white rounded-lg text-sm font-medium hover:bg-[#2a2a2a] transition-colors"
+                  >
+                    Guardar información
+                  </button>
+                  {professionalInfoSaved && (
+                    <span className="flex items-center gap-2 text-green-600 text-sm font-medium">
+                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                      </svg>
+                      Guardado
+                    </span>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+        
+        {/* Professional License - For Podiatrists with Clinic */}
+        {isPodiatristWithClinic && (
+          <div className="bg-white rounded-xl border border-gray-100 p-6">
+            <h3 className="text-lg font-semibold text-[#1a1a1a] mb-2">Licencia Profesional</h3>
+            <p className="text-sm text-gray-500 mb-4">
+              Ingresa tu número de cédula profesional individual. Esta información aparecerá en los documentos PDF junto a tu nombre.
+            </p>
+            
+            <div className="space-y-4">
               <div>
-                <p className="text-sm text-amber-700 font-medium">Profesional independiente</p>
-                <p className="text-sm text-amber-600 mt-1 italic">
-                  Actualmente trabajas como profesional independiente sin clínica asignada. Cuando te unas a una clínica, podrás ver el logo de tu clínica aquí y aparecerá en tus documentos PDF.
+                <label className="block text-sm font-medium text-gray-700 mb-1">Cédula Profesional / Número de Colegiado</label>
+                <input
+                  type="text"
+                  value={professionalLicense}
+                  onChange={(e) => setProfessionalLicenseState(e.target.value)}
+                  placeholder="12345678"
+                  className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#1a1a1a] focus:border-transparent transition-all"
+                />
+                <p className="text-xs text-gray-400 mt-1">
+                  Este número es diferente de la licencia de la clínica. Es tu licencia individual como profesional.
                 </p>
+              </div>
+              
+              <div className="flex items-center gap-4 pt-4 border-t border-gray-100">
+                <button
+                  onClick={handleSaveProfessionalLicense}
+                  className="px-6 py-2.5 bg-[#1a1a1a] text-white rounded-lg text-sm font-medium hover:bg-[#2a2a2a] transition-colors"
+                >
+                  Guardar licencia
+                </button>
+                {licenseSaved && (
+                  <span className="flex items-center gap-2 text-green-600 text-sm font-medium">
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                    Guardado
+                  </span>
+                )}
               </div>
             </div>
           </div>

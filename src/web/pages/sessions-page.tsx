@@ -22,6 +22,7 @@ import {
   getClinicById,
   getProfessionalLicense,
   getProfessionalInfo,
+  getProfessionalCredentials,
   getPrescriptionsBySession,
   savePrescription,
   deletePrescription,
@@ -554,6 +555,10 @@ const SessionsPage = () => {
     const isIndependent = !clinic;
     const profInfo = isIndependent && user?.id ? getProfessionalInfo(user.id) : null;
     
+    // For clinic podiatrists (subalterns): use clinic data for name/phone/email/address
+    // but use their own credentials (cedula, registro)
+    const credentials = user?.id && user?.clinicId ? getProfessionalCredentials(user.id) : null;
+    
     const clinicName = clinic?.clinicName || profInfo?.name || user?.name || "";
     const clinicPhone = clinic?.phone || profInfo?.phone || "";
     const clinicEmail = clinic?.email || profInfo?.email || "";
@@ -563,6 +568,11 @@ const SessionsPage = () => {
         ? `${profInfo.address}${profInfo.city ? `, ${profInfo.city}` : ""}${profInfo.postalCode ? ` ${profInfo.postalCode}` : ""}`
         : "";
     const clinicLicenseNumber = clinic?.licenseNumber || profInfo?.licenseNumber || "";
+    
+    // Get individual professional credentials
+    // For clinic podiatrists: use cedula from credentials, for independent: use from profInfo
+    const podiatristCedula = credentials?.cedula || profInfo?.professionalLicense || prescription.podiatristLicense || "";
+    const podiatristRegistro = credentials?.registro || "";
     
     const printWindow = window.open("", "_blank");
     if (!printWindow) return;
@@ -606,7 +616,8 @@ const SessionsPage = () => {
             ${clinicLogo ? `<img src="${clinicLogo}" alt="Logo" class="header-logo" />` : ''}
             <div class="header-text">
               <h1>${clinicName}</h1>
-              ${prescription.podiatristLicense ? `<p class="license">Lic. ${prescription.podiatristLicense}</p>` : ''}
+              ${podiatristCedula ? `<p class="license">Cédula: ${podiatristCedula}</p>` : ''}
+              ${podiatristRegistro ? `<p style="margin: 0; color: #555; font-size: 12px;">Registro: ${podiatristRegistro}</p>` : ''}
               ${clinicLicenseNumber ? `<p style="margin: 0; color: #555; font-size: 12px;">Reg. Sanitario: ${clinicLicenseNumber}</p>` : ''}
               <div class="clinic-contact">
                 ${clinicPhone ? `<div>Tel: ${clinicPhone}</div>` : ''}
@@ -662,7 +673,8 @@ const SessionsPage = () => {
           <div class="signature-line">
             <p style="margin: 0; font-size: 12px;">Firma del Profesional</p>
             <p style="margin: 4px 0 0; font-size: 14px; font-weight: 500;">${prescription.podiatristName}</p>
-            ${prescription.podiatristLicense ? `<p style="margin: 0; font-size: 12px; color: #666;">Lic. ${prescription.podiatristLicense}</p>` : ''}
+            ${podiatristCedula ? `<p style="margin: 0; font-size: 12px; color: #666;">Cédula: ${podiatristCedula}</p>` : ''}
+            ${podiatristRegistro ? `<p style="margin: 0; font-size: 12px; color: #666;">Registro: ${podiatristRegistro}</p>` : ''}
           </div>
         </div>
         

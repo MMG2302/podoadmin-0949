@@ -16,6 +16,8 @@ import {
   saveProfessionalInfo,
   getProfessionalLicense,
   saveProfessionalLicense,
+  getProfessionalCredentials,
+  saveProfessionalCredentials,
   ProfessionalInfo,
   Clinic 
 } from "../lib/storage";
@@ -125,6 +127,11 @@ const SettingsPage = () => {
   const [professionalLicense, setProfessionalLicenseState] = useState<string>("");
   const [licenseSaved, setLicenseSaved] = useState(false);
   
+  // Professional Credentials state (for clinic subaltern podiatrists)
+  const [credentialsCedula, setCredentialsCedula] = useState<string>("");
+  const [credentialsRegistro, setCredentialsRegistro] = useState<string>("");
+  const [credentialsSaved, setCredentialsSaved] = useState(false);
+  
   // Initialize clinic info form from existing clinic data
   useEffect(() => {
     if (userClinic) {
@@ -168,6 +175,17 @@ const SettingsPage = () => {
       setProfessionalLicenseState(license || "");
     }
   }, [user?.role, user?.id]);
+  
+  // Initialize professional credentials for clinic podiatrists
+  useEffect(() => {
+    if (isPodiatristWithClinic && user?.id) {
+      const credentials = getProfessionalCredentials(user.id);
+      if (credentials) {
+        setCredentialsCedula(credentials.cedula || "");
+        setCredentialsRegistro(credentials.registro || "");
+      }
+    }
+  }, [isPodiatristWithClinic, user?.id]);
 
   // Clinic name for display
   const clinicName = userClinic?.clinicName || (user?.clinicId ? getClinicName(user.clinicId) : "");
@@ -211,6 +229,14 @@ const SettingsPage = () => {
     saveProfessionalLicense(user.id, professionalLicense);
     setLicenseSaved(true);
     setTimeout(() => setLicenseSaved(false), 2000);
+  };
+  
+  // Professional credentials handler (for clinic podiatrists)
+  const handleSaveCredentials = () => {
+    if (!isPodiatristWithClinic || !user?.id) return;
+    saveProfessionalCredentials(user.id, credentialsCedula, credentialsRegistro);
+    setCredentialsSaved(true);
+    setTimeout(() => setCredentialsSaved(false), 2000);
   };
 
   const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -955,37 +981,47 @@ const SettingsPage = () => {
           </div>
         )}
         
-        {/* Professional License - For Podiatrists with Clinic */}
-        {isPodiatristWithClinic && (
+        {/* Professional Credentials - For Podiatrists with Clinic */}
+        {isPodiatristWithClinic && userClinic && (
           <div className="bg-white rounded-xl border border-gray-100 p-6">
-            <h3 className="text-lg font-semibold text-[#1a1a1a] mb-2">Licencia Profesional</h3>
+            <h3 className="text-lg font-semibold text-[#1a1a1a] mb-2">Credenciales Profesionales</h3>
             <p className="text-sm text-gray-500 mb-4">
-              Ingresa tu número de cédula profesional individual. Esta información aparecerá en los documentos PDF junto a tu nombre.
+              Ingresa tus credenciales profesionales individuales. La información de la clínica es gestionada por tu administrador.
             </p>
             
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Cédula Profesional / Número de Colegiado</label>
-                <input
-                  type="text"
-                  value={professionalLicense}
-                  onChange={(e) => setProfessionalLicenseState(e.target.value)}
-                  placeholder="12345678"
-                  className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#1a1a1a] focus:border-transparent transition-all"
-                />
-                <p className="text-xs text-gray-400 mt-1">
-                  Este número es diferente de la licencia de la clínica. Es tu licencia individual como profesional.
-                </p>
+            <div className="space-y-6">
+              {/* Editable credentials */}
+              <div className="grid gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Cédula Profesional</label>
+                  <input
+                    type="text"
+                    value={credentialsCedula}
+                    onChange={(e) => setCredentialsCedula(e.target.value)}
+                    placeholder="12345678"
+                    className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#1a1a1a] focus:border-transparent transition-all"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Número de Registro</label>
+                  <input
+                    type="text"
+                    value={credentialsRegistro}
+                    onChange={(e) => setCredentialsRegistro(e.target.value)}
+                    placeholder="REG-2024-001"
+                    className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#1a1a1a] focus:border-transparent transition-all"
+                  />
+                </div>
               </div>
               
               <div className="flex items-center gap-4 pt-4 border-t border-gray-100">
                 <button
-                  onClick={handleSaveProfessionalLicense}
+                  onClick={handleSaveCredentials}
                   className="px-6 py-2.5 bg-[#1a1a1a] text-white rounded-lg text-sm font-medium hover:bg-[#2a2a2a] transition-colors"
                 >
-                  Guardar licencia
+                  Guardar credenciales
                 </button>
-                {licenseSaved && (
+                {credentialsSaved && (
                   <span className="flex items-center gap-2 text-green-600 text-sm font-medium">
                     <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
@@ -993,6 +1029,116 @@ const SettingsPage = () => {
                     Guardado
                   </span>
                 )}
+              </div>
+              
+              {/* Read-only clinic information */}
+              <div className="pt-6 border-t border-gray-100">
+                <div className="bg-blue-50 border border-blue-100 rounded-lg p-4 flex items-start gap-3 mb-4">
+                  <svg className="w-5 h-5 text-blue-500 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <div>
+                    <p className="text-sm text-blue-700 font-medium">Información de tu clínica</p>
+                    <p className="text-sm text-blue-600 mt-1">
+                      El resto de tu información es gestionada por el administrador de tu clínica.
+                    </p>
+                  </div>
+                </div>
+                
+                <div className="grid gap-4">
+                  {/* Read-only clinic fields */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-500 mb-1 flex items-center gap-2">
+                      Nombre de la Clínica
+                      <svg className="w-3.5 h-3.5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                      </svg>
+                    </label>
+                    <input
+                      type="text"
+                      value={userClinic.clinicName}
+                      disabled
+                      className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-gray-500 cursor-not-allowed"
+                    />
+                  </div>
+                  
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-500 mb-1 flex items-center gap-2">
+                        Teléfono
+                        <svg className="w-3.5 h-3.5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                        </svg>
+                      </label>
+                      <input
+                        type="text"
+                        value={userClinic.phone || "—"}
+                        disabled
+                        className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-gray-500 cursor-not-allowed"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-500 mb-1 flex items-center gap-2">
+                        Email
+                        <svg className="w-3.5 h-3.5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                        </svg>
+                      </label>
+                      <input
+                        type="text"
+                        value={userClinic.email || "—"}
+                        disabled
+                        className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-gray-500 cursor-not-allowed"
+                      />
+                    </div>
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-500 mb-1 flex items-center gap-2">
+                      Dirección
+                      <svg className="w-3.5 h-3.5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                      </svg>
+                    </label>
+                    <input
+                      type="text"
+                      value={userClinic.address || "—"}
+                      disabled
+                      className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-gray-500 cursor-not-allowed"
+                    />
+                  </div>
+                  
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-500 mb-1 flex items-center gap-2">
+                        Ciudad
+                        <svg className="w-3.5 h-3.5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                        </svg>
+                      </label>
+                      <input
+                        type="text"
+                        value={userClinic.city || "—"}
+                        disabled
+                        className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-gray-500 cursor-not-allowed"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-500 mb-1 flex items-center gap-2">
+                        Código Postal
+                        <svg className="w-3.5 h-3.5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                        </svg>
+                      </label>
+                      <input
+                        type="text"
+                        value={userClinic.postalCode || "—"}
+                        disabled
+                        className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-gray-500 cursor-not-allowed"
+                      />
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
           </div>

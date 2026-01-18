@@ -882,3 +882,29 @@ export const deletePrescription = (id: string): boolean => {
   setItem(PRESCRIPTIONS_KEY, filtered);
   return true;
 };
+
+// ============================================
+// PROFESSIONAL CREDENTIALS (for clinic subaltern podiatrists)
+// ============================================
+
+export interface ProfessionalCredentials {
+  cedula: string;  // Cédula Profesional
+  registro: string; // Número de Registro
+}
+
+const PROFESSIONAL_CREDENTIALS_KEY = "podoadmin_professional_credentials";
+
+interface ProfessionalCredentialsStore {
+  [userId: string]: ProfessionalCredentials;
+}
+
+export const getProfessionalCredentials = (userId: string): ProfessionalCredentials | null => {
+  const store = getItem<ProfessionalCredentialsStore>(PROFESSIONAL_CREDENTIALS_KEY, {});
+  return store[userId] || null;
+};
+
+export const saveProfessionalCredentials = (userId: string, cedula: string, registro: string): void => {
+  const store = getItem<ProfessionalCredentialsStore>(PROFESSIONAL_CREDENTIALS_KEY, {});
+  store[userId] = { cedula, registro };
+  setItem(PROFESSIONAL_CREDENTIALS_KEY, store);
+};

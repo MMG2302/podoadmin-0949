@@ -3,6 +3,7 @@ import { Sidebar } from "./sidebar";
 import { useLanguage } from "../../contexts/language-context";
 import { useAuth } from "../../contexts/auth-context";
 import { NotificationsBell } from "../notifications-bell";
+import { SettingsButton } from "../settings-button";
 
 interface MainLayoutProps {
   children: ReactNode;
@@ -50,6 +51,9 @@ export const MainLayout = ({ children, title, showCredits = true, credits }: Mai
             <div className="flex items-center gap-3">
               {/* Notifications Bell */}
               <NotificationsBell />
+
+              {/* Settings Button */}
+              <SettingsButton />
 
               {/* Credits display */}
               {showCredits && credits && (

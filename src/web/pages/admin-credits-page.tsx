@@ -169,9 +169,17 @@ const AdminCreditsPage = () => {
       userId: currentUser?.id || "",
       userName: currentUser?.name || "",
       action: "ADMIN_CREDIT_ADJUSTMENT",
-      entityType: "CREDITS",
+      entityType: "credit",
       entityId: selectedUserId,
-      details: `Ajuste de ${amount} créditos a ${selectedUser?.name}. Motivo: ${reason}`,
+      details: JSON.stringify({
+        action: "admin_credit_adjustment",
+        targetUserId: selectedUserId,
+        targetUserName: selectedUser?.name,
+        amount: amount,
+        reason: reason,
+        limitUsedThisMonth: monthlyLimitUsed + amount,
+        monthlyLimit: maxAdjustmentLimit,
+      }),
     });
 
     setSuccess(`Se han añadido ${amount} créditos a ${selectedUser?.name}`);

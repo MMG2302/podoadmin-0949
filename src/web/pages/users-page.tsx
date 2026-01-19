@@ -437,13 +437,21 @@ const TransferHistoryModal = ({
       localStorage.setItem("podoadmin_sessions", JSON.stringify(updatedSessions));
       
       // Add audit log
+      const targetUser = allUsers.find(u => u.id === targetUserId);
       addAuditLog({
         userId: currentUser?.id || "",
         userName: currentUser?.name || "",
         action: "TRANSFER",
-        entityType: "CLINICAL_HISTORY",
+        entityType: "clinical_history",
         entityId: sourceUserId,
-        details: `Transferencia de historial clínico de ${sourceUser?.name} a ${allUsers.find(u => u.id === targetUserId)?.name}. ${sourcePatientIds.length} pacientes transferidos.`,
+        details: JSON.stringify({
+          action: "clinical_history_transfer",
+          sourceUserId: sourceUserId,
+          sourceUserName: sourceUser?.name,
+          targetUserId: targetUserId,
+          targetUserName: targetUser?.name,
+          patientsTransferred: sourcePatientIds.length,
+        }),
       });
       
       setResult({
@@ -735,14 +743,20 @@ const UsersPage = () => {
   const handleCreateUser = (userData: Partial<User> & { password: string }) => {
     // In a real app, this would create the user in the backend
     // For now, we just log it and show a message
+    const newUserId = generateId();
     console.log("Creating user:", userData);
     addAuditLog({
       userId: currentUser?.id || "",
       userName: currentUser?.name || "",
       action: "CREATE",
-      entityType: "USER",
-      entityId: generateId(),
-      details: `Nuevo usuario creado: ${userData.name} (${userData.email}) con rol ${userData.role}`,
+      entityType: "user",
+      entityId: newUserId,
+      details: JSON.stringify({
+        action: "user_create",
+        newUserName: userData.name,
+        newUserEmail: userData.email,
+        newUserRole: userData.role,
+      }),
     });
   };
 
@@ -753,9 +767,13 @@ const UsersPage = () => {
       userId: currentUser?.id || "",
       userName: currentUser?.name || "",
       action: "UPDATE",
-      entityType: "USER",
+      entityType: "user",
       entityId: userId,
-      details: `Usuario actualizado: ${updates.name}`,
+      details: JSON.stringify({
+        action: "user_update",
+        targetUserId: userId,
+        targetUserName: updates.name,
+      }),
     });
   };
 
@@ -784,13 +802,21 @@ const UsersPage = () => {
       description: `Ajuste administrativo: ${reason}`,
     });
     
+    const targetUser = getAllUsers().find(u => u.id === userId);
     addAuditLog({
       userId: currentUser?.id || "",
       userName: currentUser?.name || "",
       action: isAdd ? "ADD_CREDITS" : "SUBTRACT_CREDITS",
-      entityType: "CREDITS",
+      entityType: "credit",
       entityId: userId,
-      details: `${isAdd ? "Añadidos" : "Restados"} ${amount} créditos. Motivo: ${reason}`,
+      details: JSON.stringify({
+        action: "manual_credit_adjustment",
+        targetUserId: userId,
+        targetUserName: targetUser?.name,
+        amount: amount,
+        adjustmentType: isAdd ? "add" : "subtract",
+        reason: reason,
+      }),
     });
   };
 
@@ -831,9 +857,16 @@ const UsersPage = () => {
       userId: currentUser?.id || "",
       userName: currentUser?.name || "",
       action: "EXPORT",
-      entityType: "USER_DATA",
+      entityType: "user_data",
       entityId: user.id,
-      details: `Exportado historial clínico completo de ${user.name}`,
+      details: JSON.stringify({
+        action: "user_clinical_history_export",
+        targetUserId: user.id,
+        targetUserName: user.name,
+        patientsExported: patients.length,
+        sessionsExported: sessions.length,
+        exportType: "json",
+      }),
     });
   };
 

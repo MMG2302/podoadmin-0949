@@ -126,9 +126,13 @@ const PatientsPage = () => {
           userId: user?.id || "",
           userName: user?.name || "",
           action: "UPDATE",
-          entityType: "PATIENT",
+          entityType: "patient",
           entityId: updated.id,
-          details: `Paciente actualizado: ${updated.firstName} ${updated.lastName}`,
+          details: JSON.stringify({
+            patientId: updated.id,
+            patientName: `${updated.firstName} ${updated.lastName}`,
+            folio: updated.folio,
+          }),
         });
       }
     } else {
@@ -142,9 +146,13 @@ const PatientsPage = () => {
         userId: user?.id || "",
         userName: user?.name || "",
         action: "CREATE",
-        entityType: "PATIENT",
+        entityType: "patient",
         entityId: newPatient.id,
-        details: `Nuevo paciente: ${newPatient.firstName} ${newPatient.lastName} (Folio: ${newPatient.folio})`,
+        details: JSON.stringify({
+          patientId: newPatient.id,
+          patientName: `${newPatient.firstName} ${newPatient.lastName}`,
+          folio: newPatient.folio,
+        }),
       });
     }
 
@@ -182,9 +190,13 @@ const PatientsPage = () => {
         userId: user?.id || "",
         userName: user?.name || "",
         action: "DELETE",
-        entityType: "PATIENT",
+        entityType: "patient",
         entityId: patient.id,
-        details: `Paciente eliminado: ${patient.firstName} ${patient.lastName}`,
+        details: JSON.stringify({
+          patientId: patient.id,
+          patientName: `${patient.firstName} ${patient.lastName}`,
+          folio: patient.folio,
+        }),
       });
     }
   };

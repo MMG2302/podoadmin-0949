@@ -293,9 +293,19 @@ const ClinicPage = () => {
       userId: currentUser?.id || "",
       userName: currentUser?.name || "",
       action: "REASSIGN",
-      entityType: "PATIENT",
+      entityType: "reassignment",
       entityId: patientId,
-      details: `Paciente ${patientFullName} reasignado de ${previousPodiatrist?.name} a ${newPodiatrist?.name}`,
+      details: JSON.stringify({
+        action: "patient_reassignment",
+        patientId: patientId,
+        patientName: patientFullName,
+        previousPodiatrist: previousPodiatrist?.name || "sin asignar",
+        previousPodiatristId: previousPodiatristId || null,
+        newPodiatrist: newPodiatrist?.name,
+        newPodiatristId: newPodiatristId,
+        fromPodiatrist: previousPodiatrist?.name || "sin asignar",
+        toPodiatrist: newPodiatrist?.name,
+      }),
     });
 
     // Common metadata for all 3 notifications

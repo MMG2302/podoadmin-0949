@@ -192,13 +192,19 @@ const SessionsPage = () => {
         completedAt: asDraft ? null : new Date().toISOString(),
       });
       
+      const patient = getPatientById(editingSession.patientId);
       addAuditLog({
         userId: user?.id || "",
         userName: user?.name || "",
         action: asDraft ? "UPDATE_DRAFT" : "COMPLETE",
-        entityType: "SESSION",
+        entityType: "session",
         entityId: editingSession.id,
-        details: `Sesión ${asDraft ? "actualizada" : "completada"}`,
+        details: JSON.stringify({
+          sessionId: editingSession.id,
+          patientId: editingSession.patientId,
+          patientName: patient ? `${patient.firstName} ${patient.lastName}` : "",
+          status: asDraft ? "draft" : "completed",
+        }),
       });
     } else {
       // Reserve credit for new session
@@ -219,13 +225,19 @@ const SessionsPage = () => {
         consumeCredit(user?.id || "", newSession.id);
       }
       
+      const patient = getPatientById(newSession.patientId);
       addAuditLog({
         userId: user?.id || "",
         userName: user?.name || "",
         action: "CREATE",
-        entityType: "SESSION",
+        entityType: "session",
         entityId: newSession.id,
-        details: `Nueva sesión para paciente`,
+        details: JSON.stringify({
+          sessionId: newSession.id,
+          patientId: newSession.patientId,
+          patientName: patient ? `${patient.firstName} ${patient.lastName}` : "",
+          status: asDraft ? "draft" : "completed",
+        }),
       });
     }
 
@@ -259,6 +271,7 @@ const SessionsPage = () => {
     if (session.status === "completed") return;
     
     if (confirm("¿Eliminar esta sesión?")) {
+      const patient = getPatientById(session.patientId);
       if (session.creditReservedAt) {
         releaseCredit(user?.id || "", session.id);
       }
@@ -269,9 +282,13 @@ const SessionsPage = () => {
         userId: user?.id || "",
         userName: user?.name || "",
         action: "DELETE",
-        entityType: "SESSION",
+        entityType: "session",
         entityId: session.id,
-        details: "Sesión eliminada",
+        details: JSON.stringify({
+          sessionId: session.id,
+          patientId: session.patientId,
+          patientName: patient ? `${patient.firstName} ${patient.lastName}` : "",
+        }),
       });
     }
   };
@@ -293,13 +310,19 @@ const SessionsPage = () => {
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
     
+    const patient = getPatientById(session.patientId);
     addAuditLog({
       userId: user?.id || "",
       userName: user?.name || "",
       action: "EXPORT",
-      entityType: "SESSION",
+      entityType: "session",
       entityId: session.id,
-      details: "Historia clínica exportada",
+      details: JSON.stringify({
+        sessionId: session.id,
+        patientId: session.patientId,
+        patientName: patient ? `${patient.firstName} ${patient.lastName}` : "",
+        exportType: "json",
+      }),
     });
   };
 
@@ -473,9 +496,14 @@ const SessionsPage = () => {
       userId: user?.id || "",
       userName: user?.name || "",
       action: "PRINT",
-      entityType: "SESSION",
+      entityType: "session",
       entityId: session.id,
-      details: "Historia clínica impresa",
+      details: JSON.stringify({
+        sessionId: session.id,
+        patientId: session.patientId,
+        patientName: `${patient.firstName} ${patient.lastName}`,
+        printType: "clinical_history",
+      }),
     });
   };
 
@@ -543,9 +571,14 @@ const SessionsPage = () => {
       userId: user.id,
       userName: user.name,
       action: "CREATE",
-      entityType: "PRESCRIPTION",
+      entityType: "prescription",
       entityId: newPrescription.id,
-      details: `Receta creada para paciente ${patient.firstName} ${patient.lastName}`,
+      details: JSON.stringify({
+        prescriptionId: newPrescription.id,
+        sessionId: selectedSession.id,
+        patientId: patient.id,
+        patientName: `${patient.firstName} ${patient.lastName}`,
+      }),
     });
   };
   
@@ -701,9 +734,15 @@ const SessionsPage = () => {
       userId: user?.id || "",
       userName: user?.name || "",
       action: "PRINT",
-      entityType: "PRESCRIPTION",
+      entityType: "prescription",
       entityId: prescription.id,
-      details: `Receta impresa - Folio: ${prescription.folio}`,
+      details: JSON.stringify({
+        prescriptionId: prescription.id,
+        prescriptionFolio: prescription.folio,
+        patientId: prescription.patientId,
+        patientName: prescription.patientName,
+        printType: "prescription",
+      }),
     });
   };
 

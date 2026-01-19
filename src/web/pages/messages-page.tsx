@@ -8,6 +8,7 @@ import {
   addSentMessage,
   getSentMessages,
   getSentMessageReadStatus,
+  addAuditLog,
   SentMessage,
 } from "../lib/storage";
 
@@ -111,6 +112,21 @@ const MessagesPage = () => {
             subject: subject.trim(),
           },
         });
+      });
+      
+      // Audit log for message sent
+      addAuditLog({
+        userId: user?.id || "",
+        userName: user?.name || "",
+        action: "CREATE",
+        entityType: "message",
+        entityId: sentMessage.id,
+        details: JSON.stringify({
+          action: "admin_message_sent",
+          recipientCount: recipients.length,
+          recipientType: recipientMode,
+          subject: subject.trim(),
+        }),
       });
 
       // Reset form

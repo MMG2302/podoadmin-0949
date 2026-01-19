@@ -18,6 +18,7 @@ import {
   saveProfessionalLicense,
   getProfessionalCredentials,
   saveProfessionalCredentials,
+  addAuditLog,
   ProfessionalInfo,
   Clinic 
 } from "../lib/storage";
@@ -207,6 +208,19 @@ const SettingsPage = () => {
       website: clinicInfoForm.website,
     });
     
+    addAuditLog({
+      userId: user.id,
+      userName: user.name,
+      action: "UPDATE",
+      entityType: "clinic",
+      entityId: user.clinicId,
+      details: JSON.stringify({
+        action: "clinic_info_update",
+        clinicId: user.clinicId,
+        clinicName: clinicName,
+      }),
+    });
+    
     setClinicInfoSaved(true);
     setTimeout(() => setClinicInfoSaved(false), 2000);
   };
@@ -219,6 +233,19 @@ const SettingsPage = () => {
   const handleSaveProfessionalInfo = () => {
     if (!isPodiatristIndependent || !user?.id) return;
     saveProfessionalInfo(user.id, professionalInfoForm);
+    
+    addAuditLog({
+      userId: user.id,
+      userName: user.name,
+      action: "UPDATE",
+      entityType: "professional_info",
+      entityId: user.id,
+      details: JSON.stringify({
+        action: "professional_info_update",
+        name: professionalInfoForm.name,
+      }),
+    });
+    
     setProfessionalInfoSaved(true);
     setTimeout(() => setProfessionalInfoSaved(false), 2000);
   };
@@ -227,6 +254,18 @@ const SettingsPage = () => {
   const handleSaveProfessionalLicense = () => {
     if (user?.role !== "podiatrist" || !user?.id) return;
     saveProfessionalLicense(user.id, professionalLicense);
+    
+    addAuditLog({
+      userId: user.id,
+      userName: user.name,
+      action: "UPDATE",
+      entityType: "professional_credentials",
+      entityId: user.id,
+      details: JSON.stringify({
+        action: "license_update",
+      }),
+    });
+    
     setLicenseSaved(true);
     setTimeout(() => setLicenseSaved(false), 2000);
   };
@@ -235,6 +274,18 @@ const SettingsPage = () => {
   const handleSaveCredentials = () => {
     if (!isPodiatristWithClinic || !user?.id) return;
     saveProfessionalCredentials(user.id, credentialsCedula, credentialsRegistro);
+    
+    addAuditLog({
+      userId: user.id,
+      userName: user.name,
+      action: "UPDATE",
+      entityType: "professional_credentials",
+      entityId: user.id,
+      details: JSON.stringify({
+        action: "credentials_update",
+      }),
+    });
+    
     setCredentialsSaved(true);
     setTimeout(() => setCredentialsSaved(false), 2000);
   };
@@ -280,6 +331,20 @@ const SettingsPage = () => {
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
     }
+    
+    addAuditLog({
+      userId: user.id,
+      userName: user.name,
+      action: "UPDATE",
+      entityType: "logo",
+      entityId: user.clinicId,
+      details: JSON.stringify({
+        action: "clinic_logo_upload",
+        clinicId: user.clinicId,
+        clinicName: clinicName,
+      }),
+    });
+    
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);
   };
@@ -294,6 +359,19 @@ const SettingsPage = () => {
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
     }
+    
+    addAuditLog({
+      userId: user.id,
+      userName: user.name,
+      action: "DELETE",
+      entityType: "logo",
+      entityId: user.clinicId,
+      details: JSON.stringify({
+        action: "clinic_logo_remove",
+        clinicId: user.clinicId,
+        clinicName: clinicName,
+      }),
+    });
   };
 
   // Professional logo upload handler for independent podiatrists
@@ -336,6 +414,18 @@ const SettingsPage = () => {
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
     }
+    
+    addAuditLog({
+      userId: user.id,
+      userName: user.name,
+      action: "UPDATE",
+      entityType: "logo",
+      entityId: user.id,
+      details: JSON.stringify({
+        action: "professional_logo_upload",
+      }),
+    });
+    
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);
   };
@@ -349,6 +439,17 @@ const SettingsPage = () => {
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
     }
+    
+    addAuditLog({
+      userId: user.id,
+      userName: user.name,
+      action: "DELETE",
+      entityType: "logo",
+      entityId: user.id,
+      details: JSON.stringify({
+        action: "professional_logo_remove",
+      }),
+    });
   };
 
   return (

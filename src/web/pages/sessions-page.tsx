@@ -4,6 +4,11 @@ import { MainLayout } from "../components/layout/main-layout";
 import { useLanguage } from "../contexts/language-context";
 import { useAuth } from "../contexts/auth-context";
 import { usePermissions } from "../hooks/use-permissions";
+
+// Helper to check if user is a podiatrist (can create prescriptions)
+const canCreatePrescriptions = (role: string | undefined): boolean => {
+  return role === "podiatrist";
+};
 import {
   getSessions,
   getPatients,
@@ -493,9 +498,12 @@ const SessionsPage = () => {
     setSessionPrescriptions(prescriptions);
   };
   
-  // Create prescription handler
+  // Create prescription handler - Only podiatrists can create prescriptions
   const handleCreatePrescription = () => {
     if (!selectedSession || !user) return;
+    
+    // Verify user is a podiatrist before allowing prescription creation
+    if (!canCreatePrescriptions(user.role)) return;
     
     const patient = getPatientById(selectedSession.patientId);
     if (!patient) return;
@@ -786,44 +794,51 @@ const SessionsPage = () => {
                 </div>
               )}
               
-              {/* Prescriptions Section */}
-              <div className="pt-4 border-t border-gray-100">
-                <div className="flex items-center justify-between mb-3">
-                  <h4 className="font-medium text-[#1a1a1a]">Recetas / Prescripciones</h4>
-                  <button
-                    onClick={() => setShowPrescriptionForm(true)}
-                    className="flex items-center gap-1 text-sm text-[#1a1a1a] hover:underline"
-                  >
-                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                    </svg>
-                    Nueva receta
-                  </button>
-                </div>
-                
-                {sessionPrescriptions.length > 0 ? (
-                  <div className="space-y-2">
-                    {sessionPrescriptions.map((rx) => (
-                      <div key={rx.id} className="flex items-center justify-between bg-gray-50 rounded-lg p-3">
-                        <div>
-                          <p className="font-medium text-sm text-[#1a1a1a]">Folio: {rx.folio}</p>
-                          <p className="text-xs text-gray-500">
-                            {new Date(rx.prescriptionDate).toLocaleDateString("es-ES")} - {rx.prescriptionText.substring(0, 50)}...
-                          </p>
-                        </div>
-                        <button
-                          onClick={() => handlePrintPrescription(rx)}
-                          className="px-3 py-1.5 bg-[#1a1a1a] text-white text-xs rounded-lg hover:bg-[#2a2a2a] transition-colors"
-                        >
-                          Imprimir
-                        </button>
-                      </div>
-                    ))}
+              {/* Prescriptions Section - Only visible for podiatrists */}
+              {canCreatePrescriptions(user?.role) && (
+                <div className="pt-4 border-t border-gray-100">
+                  <div className="flex items-center justify-between mb-3">
+                    <h4 className="font-medium text-[#1a1a1a]">Recetas / Prescripciones</h4>
+                    <button
+                      onClick={() => setShowPrescriptionForm(true)}
+                      className="flex items-center gap-1 text-sm text-[#1a1a1a] hover:underline font-medium"
+                    >
+                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                      </svg>
+                      Nueva receta
+                    </button>
                   </div>
-                ) : (
-                  <p className="text-sm text-gray-400 italic">No hay recetas para esta sesión</p>
-                )}
-              </div>
+                  
+                  {sessionPrescriptions.length > 0 ? (
+                    <div className="space-y-2">
+                      {sessionPrescriptions.map((rx) => (
+                        <div key={rx.id} className="flex items-center justify-between bg-gray-50 rounded-lg p-3">
+                          <div className="flex-1 min-w-0 pr-3">
+                            <p className="font-medium text-sm text-[#1a1a1a]">Folio: {rx.folio}</p>
+                            <p className="text-xs text-gray-500">
+                              {new Date(rx.prescriptionDate).toLocaleDateString("es-ES")}
+                            </p>
+                            {rx.medications && (
+                              <p className="text-xs text-gray-600 mt-1 truncate">
+                                Medicamentos: {rx.medications.substring(0, 80)}{rx.medications.length > 80 ? '...' : ''}
+                              </p>
+                            )}
+                          </div>
+                          <button
+                            onClick={() => handlePrintPrescription(rx)}
+                            className="px-3 py-1.5 bg-[#1a1a1a] text-white text-xs rounded-lg hover:bg-[#2a2a2a] transition-colors shrink-0"
+                          >
+                            Imprimir
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-gray-400 italic">No hay recetas para esta sesión</p>
+                  )}
+                </div>
+              )}
               
               <div className="flex gap-3 pt-4 border-t border-gray-100">
                 {selectedSession.status === "draft" && (
@@ -857,8 +872,8 @@ const SessionsPage = () => {
         </div>
       )}
       
-      {/* Prescription Form Modal */}
-      {showPrescriptionForm && selectedSession && (
+      {/* Prescription Form Modal - Only accessible for podiatrists */}
+      {showPrescriptionForm && selectedSession && canCreatePrescriptions(user?.role) && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[60] p-4">
           <div className="bg-white rounded-2xl max-w-xl w-full">
             <div className="p-6 border-b border-gray-100">

@@ -196,6 +196,11 @@ const AdminCreditsPage = () => {
     // Increment refresh counter to trigger re-render with updated data
     setRefreshCounter(prev => prev + 1);
     
+    // Reload page after 1.5 seconds to ensure fresh data from localStorage
+    setTimeout(() => {
+      window.location.reload();
+    }, 1500);
+    
     // Show success message with new available limit info
     setSuccess(`✓ Se han añadido ${addedAmount} créditos a ${userName}. Límite restante para este usuario: ${newRemaining} créditos este mes.`);
   };

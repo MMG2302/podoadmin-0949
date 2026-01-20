@@ -374,6 +374,24 @@ export const updateUserCredits = (credits: UserCredits): void => {
   }
   
   setItem(KEYS.CREDITS, allCredits);
+  
+  // Dispatch custom event for cross-component credit updates
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('creditsUpdated', { 
+      detail: { userId: credits.userId, credits } 
+    }));
+  }
+};
+
+// Subscribe to credit updates
+export const onCreditsUpdated = (callback: (userId: string, credits: UserCredits) => void): (() => void) => {
+  const handler = (event: Event) => {
+    const customEvent = event as CustomEvent<{ userId: string; credits: UserCredits }>;
+    callback(customEvent.detail.userId, customEvent.detail.credits);
+  };
+  
+  window.addEventListener('creditsUpdated', handler);
+  return () => window.removeEventListener('creditsUpdated', handler);
 };
 
 export const reserveCredit = (userId: string, sessionId: string): boolean => {

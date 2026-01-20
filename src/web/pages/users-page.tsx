@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { MainLayout } from "../components/layout/main-layout";
 import { useLanguage } from "../contexts/language-context";
 import { useAuth, getAllUsers, User, UserRole } from "../contexts/auth-context";
@@ -14,6 +14,7 @@ import {
   exportPatientData,
   generateId,
   saveCreatedUser,
+  onCreditsUpdated,
   Patient,
   ClinicalSession,
   CreditTransaction,
@@ -705,25 +706,37 @@ const UsersPage = () => {
   const [showTransferModal, setShowTransferModal] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
+  const [creditsRefreshKey, setCreditsRefreshKey] = useState(0);
 
-  // Enhance users with additional data
-  const usersWithData: UserWithData[] = allUsers.map(u => {
-    const userCredits = getUserCredits(u.id);
-    const patients = getPatients().filter(p => p.createdBy === u.id);
-    const sessions = getSessions().filter(s => s.createdBy === u.id);
-    
-    return {
-      ...u,
-      credits: {
-        monthly: userCredits.monthlyCredits,
-        extra: userCredits.extraCredits,
-        reserved: userCredits.reservedCredits,
-        total: userCredits.monthlyCredits + userCredits.extraCredits - userCredits.reservedCredits,
-      },
-      patientCount: patients.length,
-      sessionCount: sessions.length,
-    };
-  });
+  // Subscribe to credit updates for real-time refresh
+  useEffect(() => {
+    const unsubscribe = onCreditsUpdated(() => {
+      // Trigger re-render by updating refresh key
+      setCreditsRefreshKey(prev => prev + 1);
+    });
+    return unsubscribe;
+  }, []);
+
+  // Enhance users with additional data - re-computed when creditsRefreshKey changes
+  const usersWithData: UserWithData[] = useMemo(() => {
+    return allUsers.map(u => {
+      const userCredits = getUserCredits(u.id);
+      const patients = getPatients().filter(p => p.createdBy === u.id);
+      const sessions = getSessions().filter(s => s.createdBy === u.id);
+      
+      return {
+        ...u,
+        credits: {
+          monthly: userCredits.monthlyCredits,
+          extra: userCredits.extraCredits,
+          reserved: userCredits.reservedCredits,
+          total: userCredits.monthlyCredits + userCredits.extraCredits - userCredits.reservedCredits,
+        },
+        patientCount: patients.length,
+        sessionCount: sessions.length,
+      };
+    });
+  }, [allUsers, creditsRefreshKey]);
 
   // Filter users
   const filteredUsers = usersWithData.filter(u => {

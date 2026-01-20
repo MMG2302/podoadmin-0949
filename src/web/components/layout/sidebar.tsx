@@ -76,7 +76,7 @@ export const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
         </svg>
       ),
       permission: "view_patients" as const,
-      roles: ["clinic_admin", "podiatrist"] as const,
+      roles: ["podiatrist"] as const,
     },
     {
       path: "/sessions",
@@ -87,7 +87,7 @@ export const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
         </svg>
       ),
       permission: "view_sessions" as const,
-      roles: ["clinic_admin", "podiatrist"] as const,
+      roles: ["podiatrist"] as const,
     },
     {
       path: "/calendar",

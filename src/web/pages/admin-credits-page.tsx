@@ -115,11 +115,16 @@ const AdminCreditsPage = () => {
   const [filterUserId, setFilterUserId] = useState<string>("all");
   const [refreshKey, setRefreshKey] = useState(0);
 
-  // Get podiatrists only (admin can only adjust podiatrist credits)
+  // Get clinic_admins and podiatrists (admin can adjust credits for both)
+  const clinicAdmins = allUsers.filter(u => u.role === "clinic_admin");
   const podiatrists = allUsers.filter(u => u.role === "podiatrist");
+  
+  // All adjustable users (both clinic admins and podiatrists)
+  const adjustableUsers = [...clinicAdmins, ...podiatrists];
 
   // Get selected user info with fresh data
-  const selectedUser = podiatrists.find(u => u.id === selectedUserId);
+  const selectedUser = adjustableUsers.find(u => u.id === selectedUserId);
+  const isClinicAdminUser = selectedUser?.role === "clinic_admin";
   
   // Calculate limits using fresh data every time
   const selectedUserLimit = useMemo(() => {
@@ -293,12 +298,33 @@ const AdminCreditsPage = () => {
                   className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:border-[#1a1a1a] focus:ring-1 focus:ring-[#1a1a1a] outline-none"
                 >
                   <option value="">Seleccionar usuario...</option>
-                  {podiatrists.map((user) => (
-                    <option key={user.id} value={user.id}>
-                      {user.name} ({user.email})
-                    </option>
-                  ))}
+                  {clinicAdmins.length > 0 && (
+                    <optgroup label="🏥 Clínicas (Pool de Clínica)">
+                      {clinicAdmins.map((user) => (
+                        <option key={user.id} value={user.id}>
+                          {user.name} ({user.email})
+                        </option>
+                      ))}
+                    </optgroup>
+                  )}
+                  {podiatrists.length > 0 && (
+                    <optgroup label="👤 Podólogos (Créditos Personales)">
+                      {podiatrists.map((user) => (
+                        <option key={user.id} value={user.id}>
+                          {user.name} ({user.email})
+                        </option>
+                      ))}
+                    </optgroup>
+                  )}
                 </select>
+                {selectedUserId && (
+                  <p className="text-xs text-gray-500 mt-1">
+                    {isClinicAdminUser 
+                      ? "💡 Los créditos irán al pool de la clínica para distribuir entre sus podólogos"
+                      : "💡 Los créditos irán directamente al podólogo seleccionado"
+                    }
+                  </p>
+                )}
               </div>
 
               {/* Show limit info when user selected */}
@@ -373,11 +399,24 @@ const AdminCreditsPage = () => {
                 className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:border-[#1a1a1a] outline-none"
               >
                 <option value="all">Todos los usuarios</option>
-                {podiatrists.map((user) => (
-                  <option key={user.id} value={user.id}>
-                    {user.name}
-                  </option>
-                ))}
+                {clinicAdmins.length > 0 && (
+                  <optgroup label="Clínicas">
+                    {clinicAdmins.map((user) => (
+                      <option key={user.id} value={user.id}>
+                        {user.name}
+                      </option>
+                    ))}
+                  </optgroup>
+                )}
+                {podiatrists.length > 0 && (
+                  <optgroup label="Podólogos">
+                    {podiatrists.map((user) => (
+                      <option key={user.id} value={user.id}>
+                        {user.name}
+                      </option>
+                    ))}
+                  </optgroup>
+                )}
               </select>
             </div>
 

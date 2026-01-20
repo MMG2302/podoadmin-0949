@@ -283,6 +283,9 @@ const CreditAdjustmentModal = ({
   };
 
   const userCredits = getUserCredits(user.id);
+  const isClinicAdminUser = user.role === "clinic_admin";
+  const isPodiatristWithClinic = user.role === "podiatrist" && user.clinicId;
+  const isIndependentPodiatrist = user.role === "podiatrist" && !user.clinicId;
 
   return (
     <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
@@ -290,8 +293,51 @@ const CreditAdjustmentModal = ({
         <div className="p-6 border-b border-gray-100">
           <h3 className="text-lg font-semibold text-[#1a1a1a]">Ajustar créditos</h3>
           <p className="text-sm text-gray-500 mt-1">{user.name}</p>
+          {/* Show credit type label */}
+          <div className="mt-2">
+            {isClinicAdminUser && (
+              <span className="inline-flex items-center gap-1 px-2 py-1 bg-purple-100 text-purple-700 text-xs rounded-full">
+                <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                </svg>
+                Pool de Clínica
+              </span>
+            )}
+            {isPodiatristWithClinic && (
+              <span className="inline-flex items-center gap-1 px-2 py-1 bg-blue-100 text-blue-700 text-xs rounded-full">
+                <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                </svg>
+                Créditos Personales (en clínica)
+              </span>
+            )}
+            {isIndependentPodiatrist && (
+              <span className="inline-flex items-center gap-1 px-2 py-1 bg-green-100 text-green-700 text-xs rounded-full">
+                <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                </svg>
+                Créditos Personales (independiente)
+              </span>
+            )}
+          </div>
         </div>
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
+          {/* Credit type explanation */}
+          {isClinicAdminUser && (
+            <div className="bg-purple-50 border border-purple-100 rounded-lg p-3">
+              <p className="text-xs text-purple-700">
+                <strong>Pool de Clínica:</strong> Estos créditos serán distribuidos por el administrador de la clínica a sus podólogos.
+              </p>
+            </div>
+          )}
+          {isPodiatristWithClinic && (
+            <div className="bg-blue-50 border border-blue-100 rounded-lg p-3">
+              <p className="text-xs text-blue-700">
+                <strong>Créditos Personales:</strong> Este podólogo pertenece a una clínica. Estos créditos son adicionales a los que recibe de su clínica (para correcciones).
+              </p>
+            </div>
+          )}
+          
           {/* Current balance */}
           <div className="bg-gray-50 rounded-lg p-4">
             <p className="text-sm text-gray-500">Saldo actual</p>

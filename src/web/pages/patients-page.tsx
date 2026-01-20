@@ -56,6 +56,13 @@ const PatientsPage = () => {
   const { isSuperAdmin, isPodiatrist, isClinicAdmin } = usePermissions();
   const [, setLocation] = useLocation();
   
+  // Clinic admins should use the Clinic Management page for patient viewing/reassignment
+  // Redirect them if they try to access /patients directly
+  if (isClinicAdmin) {
+    setLocation("/clinic");
+    return null;
+  }
+  
   // Only podiatrists can create patients
   const canCreatePatient = isPodiatrist;
   

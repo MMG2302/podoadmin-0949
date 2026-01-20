@@ -145,6 +145,22 @@ export interface AuditLog {
   createdAt: string;
 }
 
+// Appointment (for scheduling - separate from clinical sessions)
+export interface Appointment {
+  id: string;
+  patientId: string;
+  podiatristId: string;
+  clinicId: string;
+  date: string; // ISO date
+  time: string; // HH:MM format
+  duration: number; // in minutes
+  notes: string;
+  status: "scheduled" | "confirmed" | "cancelled" | "completed";
+  createdBy: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 // Storage keys
 const KEYS = {
   PATIENTS: "podoadmin_patients",
@@ -156,6 +172,7 @@ const KEYS = {
   CREATED_USERS: "podoadmin_created_users",
   CLINIC_CREDITS: "podoadmin_clinic_credits",
   CLINIC_CREDIT_DISTRIBUTIONS: "podoadmin_clinic_credit_distributions",
+  APPOINTMENTS: "podoadmin_appointments",
 };
 
 // Generic storage helpers - using safeStorage for Safari private mode compatibility
@@ -297,6 +314,60 @@ export const deleteSession = (id: string): boolean => {
   
   const filtered = sessions.filter((s) => s.id !== id);
   setItem(KEYS.SESSIONS, filtered);
+  return true;
+};
+
+// Appointments CRUD (separate from clinical sessions - for scheduling only)
+export const getAppointments = (): Appointment[] => getItem<Appointment[]>(KEYS.APPOINTMENTS, []);
+
+export const getAppointmentById = (id: string): Appointment | undefined => {
+  return getAppointments().find((a) => a.id === id);
+};
+
+export const getAppointmentsByClinic = (clinicId: string): Appointment[] => {
+  return getAppointments().filter((a) => a.clinicId === clinicId);
+};
+
+export const getAppointmentsByPodiatrist = (podiatristId: string): Appointment[] => {
+  return getAppointments().filter((a) => a.podiatristId === podiatristId);
+};
+
+export const getAppointmentsByDate = (date: string): Appointment[] => {
+  return getAppointments().filter((a) => a.date === date);
+};
+
+export const saveAppointment = (appointment: Omit<Appointment, "id" | "createdAt" | "updatedAt">): Appointment => {
+  const appointments = getAppointments();
+  const newAppointment: Appointment = {
+    ...appointment,
+    id: generateId(),
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  };
+  appointments.push(newAppointment);
+  setItem(KEYS.APPOINTMENTS, appointments);
+  return newAppointment;
+};
+
+export const updateAppointment = (id: string, updates: Partial<Appointment>): Appointment | null => {
+  const appointments = getAppointments();
+  const index = appointments.findIndex((a) => a.id === id);
+  if (index === -1) return null;
+  
+  appointments[index] = {
+    ...appointments[index],
+    ...updates,
+    updatedAt: new Date().toISOString(),
+  };
+  setItem(KEYS.APPOINTMENTS, appointments);
+  return appointments[index];
+};
+
+export const deleteAppointment = (id: string): boolean => {
+  const appointments = getAppointments();
+  const filtered = appointments.filter((a) => a.id !== id);
+  if (filtered.length === appointments.length) return false;
+  setItem(KEYS.APPOINTMENTS, filtered);
   return true;
 };
 

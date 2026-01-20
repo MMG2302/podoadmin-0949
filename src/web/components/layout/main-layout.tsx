@@ -105,19 +105,26 @@ export const MainLayout = ({ children, title, showCredits = true, credits }: Mai
               {/* Settings Button */}
               <SettingsButton />
 
-              {/* Credits display */}
+              {/* Credits indicator */}
               {showCredits && (
                 <button
                   onClick={() => setLocation(user?.role === "super_admin" ? "/credits" : "/dashboard")}
-                  className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all hover:opacity-80 cursor-pointer ${colorClasses.bg}`}
-                  title={`Monthly: ${monthlyCredits} / Extra: ${extraCredits}`}
+                  className={`group relative flex items-center justify-center w-10 h-10 rounded-full transition-all hover:scale-105 cursor-pointer ${colorClasses.bg}`}
+                  title={`${t.credits.monthly}: ${monthlyCredits} / ${t.credits.extra}: ${extraCredits} / Total: ${totalCredits}`}
                 >
                   <svg className={`w-5 h-5 ${colorClasses.icon}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
-                  <div className="text-sm">
-                    <span className={`font-semibold ${colorClasses.text}`}>{totalCredits}</span>
-                    <span className={`ml-1 ${colorClasses.text} opacity-80`}>{t.credits.available}</span>
+                  {/* Tooltip on hover */}
+                  <div className="absolute top-full mt-2 right-0 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
+                    <div className="bg-[#1a1a1a] text-white text-xs rounded-lg px-3 py-2 shadow-lg whitespace-nowrap">
+                      <div className="flex flex-col gap-1">
+                        <span>{t.credits.monthly}: {monthlyCredits}</span>
+                        <span>{t.credits.extra}: {extraCredits}</span>
+                        <span className="font-semibold border-t border-gray-600 pt-1 mt-1">Total: {totalCredits}</span>
+                      </div>
+                      <div className="absolute -top-1 right-4 w-2 h-2 bg-[#1a1a1a] rotate-45"></div>
+                    </div>
                   </div>
                 </button>
               )}

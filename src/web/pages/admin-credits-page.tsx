@@ -135,9 +135,26 @@ const AdminCreditsPage = () => {
       return;
     }
 
-    // Check if within monthly limit
-    if (amount > selectedUserRemaining) {
-      setError(`No puedes añadir más de ${selectedUserRemaining} créditos a este usuario este mes (límite del 10%)`);
+    // ALWAYS fetch fresh data from localStorage before validation to prevent over-assignment
+    const freshAdjustments = getMonthlyAdjustmentsForAdmin(currentUser?.id || "");
+    const freshTotalAdjusted = freshAdjustments
+      .filter(adj => adj.userId === selectedUserId)
+      .reduce((sum, adj) => sum + adj.amount, 0);
+    const freshLimit = calculateMonthlyLimit(selectedUserId);
+    const freshRemaining = freshLimit - freshTotalAdjusted;
+
+    // Debug logging
+    console.log("[Credit Adjustment Debug]", {
+      userId: selectedUserId,
+      freshLimit,
+      freshTotalAdjusted,
+      freshRemaining,
+      requestedAmount: amount,
+    });
+
+    // Check if within monthly limit using fresh data
+    if (amount > freshRemaining) {
+      setError(`No puedes añadir más de ${freshRemaining} créditos a este usuario este mes (límite del 10%)`);
       return;
     }
 
@@ -155,7 +172,7 @@ const AdminCreditsPage = () => {
     });
 
     // Save admin adjustment record
-    saveAdminAdjustment({
+    const savedAdjustment = saveAdminAdjustment({
       userId: selectedUserId,
       userName: selectedUser?.name || "",
       amount,
@@ -163,8 +180,10 @@ const AdminCreditsPage = () => {
       adminId: currentUser?.id || "",
       adminName: currentUser?.name || "",
     });
+    
+    console.log("[Credit Adjustment Debug] Saved adjustment:", savedAdjustment);
 
-    // Add audit log
+    // Add audit log with correct variable names
     addAuditLog({
       userId: currentUser?.id || "",
       userName: currentUser?.name || "",
@@ -177,8 +196,8 @@ const AdminCreditsPage = () => {
         targetUserName: selectedUser?.name,
         amount: amount,
         reason: reason,
-        limitUsedThisMonth: monthlyLimitUsed + amount,
-        monthlyLimit: maxAdjustmentLimit,
+        limitUsedThisMonth: freshTotalAdjusted + amount,
+        monthlyLimit: freshLimit,
       }),
     });
 

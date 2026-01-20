@@ -1258,3 +1258,72 @@ export const getCreditDistributions = (clinicId?: string): CreditDistribution[] 
 export const getAllClinicCredits = (): ClinicCredits[] => {
   return getItem<ClinicCredits[]>(KEYS.CLINIC_CREDITS, []);
 };
+
+export const subtractCreditsFromDoctor = (
+  clinicId: string,
+  doctorId: string,
+  amount: number,
+  subtractedBy: string,
+  reason: string = "Retiro de créditos"
+): { success: boolean; error?: string; distribution?: CreditDistribution } => {
+  if (amount <= 0) {
+    return { success: false, error: "La cantidad debe ser mayor a 0" };
+  }
+  
+  // Get doctor's current credits
+  const doctorCredits = getUserCredits(doctorId);
+  const availableDoctorCredits = doctorCredits.monthlyCredits + doctorCredits.extraCredits - doctorCredits.reservedCredits;
+  
+  // Validate doctor has enough credits
+  if (amount > availableDoctorCredits) {
+    return { success: false, error: `El podólogo no tiene suficientes créditos. Disponibles: ${availableDoctorCredits}` };
+  }
+  
+  // Get clinic credits
+  const allClinicCredits = getItem<ClinicCredits[]>(KEYS.CLINIC_CREDITS, []);
+  const clinicIndex = allClinicCredits.findIndex(c => c.clinicId === clinicId);
+  
+  if (clinicIndex === -1) {
+    return { success: false, error: "Clínica no encontrada" };
+  }
+  
+  // Subtract from doctor's credits (from extra first, then monthly)
+  if (doctorCredits.extraCredits >= amount) {
+    doctorCredits.extraCredits -= amount;
+  } else {
+    const remainingToSubtract = amount - doctorCredits.extraCredits;
+    doctorCredits.extraCredits = 0;
+    doctorCredits.monthlyCredits -= remainingToSubtract;
+  }
+  updateUserCredits(doctorCredits);
+  
+  // Add back to clinic pool (reduce distributedToDate)
+  allClinicCredits[clinicIndex].distributedToDate -= amount;
+  allClinicCredits[clinicIndex].updatedAt = new Date().toISOString();
+  setItem(KEYS.CLINIC_CREDITS, allClinicCredits);
+  
+  // Record the distribution with negative amount for history tracking
+  const distribution: CreditDistribution = {
+    id: generateId(),
+    clinicId,
+    fromClinicAdmin: subtractedBy,
+    toPodiatrist: doctorId,
+    amount: -amount, // Negative amount indicates subtraction
+    reason,
+    createdAt: new Date().toISOString(),
+  };
+  
+  const distributions = getItem<CreditDistribution[]>(KEYS.CLINIC_CREDIT_DISTRIBUTIONS, []);
+  distributions.push(distribution);
+  setItem(KEYS.CLINIC_CREDIT_DISTRIBUTIONS, distributions);
+  
+  // Add credit transaction for the podiatrist
+  addCreditTransaction({
+    userId: doctorId,
+    type: "consumption", // Using consumption type for subtracted credits
+    amount: -amount,
+    description: `Créditos retirados por administrador de clínica: ${reason}`,
+  });
+  
+  return { success: true, distribution };
+};

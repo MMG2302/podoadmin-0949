@@ -8,11 +8,127 @@ import {
   getClinicCredits,
   getClinicAvailableCredits,
   distributeCreditsToDoctor,
+  subtractCreditsFromDoctor,
   getCreditDistributions,
   initializeClinicCredits,
   addAuditLog,
   CreditDistribution,
 } from "../lib/storage";
+
+interface CreditModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  podiatrist: User | null;
+  type: "add" | "subtract";
+  maxAmount: number;
+  onSubmit: (amount: number, reason: string) => void;
+  error: string;
+}
+
+const CreditModal = ({ isOpen, onClose, podiatrist, type, maxAmount, onSubmit, error }: CreditModalProps) => {
+  const [amount, setAmount] = useState("");
+  const [reason, setReason] = useState("");
+
+  const handleSubmit = () => {
+    const amountNum = parseInt(amount, 10);
+    if (isNaN(amountNum) || amountNum <= 0) return;
+    onSubmit(amountNum, reason);
+  };
+
+  const handleClose = () => {
+    setAmount("");
+    setReason("");
+    onClose();
+  };
+
+  if (!isOpen || !podiatrist) return null;
+
+  const isAdd = type === "add";
+  const title = isAdd ? "Agregar Créditos" : "Restar Créditos";
+  const buttonText = isAdd ? "Agregar" : "Restar";
+  const buttonColor = isAdd ? "bg-green-600 hover:bg-green-700" : "bg-red-600 hover:bg-red-700";
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-md mx-4 overflow-hidden">
+        <div className={`px-6 py-4 ${isAdd ? "bg-green-600" : "bg-red-600"} text-white`}>
+          <h3 className="text-lg font-semibold">{title}</h3>
+        </div>
+        
+        <div className="p-6 space-y-4">
+          {error && (
+            <div className="p-3 bg-red-50 border border-red-100 rounded-xl text-red-700 text-sm">
+              {error}
+            </div>
+          )}
+
+          <div>
+            <label className="block text-sm font-medium text-gray-500 mb-1">Podólogo</label>
+            <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl">
+              <div className="w-10 h-10 bg-[#1a1a1a] rounded-full flex items-center justify-center text-white font-medium">
+                {podiatrist.name.charAt(0)}
+              </div>
+              <div>
+                <p className="font-medium text-[#1a1a1a]">{podiatrist.name}</p>
+                <p className="text-xs text-gray-500">{podiatrist.email}</p>
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-[#1a1a1a] mb-2">
+              Cantidad de créditos
+            </label>
+            <input
+              type="number"
+              min="1"
+              max={maxAmount}
+              value={amount}
+              onChange={(e) => setAmount(e.target.value)}
+              placeholder="Ej: 50"
+              className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-[#1a1a1a] focus:ring-1 focus:ring-[#1a1a1a] outline-none transition-colors"
+            />
+            <p className="text-xs text-gray-500 mt-1">
+              {isAdd ? `Máximo disponible en pool: ${maxAmount}` : `Máximo disponible del podólogo: ${maxAmount}`}
+            </p>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-[#1a1a1a] mb-2">
+              Razón <span className="text-red-500">*</span>
+            </label>
+            <textarea
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+              placeholder={isAdd 
+                ? "Ej: Créditos adicionales para alta demanda..." 
+                : "Ej: Reasignación de créditos a otro podólogo..."
+              }
+              rows={3}
+              className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-[#1a1a1a] focus:ring-1 focus:ring-[#1a1a1a] outline-none transition-colors resize-none"
+            />
+          </div>
+        </div>
+
+        <div className="px-6 py-4 bg-gray-50 flex gap-3">
+          <button
+            onClick={handleClose}
+            className="flex-1 py-3 border border-gray-200 text-[#1a1a1a] rounded-xl hover:bg-gray-100 transition-colors font-medium"
+          >
+            Cancelar
+          </button>
+          <button
+            onClick={handleSubmit}
+            disabled={!amount || !reason.trim() || parseInt(amount) > maxAmount}
+            className={`flex-1 py-3 ${buttonColor} text-white rounded-xl transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed`}
+          >
+            {buttonText}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 const DistributeCreditsPage = () => {
   const { t } = useLanguage();
@@ -25,6 +141,12 @@ const DistributeCreditsPage = () => {
   const [reason, setReason] = useState("");
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+  
+  // Modal state
+  const [modalOpen, setModalOpen] = useState(false);
+  const [modalType, setModalType] = useState<"add" | "subtract">("add");
+  const [modalPodiatrist, setModalPodiatrist] = useState<User | null>(null);
+  const [modalError, setModalError] = useState("");
 
   // Get clinic info
   const clinicId = user?.clinicId || "";
@@ -124,6 +246,99 @@ const DistributeCreditsPage = () => {
     setRefreshKey(k => k + 1);
   };
 
+  const handleOpenAddModal = (pod: User) => {
+    setModalPodiatrist(pod);
+    setModalType("add");
+    setModalError("");
+    setModalOpen(true);
+  };
+
+  const handleOpenSubtractModal = (pod: User) => {
+    setModalPodiatrist(pod);
+    setModalType("subtract");
+    setModalError("");
+    setModalOpen(true);
+  };
+
+  const handleModalSubmit = (amountNum: number, reasonText: string) => {
+    if (!modalPodiatrist) return;
+    
+    setModalError("");
+
+    if (!reasonText.trim()) {
+      setModalError("Ingresa una razón");
+      return;
+    }
+
+    if (modalType === "add") {
+      const result = distributeCreditsToDoctor(
+        clinicId,
+        modalPodiatrist.id,
+        amountNum,
+        user?.id || "",
+        reasonText.trim()
+      );
+
+      if (!result.success) {
+        setModalError(result.error || "Error al agregar créditos");
+        return;
+      }
+
+      addAuditLog({
+        userId: user?.id || "",
+        userName: user?.name || "",
+        action: "CREDIT_DISTRIBUTION",
+        entityType: "credit",
+        entityId: result.distribution?.id || "",
+        details: JSON.stringify({
+          clinicId,
+          toPodiatrist: modalPodiatrist.id,
+          toPodiatristName: modalPodiatrist.name,
+          amount: amountNum,
+          reason: reasonText.trim(),
+          type: "add",
+        }),
+      });
+
+      setSuccess(`Se agregaron ${amountNum} créditos a ${modalPodiatrist.name}`);
+    } else {
+      const result = subtractCreditsFromDoctor(
+        clinicId,
+        modalPodiatrist.id,
+        amountNum,
+        user?.id || "",
+        reasonText.trim()
+      );
+
+      if (!result.success) {
+        setModalError(result.error || "Error al restar créditos");
+        return;
+      }
+
+      addAuditLog({
+        userId: user?.id || "",
+        userName: user?.name || "",
+        action: "CREDIT_SUBTRACTION",
+        entityType: "credit",
+        entityId: result.distribution?.id || "",
+        details: JSON.stringify({
+          clinicId,
+          fromPodiatrist: modalPodiatrist.id,
+          fromPodiatristName: modalPodiatrist.name,
+          amount: amountNum,
+          reason: reasonText.trim(),
+          type: "subtract",
+        }),
+      });
+
+      setSuccess(`Se restaron ${amountNum} créditos de ${modalPodiatrist.name} y se devolvieron al pool`);
+    }
+
+    setModalOpen(false);
+    setModalPodiatrist(null);
+    setRefreshKey(k => k + 1);
+  };
+
   const formatDate = (dateStr: string) => {
     return new Date(dateStr).toLocaleDateString("es-ES", {
       day: "2-digit",
@@ -151,9 +366,42 @@ const DistributeCreditsPage = () => {
     );
   }
 
+  const getModalMaxAmount = () => {
+    if (!modalPodiatrist) return 0;
+    if (modalType === "add") return availableCredits;
+    return getPodiatristCredits(modalPodiatrist.id);
+  };
+
   return (
     <MainLayout title="Distribuir Créditos">
       <div className="space-y-6">
+        {/* Credit Modal */}
+        <CreditModal
+          isOpen={modalOpen}
+          onClose={() => {
+            setModalOpen(false);
+            setModalPodiatrist(null);
+            setModalError("");
+          }}
+          podiatrist={modalPodiatrist}
+          type={modalType}
+          maxAmount={getModalMaxAmount()}
+          onSubmit={handleModalSubmit}
+          error={modalError}
+        />
+
+        {/* Success Message */}
+        {success && (
+          <div className="p-4 bg-green-50 border border-green-100 rounded-xl text-green-700 flex items-center justify-between">
+            <span>{success}</span>
+            <button onClick={() => setSuccess("")} className="text-green-600 hover:text-green-800">
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+        )}
+
         {/* Clinic Credit Pool Info */}
         <div className="bg-gradient-to-br from-[#1a1a1a] to-[#2a2a2a] rounded-2xl p-6 text-white">
           <div className="flex items-center justify-between mb-4">
@@ -181,17 +429,11 @@ const DistributeCreditsPage = () => {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Distribution Form */}
           <div className="bg-white rounded-2xl border border-gray-100 p-6">
-            <h3 className="text-lg font-semibold text-[#1a1a1a] mb-4">Distribuir Créditos a Podólogo</h3>
+            <h3 className="text-lg font-semibold text-[#1a1a1a] mb-4">Distribución Inicial</h3>
             
             {error && (
               <div className="mb-4 p-4 bg-red-50 border border-red-100 rounded-xl text-red-700 text-sm">
                 {error}
-              </div>
-            )}
-            
-            {success && (
-              <div className="mb-4 p-4 bg-green-50 border border-green-100 rounded-xl text-green-700 text-sm">
-                {success}
               </div>
             )}
 
@@ -282,9 +524,33 @@ const DistributeCreditsPage = () => {
                           <p className="text-xs text-gray-500">{pod.email}</p>
                         </div>
                       </div>
-                      <div className="text-right">
-                        <p className="text-xl font-bold text-[#1a1a1a]">{total}</p>
-                        <p className="text-xs text-gray-500">créditos</p>
+                      <div className="flex items-center gap-3">
+                        <div className="text-right mr-2">
+                          <p className="text-xl font-bold text-[#1a1a1a]">{total}</p>
+                          <p className="text-xs text-gray-500">créditos</p>
+                        </div>
+                        <div className="flex gap-1">
+                          <button
+                            onClick={() => handleOpenAddModal(pod)}
+                            disabled={availableCredits === 0}
+                            title="Agregar créditos desde el pool"
+                            className="w-9 h-9 flex items-center justify-center bg-green-100 text-green-700 rounded-lg hover:bg-green-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                            </svg>
+                          </button>
+                          <button
+                            onClick={() => handleOpenSubtractModal(pod)}
+                            disabled={total === 0}
+                            title="Restar créditos y devolver al pool"
+                            className="w-9 h-9 flex items-center justify-center bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 12H4" />
+                            </svg>
+                          </button>
+                        </div>
                       </div>
                     </div>
                   );
@@ -312,29 +578,46 @@ const DistributeCreditsPage = () => {
                   <tr className="border-b border-gray-100">
                     <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">Fecha</th>
                     <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">Podólogo</th>
+                    <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">Tipo</th>
                     <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">Cantidad</th>
                     <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">Razón</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {distributions.map((dist) => (
-                    <tr key={dist.id} className="border-b border-gray-50 hover:bg-gray-50">
-                      <td className="py-3 px-4 text-sm text-gray-600">{formatDate(dist.createdAt)}</td>
-                      <td className="py-3 px-4">
-                        <span className="font-medium text-[#1a1a1a]">
-                          {getPodiatristName(dist.toPodiatrist)}
-                        </span>
-                      </td>
-                      <td className="py-3 px-4">
-                        <span className="inline-flex items-center px-2.5 py-1 bg-green-100 text-green-700 rounded-full text-sm font-medium">
-                          +{dist.amount}
-                        </span>
-                      </td>
-                      <td className="py-3 px-4 text-sm text-gray-600 max-w-xs truncate">
-                        {dist.reason}
-                      </td>
-                    </tr>
-                  ))}
+                  {distributions.map((dist) => {
+                    const isSubtraction = dist.amount < 0;
+                    return (
+                      <tr key={dist.id} className="border-b border-gray-50 hover:bg-gray-50">
+                        <td className="py-3 px-4 text-sm text-gray-600">{formatDate(dist.createdAt)}</td>
+                        <td className="py-3 px-4">
+                          <span className="font-medium text-[#1a1a1a]">
+                            {getPodiatristName(dist.toPodiatrist)}
+                          </span>
+                        </td>
+                        <td className="py-3 px-4">
+                          <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${
+                            isSubtraction 
+                              ? "bg-orange-100 text-orange-700" 
+                              : "bg-blue-100 text-blue-700"
+                          }`}>
+                            {isSubtraction ? "Retiro" : "Asignación"}
+                          </span>
+                        </td>
+                        <td className="py-3 px-4">
+                          <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-sm font-medium ${
+                            isSubtraction 
+                              ? "bg-red-100 text-red-700" 
+                              : "bg-green-100 text-green-700"
+                          }`}>
+                            {isSubtraction ? "" : "+"}{dist.amount}
+                          </span>
+                        </td>
+                        <td className="py-3 px-4 text-sm text-gray-600 max-w-xs truncate">
+                          {dist.reason}
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>

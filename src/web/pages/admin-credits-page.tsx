@@ -183,50 +183,98 @@ const AdminCreditsPage = () => {
     setError("");
     setAmountWarning("");
 
+    // ============================================
+    // PHASE 1: Pre-validation (before loading state)
+    // ============================================
+    console.log("[CREDIT_ADJUSTMENT] Starting validation...");
+
+    // Basic field validation
+    if (!selectedUserId) {
+      console.log("[CREDIT_ADJUSTMENT] Error: No user selected");
+      setError("Selecciona un usuario");
+      return;
+    }
+
+    if (reason.length < 20) {
+      console.log("[CREDIT_ADJUSTMENT] Error: Reason too short");
+      setError("El motivo debe tener al menos 20 caracteres");
+      return;
+    }
+
+    if (amount <= 0) {
+      console.log("[CREDIT_ADJUSTMENT] Error: Invalid amount");
+      setError("La cantidad debe ser mayor a 0");
+      return;
+    }
+
+    // ============================================
+    // PHASE 2: Calculate limits (with error handling)
+    // ============================================
+    let userLimit: number;
+    let adjustmentsThisMonth: AdminAdjustment[];
+    let totalAdjustedForUser: number;
+    let remainingForUser: number;
+
     try {
-      // Validation before saving
-      if (!selectedUserId) {
-        setError("Selecciona un usuario");
-        return;
-      }
+      console.log("[CREDIT_ADJUSTMENT] Calculating limits for user:", selectedUserId);
+      userLimit = calculateUserMonthlyLimit(selectedUserId);
+      console.log("[CREDIT_ADJUSTMENT] User monthly limit:", userLimit);
+    } catch (calcError) {
+      console.error("[CREDIT_ADJUSTMENT] Error calculating user limit:", calcError);
+      setError("Error al calcular el límite del usuario. Intenta de nuevo.");
+      setToast({ message: "Error al calcular límites", type: "error" });
+      return;
+    }
 
-      if (reason.length < 20) {
-        setError("El motivo debe tener al menos 20 caracteres");
-        return;
-      }
+    try {
+      adjustmentsThisMonth = getAdjustmentsForUserThisMonth(selectedUserId);
+      totalAdjustedForUser = adjustmentsThisMonth.reduce((sum, adj) => sum + adj.amount, 0);
+      remainingForUser = Math.max(0, userLimit - totalAdjustedForUser);
+      console.log("[CREDIT_ADJUSTMENT] Total adjusted this month:", totalAdjustedForUser);
+      console.log("[CREDIT_ADJUSTMENT] Remaining for user:", remainingForUser);
+    } catch (adjError) {
+      console.error("[CREDIT_ADJUSTMENT] Error fetching adjustments:", adjError);
+      setError("Error al obtener los ajustes previos. Intenta de nuevo.");
+      setToast({ message: "Error al verificar ajustes previos", type: "error" });
+      return;
+    }
 
-      if (amount <= 0) {
-        setError("La cantidad debe ser mayor a 0");
-        return;
-      }
+    // ============================================
+    // PHASE 3: Validate against limits (BEFORE any updates)
+    // ============================================
+    if (amount > remainingForUser) {
+      console.log("[CREDIT_ADJUSTMENT] BLOCKED: Amount exceeds remaining limit");
+      console.log(`[CREDIT_ADJUSTMENT] Requested: ${amount}, Available: ${remainingForUser}`);
+      setError(
+        `Este usuario solo puede recibir ${userLimit} créditos de ajuste este mes. ` +
+        `Ya se han asignado ${totalAdjustedForUser}, quedan ${remainingForUser} disponibles.`
+      );
+      setToast({ message: "No se pudo completar el ajuste: límite por usuario excedido", type: "error" });
+      return; // STOP HERE - do not proceed
+    }
 
-      // Re-validate against per-user monthly limit IMMEDIATELY before saving
-      const userLimit = calculateUserMonthlyLimit(selectedUserId);
-      const adjustmentsThisMonth = getAdjustmentsForUserThisMonth(selectedUserId);
-      const totalAdjustedForUser = adjustmentsThisMonth.reduce((sum, adj) => sum + adj.amount, 0);
-      const remainingForUser = userLimit - totalAdjustedForUser;
-      
-      // Check limit BEFORE any updates
-      if (amount > remainingForUser) {
-        setError(
-          `Este usuario solo puede recibir ${userLimit} créditos de ajuste este mes. ` +
-          `Ya se han asignado ${totalAdjustedForUser}, quedan ${remainingForUser} disponibles.`
-        );
-        setToast({ message: "No se pudo completar el ajuste: límite por usuario excedido", type: "error" });
-        return;
-      }
+    // ============================================
+    // PHASE 4: Execute updates (only if validation passed)
+    // ============================================
+    console.log("[CREDIT_ADJUSTMENT] Validation passed, proceeding with update...");
+    setIsLoading(true);
 
-      setIsLoading(true);
-      
+    try {
       // Store values before clearing form
       const adjustedUserName = selectedUser?.name || "";
       const adjustedAmount = amount;
       const newRemaining = remainingForUser - amount;
 
       // Get fresh user credits and update
+      console.log("[CREDIT_ADJUSTMENT] Fetching current credits...");
       const userCreditsData = getUserCredits(selectedUserId);
+      console.log("[CREDIT_ADJUSTMENT] Current extra credits:", userCreditsData.extraCredits);
+      
       userCreditsData.extraCredits += amount;
+      console.log("[CREDIT_ADJUSTMENT] New extra credits:", userCreditsData.extraCredits);
+      
       updateUserCredits(userCreditsData);
+      console.log("[CREDIT_ADJUSTMENT] Credits updated successfully");
 
       // Add transaction
       addCreditTransaction({
@@ -235,8 +283,9 @@ const AdminCreditsPage = () => {
         amount,
         description: `Ajuste de soporte: ${reason}`,
       });
+      console.log("[CREDIT_ADJUSTMENT] Transaction recorded");
 
-      // Save admin adjustment record
+      // Save admin adjustment record (this tracks the admin's usage of limit)
       saveAdminAdjustment({
         userId: selectedUserId,
         userName: selectedUser?.name || "",
@@ -245,6 +294,7 @@ const AdminCreditsPage = () => {
         adminId: currentUser?.id || "",
         adminName: currentUser?.name || "",
       });
+      console.log("[CREDIT_ADJUSTMENT] Admin adjustment saved");
 
       // Add audit log
       addAuditLog({
@@ -263,8 +313,9 @@ const AdminCreditsPage = () => {
           totalAdjustedForUserThisMonth: totalAdjustedForUser + amount,
         }),
       });
+      console.log("[CREDIT_ADJUSTMENT] Audit log created");
 
-      // Immediately reset form and stop loading - no delays
+      // Reset form immediately
       setAmount(1);
       setReason("");
       setSelectedUserId("");
@@ -278,12 +329,14 @@ const AdminCreditsPage = () => {
         message: `+${adjustedAmount} créditos añadidos a ${adjustedUserName}. Disponible para este usuario: ${newRemaining}`, 
         type: "success" 
       });
-    } catch (err) {
-      // Catch any unexpected errors
+      console.log("[CREDIT_ADJUSTMENT] SUCCESS - Adjustment completed");
+
+    } catch (updateError) {
+      // Error during the update phase
+      console.error("[CREDIT_ADJUSTMENT] Error during update phase:", updateError);
       setIsLoading(false);
-      setError("Error al procesar el ajuste. Por favor, inténtalo de nuevo.");
-      setToast({ message: "Error inesperado al procesar el ajuste", type: "error" });
-      console.error("Credit adjustment error:", err);
+      setError("Error al actualizar los créditos. Por favor, inténtalo de nuevo.");
+      setToast({ message: "Error al guardar los cambios", type: "error" });
     }
   };
 
@@ -476,7 +529,15 @@ const AdminCreditsPage = () => {
               {/* Submit button */}
               <button
                 type="submit"
-                disabled={!selectedUserId || reason.length < 20 || (userLimitInfo && userLimitInfo.remaining <= 0) || isLoading || !!amountWarning}
+                disabled={
+                  !selectedUserId || 
+                  reason.length < 20 || 
+                  amount <= 0 ||
+                  (userLimitInfo && userLimitInfo.remaining <= 0) || 
+                  (userLimitInfo && amount > userLimitInfo.remaining) ||
+                  isLoading || 
+                  !!amountWarning
+                }
                 className="w-full px-4 py-3 bg-[#1a1a1a] text-white rounded-lg font-medium hover:bg-[#2a2a2a] transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
                 {isLoading ? (

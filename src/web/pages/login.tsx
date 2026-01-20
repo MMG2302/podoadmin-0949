@@ -30,7 +30,6 @@ const Login = () => {
 
   const testCredentials = [
     { role: t.roles.superAdmin, email: "admin@podoadmin.com", password: "admin123" },
-    { role: t.roles.clinicAdmin, email: "manager@clinic.com", password: "manager123" },
     { role: t.roles.admin, email: "support@podoadmin.com", password: "support123" },
     { role: t.roles.podiatrist, email: "doctor1@clinic.com", password: "doctor123" },
   ];

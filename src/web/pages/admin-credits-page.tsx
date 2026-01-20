@@ -81,15 +81,14 @@ const AdminCreditsPage = () => {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [filterUserId, setFilterUserId] = useState<string>("all");
-  const [refreshCounter, setRefreshCounter] = useState(0); // Counter to trigger re-render after credit updates
 
   // Get podiatrists only (admin can only adjust podiatrist credits)
   const podiatrists = allUsers.filter(u => u.role === "podiatrist");
 
-  // Get current user's monthly adjustments - refresh when counter changes
+  // Get current user's monthly adjustments
   const myMonthlyAdjustments = useMemo(() => 
     getMonthlyAdjustmentsForAdmin(currentUser?.id || ""), 
-    [currentUser?.id, refreshCounter]
+    [currentUser?.id, success] // Refresh on success
   );
 
   // Calculate total adjusted this month per user
@@ -109,12 +108,12 @@ const AdminCreditsPage = () => {
   const selectedUserAdjusted = selectedUserId ? (totalAdjustedPerUser.get(selectedUserId) || 0) : 0;
   const selectedUserRemaining = selectedUserLimit - selectedUserAdjusted;
 
-  // All adjustments for history (filtered) - refresh when counter changes
+  // All adjustments for history (filtered)
   const allAdjustments = useMemo(() => {
     const adjustments = getAdminAdjustments();
     if (filterUserId === "all") return adjustments;
     return adjustments.filter(adj => adj.userId === filterUserId);
-  }, [filterUserId, refreshCounter]);
+  }, [filterUserId, success]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -183,26 +182,10 @@ const AdminCreditsPage = () => {
       }),
     });
 
-    // Store values for success message before resetting form
-    const addedAmount = amount;
-    const userName = selectedUser?.name;
-    const newRemaining = selectedUserRemaining - amount;
-    
-    // Clear form immediately
+    setSuccess(`Se han añadido ${amount} créditos a ${selectedUser?.name}`);
     setAmount(1);
     setReason("");
     setSelectedUserId("");
-    
-    // Increment refresh counter to trigger re-render with updated data
-    setRefreshCounter(prev => prev + 1);
-    
-    // Reload page after 1.5 seconds to ensure fresh data from localStorage
-    setTimeout(() => {
-      window.location.reload();
-    }, 1500);
-    
-    // Show success message with new available limit info
-    setSuccess(`✓ Se han añadido ${addedAmount} créditos a ${userName}. Límite restante para este usuario: ${newRemaining} créditos este mes.`);
   };
 
   return (

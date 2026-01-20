@@ -9,6 +9,9 @@ import {
   addCreditTransaction,
   addAuditLog,
   CreditTransaction,
+  cleanupAdminAdjustments,
+  checkAndCleanStorage,
+  getLocalStorageSize,
 } from "../lib/storage";
 
 interface AdminAdjustment {
@@ -24,6 +27,42 @@ interface AdminAdjustment {
 
 const ADMIN_ADJUSTMENTS_KEY = "podoadmin_admin_adjustments";
 
+// Clean old adjustments - keep only last 100 and entries from last 90 days
+const cleanupLocalAdjustments = (): number => {
+  try {
+    const data = localStorage.getItem(ADMIN_ADJUSTMENTS_KEY);
+    if (!data) return 0;
+    
+    let adjustments = JSON.parse(data);
+    if (!Array.isArray(adjustments)) return 0;
+    
+    const originalCount = adjustments.length;
+    const ninetyDaysAgo = new Date();
+    ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
+    
+    // Remove entries older than 90 days
+    adjustments = adjustments.filter((adj: AdminAdjustment) => {
+      if (!adj.createdAt) return true;
+      return new Date(adj.createdAt) > ninetyDaysAgo;
+    });
+    
+    // Keep only last 100 entries
+    if (adjustments.length > 100) {
+      adjustments = adjustments.slice(-100);
+    }
+    
+    const removed = originalCount - adjustments.length;
+    if (removed > 0) {
+      localStorage.setItem(ADMIN_ADJUSTMENTS_KEY, JSON.stringify(adjustments));
+      console.log(`[Admin Credits] Cleaned ${removed} old adjustments`);
+    }
+    
+    return removed;
+  } catch {
+    return 0;
+  }
+};
+
 // Get admin adjustments from localStorage
 const getAdminAdjustments = (): AdminAdjustment[] => {
   try {
@@ -34,16 +73,39 @@ const getAdminAdjustments = (): AdminAdjustment[] => {
   }
 };
 
-// Save admin adjustment
+// Save admin adjustment with cleanup to prevent quota exceeded
 const saveAdminAdjustment = (adjustment: Omit<AdminAdjustment, "id" | "createdAt">): AdminAdjustment => {
-  const adjustments = getAdminAdjustments();
+  // Clean up before saving to prevent quota exceeded
+  cleanupLocalAdjustments();
+  checkAndCleanStorage();
+  
+  let adjustments = getAdminAdjustments();
+  
+  // If still too many, trim more aggressively
+  if (adjustments.length >= 100) {
+    // Remove oldest 20%
+    const removeCount = Math.ceil(adjustments.length * 0.2);
+    adjustments = adjustments.slice(removeCount);
+    console.log(`[Admin Credits] Trimmed ${removeCount} oldest adjustments`);
+  }
+  
   const newAdjustment: AdminAdjustment = {
     ...adjustment,
     id: `adj_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
     createdAt: new Date().toISOString(),
   };
   adjustments.push(newAdjustment);
-  localStorage.setItem(ADMIN_ADJUSTMENTS_KEY, JSON.stringify(adjustments));
+  
+  try {
+    localStorage.setItem(ADMIN_ADJUSTMENTS_KEY, JSON.stringify(adjustments));
+  } catch (e) {
+    // If quota exceeded, clean more aggressively and try again
+    console.warn("[Admin Credits] Quota exceeded, cleaning storage...");
+    adjustments = adjustments.slice(-50); // Keep only last 50
+    adjustments.push(newAdjustment);
+    localStorage.setItem(ADMIN_ADJUSTMENTS_KEY, JSON.stringify(adjustments));
+  }
+  
   return newAdjustment;
 };
 
@@ -97,6 +159,31 @@ const AdminCreditsPage = () => {
   const [filterUserId, setFilterUserId] = useState<string>("all");
   const [refreshKey, setRefreshKey] = useState(0);
   const [secondsSinceRefresh, setSecondsSinceRefresh] = useState(0);
+
+  // Run cleanup on component mount to clear old test data and prevent quota issues
+  useEffect(() => {
+    try {
+      const { total, breakdown } = getLocalStorageSize();
+      console.log(`[Admin Credits] localStorage size: ${(total / 1024).toFixed(2)} KB`);
+      
+      // Clean old adjustments on load
+      const adjustmentsRemoved = cleanupLocalAdjustments();
+      if (adjustmentsRemoved > 0) {
+        console.log(`[Admin Credits] Cleaned ${adjustmentsRemoved} old adjustments on page load`);
+      }
+      
+      // Check if near quota and clean preemptively  
+      const cleanupResult = checkAndCleanStorage();
+      if (cleanupResult.cleaned) {
+        console.log(`[Admin Credits] Preemptive cleanup freed ${(cleanupResult.freedBytes / 1024).toFixed(2)} KB`);
+      }
+      
+      // Also clean using the exported function from storage
+      cleanupAdminAdjustments();
+    } catch (e) {
+      console.error("[Admin Credits] Cleanup error:", e);
+    }
+  }, []); // Run only on mount
 
   // Auto-refresh every 5 seconds to show real-time updates from other admins
   useEffect(() => {

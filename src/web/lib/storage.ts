@@ -1101,3 +1101,138 @@ export const deleteCreatedUser = (userId: string): boolean => {
   setItem(KEYS.CREATED_USERS, filtered);
   return true;
 };
+
+// ========== localStorage Cleanup Utilities ==========
+
+// Clean credit transactions - keep only last 500 entries and remove old ones (> 90 days)
+export const cleanupCreditTransactions = (): number => {
+  const transactions = getCreditTransactions();
+  const ninetyDaysAgo = new Date();
+  ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
+  
+  // Filter out old transactions
+  let cleaned = transactions.filter(t => new Date(t.createdAt) > ninetyDaysAgo);
+  
+  // Keep only last 500
+  if (cleaned.length > 500) {
+    cleaned = cleaned.slice(-500);
+  }
+  
+  const removed = transactions.length - cleaned.length;
+  if (removed > 0) {
+    setItem(KEYS.CREDIT_TRANSACTIONS, cleaned);
+  }
+  
+  return removed;
+};
+
+// Get approximate localStorage size in bytes
+export const getLocalStorageSize = (): { total: number; breakdown: Record<string, number> } => {
+  const breakdown: Record<string, number> = {};
+  let total = 0;
+  
+  try {
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key) {
+        const value = localStorage.getItem(key) || "";
+        const size = (key.length + value.length) * 2; // UTF-16 encoding
+        breakdown[key] = size;
+        total += size;
+      }
+    }
+  } catch {
+    // Ignore errors
+  }
+  
+  return { total, breakdown };
+};
+
+// Check if near quota and clean preemptively
+export const checkAndCleanStorage = (): { cleaned: boolean; freedBytes: number } => {
+  const { total, breakdown } = getLocalStorageSize();
+  const QUOTA_LIMIT = 5 * 1024 * 1024; // 5MB typical limit
+  const THRESHOLD = QUOTA_LIMIT * 0.8; // Clean at 80% usage
+  
+  if (total < THRESHOLD) {
+    return { cleaned: false, freedBytes: 0 };
+  }
+  
+  const beforeSize = total;
+  
+  // Clean transactions
+  cleanupCreditTransactions();
+  
+  // Clean admin adjustments if present
+  const adminAdjKey = "podoadmin_admin_adjustments";
+  try {
+    const adjData = localStorage.getItem(adminAdjKey);
+    if (adjData) {
+      const adjustments = JSON.parse(adjData);
+      if (Array.isArray(adjustments) && adjustments.length > 100) {
+        // Keep only last 100
+        const cleaned = adjustments.slice(-100);
+        localStorage.setItem(adminAdjKey, JSON.stringify(cleaned));
+      }
+    }
+  } catch {
+    // Ignore errors
+  }
+  
+  const afterSize = getLocalStorageSize().total;
+  
+  return { cleaned: true, freedBytes: beforeSize - afterSize };
+};
+
+// Clean admin adjustments - keep last 100 and remove old entries (> 90 days)
+export const cleanupAdminAdjustments = (): number => {
+  const ADMIN_ADJUSTMENTS_KEY = "podoadmin_admin_adjustments";
+  
+  try {
+    const data = localStorage.getItem(ADMIN_ADJUSTMENTS_KEY);
+    if (!data) return 0;
+    
+    let adjustments = JSON.parse(data);
+    if (!Array.isArray(adjustments)) return 0;
+    
+    const originalCount = adjustments.length;
+    const ninetyDaysAgo = new Date();
+    ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
+    
+    // Remove entries older than 90 days
+    adjustments = adjustments.filter((adj: { createdAt?: string }) => {
+      if (!adj.createdAt) return true;
+      return new Date(adj.createdAt) > ninetyDaysAgo;
+    });
+    
+    // Keep only last 100 entries
+    if (adjustments.length > 100) {
+      adjustments = adjustments.slice(-100);
+    }
+    
+    const removed = originalCount - adjustments.length;
+    if (removed > 0) {
+      localStorage.setItem(ADMIN_ADJUSTMENTS_KEY, JSON.stringify(adjustments));
+      console.log(`[Storage Cleanup] Removed ${removed} old admin adjustments`);
+    }
+    
+    return removed;
+  } catch (e) {
+    console.error("[Storage Cleanup] Error cleaning admin adjustments:", e);
+    return 0;
+  }
+};
+
+// Full storage cleanup - run on app init
+export const runFullStorageCleanup = (): void => {
+  try {
+    const transactionsRemoved = cleanupCreditTransactions();
+    const adjustmentsRemoved = cleanupAdminAdjustments();
+    
+    if (transactionsRemoved > 0 || adjustmentsRemoved > 0) {
+      console.log(`[Storage Cleanup] Cleaned ${transactionsRemoved} transactions, ${adjustmentsRemoved} adjustments`);
+    }
+  } catch (e) {
+    console.error("[Storage Cleanup] Error during cleanup:", e);
+  }
+};

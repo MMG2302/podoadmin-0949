@@ -77,8 +77,8 @@ const saveAdminAdjustment = (adjustment: Omit<AdminAdjustment, "id" | "createdAt
   return newAdjustment;
 };
 
-// Get all adjustments made for a SPECIFIC USER this month (by ALL admins)
-const getAdjustmentsForUserThisMonth = (userId: string): AdminAdjustment[] => {
+// Get ALL admin adjustments made this month (by ALL admins - global limit)
+const getTotalMonthlyAdjustments = (): AdminAdjustment[] => {
   const adjustments = getAdminAdjustments();
   const now = new Date();
   const thisMonth = now.getMonth();
@@ -86,16 +86,18 @@ const getAdjustmentsForUserThisMonth = (userId: string): AdminAdjustment[] => {
   
   return adjustments.filter(adj => {
     const adjDate = new Date(adj.createdAt);
-    return adj.userId === userId && 
-           adjDate.getMonth() === thisMonth && 
+    return adjDate.getMonth() === thisMonth && 
            adjDate.getFullYear() === thisYear;
   });
 };
 
-// Calculate 10% limit for a specific user based on THEIR monthly credits
-const calculateUserMonthlyLimit = (userId: string): number => {
-  const userCredits = getUserCredits(userId);
-  return Math.floor(userCredits.monthlyCredits * 0.1);
+// Calculate global 10% limit based on sum of ALL podiatrist monthly credits
+const calculateGlobalMonthlyLimit = (podiatrists: User[]): number => {
+  const totalMonthlyCredits = podiatrists.reduce((sum, p) => {
+    const credits = getUserCredits(p.id);
+    return sum + credits.monthlyCredits;
+  }, 0);
+  return Math.floor(totalMonthlyCredits * 0.1);
 };
 
 // Main Admin Credits Page
@@ -118,26 +120,29 @@ const AdminCreditsPage = () => {
   // Get podiatrists only (admin can only adjust podiatrist credits)
   const podiatrists = allUsers.filter(u => u.role === "podiatrist");
 
+  // Get ALL monthly adjustments (global limit across all admins)
+  const totalMonthlyAdjustments = useMemo(() => 
+    getTotalMonthlyAdjustments(), 
+    [refreshKey] // Refresh when key changes
+  );
+
+  // Calculate total adjusted this month (GLOBAL - sum of all adjustments by all admins)
+  const totalAdjustedThisMonth = useMemo(() => {
+    return totalMonthlyAdjustments.reduce((sum, adj) => sum + adj.amount, 0);
+  }, [totalMonthlyAdjustments]);
+
+  // Calculate global 10% limit (based on sum of all podiatrist monthly credits)
+  const globalLimit = useMemo(() => 
+    calculateGlobalMonthlyLimit(podiatrists), 
+    [podiatrists]
+  );
+
+  // Remaining global limit
+  const globalRemaining = globalLimit - totalAdjustedThisMonth;
+
   // Get selected user info
   const selectedUser = podiatrists.find(u => u.id === selectedUserId);
   const selectedUserCredits = selectedUser ? getUserCredits(selectedUser.id) : null;
-
-  // Calculate per-user limit and usage (only when a user is selected)
-  const userLimitInfo = useMemo(() => {
-    if (!selectedUserId) return null;
-    
-    const userLimit = calculateUserMonthlyLimit(selectedUserId);
-    const adjustmentsThisMonth = getAdjustmentsForUserThisMonth(selectedUserId);
-    const totalAdjustedForUser = adjustmentsThisMonth.reduce((sum, adj) => sum + adj.amount, 0);
-    const remaining = userLimit - totalAdjustedForUser;
-    
-    return {
-      limit: userLimit,
-      used: totalAdjustedForUser,
-      remaining: Math.max(remaining, 0),
-      adjustments: adjustmentsThisMonth,
-    };
-  }, [selectedUserId, refreshKey]);
 
   // All adjustments for history (filtered)
   const allAdjustments = useMemo(() => {
@@ -157,13 +162,8 @@ const AdminCreditsPage = () => {
     setAmount(newAmount);
     setError("");
     
-    if (!userLimitInfo) {
-      setAmountWarning("");
-      return;
-    }
-    
-    if (newAmount > userLimitInfo.remaining) {
-      setAmountWarning(`Esta cantidad excede el límite disponible para este usuario (${userLimitInfo.remaining} créditos)`);
+    if (newAmount > globalRemaining) {
+      setAmountWarning(`Esta cantidad excede el límite disponible (${globalRemaining} créditos)`);
     } else if (newAmount <= 0) {
       setAmountWarning("La cantidad debe ser mayor a 0");
     } else {
@@ -171,173 +171,99 @@ const AdminCreditsPage = () => {
     }
   };
 
-  // Reset amount warning when user changes
-  useEffect(() => {
-    if (selectedUserId && userLimitInfo) {
-      handleAmountChange(amount);
-    }
-  }, [selectedUserId, userLimitInfo?.remaining]);
-
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
     setAmountWarning("");
 
-    // ============================================
-    // PHASE 1: Pre-validation (before loading state)
-    // ============================================
-    console.log("[CREDIT_ADJUSTMENT] Starting validation...");
-
-    // Basic field validation
+    // Validation before saving
     if (!selectedUserId) {
-      console.log("[CREDIT_ADJUSTMENT] Error: No user selected");
       setError("Selecciona un usuario");
       return;
     }
 
     if (reason.length < 20) {
-      console.log("[CREDIT_ADJUSTMENT] Error: Reason too short");
       setError("El motivo debe tener al menos 20 caracteres");
       return;
     }
 
     if (amount <= 0) {
-      console.log("[CREDIT_ADJUSTMENT] Error: Invalid amount");
       setError("La cantidad debe ser mayor a 0");
       return;
     }
 
-    // ============================================
-    // PHASE 2: Calculate limits (with error handling)
-    // ============================================
-    let userLimit: number;
-    let adjustmentsThisMonth: AdminAdjustment[];
-    let totalAdjustedForUser: number;
-    let remainingForUser: number;
-
-    try {
-      console.log("[CREDIT_ADJUSTMENT] Calculating limits for user:", selectedUserId);
-      userLimit = calculateUserMonthlyLimit(selectedUserId);
-      console.log("[CREDIT_ADJUSTMENT] User monthly limit:", userLimit);
-    } catch (calcError) {
-      console.error("[CREDIT_ADJUSTMENT] Error calculating user limit:", calcError);
-      setError("Error al calcular el límite del usuario. Intenta de nuevo.");
-      setToast({ message: "Error al calcular límites", type: "error" });
+    // Re-validate against GLOBAL monthly limit before saving
+    const currentTotalAdjusted = getTotalMonthlyAdjustments().reduce((sum, adj) => sum + adj.amount, 0);
+    const currentGlobalRemaining = globalLimit - currentTotalAdjusted;
+    
+    if (amount > currentGlobalRemaining) {
+      setError(`Límite de ajustes alcanzado para este mes. Total disponible: ${currentGlobalRemaining} créditos`);
+      setToast({ message: "No se pudo completar el ajuste: límite excedido", type: "error" });
       return;
     }
 
-    try {
-      adjustmentsThisMonth = getAdjustmentsForUserThisMonth(selectedUserId);
-      totalAdjustedForUser = adjustmentsThisMonth.reduce((sum, adj) => sum + adj.amount, 0);
-      remainingForUser = Math.max(0, userLimit - totalAdjustedForUser);
-      console.log("[CREDIT_ADJUSTMENT] Total adjusted this month:", totalAdjustedForUser);
-      console.log("[CREDIT_ADJUSTMENT] Remaining for user:", remainingForUser);
-    } catch (adjError) {
-      console.error("[CREDIT_ADJUSTMENT] Error fetching adjustments:", adjError);
-      setError("Error al obtener los ajustes previos. Intenta de nuevo.");
-      setToast({ message: "Error al verificar ajustes previos", type: "error" });
-      return;
-    }
-
-    // ============================================
-    // PHASE 3: Validate against limits (BEFORE any updates)
-    // ============================================
-    if (amount > remainingForUser) {
-      console.log("[CREDIT_ADJUSTMENT] BLOCKED: Amount exceeds remaining limit");
-      console.log(`[CREDIT_ADJUSTMENT] Requested: ${amount}, Available: ${remainingForUser}`);
-      setError(
-        `Este usuario solo puede recibir ${userLimit} créditos de ajuste este mes. ` +
-        `Ya se han asignado ${totalAdjustedForUser}, quedan ${remainingForUser} disponibles.`
-      );
-      setToast({ message: "No se pudo completar el ajuste: límite por usuario excedido", type: "error" });
-      return; // STOP HERE - do not proceed
-    }
-
-    // ============================================
-    // PHASE 4: Execute updates (only if validation passed)
-    // ============================================
-    console.log("[CREDIT_ADJUSTMENT] Validation passed, proceeding with update...");
     setIsLoading(true);
+    const adjustedUserName = selectedUser?.name || "";
+    const adjustedAmount = amount;
+    const newGlobalRemaining = currentGlobalRemaining - amount;
 
-    try {
-      // Store values before clearing form
-      const adjustedUserName = selectedUser?.name || "";
-      const adjustedAmount = amount;
-      const newRemaining = remainingForUser - amount;
+    // Add credits to user
+    const userCredits = getUserCredits(selectedUserId);
+    userCredits.extraCredits += amount;
+    updateUserCredits(userCredits);
 
-      // Get fresh user credits and update
-      console.log("[CREDIT_ADJUSTMENT] Fetching current credits...");
-      const userCreditsData = getUserCredits(selectedUserId);
-      console.log("[CREDIT_ADJUSTMENT] Current extra credits:", userCreditsData.extraCredits);
-      
-      userCreditsData.extraCredits += amount;
-      console.log("[CREDIT_ADJUSTMENT] New extra credits:", userCreditsData.extraCredits);
-      
-      updateUserCredits(userCreditsData);
-      console.log("[CREDIT_ADJUSTMENT] Credits updated successfully");
+    // Add transaction
+    addCreditTransaction({
+      userId: selectedUserId,
+      type: "purchase",
+      amount,
+      description: `Ajuste de soporte: ${reason}`,
+    });
 
-      // Add transaction
-      addCreditTransaction({
-        userId: selectedUserId,
-        type: "purchase",
-        amount,
-        description: `Ajuste de soporte: ${reason}`,
-      });
-      console.log("[CREDIT_ADJUSTMENT] Transaction recorded");
+    // Save admin adjustment record
+    saveAdminAdjustment({
+      userId: selectedUserId,
+      userName: selectedUser?.name || "",
+      amount,
+      reason,
+      adminId: currentUser?.id || "",
+      adminName: currentUser?.name || "",
+    });
 
-      // Save admin adjustment record (this tracks the admin's usage of limit)
-      saveAdminAdjustment({
-        userId: selectedUserId,
-        userName: selectedUser?.name || "",
-        amount,
-        reason,
-        adminId: currentUser?.id || "",
-        adminName: currentUser?.name || "",
-      });
-      console.log("[CREDIT_ADJUSTMENT] Admin adjustment saved");
+    // Add audit log
+    addAuditLog({
+      userId: currentUser?.id || "",
+      userName: currentUser?.name || "",
+      action: "ADMIN_CREDIT_ADJUSTMENT",
+      entityType: "credit",
+      entityId: selectedUserId,
+      details: JSON.stringify({
+        action: "admin_credit_adjustment",
+        targetUserId: selectedUserId,
+        targetUserName: selectedUser?.name,
+        amount: amount,
+        reason: reason,
+        globalLimitUsedThisMonth: currentTotalAdjusted + amount,
+        globalMonthlyLimit: globalLimit,
+      }),
+    });
 
-      // Add audit log
-      addAuditLog({
-        userId: currentUser?.id || "",
-        userName: currentUser?.name || "",
-        action: "ADMIN_CREDIT_ADJUSTMENT",
-        entityType: "credit",
-        entityId: selectedUserId,
-        details: JSON.stringify({
-          action: "admin_credit_adjustment",
-          targetUserId: selectedUserId,
-          targetUserName: selectedUser?.name,
-          amount: amount,
-          reason: reason,
-          userMonthlyLimit: userLimit,
-          totalAdjustedForUserThisMonth: totalAdjustedForUser + amount,
-        }),
-      });
-      console.log("[CREDIT_ADJUSTMENT] Audit log created");
+    // 500ms delay to show the loading state and then update
+    await new Promise(resolve => setTimeout(resolve, 500));
 
-      // Reset form immediately
-      setAmount(1);
-      setReason("");
-      setSelectedUserId("");
-      setIsLoading(false);
-      
-      // Refresh data to show updated values
-      setRefreshKey(prev => prev + 1);
-      
-      // Show success toast
-      setToast({ 
-        message: `+${adjustedAmount} créditos añadidos a ${adjustedUserName}. Disponible para este usuario: ${newRemaining}`, 
-        type: "success" 
-      });
-      console.log("[CREDIT_ADJUSTMENT] SUCCESS - Adjustment completed");
-
-    } catch (updateError) {
-      // Error during the update phase
-      console.error("[CREDIT_ADJUSTMENT] Error during update phase:", updateError);
-      setIsLoading(false);
-      setError("Error al actualizar los créditos. Por favor, inténtalo de nuevo.");
-      setToast({ message: "Error al guardar los cambios", type: "error" });
-    }
+    // Refresh data
+    setRefreshKey(prev => prev + 1);
+    
+    setAmount(1);
+    setReason("");
+    setSelectedUserId("");
+    setIsLoading(false);
+    
+    // Show toast with confirmation
+    setToast({ 
+      message: `+${adjustedAmount} créditos añadidos a ${adjustedUserName}. Disponible este mes: ${newGlobalRemaining}`, 
+      type: "success" 
+    });
   };
 
   return (
@@ -359,11 +285,11 @@ const AdminCreditsPage = () => {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
             <div>
-              <p className="text-sm font-medium text-blue-900">Límites de ajuste por usuario</p>
+              <p className="text-sm font-medium text-blue-900">Límites de ajuste</p>
               <p className="text-sm text-blue-700 mt-1">
                 Como administrador de soporte, puedes añadir créditos para compensar errores del sistema. 
-                El límite máximo es el <strong>10% de los créditos mensuales de CADA usuario</strong> por mes. 
-                Este límite es por usuario y se comparte entre todos los administradores.
+                El límite máximo global es el <strong>10% de la suma de créditos mensuales de todos los podiatras</strong> por mes, 
+                compartido entre todos los administradores.
               </p>
             </div>
           </div>
@@ -385,82 +311,50 @@ const AdminCreditsPage = () => {
                   onChange={(e) => {
                     setSelectedUserId(e.target.value);
                     setError("");
-                    setAmountWarning("");
                   }}
                   className="w-full px-4 py-2.5 rounded-lg border border-gray-200 focus:border-[#1a1a1a] focus:ring-1 focus:ring-[#1a1a1a] outline-none transition-colors"
                 >
                   <option value="">Seleccionar usuario...</option>
-                  {podiatrists.map(u => {
-                    const userCreditsInfo = getUserCredits(u.id);
-                    const userLimit = Math.floor(userCreditsInfo.monthlyCredits * 0.1);
-                    const usedThisMonth = getAdjustmentsForUserThisMonth(u.id).reduce((sum, adj) => sum + adj.amount, 0);
-                    const remaining = userLimit - usedThisMonth;
-                    return (
-                      <option key={u.id} value={u.id}>
-                        {u.name} ({u.email}) - Límite disponible: {remaining}/{userLimit}
-                      </option>
-                    );
-                  })}
+                  {podiatrists.map(u => (
+                    <option key={u.id} value={u.id}>{u.name} ({u.email})</option>
+                  ))}
                 </select>
               </div>
 
-              {/* Per-User Monthly Limit Indicator (shows only when user selected) */}
-              {selectedUserId && userLimitInfo && (
-                <div className="bg-gray-50 rounded-lg p-4">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm text-gray-600">Límite mensual para este usuario (10%)</span>
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm font-medium text-[#1a1a1a]">{userLimitInfo.limit} créditos</span>
-                      <button
-                        type="button"
-                        onClick={() => setRefreshKey(prev => prev + 1)}
-                        className="p-1 text-gray-400 hover:text-[#1a1a1a] transition-colors rounded hover:bg-gray-200"
-                        title="Actualizar límite (por si otro admin ajustó créditos)"
-                      >
-                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                        </svg>
-                      </button>
-                    </div>
-                  </div>
-                  <div className="flex items-center justify-between mb-3">
-                    <span className="text-sm text-gray-600">Ajustado este mes (todos los admins)</span>
-                    <span className={`text-sm font-medium ${userLimitInfo.used >= userLimitInfo.limit ? "text-red-600" : "text-[#1a1a1a]"}`}>
-                      {userLimitInfo.used} / {userLimitInfo.limit}
-                    </span>
-                  </div>
-                  <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
-                    <div 
-                      className={`h-full rounded-full transition-all ${
-                        userLimitInfo.used >= userLimitInfo.limit 
-                          ? "bg-red-500" 
-                          : userLimitInfo.used >= userLimitInfo.limit * 0.75 
-                            ? "bg-yellow-500" 
-                            : "bg-green-500"
-                      }`}
-                      style={{ width: `${Math.min((userLimitInfo.used / userLimitInfo.limit) * 100, 100)}%` }}
-                    />
-                  </div>
-                  <div className="flex items-center justify-between mt-2">
-                    {userLimitInfo.remaining > 0 ? (
-                      <p className="text-xs text-gray-500">
-                        Disponible para este usuario: <strong>{userLimitInfo.remaining}</strong> créditos
-                      </p>
-                    ) : (
-                      <p className="text-xs text-red-600">
-                        Límite de ajustes alcanzado para este usuario este mes
-                      </p>
-                    )}
-                    <button
-                      type="button"
-                      onClick={() => setRefreshKey(prev => prev + 1)}
-                      className="text-xs text-blue-600 hover:text-blue-800 hover:underline"
-                    >
-                      Actualizar
-                    </button>
-                  </div>
+              {/* Global Monthly Limit Indicator */}
+              <div className="bg-gray-50 rounded-lg p-4">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-sm text-gray-600">Límite mensual global (10%)</span>
+                  <span className="text-sm font-medium text-[#1a1a1a]">{globalLimit} créditos</span>
                 </div>
-              )}
+                <div className="flex items-center justify-between mb-3">
+                  <span className="text-sm text-gray-600">Usado este mes (todos los admins)</span>
+                  <span className={`text-sm font-medium ${totalAdjustedThisMonth >= globalLimit ? "text-red-600" : "text-[#1a1a1a]"}`}>
+                    {totalAdjustedThisMonth} / {globalLimit}
+                  </span>
+                </div>
+                <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
+                  <div 
+                    className={`h-full rounded-full transition-all ${
+                      totalAdjustedThisMonth >= globalLimit 
+                        ? "bg-red-500" 
+                        : totalAdjustedThisMonth >= globalLimit * 0.75 
+                          ? "bg-yellow-500" 
+                          : "bg-green-500"
+                    }`}
+                    style={{ width: `${Math.min((totalAdjustedThisMonth / globalLimit) * 100, 100)}%` }}
+                  />
+                </div>
+                {globalRemaining > 0 ? (
+                  <p className="text-xs text-gray-500 mt-2">
+                    Disponible este mes: {globalRemaining} créditos
+                  </p>
+                ) : (
+                  <p className="text-xs text-red-600 mt-2">
+                    Límite de ajustes alcanzado para este mes
+                  </p>
+                )}
+              </div>
 
               {/* Selected user current balance */}
               {selectedUserCurrentCredits && (
@@ -482,7 +376,7 @@ const AdminCreditsPage = () => {
                 <input
                   type="number"
                   min="1"
-                  max={userLimitInfo ? Math.max(userLimitInfo.remaining, 1) : 999}
+                  max={Math.max(globalRemaining, 1)}
                   value={amount}
                   onChange={(e) => handleAmountChange(parseInt(e.target.value) || 1)}
                   className={`w-full px-4 py-2.5 rounded-lg border focus:ring-1 outline-none transition-colors ${
@@ -529,15 +423,7 @@ const AdminCreditsPage = () => {
               {/* Submit button */}
               <button
                 type="submit"
-                disabled={
-                  !selectedUserId || 
-                  reason.length < 20 || 
-                  amount <= 0 ||
-                  (userLimitInfo && userLimitInfo.remaining <= 0) || 
-                  (userLimitInfo && amount > userLimitInfo.remaining) ||
-                  isLoading || 
-                  !!amountWarning
-                }
+                disabled={!selectedUserId || reason.length < 20 || globalRemaining <= 0 || isLoading || !!amountWarning}
                 className="w-full px-4 py-3 bg-[#1a1a1a] text-white rounded-lg font-medium hover:bg-[#2a2a2a] transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
                 {isLoading ? (

@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { MainLayout } from "../components/layout/main-layout";
 import { useLanguage } from "../contexts/language-context";
 import { useAuth, getAllUsers, User } from "../contexts/auth-context";
@@ -95,6 +95,26 @@ const AdminCreditsPage = () => {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [filterUserId, setFilterUserId] = useState<string>("all");
+  const [refreshKey, setRefreshKey] = useState(0);
+  const [secondsSinceRefresh, setSecondsSinceRefresh] = useState(0);
+
+  // Auto-refresh every 5 seconds to show real-time updates from other admins
+  useEffect(() => {
+    const dataInterval = setInterval(() => {
+      setRefreshKey(prev => prev + 1);
+      setSecondsSinceRefresh(0);
+    }, 5000);
+    
+    // Update seconds counter every second for display
+    const timerInterval = setInterval(() => {
+      setSecondsSinceRefresh(prev => prev + 1);
+    }, 1000);
+    
+    return () => {
+      clearInterval(dataInterval);
+      clearInterval(timerInterval);
+    };
+  }, []);
 
   // Get podiatrists only (admin can only adjust podiatrist credits)
   const podiatrists = allUsers.filter(u => u.role === "podiatrist");
@@ -102,7 +122,7 @@ const AdminCreditsPage = () => {
   // Get ALL monthly adjustments from ALL admins (shared limit)
   const allMonthlyAdjustments = useMemo(() => 
     getAllMonthlyAdjustments(), 
-    [success] // Refresh on success
+    [success, refreshKey] // Refresh on success and every 5 seconds
   );
 
   // Calculate total adjusted this month per user (by ALL admins combined)
@@ -127,7 +147,9 @@ const AdminCreditsPage = () => {
     const adjustments = getAdminAdjustments();
     if (filterUserId === "all") return adjustments;
     return adjustments.filter(adj => adj.userId === filterUserId);
-  }, [filterUserId, success]);
+  }, [filterUserId, success, refreshKey]);
+
+
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -149,80 +171,101 @@ const AdminCreditsPage = () => {
       return;
     }
 
-    // ALWAYS fetch fresh data from localStorage before validation to prevent over-assignment
-    // Use ALL admin adjustments (shared limit across all admin users)
-    const freshAdjustments = getAllMonthlyAdjustments();
-    const freshTotalAdjusted = freshAdjustments
-      .filter(adj => adj.userId === selectedUserId)
-      .reduce((sum, adj) => sum + adj.amount, 0);
-    const freshLimit = calculateMonthlyLimit(selectedUserId);
-    const freshRemaining = freshLimit - freshTotalAdjusted;
+    // Store what the user saw on screen for staleness detection
+    const displayedAdjusted = selectedUserAdjusted;
+    const displayedLimit = selectedUserLimit;
 
-    // Debug logging
-    console.log("[Credit Adjustment Debug]", {
-      userId: selectedUserId,
-      freshLimit,
-      freshTotalAdjusted,
-      freshRemaining,
-      requestedAmount: amount,
-    });
+    try {
+      // ULTRA-STRICT VALIDATION: Get absolute latest data from localStorage RIGHT BEFORE saving
+      // This is the LAST check before any write operations
+      const freshAdjustments = getAllMonthlyAdjustments();
+      const freshTotalAdjusted = freshAdjustments
+        .filter(adj => adj.userId === selectedUserId)
+        .reduce((sum, adj) => sum + adj.amount, 0);
+      const freshLimit = calculateMonthlyLimit(selectedUserId);
+      const freshRemaining = freshLimit - freshTotalAdjusted;
 
-    // Check if within monthly limit using fresh data
-    if (amount > freshRemaining) {
-      setError(`No puedes añadir más de ${freshRemaining} créditos a este usuario este mes (límite del 10%)`);
-      return;
+      // Debug logging
+      console.log("[Credit Adjustment Debug]", {
+        userId: selectedUserId,
+        displayedAdjusted,
+        displayedLimit,
+        freshLimit,
+        freshTotalAdjusted,
+        freshRemaining,
+        requestedAmount: amount,
+      });
+
+      // STALENESS CHECK: Compare fresh data with what user saw on screen
+      // If another admin made adjustments since this form was loaded, force reload
+      if (freshTotalAdjusted !== displayedAdjusted || freshLimit !== displayedLimit) {
+        setError("Los datos han cambiado. Otro administrador realizó ajustes. Recargando página...");
+        setTimeout(() => window.location.reload(), 1500);
+        return;
+      }
+
+      // Check if within monthly limit using fresh data
+      if (amount > freshRemaining) {
+        setError(`No puedes añadir más de ${freshRemaining} créditos a este usuario este mes (límite del 10%)`);
+        return;
+      }
+
+      // ===== FINAL VALIDATION PASSED - NOW PROCEED WITH SAVE =====
+
+      // Add credits to user
+      const userCredits = getUserCredits(selectedUserId);
+      userCredits.extraCredits += amount;
+      updateUserCredits(userCredits);
+
+      // Add transaction
+      addCreditTransaction({
+        userId: selectedUserId,
+        type: "purchase",
+        amount,
+        description: `Ajuste de soporte: ${reason}`,
+      });
+
+      // Save admin adjustment record
+      const savedAdjustment = saveAdminAdjustment({
+        userId: selectedUserId,
+        userName: selectedUser?.name || "",
+        amount,
+        reason,
+        adminId: currentUser?.id || "",
+        adminName: currentUser?.name || "",
+      });
+      
+      console.log("[Credit Adjustment Debug] Saved adjustment:", savedAdjustment);
+
+      // Add audit log with correct variable names
+      addAuditLog({
+        userId: currentUser?.id || "",
+        userName: currentUser?.name || "",
+        action: "ADMIN_CREDIT_ADJUSTMENT",
+        entityType: "credit",
+        entityId: selectedUserId,
+        details: JSON.stringify({
+          action: "admin_credit_adjustment",
+          targetUserId: selectedUserId,
+          targetUserName: selectedUser?.name,
+          amount: amount,
+          reason: reason,
+          limitUsedThisMonth: freshTotalAdjusted + amount,
+          monthlyLimit: freshLimit,
+        }),
+      });
+
+      setSuccess(`Se han añadido ${amount} créditos a ${selectedUser?.name}`);
+      setAmount(1);
+      setReason("");
+      setSelectedUserId("");
+      
+      // Reload page after 1 second to ensure fresh data and prevent over-assignment
+      setTimeout(() => window.location.reload(), 1000);
+    } catch (err) {
+      console.error("[Credit Adjustment Error] localStorage read/write failed:", err);
+      setError("Error al acceder a los datos. Por favor, recargue la página e intente de nuevo.");
     }
-
-    // Add credits to user
-    const userCredits = getUserCredits(selectedUserId);
-    userCredits.extraCredits += amount;
-    updateUserCredits(userCredits);
-
-    // Add transaction
-    addCreditTransaction({
-      userId: selectedUserId,
-      type: "purchase",
-      amount,
-      description: `Ajuste de soporte: ${reason}`,
-    });
-
-    // Save admin adjustment record
-    const savedAdjustment = saveAdminAdjustment({
-      userId: selectedUserId,
-      userName: selectedUser?.name || "",
-      amount,
-      reason,
-      adminId: currentUser?.id || "",
-      adminName: currentUser?.name || "",
-    });
-    
-    console.log("[Credit Adjustment Debug] Saved adjustment:", savedAdjustment);
-
-    // Add audit log with correct variable names
-    addAuditLog({
-      userId: currentUser?.id || "",
-      userName: currentUser?.name || "",
-      action: "ADMIN_CREDIT_ADJUSTMENT",
-      entityType: "credit",
-      entityId: selectedUserId,
-      details: JSON.stringify({
-        action: "admin_credit_adjustment",
-        targetUserId: selectedUserId,
-        targetUserName: selectedUser?.name,
-        amount: amount,
-        reason: reason,
-        limitUsedThisMonth: freshTotalAdjusted + amount,
-        monthlyLimit: freshLimit,
-      }),
-    });
-
-    setSuccess(`Se han añadido ${amount} créditos a ${selectedUser?.name}`);
-    setAmount(1);
-    setReason("");
-    setSelectedUserId("");
-    
-    // Reload page after 1 second to ensure fresh data and prevent over-assignment
-    setTimeout(() => window.location.reload(), 1000);
   };
 
   return (
@@ -243,6 +286,12 @@ const AdminCreditsPage = () => {
               </p>
             </div>
           </div>
+        </div>
+
+        {/* Auto-refresh indicator */}
+        <div className="flex items-center justify-end gap-2 text-xs text-gray-500">
+          <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
+          <span>Última actualización: hace {secondsSinceRefresh} segundos (auto-actualización cada 5s)</span>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

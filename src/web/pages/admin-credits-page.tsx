@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo } from "react";
 import { MainLayout } from "../components/layout/main-layout";
 import { useLanguage } from "../contexts/language-context";
 import { useAuth, getAllUsers, User } from "../contexts/auth-context";
@@ -9,9 +9,6 @@ import {
   addCreditTransaction,
   addAuditLog,
   CreditTransaction,
-  cleanupAdminAdjustments,
-  checkAndCleanStorage,
-  getLocalStorageSize,
 } from "../lib/storage";
 
 interface AdminAdjustment {
@@ -27,42 +24,6 @@ interface AdminAdjustment {
 
 const ADMIN_ADJUSTMENTS_KEY = "podoadmin_admin_adjustments";
 
-// Clean old adjustments - keep only last 100 and entries from last 90 days
-const cleanupLocalAdjustments = (): number => {
-  try {
-    const data = localStorage.getItem(ADMIN_ADJUSTMENTS_KEY);
-    if (!data) return 0;
-    
-    let adjustments = JSON.parse(data);
-    if (!Array.isArray(adjustments)) return 0;
-    
-    const originalCount = adjustments.length;
-    const ninetyDaysAgo = new Date();
-    ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
-    
-    // Remove entries older than 90 days
-    adjustments = adjustments.filter((adj: AdminAdjustment) => {
-      if (!adj.createdAt) return true;
-      return new Date(adj.createdAt) > ninetyDaysAgo;
-    });
-    
-    // Keep only last 100 entries
-    if (adjustments.length > 100) {
-      adjustments = adjustments.slice(-100);
-    }
-    
-    const removed = originalCount - adjustments.length;
-    if (removed > 0) {
-      localStorage.setItem(ADMIN_ADJUSTMENTS_KEY, JSON.stringify(adjustments));
-      console.log(`[Admin Credits] Cleaned ${removed} old adjustments`);
-    }
-    
-    return removed;
-  } catch {
-    return 0;
-  }
-};
-
 // Get admin adjustments from localStorage
 const getAdminAdjustments = (): AdminAdjustment[] => {
   try {
@@ -73,43 +34,20 @@ const getAdminAdjustments = (): AdminAdjustment[] => {
   }
 };
 
-// Save admin adjustment with cleanup to prevent quota exceeded
+// Save admin adjustment
 const saveAdminAdjustment = (adjustment: Omit<AdminAdjustment, "id" | "createdAt">): AdminAdjustment => {
-  // Clean up before saving to prevent quota exceeded
-  cleanupLocalAdjustments();
-  checkAndCleanStorage();
-  
-  let adjustments = getAdminAdjustments();
-  
-  // If still too many, trim more aggressively
-  if (adjustments.length >= 100) {
-    // Remove oldest 20%
-    const removeCount = Math.ceil(adjustments.length * 0.2);
-    adjustments = adjustments.slice(removeCount);
-    console.log(`[Admin Credits] Trimmed ${removeCount} oldest adjustments`);
-  }
-  
+  const adjustments = getAdminAdjustments();
   const newAdjustment: AdminAdjustment = {
     ...adjustment,
     id: `adj_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
     createdAt: new Date().toISOString(),
   };
   adjustments.push(newAdjustment);
-  
-  try {
-    localStorage.setItem(ADMIN_ADJUSTMENTS_KEY, JSON.stringify(adjustments));
-  } catch (e) {
-    // If quota exceeded, clean more aggressively and try again
-    console.warn("[Admin Credits] Quota exceeded, cleaning storage...");
-    adjustments = adjustments.slice(-50); // Keep only last 50
-    adjustments.push(newAdjustment);
-    localStorage.setItem(ADMIN_ADJUSTMENTS_KEY, JSON.stringify(adjustments));
-  }
-  
+  localStorage.setItem(ADMIN_ADJUSTMENTS_KEY, JSON.stringify(adjustments));
   return newAdjustment;
 };
 
-// Get adjustments made this month by a specific admin
+// Get adjustments made this month by admin
 const getMonthlyAdjustmentsForAdmin = (adminId: string): AdminAdjustment[] => {
   const adjustments = getAdminAdjustments();
   const now = new Date();
@@ -120,20 +58,6 @@ const getMonthlyAdjustmentsForAdmin = (adminId: string): AdminAdjustment[] => {
     const adjDate = new Date(adj.createdAt);
     return adj.adminId === adminId && 
            adjDate.getMonth() === thisMonth && 
-           adjDate.getFullYear() === thisYear;
-  });
-};
-
-// Get ALL adjustments made this month by ALL admins (shared limit)
-const getAllMonthlyAdjustments = (): AdminAdjustment[] => {
-  const adjustments = getAdminAdjustments();
-  const now = new Date();
-  const thisMonth = now.getMonth();
-  const thisYear = now.getFullYear();
-  
-  return adjustments.filter(adj => {
-    const adjDate = new Date(adj.createdAt);
-    return adjDate.getMonth() === thisMonth && 
            adjDate.getFullYear() === thisYear;
   });
 };
@@ -157,70 +81,25 @@ const AdminCreditsPage = () => {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [filterUserId, setFilterUserId] = useState<string>("all");
-  const [refreshKey, setRefreshKey] = useState(0);
-  const [secondsSinceRefresh, setSecondsSinceRefresh] = useState(0);
-
-  // Run cleanup on component mount to clear old test data and prevent quota issues
-  useEffect(() => {
-    try {
-      const { total, breakdown } = getLocalStorageSize();
-      console.log(`[Admin Credits] localStorage size: ${(total / 1024).toFixed(2)} KB`);
-      
-      // Clean old adjustments on load
-      const adjustmentsRemoved = cleanupLocalAdjustments();
-      if (adjustmentsRemoved > 0) {
-        console.log(`[Admin Credits] Cleaned ${adjustmentsRemoved} old adjustments on page load`);
-      }
-      
-      // Check if near quota and clean preemptively  
-      const cleanupResult = checkAndCleanStorage();
-      if (cleanupResult.cleaned) {
-        console.log(`[Admin Credits] Preemptive cleanup freed ${(cleanupResult.freedBytes / 1024).toFixed(2)} KB`);
-      }
-      
-      // Also clean using the exported function from storage
-      cleanupAdminAdjustments();
-    } catch (e) {
-      console.error("[Admin Credits] Cleanup error:", e);
-    }
-  }, []); // Run only on mount
-
-  // Auto-refresh every 5 seconds to show real-time updates from other admins
-  useEffect(() => {
-    const dataInterval = setInterval(() => {
-      setRefreshKey(prev => prev + 1);
-      setSecondsSinceRefresh(0);
-    }, 5000);
-    
-    // Update seconds counter every second for display
-    const timerInterval = setInterval(() => {
-      setSecondsSinceRefresh(prev => prev + 1);
-    }, 1000);
-    
-    return () => {
-      clearInterval(dataInterval);
-      clearInterval(timerInterval);
-    };
-  }, []);
 
   // Get podiatrists only (admin can only adjust podiatrist credits)
   const podiatrists = allUsers.filter(u => u.role === "podiatrist");
 
-  // Get ALL monthly adjustments from ALL admins (shared limit)
-  const allMonthlyAdjustments = useMemo(() => 
-    getAllMonthlyAdjustments(), 
-    [success, refreshKey] // Refresh on success and every 5 seconds
+  // Get current user's monthly adjustments
+  const myMonthlyAdjustments = useMemo(() => 
+    getMonthlyAdjustmentsForAdmin(currentUser?.id || ""), 
+    [currentUser?.id, success] // Refresh on success
   );
 
-  // Calculate total adjusted this month per user (by ALL admins combined)
+  // Calculate total adjusted this month per user
   const totalAdjustedPerUser = useMemo(() => {
     const totals = new Map<string, number>();
-    allMonthlyAdjustments.forEach(adj => {
+    myMonthlyAdjustments.forEach(adj => {
       const current = totals.get(adj.userId) || 0;
       totals.set(adj.userId, current + adj.amount);
     });
     return totals;
-  }, [allMonthlyAdjustments]);
+  }, [myMonthlyAdjustments]);
 
   // Get selected user info
   const selectedUser = podiatrists.find(u => u.id === selectedUserId);
@@ -234,9 +113,7 @@ const AdminCreditsPage = () => {
     const adjustments = getAdminAdjustments();
     if (filterUserId === "all") return adjustments;
     return adjustments.filter(adj => adj.userId === filterUserId);
-  }, [filterUserId, success, refreshKey]);
-
-
+  }, [filterUserId, success]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -258,143 +135,57 @@ const AdminCreditsPage = () => {
       return;
     }
 
-    // Validate selectedUserId exists before proceeding
-    const targetUser = podiatrists.find(u => u.id === selectedUserId);
-    if (!targetUser) {
-      setError("Usuario seleccionado no válido");
+    // Check if within monthly limit
+    if (amount > selectedUserRemaining) {
+      setError(`No puedes añadir más de ${selectedUserRemaining} créditos a este usuario este mes (límite del 10%)`);
       return;
     }
 
-    // Store what the user saw on screen for staleness detection
-    const displayedAdjusted = selectedUserAdjusted;
-    const displayedLimit = selectedUserLimit;
+    // Add credits to user
+    const userCredits = getUserCredits(selectedUserId);
+    userCredits.extraCredits += amount;
+    updateUserCredits(userCredits);
 
-    try {
-      // ULTRA-STRICT VALIDATION: Get absolute latest data from localStorage RIGHT BEFORE saving
-      // This is the LAST check before any write operations
-      
-      // Isolated try-catch for getAllMonthlyAdjustments
-      let freshAdjustments: AdminAdjustment[];
-      try {
-        freshAdjustments = getAllMonthlyAdjustments();
-        if (!Array.isArray(freshAdjustments)) {
-          console.error("[Credit Adjustment Error] getAllMonthlyAdjustments returned non-array:", freshAdjustments);
-          freshAdjustments = [];
-        }
-      } catch (adjError) {
-        console.error("[Credit Adjustment Error] getAllMonthlyAdjustments failed:", adjError);
-        setError(`Error al obtener ajustes mensuales: ${adjError instanceof Error ? adjError.message : String(adjError)}`);
-        return;
-      }
+    // Add transaction
+    addCreditTransaction({
+      userId: selectedUserId,
+      type: "purchase",
+      amount,
+      description: `Ajuste de soporte: ${reason}`,
+    });
 
-      const freshTotalAdjusted = freshAdjustments
-        .filter(adj => adj.userId === selectedUserId)
-        .reduce((sum, adj) => sum + adj.amount, 0);
+    // Save admin adjustment record
+    saveAdminAdjustment({
+      userId: selectedUserId,
+      userName: selectedUser?.name || "",
+      amount,
+      reason,
+      adminId: currentUser?.id || "",
+      adminName: currentUser?.name || "",
+    });
 
-      // Isolated try-catch for calculateMonthlyLimit
-      let freshLimit: number;
-      try {
-        freshLimit = calculateMonthlyLimit(selectedUserId);
-        if (typeof freshLimit !== 'number' || isNaN(freshLimit)) {
-          console.error("[Credit Adjustment Error] calculateMonthlyLimit returned invalid value:", freshLimit);
-          freshLimit = 0;
-        }
-      } catch (limitError) {
-        console.error("[Credit Adjustment Error] calculateMonthlyLimit failed:", limitError);
-        setError(`Error al calcular límite mensual: ${limitError instanceof Error ? limitError.message : String(limitError)}`);
-        return;
-      }
+    // Add audit log
+    addAuditLog({
+      userId: currentUser?.id || "",
+      userName: currentUser?.name || "",
+      action: "ADMIN_CREDIT_ADJUSTMENT",
+      entityType: "credit",
+      entityId: selectedUserId,
+      details: JSON.stringify({
+        action: "admin_credit_adjustment",
+        targetUserId: selectedUserId,
+        targetUserName: selectedUser?.name,
+        amount: amount,
+        reason: reason,
+        limitUsedThisMonth: monthlyLimitUsed + amount,
+        monthlyLimit: maxAdjustmentLimit,
+      }),
+    });
 
-      const freshRemaining = freshLimit - freshTotalAdjusted;
-
-      // Debug logging
-      console.log("[Credit Adjustment Debug]", {
-        userId: selectedUserId,
-        displayedAdjusted,
-        displayedLimit,
-        freshLimit,
-        freshTotalAdjusted,
-        freshRemaining,
-        requestedAmount: amount,
-      });
-
-      // STALENESS CHECK: Compare fresh data with what user saw on screen
-      // If another admin made adjustments since this form was loaded, force reload
-      if (freshTotalAdjusted !== displayedAdjusted || freshLimit !== displayedLimit) {
-        setError("Los datos han cambiado. Otro administrador realizó ajustes. Recargando página...");
-        setTimeout(() => window.location.reload(), 1500);
-        return;
-      }
-
-      // Check if within monthly limit using fresh data
-      if (amount > freshRemaining) {
-        setError(`No puedes añadir más de ${freshRemaining} créditos a este usuario este mes (límite del 10%)`);
-        return;
-      }
-
-      // ===== FINAL VALIDATION PASSED - NOW PROCEED WITH SAVE =====
-
-      // Add credits to user
-      const userCredits = getUserCredits(selectedUserId);
-      userCredits.extraCredits += amount;
-      updateUserCredits(userCredits);
-
-      // Add transaction
-      addCreditTransaction({
-        userId: selectedUserId,
-        type: "purchase",
-        amount,
-        description: `Ajuste de soporte: ${reason}`,
-      });
-
-      // Save admin adjustment record
-      const savedAdjustment = saveAdminAdjustment({
-        userId: selectedUserId,
-        userName: targetUser.name,
-        amount,
-        reason,
-        adminId: currentUser?.id || "",
-        adminName: currentUser?.name || "",
-      });
-      
-      console.log("[Credit Adjustment Debug] Saved adjustment:", savedAdjustment);
-
-      // Add audit log with correct variable names
-      addAuditLog({
-        userId: currentUser?.id || "",
-        userName: currentUser?.name || "",
-        action: "ADMIN_CREDIT_ADJUSTMENT",
-        entityType: "credit",
-        entityId: selectedUserId,
-        details: JSON.stringify({
-          action: "admin_credit_adjustment",
-          targetUserId: selectedUserId,
-          targetUserName: targetUser.name,
-          amount: amount,
-          reason: reason,
-          limitUsedThisMonth: freshTotalAdjusted + amount,
-          monthlyLimit: freshLimit,
-        }),
-      });
-
-      setSuccess(`Se han añadido ${amount} créditos a ${targetUser.name}`);
-      setAmount(1);
-      setReason("");
-      setSelectedUserId("");
-      
-      // Reload page after 1 second to ensure fresh data and prevent over-assignment
-      setTimeout(() => window.location.reload(), 1000);
-    } catch (err) {
-      console.error("[Credit Adjustment Error] Full error details:", {
-        error: err,
-        errorMessage: err instanceof Error ? err.message : String(err),
-        errorStack: err instanceof Error ? err.stack : undefined,
-        selectedUserId,
-        amount,
-        reason,
-      });
-      setError(`Error: ${err instanceof Error ? err.message : String(err)}`);
-    }
+    setSuccess(`Se han añadido ${amount} créditos a ${selectedUser?.name}`);
+    setAmount(1);
+    setReason("");
+    setSelectedUserId("");
   };
 
   return (
@@ -410,17 +201,10 @@ const AdminCreditsPage = () => {
               <p className="text-sm font-medium text-blue-900">Límites de ajuste</p>
               <p className="text-sm text-blue-700 mt-1">
                 Como administrador de soporte, puedes añadir créditos para compensar errores del sistema. 
-                El límite máximo es el <strong>10% de los créditos mensuales</strong> del usuario por mes, 
-                <strong>compartido entre todos los administradores</strong>.
+                El límite máximo es el <strong>10% de los créditos mensuales</strong> del usuario por mes.
               </p>
             </div>
           </div>
-        </div>
-
-        {/* Auto-refresh indicator */}
-        <div className="flex items-center justify-end gap-2 text-xs text-gray-500">
-          <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
-          <span>Última actualización: hace {secondsSinceRefresh} segundos (auto-actualización cada 5s)</span>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -476,11 +260,11 @@ const AdminCreditsPage = () => {
                   </div>
                   {selectedUserRemaining > 0 ? (
                     <p className="text-xs text-gray-500 mt-2">
-                      Se pueden añadir hasta {selectedUserRemaining} créditos más a este usuario este mes (todos los admins)
+                      Puedes añadir hasta {selectedUserRemaining} créditos más este mes
                     </p>
                   ) : (
                     <p className="text-xs text-red-600 mt-2">
-                      Se ha alcanzado el límite de ajustes para este usuario este mes (todos los admins)
+                      Has alcanzado el límite de ajustes para este usuario este mes
                     </p>
                   )}
                 </div>

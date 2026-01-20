@@ -1,9 +1,7 @@
 import { Route, Switch, Redirect } from "wouter";
-import { useEffect } from "react";
 import { Provider } from "./components/provider";
 import { AuthProvider, useAuth } from "./contexts/auth-context";
 import { LanguageProvider } from "./contexts/language-context";
-import { runFullStorageCleanup } from "./lib/storage";
 import Login from "./pages/login";
 import Dashboard from "./pages/dashboard";
 
@@ -68,11 +66,6 @@ function AppRoutes() {
 }
 
 function App() {
-  // Run localStorage cleanup on app initialization to prevent quota exceeded errors
-  useEffect(() => {
-    runFullStorageCleanup();
-  }, []);
-
   return (
     <Provider>
       <LanguageProvider>

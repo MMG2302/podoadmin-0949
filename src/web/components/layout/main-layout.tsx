@@ -1,10 +1,11 @@
-import { useState, ReactNode } from "react";
+import { useState, useEffect, ReactNode } from "react";
 import { useLocation } from "wouter";
 import { Sidebar } from "./sidebar";
 import { useLanguage } from "../../contexts/language-context";
 import { useAuth } from "../../contexts/auth-context";
 import { NotificationsBell } from "../notifications-bell";
 import { SettingsButton } from "../settings-button";
+import { initializeUserCredits } from "../../lib/storage";
 
 interface MainLayoutProps {
   children: ReactNode;
@@ -40,6 +41,13 @@ export const MainLayout = ({ children, title, showCredits = true, credits }: Mai
   const { t } = useLanguage();
   const { user } = useAuth();
   const [, setLocation] = useLocation();
+
+  // Safety check: ensure credits are initialized when component mounts or user changes
+  useEffect(() => {
+    if (user && user.id) {
+      initializeUserCredits(user.id, user.role);
+    }
+  }, [user]);
 
   // Default initial monthly credits based on role
   const getInitialMonthlyCredits = () => {

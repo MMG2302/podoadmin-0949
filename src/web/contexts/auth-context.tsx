@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
-import { getCreatedUsers, CreatedUser } from "@/lib/storage";
+import { getCreatedUsers, CreatedUser, initializeUserCredits } from "@/lib/storage";
 
 export type UserRole = "super_admin" | "clinic_admin" | "admin" | "podiatrist";
 
@@ -276,6 +276,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     if (matchedUser) {
       setUser(matchedUser.user);
       localStorage.setItem("podoadmin_user", JSON.stringify(matchedUser.user));
+      // Initialize user credits on successful login
+      initializeUserCredits(matchedUser.user.id, matchedUser.user.role);
       return { success: true };
     }
 

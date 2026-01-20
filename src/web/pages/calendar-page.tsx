@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Link } from "wouter";
 import { MainLayout } from "../components/layout/main-layout";
 import { useLanguage } from "../contexts/language-context";
@@ -8,6 +8,7 @@ import {
   getUserCredits, 
   getSessions, 
   getPatients, 
+  getPatientById,
   ClinicalSession, 
   Patient,
   Appointment,
@@ -17,6 +18,7 @@ import {
   updateAppointment,
   deleteAppointment,
   addAuditLog,
+  addNotification,
 } from "../lib/storage";
 
 type ViewMode = "month" | "week" | "day";
@@ -31,7 +33,7 @@ interface AppointmentWithDetails extends Appointment {
 }
 
 interface AppointmentFormData {
-  patientId: string;
+  patientId: string | null; // null for "pending patient"
   podiatristId: string;
   date: string;
   time: string;
@@ -63,18 +65,24 @@ const CalendarPage = () => {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [podiatristFilter, setPodiatristFilter] = useState<string>("all");
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
   
   // Appointment form state (for clinic admin)
   const [showAppointmentForm, setShowAppointmentForm] = useState(false);
   const [appointmentForm, setAppointmentForm] = useState<AppointmentFormData>(emptyAppointmentForm);
   const [editingAppointment, setEditingAppointment] = useState<Appointment | null>(null);
 
-  // Get all sessions, patients, and appointments
+  // Get all sessions, patients, and appointments (refresh when trigger changes)
   const allSessions = getSessions();
   const allPatients = getPatients();
-  const allAppointments = isClinicAdmin && user?.clinicId 
+  const allAppointments = (isClinicAdmin && user?.clinicId 
     ? getAppointmentsByClinic(user.clinicId)
-    : getAppointments().filter(a => a.podiatristId === user?.id);
+    : getAppointments().filter(a => a.podiatristId === user?.id));
+  
+  // Force re-render when appointments change
+  useEffect(() => {
+    // This effect will run when refreshTrigger changes, causing a re-render
+  }, [refreshTrigger]);
 
   // Filter sessions based on role and podiatrist filter
   const filteredSessions: SessionWithPatient[] = useMemo(() => {
@@ -107,7 +115,7 @@ const CalendarPage = () => {
     
     return appointments.map(a => ({
       ...a,
-      patient: allPatients.find(p => p.id === a.patientId),
+      patient: a.patientId ? allPatients.find(p => p.id === a.patientId) : undefined,
       podiatristName: clinicPodiatrists.find(p => p.id === a.podiatristId)?.name || "Desconocido",
     }));
   }, [allAppointments, allPatients, isClinicAdmin, podiatristFilter, clinicPodiatrists]);
@@ -295,6 +303,20 @@ const CalendarPage = () => {
     return pod?.name || "Desconocido";
   };
 
+  const getPatientDisplayName = (appointment: AppointmentWithDetails) => {
+    if (!appointment.patientId || !appointment.patient) {
+      return "Paciente pendiente";
+    }
+    return `${appointment.patient.firstName} ${appointment.patient.lastName}`;
+  };
+
+  const getPatientDisplayNameShort = (appointment: AppointmentWithDetails) => {
+    if (!appointment.patientId || !appointment.patient) {
+      return "Pendiente";
+    }
+    return `${appointment.patient.firstName} ${appointment.patient.lastName?.charAt(0)}.`;
+  };
+
   // Appointment form handlers
   const openNewAppointmentForm = (date?: Date) => {
     setEditingAppointment(null);
@@ -308,7 +330,7 @@ const CalendarPage = () => {
   const openEditAppointmentForm = (appointment: Appointment) => {
     setEditingAppointment(appointment);
     setAppointmentForm({
-      patientId: appointment.patientId,
+      patientId: appointment.patientId || "",
       podiatristId: appointment.podiatristId,
       date: appointment.date,
       time: appointment.time,
@@ -321,19 +343,58 @@ const CalendarPage = () => {
   const handleAppointmentSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!appointmentForm.patientId || !appointmentForm.podiatristId || !appointmentForm.date) {
+    if (!appointmentForm.podiatristId || !appointmentForm.date) {
       return;
     }
 
+    // Convert empty string to null for pending patient
+    const patientId = appointmentForm.patientId === "" ? null : appointmentForm.patientId;
+
     if (editingAppointment) {
+      const previousPodiatristId = editingAppointment.podiatristId;
+      const newPodiatristId = appointmentForm.podiatristId;
+      
       updateAppointment(editingAppointment.id, {
-        patientId: appointmentForm.patientId,
+        patientId: patientId,
         podiatristId: appointmentForm.podiatristId,
         date: appointmentForm.date,
         time: appointmentForm.time,
         duration: appointmentForm.duration,
         notes: appointmentForm.notes,
       });
+      
+      // Send notification if podiatrist changed
+      if (previousPodiatristId !== newPodiatristId) {
+        const assignedPodiatrist = allUsers.find(u => u.id === newPodiatristId);
+        const patient = patientId ? getPatientById(patientId) : null;
+        const appointmentDate = new Date(`${appointmentForm.date}T${appointmentForm.time}`);
+        const formattedDate = appointmentDate.toLocaleDateString("es-ES", {
+          weekday: "long",
+          day: "numeric",
+          month: "long",
+          year: "numeric",
+        });
+        const formattedTime = appointmentForm.time;
+        
+        if (assignedPodiatrist) {
+          addNotification({
+            userId: assignedPodiatrist.id,
+            type: "appointment",
+            title: "Cita reasignada",
+            message: patientId && patient
+              ? `Se te ha reasignado una cita con ${patient.firstName} ${patient.lastName} el ${formattedDate} a las ${formattedTime}`
+              : `Se te ha reasignado una cita programada el ${formattedDate} a las ${formattedTime}${appointmentForm.notes ? ` - ${appointmentForm.notes}` : ""}`,
+            metadata: {
+              appointmentDate: appointmentForm.date,
+              reason: appointmentForm.notes || undefined,
+              fromUserId: user?.id,
+              fromUserName: user?.name,
+              patientId: patientId || undefined,
+              patientName: patient ? `${patient.firstName} ${patient.lastName}` : undefined,
+            },
+          });
+        }
+      }
       
       addAuditLog({
         userId: user?.id || "",
@@ -343,14 +404,14 @@ const CalendarPage = () => {
         entityId: editingAppointment.id,
         details: JSON.stringify({
           appointmentId: editingAppointment.id,
-          patientId: appointmentForm.patientId,
+          patientId: patientId,
           podiatristId: appointmentForm.podiatristId,
           date: appointmentForm.date,
         }),
       });
     } else {
       const newAppointment = saveAppointment({
-        patientId: appointmentForm.patientId,
+        patientId: patientId,
         podiatristId: appointmentForm.podiatristId,
         clinicId: user?.clinicId || "",
         date: appointmentForm.date,
@@ -361,6 +422,37 @@ const CalendarPage = () => {
         createdBy: user?.id || "",
       });
       
+      // Send notification to assigned podiatrist
+      const assignedPodiatrist = allUsers.find(u => u.id === appointmentForm.podiatristId);
+      const patient = patientId ? getPatientById(patientId) : null;
+      const appointmentDate = new Date(`${appointmentForm.date}T${appointmentForm.time}`);
+      const formattedDate = appointmentDate.toLocaleDateString("es-ES", {
+        weekday: "long",
+        day: "numeric",
+        month: "long",
+        year: "numeric",
+      });
+      const formattedTime = appointmentForm.time;
+      
+      if (assignedPodiatrist) {
+        addNotification({
+          userId: assignedPodiatrist.id,
+          type: "appointment",
+          title: "Nueva cita asignada",
+          message: patientId && patient
+            ? `Tienes una nueva cita con ${patient.firstName} ${patient.lastName} el ${formattedDate} a las ${formattedTime}`
+            : `Tienes una nueva cita programada el ${formattedDate} a las ${formattedTime}${appointmentForm.notes ? ` - ${appointmentForm.notes}` : ""}`,
+          metadata: {
+            appointmentDate: appointmentForm.date,
+            reason: appointmentForm.notes || undefined,
+            fromUserId: user?.id,
+            fromUserName: user?.name,
+            patientId: patientId || undefined,
+            patientName: patient ? `${patient.firstName} ${patient.lastName}` : undefined,
+          },
+        });
+      }
+      
       addAuditLog({
         userId: user?.id || "",
         userName: user?.name || "",
@@ -369,7 +461,7 @@ const CalendarPage = () => {
         entityId: newAppointment.id,
         details: JSON.stringify({
           appointmentId: newAppointment.id,
-          patientId: appointmentForm.patientId,
+          patientId: patientId,
           podiatristId: appointmentForm.podiatristId,
           date: appointmentForm.date,
         }),
@@ -396,6 +488,9 @@ const CalendarPage = () => {
           patientId: appointment.patientId,
         }),
       });
+      
+      // Trigger refresh to update the view
+      setRefreshTrigger(prev => prev + 1);
     }
   };
 
@@ -553,7 +648,7 @@ const CalendarPage = () => {
                               key={appt.id}
                               className="text-xs px-1.5 py-0.5 rounded truncate bg-blue-50 border border-blue-200 text-blue-700"
                             >
-                              <span className="font-medium">{appt.time}</span> {appt.patient?.firstName} {appt.patient?.lastName?.charAt(0)}.
+                              <span className="font-medium">{appt.time}</span> {getPatientDisplayNameShort(appt)}
                             </div>
                           ))}
                           {sessions.slice(0, Math.max(0, 3 - appointments.length)).map((session) => (
@@ -623,11 +718,16 @@ const CalendarPage = () => {
                             >
                               <p className="text-xs font-semibold">{appt.time}</p>
                               <p className="text-xs truncate">
-                                {appt.patient?.firstName} {appt.patient?.lastName}
+                                {getPatientDisplayName(appt)}
                               </p>
-                              <p className="text-[10px] mt-0.5 opacity-70">
-                                Cita
-                              </p>
+                              <div className="flex items-center gap-1 mt-0.5">
+                                <p className="text-[10px] opacity-70">
+                                  Cita
+                                </p>
+                                {!appt.patientId && (
+                                  <span className="text-[9px] text-orange-600 bg-orange-100 px-1 py-0.5 rounded">Pendiente</span>
+                                )}
+                              </div>
                             </div>
                           ))}
                           {sessions.map((session) => (
@@ -702,9 +802,12 @@ const CalendarPage = () => {
                             <div className="flex items-center gap-2">
                               <span className="text-sm font-semibold text-blue-700">{appt.time}</span>
                               <span className="text-xs text-blue-600 bg-blue-100 px-2 py-0.5 rounded">Cita programada</span>
+                              {!appt.patientId && (
+                                <span className="text-xs text-orange-600 bg-orange-100 px-2 py-0.5 rounded">Paciente pendiente</span>
+                              )}
                             </div>
                             <p className="font-medium text-[#1a1a1a]">
-                              {appt.patient?.firstName} {appt.patient?.lastName}
+                              {getPatientDisplayName(appt)}
                             </p>
                             <p className="text-sm text-gray-500">
                               Podólogo: {appt.podiatristName} • {appt.duration} min
@@ -813,8 +916,11 @@ const CalendarPage = () => {
                       <div className="flex items-center gap-2 mb-1">
                         <div className="w-2 h-2 rounded-full bg-blue-500" />
                         <span className="text-sm font-medium text-[#1a1a1a]">
-                          {appt.time} - {appt.patient?.firstName} {appt.patient?.lastName}
+                          {appt.time} - {getPatientDisplayName(appt)}
                         </span>
+                        {!appt.patientId && (
+                          <span className="text-[10px] text-orange-600 bg-orange-100 px-1.5 py-0.5 rounded">Pendiente</span>
+                        )}
                       </div>
                       <p className="text-xs text-gray-500">
                         Podólogo: {appt.podiatristName}
@@ -873,9 +979,14 @@ const CalendarPage = () => {
                       </span>
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-[#1a1a1a] truncate">
-                        {appt.patient?.firstName} {appt.patient?.lastName}
-                      </p>
+                      <div className="flex items-center gap-2">
+                        <p className="text-sm font-medium text-[#1a1a1a] truncate">
+                          {getPatientDisplayName(appt)}
+                        </p>
+                        {!appt.patientId && (
+                          <span className="text-[10px] text-orange-600 bg-orange-100 px-1.5 py-0.5 rounded">Pendiente</span>
+                        )}
+                      </div>
                       <p className="text-xs text-gray-500">
                         {appt.time} • {appt.podiatristName}
                       </p>
@@ -984,21 +1095,25 @@ const CalendarPage = () => {
               {/* Patient Selection */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Paciente *
+                  Paciente
                 </label>
                 <select
-                  value={appointmentForm.patientId}
-                  onChange={(e) => setAppointmentForm(prev => ({ ...prev, patientId: e.target.value }))}
+                  value={appointmentForm.patientId || ""}
+                  onChange={(e) => setAppointmentForm(prev => ({ ...prev, patientId: e.target.value || null }))}
                   className="w-full px-3 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:border-[#1a1a1a] focus:ring-1 focus:ring-[#1a1a1a]"
-                  required
                 >
-                  <option value="">Seleccionar paciente</option>
+                  <option value="">Paciente pendiente (crear más tarde)</option>
                   {clinicPatients.map(patient => (
                     <option key={patient.id} value={patient.id}>
                       {patient.firstName} {patient.lastName} - {patient.email}
                     </option>
                   ))}
                 </select>
+                {appointmentForm.patientId === "" || appointmentForm.patientId === null ? (
+                  <p className="mt-1 text-xs text-gray-500">
+                    Un podólogo deberá crear el paciente y asociarlo a esta cita más tarde.
+                  </p>
+                ) : null}
               </div>
 
               {/* Podiatrist Selection */}
@@ -1083,6 +1198,22 @@ const CalendarPage = () => {
 
               {/* Actions */}
               <div className="flex gap-3 pt-4">
+                {editingAppointment && editingAppointment.status !== "cancelled" && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (confirm("¿Cancelar esta cita?")) {
+                        handleCancelAppointment(editingAppointment);
+                        setShowAppointmentForm(false);
+                        setEditingAppointment(null);
+                        setAppointmentForm(emptyAppointmentForm);
+                      }
+                    }}
+                    className="px-4 py-2.5 border border-red-200 text-red-700 rounded-lg hover:bg-red-50 transition-colors font-medium"
+                  >
+                    Cancelar Cita
+                  </button>
+                )}
                 <button
                   type="button"
                   onClick={() => {
@@ -1090,16 +1221,18 @@ const CalendarPage = () => {
                     setEditingAppointment(null);
                     setAppointmentForm(emptyAppointmentForm);
                   }}
-                  className="flex-1 px-4 py-2.5 border border-gray-200 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-medium"
+                  className={`px-4 py-2.5 border border-gray-200 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-medium ${editingAppointment && editingAppointment.status !== "cancelled" ? "flex-1" : ""}`}
                 >
-                  Cancelar
+                  {editingAppointment ? "Cerrar" : "Cancelar"}
                 </button>
-                <button
-                  type="submit"
-                  className="flex-1 px-4 py-2.5 bg-[#1a1a1a] text-white rounded-lg hover:bg-[#2a2a2a] transition-colors font-medium"
-                >
-                  {editingAppointment ? "Guardar Cambios" : "Crear Cita"}
-                </button>
+                {(!editingAppointment || editingAppointment.status !== "cancelled") && (
+                  <button
+                    type="submit"
+                    className="flex-1 px-4 py-2.5 bg-[#1a1a1a] text-white rounded-lg hover:bg-[#2a2a2a] transition-colors font-medium"
+                  >
+                    {editingAppointment ? "Guardar Cambios" : "Crear Cita"}
+                  </button>
+                )}
               </div>
             </form>
           </div>

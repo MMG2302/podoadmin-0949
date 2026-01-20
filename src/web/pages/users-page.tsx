@@ -14,6 +14,11 @@ import {
   exportPatientData,
   generateId,
   saveCreatedUser,
+  getClinicCredits,
+  getClinicAvailableCredits,
+  updateClinicCredits,
+  addClinicCredits,
+  initializeClinicCredits,
   Patient,
   ClinicalSession,
   CreditTransaction,
@@ -263,12 +268,13 @@ const CreditAdjustmentModal = ({
   isOpen: boolean; 
   onClose: () => void; 
   user: User | null;
-  onSave: (userId: string, amount: number, isAdd: boolean, reason: string) => void;
+  onSave: (userId: string, amount: number, isAdd: boolean, reason: string) => { success: boolean; error?: string };
 }) => {
   const { t } = useLanguage();
   const [amount, setAmount] = useState(0);
   const [isAdd, setIsAdd] = useState(true);
   const [reason, setReason] = useState("");
+  const [error, setError] = useState<string | null>(null);
   const currentUser = useAuth().user;
 
   if (!isOpen || !user) return null;
@@ -276,16 +282,32 @@ const CreditAdjustmentModal = ({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!reason.trim()) return;
-    onSave(user.id, amount, isAdd, reason);
-    setAmount(0);
-    setReason("");
-    onClose();
+    
+    setError(null);
+    const result = onSave(user.id, amount, isAdd, reason);
+    
+    if (result.success) {
+      setAmount(0);
+      setReason("");
+      setError(null);
+      onClose();
+    } else {
+      setError(result.error || "Error al ajustar los créditos");
+    }
   };
 
   const userCredits = getUserCredits(user.id);
   const isClinicAdminUser = user.role === "clinic_admin";
   const isPodiatristWithClinic = user.role === "podiatrist" && user.clinicId;
   const isIndependentPodiatrist = user.role === "podiatrist" && !user.clinicId;
+  
+  // Get clinic credits if user is clinic_admin
+  const clinicCredits = isClinicAdminUser && user.clinicId 
+    ? (getClinicCredits(user.clinicId) || initializeClinicCredits(user.clinicId, 500))
+    : null;
+  const clinicAvailableCredits = isClinicAdminUser && user.clinicId
+    ? getClinicAvailableCredits(user.clinicId)
+    : 0;
 
   return (
     <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
@@ -341,16 +363,33 @@ const CreditAdjustmentModal = ({
           {/* Current balance */}
           <div className="bg-gray-50 rounded-lg p-4">
             <p className="text-sm text-gray-500">Saldo actual</p>
-            <div className="flex gap-4 mt-2">
-              <div>
-                <span className="text-lg font-semibold text-[#1a1a1a]">{userCredits.monthlyCredits}</span>
-                <span className="text-xs text-gray-500 ml-1">mensuales</span>
+            {isClinicAdminUser && clinicCredits ? (
+              <div className="flex gap-4 mt-2">
+                <div>
+                  <span className="text-lg font-semibold text-[#1a1a1a]">{clinicCredits.totalCredits}</span>
+                  <span className="text-xs text-gray-500 ml-1">total en pool</span>
+                </div>
+                <div>
+                  <span className="text-lg font-semibold text-[#1a1a1a]">{clinicCredits.distributedToDate}</span>
+                  <span className="text-xs text-gray-500 ml-1">distribuidos</span>
+                </div>
+                <div>
+                  <span className="text-lg font-semibold text-green-600">{clinicAvailableCredits}</span>
+                  <span className="text-xs text-gray-500 ml-1">disponibles</span>
+                </div>
               </div>
-              <div>
-                <span className="text-lg font-semibold text-[#1a1a1a]">{userCredits.extraCredits}</span>
-                <span className="text-xs text-gray-500 ml-1">extra</span>
+            ) : (
+              <div className="flex gap-4 mt-2">
+                <div>
+                  <span className="text-lg font-semibold text-[#1a1a1a]">{userCredits.monthlyCredits}</span>
+                  <span className="text-xs text-gray-500 ml-1">mensuales</span>
+                </div>
+                <div>
+                  <span className="text-lg font-semibold text-[#1a1a1a]">{userCredits.extraCredits}</span>
+                  <span className="text-xs text-gray-500 ml-1">extra</span>
+                </div>
               </div>
-            </div>
+            )}
           </div>
 
           {/* Add/Subtract toggle */}
@@ -385,7 +424,10 @@ const CreditAdjustmentModal = ({
               type="number"
               min="1"
               value={amount}
-              onChange={(e) => setAmount(parseInt(e.target.value) || 0)}
+              onChange={(e) => {
+                setAmount(parseInt(e.target.value) || 0);
+                setError(null); // Clear error when user changes amount
+              }}
               className="w-full px-4 py-2.5 rounded-lg border border-gray-200 focus:border-[#1a1a1a] focus:ring-1 focus:ring-[#1a1a1a] outline-none transition-colors"
               required
             />
@@ -397,13 +439,30 @@ const CreditAdjustmentModal = ({
             </label>
             <textarea
               value={reason}
-              onChange={(e) => setReason(e.target.value)}
+              onChange={(e) => {
+                setReason(e.target.value);
+                setError(null); // Clear error when user types
+              }}
               rows={3}
               className="w-full px-4 py-2.5 rounded-lg border border-gray-200 focus:border-[#1a1a1a] focus:ring-1 focus:ring-[#1a1a1a] outline-none transition-colors resize-none"
               placeholder="Explica el motivo del ajuste..."
               required
             />
           </div>
+
+          {error && (
+            <div className="bg-red-50 border border-red-200 rounded-lg p-3">
+              <div className="flex items-start gap-2">
+                <svg className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <div>
+                  <p className="text-sm font-medium text-red-800">Error</p>
+                  <p className="text-sm text-red-700 mt-1">{error}</p>
+                </div>
+              </div>
+            </div>
+          )}
 
           <div className="flex gap-3 pt-4">
             <button
@@ -844,47 +903,105 @@ const UsersPage = () => {
     });
   };
 
-  const handleCreditAdjustment = (userId: string, amount: number, isAdd: boolean, reason: string) => {
-    const userCredits = getUserCredits(userId);
-    
-    if (isAdd) {
-      userCredits.extraCredits += amount;
-    } else {
-      // Subtract from extra first, then monthly
-      if (userCredits.extraCredits >= amount) {
-        userCredits.extraCredits -= amount;
-      } else {
-        const remaining = amount - userCredits.extraCredits;
-        userCredits.extraCredits = 0;
-        userCredits.monthlyCredits = Math.max(0, userCredits.monthlyCredits - remaining);
-      }
-    }
-    
-    updateUserCredits(userCredits);
-    
-    addCreditTransaction({
-      userId,
-      type: isAdd ? "purchase" : "consumption",
-      amount,
-      description: `Ajuste administrativo: ${reason}`,
-    });
-    
+  const handleCreditAdjustment = (userId: string, amount: number, isAdd: boolean, reason: string): { success: boolean; error?: string } => {
     const targetUser = getAllUsers().find(u => u.id === userId);
-    addAuditLog({
-      userId: currentUser?.id || "",
-      userName: currentUser?.name || "",
-      action: isAdd ? "ADD_CREDITS" : "SUBTRACT_CREDITS",
-      entityType: "credit",
-      entityId: userId,
-      details: JSON.stringify({
-        action: "manual_credit_adjustment",
-        targetUserId: userId,
-        targetUserName: targetUser?.name,
-        amount: amount,
-        adjustmentType: isAdd ? "add" : "subtract",
-        reason: reason,
-      }),
-    });
+    
+    // If user is clinic_admin, adjust clinic pool credits
+    if (targetUser?.role === "clinic_admin" && targetUser.clinicId) {
+      const clinicId = targetUser.clinicId;
+      let clinicCredits = getClinicCredits(clinicId);
+      
+      if (!clinicCredits) {
+        clinicCredits = initializeClinicCredits(clinicId, 500);
+      }
+      
+      if (isAdd) {
+        // Add to total pool
+        addClinicCredits(clinicId, amount);
+      } else {
+        // Subtract from total pool (but can't go below distributed amount)
+        const available = getClinicAvailableCredits(clinicId);
+        if (amount > available) {
+          // Can't subtract more than available
+          return {
+            success: false,
+            error: `No se pueden restar ${amount} créditos. Solo hay ${available} créditos disponibles en el pool.`,
+          };
+        }
+        const newTotal = Math.max(clinicCredits.distributedToDate, clinicCredits.totalCredits - amount);
+        updateClinicCredits(clinicId, newTotal);
+      }
+      
+      addAuditLog({
+        userId: currentUser?.id || "",
+        userName: currentUser?.name || "",
+        action: isAdd ? "ADD_CLINIC_POOL_CREDITS" : "SUBTRACT_CLINIC_POOL_CREDITS",
+        entityType: "clinic_credit",
+        entityId: clinicId,
+        details: JSON.stringify({
+          action: "manual_clinic_pool_adjustment",
+          clinicId: clinicId,
+          clinicAdminUserId: userId,
+          clinicAdminName: targetUser?.name,
+          amount: amount,
+          adjustmentType: isAdd ? "add" : "subtract",
+          reason: reason,
+        }),
+      });
+      
+      return { success: true };
+    } else {
+      // Original logic for podiatrists
+      const userCredits = getUserCredits(userId);
+      
+      if (isAdd) {
+        userCredits.extraCredits += amount;
+      } else {
+        // Subtract from extra first, then monthly
+        const totalAvailable = userCredits.monthlyCredits + userCredits.extraCredits - userCredits.reservedCredits;
+        if (amount > totalAvailable) {
+          return {
+            success: false,
+            error: `No se pueden restar ${amount} créditos. El usuario solo tiene ${totalAvailable} créditos disponibles.`,
+          };
+        }
+        
+        if (userCredits.extraCredits >= amount) {
+          userCredits.extraCredits -= amount;
+        } else {
+          const remaining = amount - userCredits.extraCredits;
+          userCredits.extraCredits = 0;
+          userCredits.monthlyCredits = Math.max(0, userCredits.monthlyCredits - remaining);
+        }
+      }
+      
+      updateUserCredits(userCredits);
+      
+      addCreditTransaction({
+        userId,
+        type: isAdd ? "purchase" : "consumption",
+        amount,
+        description: `Ajuste administrativo: ${reason}`,
+      });
+      
+      addAuditLog({
+        userId: currentUser?.id || "",
+        userName: currentUser?.name || "",
+        action: isAdd ? "ADD_CREDITS" : "SUBTRACT_CREDITS",
+        entityType: "credit",
+        entityId: userId,
+        details: JSON.stringify({
+          action: "manual_credit_adjustment",
+          targetUserId: userId,
+          targetUserName: targetUser?.name,
+          amount: amount,
+          adjustmentType: isAdd ? "add" : "subtract",
+          reason: reason,
+        }),
+      });
+      
+      return { success: true };
+    }
   };
 
   const handleExportUserData = (user: User) => {
@@ -1162,14 +1279,14 @@ const UsersPage = () => {
                         )}
                         
                         {/* Adjust Credits */}
-                        {isSuperAdmin && u.role === "podiatrist" && (
+                        {isSuperAdmin && (u.role === "podiatrist" || u.role === "clinic_admin") && (
                           <button
                             onClick={() => {
                               setSelectedUser(u);
                               setShowCreditModal(true);
                             }}
                             className="p-2 text-gray-400 hover:text-[#1a1a1a] hover:bg-gray-100 rounded-lg transition-colors"
-                            title="Ajustar créditos"
+                            title={u.role === "clinic_admin" ? "Ajustar pool de créditos de la clínica" : "Ajustar créditos"}
                           >
                             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />

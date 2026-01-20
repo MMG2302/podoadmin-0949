@@ -1,11 +1,18 @@
-import { useState, useEffect, useCallback, ReactNode } from "react";
+import { useState, useEffect, useCallback, useMemo, ReactNode } from "react";
 import { useLocation } from "wouter";
 import { Sidebar } from "./sidebar";
 import { useLanguage } from "../../contexts/language-context";
 import { useAuth } from "../../contexts/auth-context";
+import { usePermissions } from "../../hooks/use-permissions";
 import { NotificationsBell } from "../notifications-bell";
 import { SettingsButton } from "../settings-button";
-import { initializeUserCredits, getUserCredits } from "../../lib/storage";
+import { 
+  initializeUserCredits, 
+  getUserCredits,
+  getClinicAvailableCredits,
+  getClinicCredits,
+  initializeClinicCredits,
+} from "../../lib/storage";
 
 interface MainLayoutProps {
   children: ReactNode;
@@ -14,7 +21,7 @@ interface MainLayoutProps {
   credits?: { monthly?: number; extra?: number; monthlyCredits?: number; extraCredits?: number };
 }
 
-const getCreditsColorClasses = (percentage: number, total: number) => {
+const getCreditsColorClasses = (percentage: number, total: number, isClinicAdmin: boolean = false) => {
   if (total === 0) {
     return {
       bg: "bg-red-100",
@@ -22,6 +29,10 @@ const getCreditsColorClasses = (percentage: number, total: number) => {
       icon: "text-red-600"
     };
   }
+  
+  // Same logic for both: yellow if percentage <= 10%, green if > 10%, red if 0
+  // For clinic_admin, percentage is based on pool available/total pool
+  // For others, percentage is based on monthly credits remaining/initial monthly
   if (percentage <= 10) {
     return {
       bg: "bg-yellow-100",
@@ -40,18 +51,34 @@ export const MainLayout = ({ children, title, showCredits = true, credits: propC
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const { t } = useLanguage();
   const { user } = useAuth();
+  const { isClinicAdmin } = usePermissions();
   const [, setLocation] = useLocation();
   
   // Real-time credits state - fetched from localStorage
   const [liveCredits, setLiveCredits] = useState<{ monthlyCredits: number; extraCredits: number }>({ monthlyCredits: 0, extraCredits: 0 });
+  const [clinicAvailableCredits, setClinicAvailableCredits] = useState(0);
+  const [clinicTotalCredits, setClinicTotalCredits] = useState(0);
 
   // Function to fetch current credits from storage
   const refreshCredits = useCallback(() => {
     if (user?.id) {
-      const currentCredits = getUserCredits(user.id);
-      setLiveCredits(currentCredits);
+      if (isClinicAdmin && user.clinicId) {
+        // For clinic_admin, get clinic pool credits
+        const clinicId = user.clinicId;
+        let clinicCredits = getClinicCredits(clinicId);
+        if (!clinicCredits) {
+          clinicCredits = initializeClinicCredits(clinicId, 500);
+        }
+        const available = getClinicAvailableCredits(clinicId);
+        setClinicAvailableCredits(available);
+        setClinicTotalCredits(clinicCredits.totalCredits);
+      } else {
+        // For other users, get personal credits
+        const currentCredits = getUserCredits(user.id);
+        setLiveCredits(currentCredits);
+      }
     }
-  }, [user?.id]);
+  }, [user?.id, user?.clinicId, isClinicAdmin]);
 
   // Safety check: ensure credits are initialized when component mounts or user changes
   useEffect(() => {
@@ -100,12 +127,25 @@ export const MainLayout = ({ children, title, showCredits = true, credits: propC
   };
 
   const initialMonthlyCredits = getInitialMonthlyCredits();
-  // Use live credits from localStorage, fallback to props if provided
-  const monthlyCredits = liveCredits.monthlyCredits || (propCredits?.monthly ?? propCredits?.monthlyCredits ?? 0);
-  const extraCredits = liveCredits.extraCredits || (propCredits?.extra ?? propCredits?.extraCredits ?? 0);
-  const totalCredits = monthlyCredits + extraCredits;
-  const monthlyPercentage = initialMonthlyCredits > 0 ? (monthlyCredits / initialMonthlyCredits) * 100 : 0;
-  const colorClasses = getCreditsColorClasses(monthlyPercentage, totalCredits);
+  
+  // For clinic_admin, use clinic pool credits; for others, use personal credits
+  const monthlyCredits = isClinicAdmin 
+    ? 0 
+    : (liveCredits.monthlyCredits || (propCredits?.monthly ?? propCredits?.monthlyCredits ?? 0));
+  const extraCredits = isClinicAdmin 
+    ? 0 
+    : (liveCredits.extraCredits || (propCredits?.extra ?? propCredits?.extraCredits ?? 0));
+  
+  // Total credits: clinic pool for clinic_admin, personal for others
+  const totalCredits = isClinicAdmin 
+    ? clinicAvailableCredits 
+    : (monthlyCredits + extraCredits);
+  
+  // Calculate percentage: for clinic_admin use pool percentage, for others use monthly percentage
+  const monthlyPercentage = isClinicAdmin 
+    ? (clinicTotalCredits > 0 ? (clinicAvailableCredits / clinicTotalCredits) * 100 : 0)
+    : (initialMonthlyCredits > 0 ? (monthlyCredits / initialMonthlyCredits) * 100 : 0);
+  const colorClasses = getCreditsColorClasses(monthlyPercentage, totalCredits, isClinicAdmin);
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -148,7 +188,9 @@ export const MainLayout = ({ children, title, showCredits = true, credits: propC
                 <button
                   onClick={() => setLocation(user?.role === "super_admin" ? "/credits" : "/dashboard")}
                   className={`group relative flex items-center justify-center w-10 h-10 sm:w-10 sm:h-10 rounded-full transition-all hover:scale-105 active:scale-95 cursor-pointer min-w-[44px] min-h-[44px] ${colorClasses.bg}`}
-                  title={`${t.credits.monthly}: ${monthlyCredits} / ${t.credits.extra}: ${extraCredits} / Total: ${totalCredits}`}
+                  title={isClinicAdmin 
+                    ? `Créditos disponibles en pool: ${totalCredits}` 
+                    : `${t.credits.monthly}: ${monthlyCredits} / ${t.credits.extra}: ${extraCredits} / Total: ${totalCredits}`}
                   aria-label={`Créditos: ${totalCredits}`}
                 >
                   <svg className={`w-5 h-5 ${colorClasses.icon}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
@@ -162,9 +204,15 @@ export const MainLayout = ({ children, title, showCredits = true, credits: propC
                   <div className="hidden md:block absolute top-full mt-2 right-0 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
                     <div className="bg-[#1a1a1a] text-white text-xs rounded-lg px-3 py-2 shadow-lg whitespace-nowrap">
                       <div className="flex flex-col gap-1">
-                        <span>{t.credits.monthly}: {monthlyCredits}</span>
-                        <span>{t.credits.extra}: {extraCredits}</span>
-                        <span className="font-semibold border-t border-gray-600 pt-1 mt-1">Total: {totalCredits}</span>
+                        {isClinicAdmin ? (
+                          <span className="font-semibold">Créditos disponibles en pool: {totalCredits}</span>
+                        ) : (
+                          <>
+                            <span>{t.credits.monthly}: {monthlyCredits}</span>
+                            <span>{t.credits.extra}: {extraCredits}</span>
+                            <span className="font-semibold border-t border-gray-600 pt-1 mt-1">Total: {totalCredits}</span>
+                          </>
+                        )}
                       </div>
                       <div className="absolute -top-1 right-4 w-2 h-2 bg-[#1a1a1a] rotate-45"></div>
                     </div>

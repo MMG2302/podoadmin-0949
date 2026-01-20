@@ -1,18 +1,42 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { MainLayout } from "../components/layout/main-layout";
 import { useLanguage } from "../contexts/language-context";
 import { useAuth } from "../contexts/auth-context";
 import { usePermissions } from "../hooks/use-permissions";
-import { getUserCredits, getCreditTransactions, addCreditTransaction, updateUserCredits } from "../lib/storage";
+import { 
+  getUserCredits, 
+  getCreditTransactions, 
+  addCreditTransaction, 
+  updateUserCredits,
+  getClinicAvailableCredits,
+  getClinicCredits,
+  initializeClinicCredits,
+} from "../lib/storage";
 
 const CreditsPage = () => {
   const { t } = useLanguage();
   const { user } = useAuth();
-  const { isSuperAdmin, hasPermission } = usePermissions();
+  const { isSuperAdmin, isClinicAdmin, hasPermission } = usePermissions();
   
   const [credits, setCredits] = useState(() => getUserCredits(user?.id || ""));
   const [transactions, setTransactions] = useState(() => getCreditTransactions(user?.id));
   const [showPurchaseModal, setShowPurchaseModal] = useState(false);
+  
+  // For clinic_admin, get clinic credits instead of personal credits
+  const clinicId = user?.clinicId || "";
+  const clinicCredits = useMemo(() => {
+    if (!isClinicAdmin || !clinicId) return null;
+    const credits = getClinicCredits(clinicId);
+    if (!credits) {
+      return initializeClinicCredits(clinicId, 500);
+    }
+    return credits;
+  }, [isClinicAdmin, clinicId]);
+  
+  const clinicAvailableCredits = useMemo(() => {
+    if (!isClinicAdmin || !clinicId) return 0;
+    return getClinicAvailableCredits(clinicId);
+  }, [isClinicAdmin, clinicId]);
 
   const creditPackages = [
     { id: 1, amount: 50, price: 25, popular: false },
@@ -41,7 +65,10 @@ const CreditsPage = () => {
     setShowPurchaseModal(false);
   };
 
-  const totalAvailable = credits.monthlyCredits + credits.extraCredits - credits.reservedCredits;
+  // For clinic_admin, show clinic pool credits; for others, show personal credits
+  const totalAvailable = isClinicAdmin 
+    ? clinicAvailableCredits 
+    : credits.monthlyCredits + credits.extraCredits - credits.reservedCredits;
 
   const formatDate = (dateStr: string) => {
     return new Date(dateStr).toLocaleDateString("es-ES", {
@@ -109,17 +136,35 @@ const CreditsPage = () => {
             <p className="text-gray-500 text-xs mt-2">{t.credits.available}</p>
           </div>
           
-          <div className="bg-white rounded-2xl p-6 border border-gray-100">
-            <p className="text-gray-500 text-sm mb-1">{t.credits.monthlyCredits}</p>
-            <p className="text-4xl font-light text-[#1a1a1a]">{credits.monthlyCredits}</p>
-            <p className="text-gray-400 text-xs mt-2">{t.credits.expiresEndOfMonth}</p>
-          </div>
-          
-          <div className="bg-white rounded-2xl p-6 border border-gray-100">
-            <p className="text-gray-500 text-sm mb-1">{t.credits.extraCredits}</p>
-            <p className="text-4xl font-light text-[#1a1a1a]">{credits.extraCredits}</p>
-            <p className="text-gray-400 text-xs mt-2">{t.credits.neverExpires}</p>
-          </div>
+          {isClinicAdmin ? (
+            <>
+              <div className="bg-white rounded-2xl p-6 border border-gray-100">
+                <p className="text-gray-500 text-sm mb-1">Créditos Totales</p>
+                <p className="text-4xl font-light text-[#1a1a1a]">{clinicCredits?.totalCredits || 0}</p>
+                <p className="text-gray-400 text-xs mt-2">En el pool de la clínica</p>
+              </div>
+              
+              <div className="bg-white rounded-2xl p-6 border border-gray-100">
+                <p className="text-gray-500 text-sm mb-1">Distribuidos</p>
+                <p className="text-4xl font-light text-[#1a1a1a]">{clinicCredits?.distributedToDate || 0}</p>
+                <p className="text-gray-400 text-xs mt-2">Asignados a podólogos</p>
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="bg-white rounded-2xl p-6 border border-gray-100">
+                <p className="text-gray-500 text-sm mb-1">{t.credits.monthlyCredits}</p>
+                <p className="text-4xl font-light text-[#1a1a1a]">{credits.monthlyCredits}</p>
+                <p className="text-gray-400 text-xs mt-2">{t.credits.expiresEndOfMonth}</p>
+              </div>
+              
+              <div className="bg-white rounded-2xl p-6 border border-gray-100">
+                <p className="text-gray-500 text-sm mb-1">{t.credits.extraCredits}</p>
+                <p className="text-4xl font-light text-[#1a1a1a]">{credits.extraCredits}</p>
+                <p className="text-gray-400 text-xs mt-2">{t.credits.neverExpires}</p>
+              </div>
+            </>
+          )}
         </div>
 
         {/* Reserved Credits Warning */}

@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useLocation } from "wouter";
 import { MainLayout } from "../components/layout/main-layout";
 import { useLanguage } from "../contexts/language-context";
@@ -11,6 +11,7 @@ const canCreatePrescriptions = (role: string | undefined): boolean => {
 };
 import {
   getSessions,
+  getSessionById,
   getPatients,
   getPatientById,
   saveSession,
@@ -22,6 +23,7 @@ import {
   releaseCredit,
   exportPatientData,
   addAuditLog,
+  addNotification,
   getClinicLogo,
   getProfessionalLogo,
   getClinicById,
@@ -101,6 +103,7 @@ const SessionsPage = () => {
   const credits = getUserCredits(user?.id || "");
   const params = new URLSearchParams(location.split("?")[1] || "");
   const filterPatientId = params.get("patient");
+  const sessionIdFromUrl = params.get("id");
   
   const [sessions, setSessions] = useState<ClinicalSession[]>(() => getSessions());
   const [patients] = useState<Patient[]>(() => getPatients());
@@ -112,6 +115,149 @@ const SessionsPage = () => {
     filterPatientId ? { ...emptyForm, patientId: filterPatientId } : emptyForm
   );
   const [selectedSession, setSelectedSession] = useState<ClinicalSession | null>(null);
+
+  const handleRescheduleNextAppointment = (session: ClinicalSession) => {
+    // Open the session edit form so user can edit the next appointment date
+    setEditingSession(session);
+    setFormData({
+      patientId: session.patientId,
+      sessionDate: session.sessionDate,
+      clinicalNotes: session.clinicalNotes,
+      anamnesis: session.anamnesis,
+      physicalExamination: session.physicalExamination,
+      diagnosis: session.diagnosis,
+      treatmentPlan: session.treatmentPlan,
+      images: session.images,
+      nextAppointmentDate: session.nextAppointmentDate || "",
+      followUpNotes: session.followUpNotes || "",
+      appointmentReason: session.appointmentReason || "",
+    });
+    setShowForm(true);
+    
+    // Scroll to the form
+    setTimeout(() => {
+      const form = document.querySelector('[data-session-form]');
+      if (form) {
+        form.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    }, 100);
+  };
+  
+  // Auto-open session if id is in URL
+  useEffect(() => {
+    if (sessionIdFromUrl) {
+      const session = getSessionById(sessionIdFromUrl);
+      if (session) {
+        // Check if user has permission to view this session
+        if (isPodiatrist && session.createdBy !== user?.id) {
+          // Podiatrists can only see their own sessions
+          return;
+        }
+        setSelectedSession(session);
+      }
+    } else {
+      // Clear selected session if no id in URL
+      setSelectedSession(null);
+    }
+  }, [sessionIdFromUrl, isPodiatrist, user?.id, location]);
+
+  // Detect print attempts from session form
+  useEffect(() => {
+    const handleBeforePrint = () => {
+      // Only intercept if the form is open
+      if (!showForm) return;
+      
+      // Log violation
+      addAuditLog({
+        userId: user?.id || "",
+        userName: user?.name || "",
+        action: "PRINT_VIOLATION_FORM",
+        entityType: "session",
+        entityId: editingSession?.id || "new_session",
+        details: JSON.stringify({
+          sessionId: editingSession?.id || "new_session",
+          patientId: formData.patientId || null,
+          podiatristId: user?.id,
+          podiatristName: user?.name,
+          timestamp: new Date().toISOString(),
+          message: "Intento de impresión desde formulario de sesión - Incumplimiento con el servicio otorgado",
+          violationType: "print_from_form",
+        }),
+      });
+      
+      // Send notification
+      addNotification({
+        userId: user?.id || "",
+        type: "system",
+        title: "Incumplimiento detectado",
+        message: "Está incumpliendo con el servicio otorgado. No se permite imprimir desde el formulario de sesión.",
+        metadata: {
+          patientId: formData.patientId || undefined,
+        },
+      });
+      
+      // Create print window with podiatrist name only
+      const printWindow = window.open("", "_blank");
+      if (!printWindow) return;
+      
+      printWindow.document.write(`
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <title>Podólogo - ${user?.name || "Usuario"}</title>
+          <style>
+            * { margin: 0; padding: 0; box-sizing: border-box; }
+            body { 
+              font-family: Arial, sans-serif; 
+              display: flex; 
+              align-items: center; 
+              justify-content: center; 
+              min-height: 100vh; 
+              background: white;
+              padding: 40px;
+            }
+            .podiatrist-name {
+              font-size: 72px;
+              font-weight: bold;
+              color: #1a1a1a;
+              text-align: center;
+              letter-spacing: 2px;
+            }
+            @media print {
+              body { 
+                padding: 0;
+                margin: 0;
+              }
+              .podiatrist-name {
+                font-size: 96px;
+              }
+              @page {
+                margin: 0;
+                size: A4;
+              }
+            }
+          </style>
+        </head>
+        <body>
+          <div class="podiatrist-name">
+            ${user?.name || "Usuario"}
+          </div>
+        </body>
+        </html>
+      `);
+      
+      printWindow.document.close();
+      printWindow.print();
+    };
+
+    if (showForm) {
+      window.addEventListener("beforeprint", handleBeforePrint);
+    }
+
+    return () => {
+      window.removeEventListener("beforeprint", handleBeforePrint);
+    };
+  }, [showForm, editingSession, formData.patientId, user?.id, user?.name]);
   
   // Prescription state
   const [showPrescriptionForm, setShowPrescriptionForm] = useState(false);
@@ -312,30 +458,15 @@ const SessionsPage = () => {
   };
 
   const handleExport = (session: ClinicalSession) => {
-    // Only podiatrists can export, and must have enough credits
+    // Only podiatrists can export
     if (!isPodiatrist) {
       alert("Solo los podólogos pueden exportar historias clínicas.");
       return;
     }
     
-    // Check credit balance before export
-    const currentCredits = getUserCredits(user?.id || "");
-    const availableCredits = currentCredits.monthlyCredits + currentCredits.extraCredits - currentCredits.reservedCredits;
-    
-    if (availableCredits < 1) {
-      alert("No tienes suficientes créditos. Contacta a tu administrador de clínica.");
-      return;
-    }
-    
+    // No credit consumption on export - credits are only consumed when completing the session
     const data = exportPatientData(session.patientId);
     if (!data) return;
-    
-    // Consume credit from the podiatrist who is exporting
-    const consumed = consumeCredit(user?.id || "", session.id);
-    if (!consumed) {
-      alert("Error al consumir crédito. No tienes suficientes créditos disponibles.");
-      return;
-    }
     
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
     const url = URL.createObjectURL(blob);
@@ -359,7 +490,6 @@ const SessionsPage = () => {
         patientId: session.patientId,
         patientName: patient ? `${patient.firstName} ${patient.lastName}` : "",
         exportType: "json",
-        creditConsumed: 1,
         podiatristId: user?.id,
       }),
     });
@@ -938,12 +1068,14 @@ const SessionsPage = () => {
                     {t.common.export} JSON
                   </button>
                 )}
-                <button
-                  onClick={() => handlePrint(selectedSession)}
-                  className="flex-1 py-2 bg-[#1a1a1a] text-white rounded-lg hover:bg-[#2a2a2a] transition-colors font-medium text-sm"
-                >
-                  {t.common.print}
-                </button>
+                {selectedSession.status === "completed" && (
+                  <button
+                    onClick={() => handlePrint(selectedSession)}
+                    className="flex-1 py-2 bg-[#1a1a1a] text-white rounded-lg hover:bg-[#2a2a2a] transition-colors font-medium text-sm"
+                  >
+                    {t.common.print}
+                  </button>
+                )}
               </div>
             </div>
           </div>
@@ -1052,7 +1184,7 @@ const SessionsPage = () => {
       {/* Session Form Modal */}
       {showForm && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 overflow-y-auto">
-          <div className="bg-white rounded-2xl max-w-3xl w-full max-h-[90vh] overflow-y-auto">
+          <div className="bg-white rounded-2xl max-w-3xl w-full max-h-[90vh] overflow-y-auto" data-session-form>
             <div className="sticky top-0 bg-white border-b border-gray-100 p-6 flex items-center justify-between">
               <h3 className="text-xl font-semibold text-[#1a1a1a]">
                 {editingSession ? t.sessions.editSession : t.sessions.newSession}
@@ -1425,9 +1557,19 @@ const SessionsPage = () => {
                             <span className="text-blue-700">
                               {patient?.firstName} {patient?.lastName} - {daysUntil === 0 ? "Hoy" : daysUntil === 1 ? "Mañana" : `En ${daysUntil} días`}
                             </span>
-                            <span className="text-xs text-blue-500">
-                              {new Date(session.nextAppointmentDate!).toLocaleDateString("es-ES", { weekday: "short", day: "numeric", month: "short" })}
-                            </span>
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs text-blue-500">
+                                {new Date(session.nextAppointmentDate!).toLocaleDateString("es-ES", { weekday: "short", day: "numeric", month: "short" })}
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => handleRescheduleNextAppointment(session)}
+                                className="text-xs font-medium text-blue-700 hover:text-blue-900 hover:underline"
+                                title="Reprogramar próxima cita"
+                              >
+                                Reprogramar
+                              </button>
+                            </div>
                           </div>
                         ))}
                       </div>
@@ -1550,15 +1692,17 @@ const SessionsPage = () => {
                         </svg>
                       </button>
                     )}
-                    <button
-                      onClick={() => handlePrint(session)}
-                      className="p-2.5 sm:p-2 hover:bg-gray-100 active:bg-gray-200 rounded-lg transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center"
-                      title={t.common.print}
-                    >
-                      <svg className="w-4 h-4 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
-                      </svg>
-                    </button>
+                    {session.status === "completed" && (
+                      <button
+                        onClick={() => handlePrint(session)}
+                        className="p-2.5 sm:p-2 hover:bg-gray-100 active:bg-gray-200 rounded-lg transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center"
+                        title={t.common.print}
+                      >
+                        <svg className="w-4 h-4 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                        </svg>
+                      </button>
+                    )}
                   </div>
                 </div>
               </div>

@@ -47,7 +47,7 @@ const saveAdminAdjustment = (adjustment: Omit<AdminAdjustment, "id" | "createdAt
   return newAdjustment;
 };
 
-// Get adjustments made this month by admin
+// Get adjustments made this month by a specific admin
 const getMonthlyAdjustmentsForAdmin = (adminId: string): AdminAdjustment[] => {
   const adjustments = getAdminAdjustments();
   const now = new Date();
@@ -58,6 +58,20 @@ const getMonthlyAdjustmentsForAdmin = (adminId: string): AdminAdjustment[] => {
     const adjDate = new Date(adj.createdAt);
     return adj.adminId === adminId && 
            adjDate.getMonth() === thisMonth && 
+           adjDate.getFullYear() === thisYear;
+  });
+};
+
+// Get ALL adjustments made this month by ALL admins (shared limit)
+const getAllMonthlyAdjustments = (): AdminAdjustment[] => {
+  const adjustments = getAdminAdjustments();
+  const now = new Date();
+  const thisMonth = now.getMonth();
+  const thisYear = now.getFullYear();
+  
+  return adjustments.filter(adj => {
+    const adjDate = new Date(adj.createdAt);
+    return adjDate.getMonth() === thisMonth && 
            adjDate.getFullYear() === thisYear;
   });
 };
@@ -85,21 +99,21 @@ const AdminCreditsPage = () => {
   // Get podiatrists only (admin can only adjust podiatrist credits)
   const podiatrists = allUsers.filter(u => u.role === "podiatrist");
 
-  // Get current user's monthly adjustments
-  const myMonthlyAdjustments = useMemo(() => 
-    getMonthlyAdjustmentsForAdmin(currentUser?.id || ""), 
-    [currentUser?.id, success] // Refresh on success
+  // Get ALL monthly adjustments from ALL admins (shared limit)
+  const allMonthlyAdjustments = useMemo(() => 
+    getAllMonthlyAdjustments(), 
+    [success] // Refresh on success
   );
 
-  // Calculate total adjusted this month per user
+  // Calculate total adjusted this month per user (by ALL admins combined)
   const totalAdjustedPerUser = useMemo(() => {
     const totals = new Map<string, number>();
-    myMonthlyAdjustments.forEach(adj => {
+    allMonthlyAdjustments.forEach(adj => {
       const current = totals.get(adj.userId) || 0;
       totals.set(adj.userId, current + adj.amount);
     });
     return totals;
-  }, [myMonthlyAdjustments]);
+  }, [allMonthlyAdjustments]);
 
   // Get selected user info
   const selectedUser = podiatrists.find(u => u.id === selectedUserId);
@@ -136,7 +150,8 @@ const AdminCreditsPage = () => {
     }
 
     // ALWAYS fetch fresh data from localStorage before validation to prevent over-assignment
-    const freshAdjustments = getMonthlyAdjustmentsForAdmin(currentUser?.id || "");
+    // Use ALL admin adjustments (shared limit across all admin users)
+    const freshAdjustments = getAllMonthlyAdjustments();
     const freshTotalAdjusted = freshAdjustments
       .filter(adj => adj.userId === selectedUserId)
       .reduce((sum, adj) => sum + adj.amount, 0);
@@ -223,7 +238,8 @@ const AdminCreditsPage = () => {
               <p className="text-sm font-medium text-blue-900">Límites de ajuste</p>
               <p className="text-sm text-blue-700 mt-1">
                 Como administrador de soporte, puedes añadir créditos para compensar errores del sistema. 
-                El límite máximo es el <strong>10% de los créditos mensuales</strong> del usuario por mes.
+                El límite máximo es el <strong>10% de los créditos mensuales</strong> del usuario por mes, 
+                <strong>compartido entre todos los administradores</strong>.
               </p>
             </div>
           </div>
@@ -282,11 +298,11 @@ const AdminCreditsPage = () => {
                   </div>
                   {selectedUserRemaining > 0 ? (
                     <p className="text-xs text-gray-500 mt-2">
-                      Puedes añadir hasta {selectedUserRemaining} créditos más este mes
+                      Se pueden añadir hasta {selectedUserRemaining} créditos más a este usuario este mes (todos los admins)
                     </p>
                   ) : (
                     <p className="text-xs text-red-600 mt-2">
-                      Has alcanzado el límite de ajustes para este usuario este mes
+                      Se ha alcanzado el límite de ajustes para este usuario este mes (todos los admins)
                     </p>
                   )}
                 </div>

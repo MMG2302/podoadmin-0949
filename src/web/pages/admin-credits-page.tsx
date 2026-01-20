@@ -81,14 +81,15 @@ const AdminCreditsPage = () => {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [filterUserId, setFilterUserId] = useState<string>("all");
+  const [refreshCounter, setRefreshCounter] = useState(0); // Counter to trigger re-render after credit updates
 
   // Get podiatrists only (admin can only adjust podiatrist credits)
   const podiatrists = allUsers.filter(u => u.role === "podiatrist");
 
-  // Get current user's monthly adjustments
+  // Get current user's monthly adjustments - refresh when counter changes
   const myMonthlyAdjustments = useMemo(() => 
     getMonthlyAdjustmentsForAdmin(currentUser?.id || ""), 
-    [currentUser?.id, success] // Refresh on success
+    [currentUser?.id, refreshCounter]
   );
 
   // Calculate total adjusted this month per user
@@ -108,12 +109,12 @@ const AdminCreditsPage = () => {
   const selectedUserAdjusted = selectedUserId ? (totalAdjustedPerUser.get(selectedUserId) || 0) : 0;
   const selectedUserRemaining = selectedUserLimit - selectedUserAdjusted;
 
-  // All adjustments for history (filtered)
+  // All adjustments for history (filtered) - refresh when counter changes
   const allAdjustments = useMemo(() => {
     const adjustments = getAdminAdjustments();
     if (filterUserId === "all") return adjustments;
     return adjustments.filter(adj => adj.userId === filterUserId);
-  }, [filterUserId, success]);
+  }, [filterUserId, refreshCounter]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -182,10 +183,21 @@ const AdminCreditsPage = () => {
       }),
     });
 
-    setSuccess(`Se han añadido ${amount} créditos a ${selectedUser?.name}`);
+    // Store values for success message before resetting form
+    const addedAmount = amount;
+    const userName = selectedUser?.name;
+    const newRemaining = selectedUserRemaining - amount;
+    
+    // Clear form immediately
     setAmount(1);
     setReason("");
     setSelectedUserId("");
+    
+    // Increment refresh counter to trigger re-render with updated data
+    setRefreshCounter(prev => prev + 1);
+    
+    // Show success message with new available limit info
+    setSuccess(`✓ Se han añadido ${addedAmount} créditos a ${userName}. Límite restante para este usuario: ${newRemaining} créditos este mes.`);
   };
 
   return (

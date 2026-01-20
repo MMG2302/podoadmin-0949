@@ -1,3 +1,63 @@
+// Safari private mode fallback storage
+// In Safari private browsing, localStorage throws an error
+// This provides an in-memory fallback for the session
+const memoryStorage: Record<string, string> = {};
+let useMemoryFallback = false;
+
+// Test localStorage availability
+const testLocalStorage = (): boolean => {
+  try {
+    const testKey = "__storage_test__";
+    localStorage.setItem(testKey, testKey);
+    localStorage.removeItem(testKey);
+    return true;
+  } catch {
+    return false;
+  }
+};
+
+// Initialize storage type on load
+useMemoryFallback = !testLocalStorage();
+
+// Safe localStorage wrapper
+const safeStorage = {
+  getItem: (key: string): string | null => {
+    try {
+      if (useMemoryFallback) {
+        return memoryStorage[key] || null;
+      }
+      return localStorage.getItem(key);
+    } catch {
+      useMemoryFallback = true;
+      return memoryStorage[key] || null;
+    }
+  },
+  setItem: (key: string, value: string): void => {
+    try {
+      if (useMemoryFallback) {
+        memoryStorage[key] = value;
+        return;
+      }
+      localStorage.setItem(key, value);
+    } catch {
+      useMemoryFallback = true;
+      memoryStorage[key] = value;
+    }
+  },
+  removeItem: (key: string): void => {
+    try {
+      if (useMemoryFallback) {
+        delete memoryStorage[key];
+        return;
+      }
+      localStorage.removeItem(key);
+    } catch {
+      useMemoryFallback = true;
+      delete memoryStorage[key];
+    }
+  },
+};
+
 // Types for all data structures
 export interface Patient {
   id: string;
@@ -96,10 +156,10 @@ const KEYS = {
   CREATED_USERS: "podoadmin_created_users",
 };
 
-// Generic storage helpers
+// Generic storage helpers - using safeStorage for Safari private mode compatibility
 const getItem = <T>(key: string, defaultValue: T): T => {
   try {
-    const item = localStorage.getItem(key);
+    const item = safeStorage.getItem(key);
     return item ? JSON.parse(item) : defaultValue;
   } catch {
     return defaultValue;
@@ -107,7 +167,7 @@ const getItem = <T>(key: string, defaultValue: T): T => {
 };
 
 const setItem = <T>(key: string, value: T): void => {
-  localStorage.setItem(key, JSON.stringify(value));
+  safeStorage.setItem(key, JSON.stringify(value));
 };
 
 // Generate UUID

@@ -118,3 +118,55 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* Safari compatibility prefixes */
+@layer utilities {
+  .safari-backdrop {
+    -webkit-backdrop-filter: blur(8px);
+    backdrop-filter: blur(8px);
+  }
+  
+  .safari-user-select-none {
+    -webkit-user-select: none;
+    user-select: none;
+  }
+  
+  .safari-appearance-none {
+    -webkit-appearance: none;
+    appearance: none;
+  }
+  
+  .safari-touch-callout-none {
+    -webkit-touch-callout: none;
+  }
+}
+
+/* Global Safari fixes */
+input, textarea, select, button {
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+/* Backdrop filter Safari fallback */
+.backdrop-blur-sm,
+.backdrop-blur,
+.backdrop-blur-md,
+.backdrop-blur-lg,
+.backdrop-blur-xl {
+  -webkit-backdrop-filter: var(--tw-backdrop-blur);
+}
+
+/* Touch action Safari compatibility */
+.touch-manipulation {
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Smooth scrolling Safari compatibility */
+.overflow-auto,
+.overflow-scroll,
+.overflow-y-auto,
+.overflow-y-scroll,
+.overflow-x-auto,
+.overflow-x-scroll {
+  -webkit-overflow-scrolling: touch;
+}

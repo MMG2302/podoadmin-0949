@@ -238,21 +238,66 @@ export const deleteSession = (id: string): boolean => {
   return true;
 };
 
+// Initialize user credits based on role
+export const initializeUserCredits = (
+  userId: string, 
+  role: "super_admin" | "clinic_admin" | "admin" | "podiatrist"
+): UserCredits => {
+  // Define initial credits based on role
+  let monthlyCredits: number;
+  let extraCredits: number;
+  
+  switch (role) {
+    case "super_admin":
+      monthlyCredits = 1000;
+      extraCredits = 500;
+      break;
+    case "clinic_admin":
+      monthlyCredits = 500;
+      extraCredits = 200;
+      break;
+    case "admin":
+      monthlyCredits = 300;
+      extraCredits = 100;
+      break;
+    case "podiatrist":
+    default:
+      monthlyCredits = 250;
+      extraCredits = 50;
+      break;
+  }
+  
+  const newCredits: UserCredits = {
+    userId,
+    monthlyCredits,
+    extraCredits,
+    reservedCredits: 0,
+    lastMonthlyReset: new Date().toISOString(),
+  };
+  
+  // Save to storage
+  updateUserCredits(newCredits);
+  
+  return newCredits;
+};
+
+// Helper to determine role from userId for legacy/seed users
+const getRoleFromUserId = (userId: string): "super_admin" | "clinic_admin" | "admin" | "podiatrist" => {
+  if (userId.includes("super_admin")) return "super_admin";
+  if (userId.includes("clinic_admin") || userId.includes("manager")) return "clinic_admin";
+  if (userId.includes("admin") || userId.includes("support")) return "admin";
+  return "podiatrist";
+};
+
 // Credits management
 export const getUserCredits = (userId: string): UserCredits => {
   const allCredits = getItem<UserCredits[]>(KEYS.CREDITS, []);
   const userCredits = allCredits.find((c) => c.userId === userId);
   
   if (!userCredits) {
-    // Default credits based on role (determined by userId pattern)
-    const isAdmin = userId.includes("super_admin");
-    return {
-      userId,
-      monthlyCredits: isAdmin ? 1000 : 250,
-      extraCredits: isAdmin ? 500 : 50,
-      reservedCredits: 0,
-      lastMonthlyReset: new Date().toISOString(),
-    };
+    // Auto-initialize and save credits for this user based on their role
+    const role = getRoleFromUserId(userId);
+    return initializeUserCredits(userId, role);
   }
   
   return userCredits;
@@ -959,6 +1004,10 @@ export const saveCreatedUser = (
   
   users.push(newUser);
   setItem(KEYS.CREATED_USERS, users);
+  
+  // Initialize credits for the new user based on their role
+  initializeUserCredits(newUser.id, userData.role);
+  
   return newUser;
 };
 

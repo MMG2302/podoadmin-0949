@@ -112,50 +112,54 @@ export const MainLayout = ({ children, title, showCredits = true, credits: propC
       <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
       
       {/* Main content area */}
-      <div className="lg:pl-72">
-        {/* Top header */}
-        <header className="sticky top-0 z-30 bg-white border-b border-gray-100">
-          <div className="flex items-center justify-between px-4 lg:px-8 h-16">
-            {/* Mobile menu button */}
-            <button
-              onClick={() => setSidebarOpen(true)}
-              className="lg:hidden p-2 rounded-lg hover:bg-gray-100 transition-colors"
-            >
-              <svg className="w-6 h-6 text-[#1a1a1a]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
-              </svg>
-            </button>
+      <div className="md:pl-72">
+        {/* Top header - responsive */}
+        <header className="sticky top-0 z-30 bg-white border-b border-gray-100 safe-area-top">
+          <div className="flex items-center justify-between px-3 sm:px-4 md:px-6 lg:px-8 h-14 sm:h-16">
+            {/* Left side - menu button and title */}
+            <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
+              {/* Mobile menu button - touch optimized */}
+              <button
+                onClick={() => setSidebarOpen(true)}
+                className="md:hidden p-2 -ml-1 rounded-lg hover:bg-gray-100 active:bg-gray-200 transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center flex-shrink-0"
+                aria-label="Abrir menú"
+              >
+                <svg className="w-6 h-6 text-[#1a1a1a]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
+                </svg>
+              </button>
 
-            {/* Page title */}
-            <h1 className="text-xl font-semibold text-[#1a1a1a] hidden lg:block">
-              {title}
-            </h1>
+              {/* Page title - truncate on small screens */}
+              <h1 className="text-base sm:text-lg md:text-xl font-semibold text-[#1a1a1a] truncate">
+                {title || "PodoAdmin"}
+              </h1>
+            </div>
 
-            {/* Mobile title */}
-            <span className="text-lg font-semibold text-[#1a1a1a] lg:hidden">
-              {title || "PodoAdmin"}
-            </span>
-
-            {/* Right side actions */}
-            <div className="flex items-center gap-3">
+            {/* Right side actions - responsive layout */}
+            <div className="flex items-center gap-1 sm:gap-2 md:gap-3 flex-shrink-0">
               {/* Notifications Bell */}
               <NotificationsBell />
 
               {/* Settings Button */}
               <SettingsButton />
 
-              {/* Credits indicator */}
+              {/* Credits indicator - simplified on mobile */}
               {showCredits && (
                 <button
                   onClick={() => setLocation(user?.role === "super_admin" ? "/credits" : "/dashboard")}
-                  className={`group relative flex items-center justify-center w-10 h-10 rounded-full transition-all hover:scale-105 cursor-pointer ${colorClasses.bg}`}
+                  className={`group relative flex items-center justify-center w-10 h-10 sm:w-10 sm:h-10 rounded-full transition-all hover:scale-105 active:scale-95 cursor-pointer min-w-[44px] min-h-[44px] ${colorClasses.bg}`}
                   title={`${t.credits.monthly}: ${monthlyCredits} / ${t.credits.extra}: ${extraCredits} / Total: ${totalCredits}`}
+                  aria-label={`Créditos: ${totalCredits}`}
                 >
                   <svg className={`w-5 h-5 ${colorClasses.icon}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
-                  {/* Tooltip on hover */}
-                  <div className="absolute top-full mt-2 right-0 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
+                  {/* Credit count badge on mobile */}
+                  <span className={`absolute -bottom-1 -right-1 text-[10px] font-bold ${colorClasses.text} bg-white rounded-full px-1 min-w-[18px] text-center shadow-sm md:hidden`}>
+                    {totalCredits}
+                  </span>
+                  {/* Tooltip on hover - desktop only */}
+                  <div className="hidden md:block absolute top-full mt-2 right-0 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
                     <div className="bg-[#1a1a1a] text-white text-xs rounded-lg px-3 py-2 shadow-lg whitespace-nowrap">
                       <div className="flex flex-col gap-1">
                         <span>{t.credits.monthly}: {monthlyCredits}</span>
@@ -171,8 +175,8 @@ export const MainLayout = ({ children, title, showCredits = true, credits: propC
           </div>
         </header>
 
-        {/* Page content */}
-        <main className="p-4 lg:p-8">
+        {/* Page content - responsive padding */}
+        <main className="p-3 sm:p-4 md:p-6 lg:p-8 pb-safe">
           {children}
         </main>
       </div>

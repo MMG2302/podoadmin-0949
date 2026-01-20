@@ -944,8 +944,86 @@ const UsersPage = () => {
           </div>
         </div>
 
-        {/* Users Table */}
-        <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
+        {/* Users List - Mobile: Cards, Desktop: Table */}
+        
+        {/* Mobile Card Layout */}
+        <div className="md:hidden space-y-3">
+          {filteredUsers.map((u) => (
+            <div key={u.id} className="mobile-card">
+              <div className="mobile-card-header">
+                <div className="flex items-center gap-3 flex-1 min-w-0">
+                  <div className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center flex-shrink-0">
+                    <span className="font-medium text-[#1a1a1a]">{u.name.charAt(0)}</span>
+                  </div>
+                  <div className="min-w-0">
+                    <p className="font-medium text-[#1a1a1a] truncate">{u.name}</p>
+                    <p className="text-xs text-gray-500 truncate">{u.email}</p>
+                  </div>
+                </div>
+                <span className={`flex-shrink-0 inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${
+                  u.role === "super_admin" ? "bg-[#1a1a1a] text-white" :
+                  u.role === "clinic_admin" ? "bg-blue-100 text-blue-700" :
+                  u.role === "admin" ? "bg-orange-100 text-orange-700" :
+                  "bg-gray-100 text-gray-700"
+                }`}>
+                  {roleLabels[u.role]}
+                </span>
+              </div>
+              
+              <div className="space-y-1">
+                {u.clinicId && (
+                  <div className="mobile-card-row">
+                    <span className="mobile-card-label">Clínica</span>
+                    <span className="mobile-card-value">{u.clinicId}</span>
+                  </div>
+                )}
+                {u.role === "podiatrist" && (
+                  <div className="mobile-card-row">
+                    <span className="mobile-card-label">Créditos</span>
+                    <span className="mobile-card-value">
+                      {u.credits.total} <span className="text-xs text-gray-400">({u.credits.monthly}m + {u.credits.extra}e)</span>
+                    </span>
+                  </div>
+                )}
+                <div className="mobile-card-row">
+                  <span className="mobile-card-label">Datos</span>
+                  <span className="mobile-card-value">{u.patientCount} pacientes · {u.sessionCount} sesiones</span>
+                </div>
+              </div>
+              
+              <div className="mobile-card-actions">
+                <button
+                  onClick={() => { setSelectedUser(u); setShowProfileModal(true); }}
+                  className="flex-1 py-2.5 bg-gray-100 text-[#1a1a1a] rounded-lg hover:bg-gray-200 active:bg-gray-300 transition-colors text-sm font-medium min-h-[44px]"
+                >
+                  Ver
+                </button>
+                {isSuperAdmin && (
+                  <button
+                    onClick={() => { setSelectedUser(u); setShowEditModal(true); }}
+                    className="flex-1 py-2.5 bg-gray-100 text-[#1a1a1a] rounded-lg hover:bg-gray-200 active:bg-gray-300 transition-colors text-sm font-medium min-h-[44px]"
+                  >
+                    Editar
+                  </button>
+                )}
+                {isSuperAdmin && u.role === "podiatrist" && (
+                  <button
+                    onClick={() => { setSelectedUser(u); setShowCreditModal(true); }}
+                    className="py-2.5 px-4 bg-green-50 text-green-700 rounded-lg hover:bg-green-100 active:bg-green-200 transition-colors min-h-[44px]"
+                    title="Créditos"
+                  >
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                  </button>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+        
+        {/* Desktop Table Layout */}
+        <div className="hidden md:block bg-white rounded-xl border border-gray-100 overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>

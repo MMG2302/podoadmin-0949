@@ -1477,12 +1477,12 @@ const SessionsPage = () => {
                     )}
                   </div>
                   
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-1 sm:gap-2">
                     {session.status === "draft" && (
                       <>
                         <button
                           onClick={() => handleEdit(session)}
-                          className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                          className="p-2.5 sm:p-2 hover:bg-gray-100 active:bg-gray-200 rounded-lg transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center"
                           title={t.common.edit}
                         >
                           <svg className="w-4 h-4 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -1491,7 +1491,7 @@ const SessionsPage = () => {
                         </button>
                         <button
                           onClick={() => handleDelete(session)}
-                          className="p-2 hover:bg-red-50 rounded-lg transition-colors"
+                          className="p-2.5 sm:p-2 hover:bg-red-50 active:bg-red-100 rounded-lg transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center"
                           title={t.common.delete}
                         >
                           <svg className="w-4 h-4 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -1503,7 +1503,7 @@ const SessionsPage = () => {
                     {isSuperAdmin && (
                       <button
                         onClick={() => handleExport(session)}
-                        className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                        className="p-2.5 sm:p-2 hover:bg-gray-100 active:bg-gray-200 rounded-lg transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center"
                         title={t.common.export}
                       >
                         <svg className="w-4 h-4 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -1513,7 +1513,7 @@ const SessionsPage = () => {
                     )}
                     <button
                       onClick={() => handlePrint(session)}
-                      className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                      className="p-2.5 sm:p-2 hover:bg-gray-100 active:bg-gray-200 rounded-lg transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center"
                       title={t.common.print}
                     >
                       <svg className="w-4 h-4 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">

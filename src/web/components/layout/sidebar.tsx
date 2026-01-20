@@ -137,30 +137,42 @@ export const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
 
   return (
     <>
-      {/* Overlay for mobile */}
-      {isOpen && (
-        <div
-          className="fixed inset-0 bg-black/50 z-40 lg:hidden"
-          onClick={onClose}
-        />
-      )}
+      {/* Overlay for mobile - full screen with animation */}
+      <div
+        className={`fixed inset-0 bg-black/60 backdrop-blur-sm z-40 md:hidden transition-opacity duration-300 ${
+          isOpen ? "opacity-100" : "opacity-0 pointer-events-none"
+        }`}
+        onClick={onClose}
+      />
 
-      {/* Sidebar */}
+      {/* Sidebar - full height overlay on mobile, fixed on desktop */}
       <aside
-        className={`fixed top-0 left-0 z-50 h-full w-72 bg-[#1a1a1a] transform transition-transform duration-300 ease-in-out lg:translate-x-0 ${
+        className={`fixed top-0 left-0 z-50 h-full w-[85%] max-w-[300px] md:w-72 bg-[#1a1a1a] transform transition-transform duration-300 ease-out md:translate-x-0 ${
           isOpen ? "translate-x-0" : "-translate-x-full"
         }`}
       >
-        <div className="flex flex-col h-full">
-          {/* Header */}
-          <div className="p-6 border-b border-white/10">
-            <h1 className="text-white text-2xl font-light tracking-tight mb-4">
-              Podo<span className="font-bold">Admin</span>
-            </h1>
+        <div className="flex flex-col h-full safe-area-inset">
+          {/* Header with close button for mobile */}
+          <div className="p-4 md:p-6 border-b border-white/10">
+            <div className="flex items-center justify-between mb-4">
+              <h1 className="text-white text-xl md:text-2xl font-light tracking-tight">
+                Podo<span className="font-bold">Admin</span>
+              </h1>
+              {/* Close button - only visible on mobile */}
+              <button
+                onClick={onClose}
+                className="md:hidden p-2 -mr-2 text-white/70 hover:text-white hover:bg-white/10 rounded-lg transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center"
+                aria-label="Cerrar menú"
+              >
+                <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
             
             {/* User info */}
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-white/10 rounded-full flex items-center justify-center">
+              <div className="w-10 h-10 bg-white/10 rounded-full flex items-center justify-center flex-shrink-0">
                 <span className="text-white font-medium">
                   {user?.name.charAt(0).toUpperCase()}
                 </span>
@@ -174,18 +186,18 @@ export const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
             </div>
           </div>
 
-          {/* Navigation */}
-          <nav className="flex-1 overflow-y-auto py-4 px-3">
+          {/* Navigation - scrollable */}
+          <nav className="flex-1 overflow-y-auto py-3 md:py-4 px-2 md:px-3 overscroll-contain">
             <ul className="space-y-1">
               {filteredNavItems.map((item) => (
                 <li key={item.path}>
                   <Link
                     href={item.path}
                     onClick={onClose}
-                    className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-all ${
+                    className={`flex items-center gap-3 px-3 md:px-4 py-3 md:py-3 rounded-lg transition-all min-h-[48px] active:scale-[0.98] ${
                       isActive(item.path)
                         ? "bg-white text-[#1a1a1a]"
-                        : "text-gray-300 hover:bg-white/10 hover:text-white"
+                        : "text-gray-300 hover:bg-white/10 hover:text-white active:bg-white/20"
                     }`}
                   >
                     {item.icon}
@@ -196,13 +208,13 @@ export const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
             </ul>
           </nav>
 
-          {/* Footer */}
-          <div className="p-4 border-t border-white/10 space-y-3">
+          {/* Footer with safe area padding */}
+          <div className="p-3 md:p-4 border-t border-white/10 space-y-2 md:space-y-3 pb-safe">
             <LanguageSwitcher variant="inline" className="justify-center" />
             
             <button
               onClick={logout}
-              className="w-full flex items-center justify-center gap-2 px-4 py-3 text-gray-300 hover:bg-white/10 hover:text-white rounded-lg transition-all"
+              className="w-full flex items-center justify-center gap-2 px-4 py-3 text-gray-300 hover:bg-white/10 hover:text-white active:bg-white/20 rounded-lg transition-all min-h-[48px] active:scale-[0.98]"
             >
               <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />

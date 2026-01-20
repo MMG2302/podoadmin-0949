@@ -170,3 +170,85 @@ input, textarea, select, button {
 .overflow-x-scroll {
   -webkit-overflow-scrolling: touch;
 }
+
+/* Safe area insets for notched devices (iPhone X+, etc.) */
+@supports(padding: max(0px)) {
+  .safe-area-inset {
+    padding-left: max(0px, env(safe-area-inset-left));
+    padding-right: max(0px, env(safe-area-inset-right));
+  }
+  
+  .safe-area-top {
+    padding-top: env(safe-area-inset-top);
+  }
+  
+  .pb-safe {
+    padding-bottom: max(16px, env(safe-area-inset-bottom));
+  }
+}
+
+/* Mobile-first responsive utilities */
+@layer utilities {
+  /* Ensure minimum touch target size */
+  .touch-target {
+    min-width: 44px;
+    min-height: 44px;
+  }
+  
+  /* Prevent text selection on interactive elements */
+  .select-none-touch {
+    -webkit-user-select: none;
+    user-select: none;
+    -webkit-touch-callout: none;
+  }
+  
+  /* Overscroll behavior for modals/drawers */
+  .overscroll-contain {
+    overscroll-behavior: contain;
+  }
+  
+  /* Hide scrollbar but keep functionality */
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+/* Mobile card styles for responsive tables */
+.mobile-card {
+  @apply bg-white rounded-xl border border-gray-100 p-4 mb-3 shadow-sm;
+}
+
+.mobile-card-header {
+  @apply flex items-center justify-between mb-3 pb-3 border-b border-gray-100;
+}
+
+.mobile-card-row {
+  @apply flex justify-between items-center py-2 text-sm;
+}
+
+.mobile-card-label {
+  @apply text-gray-500 font-medium;
+}
+
+.mobile-card-value {
+  @apply text-[#1a1a1a] text-right;
+}
+
+.mobile-card-actions {
+  @apply flex items-center justify-end gap-2 mt-3 pt-3 border-t border-gray-100;
+}
+
+/* Active state for touch devices */
+@media (hover: none) and (pointer: coarse) {
+  .active\:scale-95:active {
+    transform: scale(0.95);
+  }
+  
+  .active\:bg-gray-200:active {
+    background-color: rgb(229 231 235);
+  }
+}

@@ -207,16 +207,16 @@ const PatientsPage = () => {
 
   return (
     <MainLayout title={t.patients.title} credits={credits}>
-      {/* Patient Detail View */}
+      {/* Patient Detail View - Mobile Optimized */}
       {selectedPatient && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 overflow-y-auto">
-          <div className="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="sticky top-0 bg-white border-b border-gray-100 p-6">
+        <div className="fixed inset-0 bg-black/60 flex items-end sm:items-center justify-center z-50 overflow-y-auto">
+          <div className="bg-white rounded-t-2xl sm:rounded-2xl w-full sm:max-w-2xl max-h-[95vh] sm:max-h-[90vh] sm:m-4 overflow-y-auto overscroll-contain">
+            <div className="sticky top-0 bg-white border-b border-gray-100 p-4 sm:p-6 z-10">
               <div className="flex items-center justify-between mb-2">
-                <h3 className="text-xl font-semibold text-[#1a1a1a]">{t.patients.patientDetails}</h3>
+                <h3 className="text-lg sm:text-xl font-semibold text-[#1a1a1a]">{t.patients.patientDetails}</h3>
                 <button
                   onClick={() => setSelectedPatient(null)}
-                  className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                  className="p-2 hover:bg-gray-100 active:bg-gray-200 rounded-lg transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center -mr-2"
                 >
                   <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -367,12 +367,12 @@ const PatientsPage = () => {
         </div>
       )}
 
-      {/* Patient Form Modal */}
+      {/* Patient Form Modal - Mobile Optimized */}
       {showForm && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 overflow-y-auto">
-          <div className="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="sticky top-0 bg-white border-b border-gray-100 p-6 flex items-center justify-between">
-              <h3 className="text-xl font-semibold text-[#1a1a1a]">
+        <div className="fixed inset-0 bg-black/60 flex items-end sm:items-center justify-center z-50 overflow-y-auto">
+          <div className="bg-white rounded-t-2xl sm:rounded-2xl w-full sm:max-w-2xl max-h-[95vh] sm:max-h-[90vh] sm:m-4 overflow-y-auto overscroll-contain">
+            <div className="sticky top-0 bg-white border-b border-gray-100 p-4 sm:p-6 flex items-center justify-between z-10">
+              <h3 className="text-lg sm:text-xl font-semibold text-[#1a1a1a]">
                 {editingPatient ? t.patients.editPatient : t.patients.addPatient}
               </h3>
               <button
@@ -381,7 +381,7 @@ const PatientsPage = () => {
                   setEditingPatient(null);
                   setFormData(emptyForm);
                 }}
-                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                className="p-2 hover:bg-gray-100 active:bg-gray-200 rounded-lg transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center -mr-2"
               >
                 <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -389,7 +389,7 @@ const PatientsPage = () => {
               </button>
             </div>
 
-            <form onSubmit={handleSubmit} className="p-6 space-y-6">
+            <form onSubmit={handleSubmit} className="p-4 sm:p-6 space-y-5 sm:space-y-6 pb-safe">
               {/* Immutable fields notice when editing */}
               {editingPatient && (
                 <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
@@ -407,8 +407,8 @@ const PatientsPage = () => {
                 </div>
               )}
 
-              {/* Personal Info */}
-              <div className="grid grid-cols-2 gap-4">
+              {/* Personal Info - Responsive grid */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-[#1a1a1a] mb-1 flex items-center gap-1">
                     {t.patients.firstName} *
@@ -519,7 +519,7 @@ const PatientsPage = () => {
                     className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:border-[#1a1a1a] focus:ring-1 focus:ring-[#1a1a1a]"
                   />
                 </div>
-                <div className="col-span-2">
+                <div className="sm:col-span-2">
                   <label className="block text-sm font-medium text-[#1a1a1a] mb-1">
                     {t.patients.email}
                   </label>
@@ -530,7 +530,7 @@ const PatientsPage = () => {
                     className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:border-[#1a1a1a] focus:ring-1 focus:ring-[#1a1a1a]"
                   />
                 </div>
-                <div className="col-span-2">
+                <div className="sm:col-span-2">
                   <label className="block text-sm font-medium text-[#1a1a1a] mb-1">
                     {t.patients.address}
                   </label>
@@ -701,71 +701,134 @@ const PatientsPage = () => {
             </button>
           </div>
         ) : (
-          <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b border-gray-100">
-                    <th className="text-left px-6 py-4 text-sm font-semibold text-[#1a1a1a]">Paciente</th>
-                    <th className="text-left px-6 py-4 text-sm font-semibold text-[#1a1a1a]">{t.patients.email}</th>
-                    <th className="text-left px-6 py-4 text-sm font-semibold text-[#1a1a1a]">{t.patients.phone}</th>
-                    <th className="text-left px-6 py-4 text-sm font-semibold text-[#1a1a1a]">{t.patients.totalSessions}</th>
-                    <th className="text-right px-6 py-4 text-sm font-semibold text-[#1a1a1a]">{t.common.actions}</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredPatients.map((patient) => (
-                    <tr key={patient.id} className="border-b border-gray-50 hover:bg-gray-50">
-                      <td className="px-6 py-4">
-                        <button
-                          onClick={() => setSelectedPatient(patient)}
-                          className="flex items-center gap-3 hover:text-[#1a1a1a]"
-                        >
-                          <div className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center">
-                            <span className="font-medium text-[#1a1a1a]">
-                              {patient.firstName.charAt(0)}{patient.lastName.charAt(0)}
-                            </span>
-                          </div>
-                          <div className="text-left">
-                            <p className="font-medium text-[#1a1a1a]">
-                              {patient.firstName} {patient.lastName}
-                            </p>
-                          </div>
-                        </button>
-                      </td>
-                      <td className="px-6 py-4 text-sm text-gray-600">{patient.email}</td>
-                      <td className="px-6 py-4 text-sm text-gray-600">{patient.phone}</td>
-                      <td className="px-6 py-4 text-sm text-gray-600">
-                        {getSessionsByPatient(patient.id).length}
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="flex items-center justify-end gap-2">
-                          <button
-                            onClick={() => handleEdit(patient)}
-                            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-                            title={t.common.edit}
-                          >
-                            <svg className="w-4 h-4 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                            </svg>
-                          </button>
-                          <button
-                            onClick={() => handleDelete(patient)}
-                            className="p-2 hover:bg-red-50 rounded-lg transition-colors"
-                            title={t.common.delete}
-                          >
-                            <svg className="w-4 h-4 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                            </svg>
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+          <>
+            {/* Mobile: Card Layout */}
+            <div className="md:hidden space-y-3">
+              {filteredPatients.map((patient) => (
+                <div key={patient.id} className="mobile-card">
+                  <div className="mobile-card-header">
+                    <button
+                      onClick={() => setSelectedPatient(patient)}
+                      className="flex items-center gap-3 min-h-[44px]"
+                    >
+                      <div className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center flex-shrink-0">
+                        <span className="font-medium text-[#1a1a1a]">
+                          {patient.firstName.charAt(0)}{patient.lastName.charAt(0)}
+                        </span>
+                      </div>
+                      <div className="text-left">
+                        <p className="font-medium text-[#1a1a1a]">
+                          {patient.firstName} {patient.lastName}
+                        </p>
+                        <p className="text-xs text-gray-500">{patient.email || "Sin email"}</p>
+                      </div>
+                    </button>
+                  </div>
+                  
+                  <div className="space-y-1">
+                    <div className="mobile-card-row">
+                      <span className="mobile-card-label">{t.patients.phone}</span>
+                      <span className="mobile-card-value">{patient.phone || "—"}</span>
+                    </div>
+                    <div className="mobile-card-row">
+                      <span className="mobile-card-label">{t.patients.totalSessions}</span>
+                      <span className="mobile-card-value">{getSessionsByPatient(patient.id).length}</span>
+                    </div>
+                  </div>
+                  
+                  <div className="mobile-card-actions">
+                    <button
+                      onClick={() => setSelectedPatient(patient)}
+                      className="flex-1 py-2.5 bg-gray-100 text-[#1a1a1a] rounded-lg hover:bg-gray-200 active:bg-gray-300 transition-colors text-sm font-medium min-h-[44px]"
+                    >
+                      Ver
+                    </button>
+                    <button
+                      onClick={() => handleEdit(patient)}
+                      className="flex-1 py-2.5 bg-gray-100 text-[#1a1a1a] rounded-lg hover:bg-gray-200 active:bg-gray-300 transition-colors text-sm font-medium min-h-[44px]"
+                    >
+                      {t.common.edit}
+                    </button>
+                    <button
+                      onClick={() => handleDelete(patient)}
+                      className="py-2.5 px-4 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 active:bg-red-200 transition-colors min-h-[44px]"
+                    >
+                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                      </svg>
+                    </button>
+                  </div>
+                </div>
+              ))}
             </div>
-          </div>
+
+            {/* Desktop: Table Layout */}
+            <div className="hidden md:block bg-white rounded-xl border border-gray-100 overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b border-gray-100">
+                      <th className="text-left px-6 py-4 text-sm font-semibold text-[#1a1a1a]">Paciente</th>
+                      <th className="text-left px-6 py-4 text-sm font-semibold text-[#1a1a1a]">{t.patients.email}</th>
+                      <th className="text-left px-6 py-4 text-sm font-semibold text-[#1a1a1a]">{t.patients.phone}</th>
+                      <th className="text-left px-6 py-4 text-sm font-semibold text-[#1a1a1a]">{t.patients.totalSessions}</th>
+                      <th className="text-right px-6 py-4 text-sm font-semibold text-[#1a1a1a]">{t.common.actions}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredPatients.map((patient) => (
+                      <tr key={patient.id} className="border-b border-gray-50 hover:bg-gray-50">
+                        <td className="px-6 py-4">
+                          <button
+                            onClick={() => setSelectedPatient(patient)}
+                            className="flex items-center gap-3 hover:text-[#1a1a1a]"
+                          >
+                            <div className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center">
+                              <span className="font-medium text-[#1a1a1a]">
+                                {patient.firstName.charAt(0)}{patient.lastName.charAt(0)}
+                              </span>
+                            </div>
+                            <div className="text-left">
+                              <p className="font-medium text-[#1a1a1a]">
+                                {patient.firstName} {patient.lastName}
+                              </p>
+                            </div>
+                          </button>
+                        </td>
+                        <td className="px-6 py-4 text-sm text-gray-600">{patient.email}</td>
+                        <td className="px-6 py-4 text-sm text-gray-600">{patient.phone}</td>
+                        <td className="px-6 py-4 text-sm text-gray-600">
+                          {getSessionsByPatient(patient.id).length}
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="flex items-center justify-end gap-2">
+                            <button
+                              onClick={() => handleEdit(patient)}
+                              className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                              title={t.common.edit}
+                            >
+                              <svg className="w-4 h-4 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                              </svg>
+                            </button>
+                            <button
+                              onClick={() => handleDelete(patient)}
+                              className="p-2 hover:bg-red-50 rounded-lg transition-colors"
+                              title={t.common.delete}
+                            >
+                              <svg className="w-4 h-4 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                              </svg>
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </>
         )}
       </div>
     </MainLayout>

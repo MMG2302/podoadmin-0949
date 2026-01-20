@@ -186,6 +186,9 @@ const AdminCreditsPage = () => {
     setAmount(1);
     setReason("");
     setSelectedUserId("");
+    
+    // Reload page after 1 second to ensure fresh data and prevent over-assignment
+    setTimeout(() => window.location.reload(), 1000);
   };
 
   return (

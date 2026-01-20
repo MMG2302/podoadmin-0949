@@ -93,6 +93,7 @@ const KEYS = {
   CREDIT_TRANSACTIONS: "podoadmin_credit_transactions",
   AUDIT_LOG: "podoadmin_audit_log",
   THEME: "podoadmin_theme",
+  CREATED_USERS: "podoadmin_created_users",
 };
 
 // Generic storage helpers
@@ -907,4 +908,87 @@ export const saveProfessionalCredentials = (userId: string, cedula: string, regi
   const store = getItem<ProfessionalCredentialsStore>(PROFESSIONAL_CREDENTIALS_KEY, {});
   store[userId] = { cedula, registro };
   setItem(PROFESSIONAL_CREDENTIALS_KEY, store);
+};
+
+// ============ Created Users Storage ============
+// Users created by Super Admin (stored with password for mock authentication)
+
+export interface CreatedUser {
+  id: string;
+  email: string;
+  name: string;
+  role: "super_admin" | "clinic_admin" | "admin" | "podiatrist";
+  clinicId?: string;
+  password: string;
+  createdAt: string;
+  createdBy: string;
+}
+
+export const getCreatedUsers = (): CreatedUser[] => {
+  return getItem<CreatedUser[]>(KEYS.CREATED_USERS, []);
+};
+
+export const saveCreatedUser = (
+  userData: {
+    email: string;
+    name: string;
+    role: "super_admin" | "clinic_admin" | "admin" | "podiatrist";
+    clinicId?: string;
+  },
+  password: string,
+  createdBy: string
+): CreatedUser => {
+  const users = getCreatedUsers();
+  
+  // Check if email already exists
+  const existingUser = users.find(u => u.email.toLowerCase() === userData.email.toLowerCase());
+  if (existingUser) {
+    throw new Error("Ya existe un usuario con este correo electrónico");
+  }
+  
+  const newUser: CreatedUser = {
+    id: `user_created_${generateId()}`,
+    email: userData.email,
+    name: userData.name,
+    role: userData.role,
+    clinicId: userData.clinicId,
+    password: password,
+    createdAt: new Date().toISOString(),
+    createdBy: createdBy,
+  };
+  
+  users.push(newUser);
+  setItem(KEYS.CREATED_USERS, users);
+  return newUser;
+};
+
+export const updateCreatedUser = (userId: string, updates: Partial<Omit<CreatedUser, "id" | "createdAt" | "createdBy">>): CreatedUser | null => {
+  const users = getCreatedUsers();
+  const index = users.findIndex(u => u.id === userId);
+  if (index === -1) return null;
+  
+  // Check if updating email to an existing one
+  if (updates.email) {
+    const existingUser = users.find(u => 
+      u.email.toLowerCase() === updates.email!.toLowerCase() && u.id !== userId
+    );
+    if (existingUser) {
+      throw new Error("Ya existe un usuario con este correo electrónico");
+    }
+  }
+  
+  users[index] = {
+    ...users[index],
+    ...updates,
+  };
+  setItem(KEYS.CREATED_USERS, users);
+  return users[index];
+};
+
+export const deleteCreatedUser = (userId: string): boolean => {
+  const users = getCreatedUsers();
+  const filtered = users.filter(u => u.id !== userId);
+  if (filtered.length === users.length) return false;
+  setItem(KEYS.CREATED_USERS, filtered);
+  return true;
 };

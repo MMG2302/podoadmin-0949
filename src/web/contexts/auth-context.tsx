@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
+import { getCreatedUsers, CreatedUser } from "@/lib/storage";
 
 export type UserRole = "super_admin" | "clinic_admin" | "admin" | "podiatrist";
 
@@ -224,7 +225,27 @@ const MOCK_USERS: { email: string; password: string; user: User }[] = [
   },
 ];
 
-export const getAllUsers = () => MOCK_USERS.map(u => u.user);
+// Helper function to get all users (mock + created)
+const getAllUsersWithCredentials = (): { email: string; password: string; user: User }[] => {
+  const createdUsers = getCreatedUsers();
+  const createdUsersFormatted = createdUsers.map((cu: CreatedUser) => ({
+    email: cu.email,
+    password: cu.password,
+    user: {
+      id: cu.id,
+      email: cu.email,
+      name: cu.name,
+      role: cu.role,
+      clinicId: cu.clinicId,
+    } as User,
+  }));
+  return [...MOCK_USERS, ...createdUsersFormatted];
+};
+
+export const getAllUsers = () => {
+  const allUsers = getAllUsersWithCredentials();
+  return allUsers.map(u => u.user);
+};
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
@@ -246,7 +267,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     // Simulate API delay
     await new Promise((resolve) => setTimeout(resolve, 800));
 
-    const matchedUser = MOCK_USERS.find(
+    // Get fresh list of users (including newly created ones)
+    const allUsers = getAllUsersWithCredentials();
+    const matchedUser = allUsers.find(
       (u) => u.email.toLowerCase() === email.toLowerCase() && u.password === password
     );
 

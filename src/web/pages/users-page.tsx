@@ -13,6 +13,7 @@ import {
   addAuditLog,
   exportPatientData,
   generateId,
+  saveCreatedUser,
   Patient,
   ClinicalSession,
   CreditTransaction,
@@ -741,23 +742,43 @@ const UsersPage = () => {
   };
 
   const handleCreateUser = (userData: Partial<User> & { password: string }) => {
-    // In a real app, this would create the user in the backend
-    // For now, we just log it and show a message
-    const newUserId = generateId();
-    console.log("Creating user:", userData);
-    addAuditLog({
-      userId: currentUser?.id || "",
-      userName: currentUser?.name || "",
-      action: "CREATE",
-      entityType: "user",
-      entityId: newUserId,
-      details: JSON.stringify({
-        action: "user_create",
-        newUserName: userData.name,
-        newUserEmail: userData.email,
-        newUserRole: userData.role,
-      }),
-    });
+    try {
+      // Save the user to localStorage so they can log in
+      const newUser = saveCreatedUser(
+        {
+          email: userData.email || "",
+          name: userData.name || "",
+          role: userData.role || "podiatrist",
+          clinicId: userData.clinicId,
+        },
+        userData.password,
+        currentUser?.id || ""
+      );
+      
+      // Add audit log
+      addAuditLog({
+        userId: currentUser?.id || "",
+        userName: currentUser?.name || "",
+        action: "CREATE",
+        entityType: "user",
+        entityId: newUser.id,
+        details: JSON.stringify({
+          action: "user_create",
+          newUserName: userData.name,
+          newUserEmail: userData.email,
+          newUserRole: userData.role,
+          newUserClinicId: userData.clinicId,
+        }),
+      });
+      
+      // Refresh users list
+      setUsers(loadUsersWithData());
+      
+      // Show success (toast would be better but using alert for simplicity)
+      alert("Usuario creado exitosamente. El usuario puede iniciar sesión inmediatamente.");
+    } catch (error) {
+      alert(error instanceof Error ? error.message : "Error al crear usuario");
+    }
   };
 
   const handleEditUser = (userId: string, updates: Partial<User>) => {

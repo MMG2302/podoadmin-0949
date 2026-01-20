@@ -178,104 +178,113 @@ const AdminCreditsPage = () => {
     }
   }, [selectedUserId, userLimitInfo?.remaining]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
     setAmountWarning("");
 
-    // Validation before saving
-    if (!selectedUserId) {
-      setError("Selecciona un usuario");
-      return;
+    try {
+      // Validation before saving
+      if (!selectedUserId) {
+        setError("Selecciona un usuario");
+        return;
+      }
+
+      if (reason.length < 20) {
+        setError("El motivo debe tener al menos 20 caracteres");
+        return;
+      }
+
+      if (amount <= 0) {
+        setError("La cantidad debe ser mayor a 0");
+        return;
+      }
+
+      // Re-validate against per-user monthly limit IMMEDIATELY before saving
+      const userLimit = calculateUserMonthlyLimit(selectedUserId);
+      const adjustmentsThisMonth = getAdjustmentsForUserThisMonth(selectedUserId);
+      const totalAdjustedForUser = adjustmentsThisMonth.reduce((sum, adj) => sum + adj.amount, 0);
+      const remainingForUser = userLimit - totalAdjustedForUser;
+      
+      // Check limit BEFORE any updates
+      if (amount > remainingForUser) {
+        setError(
+          `Este usuario solo puede recibir ${userLimit} créditos de ajuste este mes. ` +
+          `Ya se han asignado ${totalAdjustedForUser}, quedan ${remainingForUser} disponibles.`
+        );
+        setToast({ message: "No se pudo completar el ajuste: límite por usuario excedido", type: "error" });
+        return;
+      }
+
+      setIsLoading(true);
+      
+      // Store values before clearing form
+      const adjustedUserName = selectedUser?.name || "";
+      const adjustedAmount = amount;
+      const newRemaining = remainingForUser - amount;
+
+      // Get fresh user credits and update
+      const userCreditsData = getUserCredits(selectedUserId);
+      userCreditsData.extraCredits += amount;
+      updateUserCredits(userCreditsData);
+
+      // Add transaction
+      addCreditTransaction({
+        userId: selectedUserId,
+        type: "purchase",
+        amount,
+        description: `Ajuste de soporte: ${reason}`,
+      });
+
+      // Save admin adjustment record
+      saveAdminAdjustment({
+        userId: selectedUserId,
+        userName: selectedUser?.name || "",
+        amount,
+        reason,
+        adminId: currentUser?.id || "",
+        adminName: currentUser?.name || "",
+      });
+
+      // Add audit log
+      addAuditLog({
+        userId: currentUser?.id || "",
+        userName: currentUser?.name || "",
+        action: "ADMIN_CREDIT_ADJUSTMENT",
+        entityType: "credit",
+        entityId: selectedUserId,
+        details: JSON.stringify({
+          action: "admin_credit_adjustment",
+          targetUserId: selectedUserId,
+          targetUserName: selectedUser?.name,
+          amount: amount,
+          reason: reason,
+          userMonthlyLimit: userLimit,
+          totalAdjustedForUserThisMonth: totalAdjustedForUser + amount,
+        }),
+      });
+
+      // Immediately reset form and stop loading - no delays
+      setAmount(1);
+      setReason("");
+      setSelectedUserId("");
+      setIsLoading(false);
+      
+      // Refresh data to show updated values
+      setRefreshKey(prev => prev + 1);
+      
+      // Show success toast
+      setToast({ 
+        message: `+${adjustedAmount} créditos añadidos a ${adjustedUserName}. Disponible para este usuario: ${newRemaining}`, 
+        type: "success" 
+      });
+    } catch (err) {
+      // Catch any unexpected errors
+      setIsLoading(false);
+      setError("Error al procesar el ajuste. Por favor, inténtalo de nuevo.");
+      setToast({ message: "Error inesperado al procesar el ajuste", type: "error" });
+      console.error("Credit adjustment error:", err);
     }
-
-    if (reason.length < 20) {
-      setError("El motivo debe tener al menos 20 caracteres");
-      return;
-    }
-
-    if (amount <= 0) {
-      setError("La cantidad debe ser mayor a 0");
-      return;
-    }
-
-    // Re-validate against per-user monthly limit before saving (fresh calculation)
-    const userLimit = calculateUserMonthlyLimit(selectedUserId);
-    const adjustmentsThisMonth = getAdjustmentsForUserThisMonth(selectedUserId);
-    const totalAdjustedForUser = adjustmentsThisMonth.reduce((sum, adj) => sum + adj.amount, 0);
-    const remainingForUser = userLimit - totalAdjustedForUser;
-    
-    if (amount > remainingForUser) {
-      setError(
-        `Este usuario solo puede recibir ${userLimit} créditos de ajuste este mes. ` +
-        `Ya se han asignado ${totalAdjustedForUser}, quedan ${remainingForUser} disponibles.`
-      );
-      setToast({ message: "No se pudo completar el ajuste: límite por usuario excedido", type: "error" });
-      return;
-    }
-
-    setIsLoading(true);
-    const adjustedUserName = selectedUser?.name || "";
-    const adjustedAmount = amount;
-    const newRemaining = remainingForUser - amount;
-
-    // Add credits to user
-    const userCreditsData = getUserCredits(selectedUserId);
-    userCreditsData.extraCredits += amount;
-    updateUserCredits(userCreditsData);
-
-    // Add transaction
-    addCreditTransaction({
-      userId: selectedUserId,
-      type: "purchase",
-      amount,
-      description: `Ajuste de soporte: ${reason}`,
-    });
-
-    // Save admin adjustment record
-    saveAdminAdjustment({
-      userId: selectedUserId,
-      userName: selectedUser?.name || "",
-      amount,
-      reason,
-      adminId: currentUser?.id || "",
-      adminName: currentUser?.name || "",
-    });
-
-    // Add audit log
-    addAuditLog({
-      userId: currentUser?.id || "",
-      userName: currentUser?.name || "",
-      action: "ADMIN_CREDIT_ADJUSTMENT",
-      entityType: "credit",
-      entityId: selectedUserId,
-      details: JSON.stringify({
-        action: "admin_credit_adjustment",
-        targetUserId: selectedUserId,
-        targetUserName: selectedUser?.name,
-        amount: amount,
-        reason: reason,
-        userMonthlyLimit: userLimit,
-        totalAdjustedForUserThisMonth: totalAdjustedForUser + amount,
-      }),
-    });
-
-    // 500ms delay to show the loading state and then update
-    await new Promise(resolve => setTimeout(resolve, 500));
-
-    // Refresh data
-    setRefreshKey(prev => prev + 1);
-    
-    setAmount(1);
-    setReason("");
-    setSelectedUserId("");
-    setIsLoading(false);
-    
-    // Show toast with confirmation
-    setToast({ 
-      message: `+${adjustedAmount} créditos añadidos a ${adjustedUserName}. Disponible para este usuario: ${newRemaining}`, 
-      type: "success" 
-    });
   };
 
   return (

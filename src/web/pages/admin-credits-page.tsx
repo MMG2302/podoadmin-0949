@@ -171,6 +171,13 @@ const AdminCreditsPage = () => {
       return;
     }
 
+    // Validate selectedUserId exists before proceeding
+    const targetUser = podiatrists.find(u => u.id === selectedUserId);
+    if (!targetUser) {
+      setError("Usuario seleccionado no válido");
+      return;
+    }
+
     // Store what the user saw on screen for staleness detection
     const displayedAdjusted = selectedUserAdjusted;
     const displayedLimit = selectedUserLimit;
@@ -178,11 +185,39 @@ const AdminCreditsPage = () => {
     try {
       // ULTRA-STRICT VALIDATION: Get absolute latest data from localStorage RIGHT BEFORE saving
       // This is the LAST check before any write operations
-      const freshAdjustments = getAllMonthlyAdjustments();
+      
+      // Isolated try-catch for getAllMonthlyAdjustments
+      let freshAdjustments: AdminAdjustment[];
+      try {
+        freshAdjustments = getAllMonthlyAdjustments();
+        if (!Array.isArray(freshAdjustments)) {
+          console.error("[Credit Adjustment Error] getAllMonthlyAdjustments returned non-array:", freshAdjustments);
+          freshAdjustments = [];
+        }
+      } catch (adjError) {
+        console.error("[Credit Adjustment Error] getAllMonthlyAdjustments failed:", adjError);
+        setError(`Error al obtener ajustes mensuales: ${adjError instanceof Error ? adjError.message : String(adjError)}`);
+        return;
+      }
+
       const freshTotalAdjusted = freshAdjustments
         .filter(adj => adj.userId === selectedUserId)
         .reduce((sum, adj) => sum + adj.amount, 0);
-      const freshLimit = calculateMonthlyLimit(selectedUserId);
+
+      // Isolated try-catch for calculateMonthlyLimit
+      let freshLimit: number;
+      try {
+        freshLimit = calculateMonthlyLimit(selectedUserId);
+        if (typeof freshLimit !== 'number' || isNaN(freshLimit)) {
+          console.error("[Credit Adjustment Error] calculateMonthlyLimit returned invalid value:", freshLimit);
+          freshLimit = 0;
+        }
+      } catch (limitError) {
+        console.error("[Credit Adjustment Error] calculateMonthlyLimit failed:", limitError);
+        setError(`Error al calcular límite mensual: ${limitError instanceof Error ? limitError.message : String(limitError)}`);
+        return;
+      }
+
       const freshRemaining = freshLimit - freshTotalAdjusted;
 
       // Debug logging
@@ -228,7 +263,7 @@ const AdminCreditsPage = () => {
       // Save admin adjustment record
       const savedAdjustment = saveAdminAdjustment({
         userId: selectedUserId,
-        userName: selectedUser?.name || "",
+        userName: targetUser.name,
         amount,
         reason,
         adminId: currentUser?.id || "",
@@ -247,7 +282,7 @@ const AdminCreditsPage = () => {
         details: JSON.stringify({
           action: "admin_credit_adjustment",
           targetUserId: selectedUserId,
-          targetUserName: selectedUser?.name,
+          targetUserName: targetUser.name,
           amount: amount,
           reason: reason,
           limitUsedThisMonth: freshTotalAdjusted + amount,
@@ -255,7 +290,7 @@ const AdminCreditsPage = () => {
         }),
       });
 
-      setSuccess(`Se han añadido ${amount} créditos a ${selectedUser?.name}`);
+      setSuccess(`Se han añadido ${amount} créditos a ${targetUser.name}`);
       setAmount(1);
       setReason("");
       setSelectedUserId("");
@@ -263,8 +298,15 @@ const AdminCreditsPage = () => {
       // Reload page after 1 second to ensure fresh data and prevent over-assignment
       setTimeout(() => window.location.reload(), 1000);
     } catch (err) {
-      console.error("[Credit Adjustment Error] localStorage read/write failed:", err);
-      setError("Error al acceder a los datos. Por favor, recargue la página e intente de nuevo.");
+      console.error("[Credit Adjustment Error] Full error details:", {
+        error: err,
+        errorMessage: err instanceof Error ? err.message : String(err),
+        errorStack: err instanceof Error ? err.stack : undefined,
+        selectedUserId,
+        amount,
+        reason,
+      });
+      setError(`Error: ${err instanceof Error ? err.message : String(err)}`);
     }
   };
 

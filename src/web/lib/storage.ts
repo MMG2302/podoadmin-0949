@@ -154,6 +154,8 @@ const KEYS = {
   AUDIT_LOG: "podoadmin_audit_log",
   THEME: "podoadmin_theme",
   CREATED_USERS: "podoadmin_created_users",
+  CLINIC_CREDITS: "podoadmin_clinic_credits",
+  CLINIC_CREDIT_DISTRIBUTIONS: "podoadmin_clinic_credit_distributions",
 };
 
 // Generic storage helpers - using safeStorage for Safari private mode compatibility
@@ -1100,4 +1102,159 @@ export const deleteCreatedUser = (userId: string): boolean => {
   if (filtered.length === users.length) return false;
   setItem(KEYS.CREATED_USERS, filtered);
   return true;
+};
+
+// ============================================
+// CLINIC CREDITS (Hybrid credit system)
+// ============================================
+
+export interface ClinicCredits {
+  clinicId: string;
+  totalCredits: number;
+  distributedToDate: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreditDistribution {
+  id: string;
+  clinicId: string;
+  fromClinicAdmin: string; // userId of clinic admin
+  toPodiatrist: string; // userId of podiatrist
+  amount: number;
+  reason: string;
+  createdAt: string;
+}
+
+export const getClinicCredits = (clinicId: string): ClinicCredits | null => {
+  const allClinicCredits = getItem<ClinicCredits[]>(KEYS.CLINIC_CREDITS, []);
+  return allClinicCredits.find(c => c.clinicId === clinicId) || null;
+};
+
+export const initializeClinicCredits = (clinicId: string, initialCredits: number = 500): ClinicCredits => {
+  const existingCredits = getClinicCredits(clinicId);
+  if (existingCredits) return existingCredits;
+  
+  const newClinicCredits: ClinicCredits = {
+    clinicId,
+    totalCredits: initialCredits,
+    distributedToDate: 0,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  };
+  
+  const allClinicCredits = getItem<ClinicCredits[]>(KEYS.CLINIC_CREDITS, []);
+  allClinicCredits.push(newClinicCredits);
+  setItem(KEYS.CLINIC_CREDITS, allClinicCredits);
+  
+  return newClinicCredits;
+};
+
+export const updateClinicCredits = (clinicId: string, amount: number): ClinicCredits | null => {
+  const allClinicCredits = getItem<ClinicCredits[]>(KEYS.CLINIC_CREDITS, []);
+  const index = allClinicCredits.findIndex(c => c.clinicId === clinicId);
+  
+  if (index === -1) {
+    // Initialize if not exists
+    const initialized = initializeClinicCredits(clinicId, amount);
+    return initialized;
+  }
+  
+  allClinicCredits[index].totalCredits = amount;
+  allClinicCredits[index].updatedAt = new Date().toISOString();
+  setItem(KEYS.CLINIC_CREDITS, allClinicCredits);
+  
+  return allClinicCredits[index];
+};
+
+export const addClinicCredits = (clinicId: string, amount: number): ClinicCredits | null => {
+  const existing = getClinicCredits(clinicId);
+  if (!existing) {
+    return initializeClinicCredits(clinicId, amount);
+  }
+  
+  const allClinicCredits = getItem<ClinicCredits[]>(KEYS.CLINIC_CREDITS, []);
+  const index = allClinicCredits.findIndex(c => c.clinicId === clinicId);
+  
+  allClinicCredits[index].totalCredits += amount;
+  allClinicCredits[index].updatedAt = new Date().toISOString();
+  setItem(KEYS.CLINIC_CREDITS, allClinicCredits);
+  
+  return allClinicCredits[index];
+};
+
+export const getClinicAvailableCredits = (clinicId: string): number => {
+  const clinicCredits = getClinicCredits(clinicId);
+  if (!clinicCredits) return 0;
+  return clinicCredits.totalCredits - clinicCredits.distributedToDate;
+};
+
+export const distributeCreditsToDoctor = (
+  clinicId: string,
+  doctorId: string,
+  amount: number,
+  distributedBy: string,
+  reason: string = "Distribución de créditos"
+): { success: boolean; error?: string; distribution?: CreditDistribution } => {
+  const availableCredits = getClinicAvailableCredits(clinicId);
+  
+  if (amount <= 0) {
+    return { success: false, error: "La cantidad debe ser mayor a 0" };
+  }
+  
+  if (amount > availableCredits) {
+    return { success: false, error: `No hay suficientes créditos disponibles. Disponibles: ${availableCredits}` };
+  }
+  
+  // Update clinic credits - add to distributed amount
+  const allClinicCredits = getItem<ClinicCredits[]>(KEYS.CLINIC_CREDITS, []);
+  const clinicIndex = allClinicCredits.findIndex(c => c.clinicId === clinicId);
+  
+  if (clinicIndex === -1) {
+    return { success: false, error: "Clínica no encontrada" };
+  }
+  
+  allClinicCredits[clinicIndex].distributedToDate += amount;
+  allClinicCredits[clinicIndex].updatedAt = new Date().toISOString();
+  setItem(KEYS.CLINIC_CREDITS, allClinicCredits);
+  
+  // Add credits to podiatrist
+  const doctorCredits = getUserCredits(doctorId);
+  doctorCredits.extraCredits += amount;
+  updateUserCredits(doctorCredits);
+  
+  // Record the distribution
+  const distribution: CreditDistribution = {
+    id: generateId(),
+    clinicId,
+    fromClinicAdmin: distributedBy,
+    toPodiatrist: doctorId,
+    amount,
+    reason,
+    createdAt: new Date().toISOString(),
+  };
+  
+  const distributions = getItem<CreditDistribution[]>(KEYS.CLINIC_CREDIT_DISTRIBUTIONS, []);
+  distributions.push(distribution);
+  setItem(KEYS.CLINIC_CREDIT_DISTRIBUTIONS, distributions);
+  
+  // Add credit transaction for the podiatrist
+  addCreditTransaction({
+    userId: doctorId,
+    type: "purchase", // Using purchase type for distributed credits
+    amount,
+    description: `Créditos distribuidos por administrador de clínica: ${reason}`,
+  });
+  
+  return { success: true, distribution };
+};
+
+export const getCreditDistributions = (clinicId?: string): CreditDistribution[] => {
+  const distributions = getItem<CreditDistribution[]>(KEYS.CLINIC_CREDIT_DISTRIBUTIONS, []);
+  if (!clinicId) return distributions;
+  return distributions.filter(d => d.clinicId === clinicId);
+};
+
+export const getAllClinicCredits = (): ClinicCredits[] => {
+  return getItem<ClinicCredits[]>(KEYS.CLINIC_CREDITS, []);
 };

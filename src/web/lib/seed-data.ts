@@ -5,6 +5,7 @@ import {
   UserCredits,
   AuditLog,
   Clinic,
+  ClinicCredits,
   generateId,
 } from "./storage";
 
@@ -15,6 +16,7 @@ const STORAGE_KEYS = {
   CREDIT_TRANSACTIONS: "podoadmin_credit_transactions",
   AUDIT_LOG: "podoadmin_audit_log",
   CLINICS: "podoadmin_clinics",
+  CLINIC_CREDITS: "podoadmin_clinic_credits",
   SEEDED: "podoadmin_seeded",
 };
 
@@ -531,6 +533,31 @@ export const seedDatabase = () => {
     },
   ];
 
+  // Initialize clinic credits pool for each clinic
+  const clinicCredits: ClinicCredits[] = [
+    {
+      clinicId: "clinic_001",
+      totalCredits: 750,
+      distributedToDate: 150,
+      createdAt: new Date(2024, 0, 15).toISOString(),
+      updatedAt: new Date().toISOString(),
+    },
+    {
+      clinicId: "clinic_002",
+      totalCredits: 500,
+      distributedToDate: 100,
+      createdAt: new Date(2024, 2, 1).toISOString(),
+      updatedAt: new Date().toISOString(),
+    },
+    {
+      clinicId: "clinic_003",
+      totalCredits: 600,
+      distributedToDate: 75,
+      createdAt: new Date(2024, 4, 10).toISOString(),
+      updatedAt: new Date().toISOString(),
+    },
+  ];
+
   // Save to localStorage
   localStorage.setItem(STORAGE_KEYS.PATIENTS, JSON.stringify(patients));
   localStorage.setItem(STORAGE_KEYS.SESSIONS, JSON.stringify(sessions));
@@ -540,10 +567,12 @@ export const seedDatabase = () => {
     new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
   )));
   localStorage.setItem(STORAGE_KEYS.CLINICS, JSON.stringify(clinics));
+  localStorage.setItem(STORAGE_KEYS.CLINIC_CREDITS, JSON.stringify(clinicCredits));
   localStorage.setItem(STORAGE_KEYS.SEEDED, "true");
 
   console.log(`Database seeded successfully:
     - ${clinics.length} clinics with complete contact info
+    - ${clinicCredits.length} clinic credit pools
     - ${patients.length} patients with folios
     - ${sessions.length} clinical sessions
     - ${credits.length} credit records

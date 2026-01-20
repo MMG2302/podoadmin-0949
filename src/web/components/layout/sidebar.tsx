@@ -112,6 +112,17 @@ export const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
       roles: ["super_admin", "clinic_admin", "admin", "podiatrist"] as const,
     },
     {
+      path: "/distribute-credits",
+      label: "Distribuir Créditos",
+      icon: (
+        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+        </svg>
+      ),
+      permission: "view_clinic_stats" as const,
+      roles: ["clinic_admin"] as const,
+    },
+    {
       path: "/audit-log",
       label: t.nav.auditLog,
       icon: (

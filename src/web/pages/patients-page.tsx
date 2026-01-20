@@ -53,8 +53,11 @@ const emptyForm: PatientFormData = {
 const PatientsPage = () => {
   const { t } = useLanguage();
   const { user } = useAuth();
-  const { isSuperAdmin } = usePermissions();
+  const { isSuperAdmin, isPodiatrist, isClinicAdmin } = usePermissions();
   const [, setLocation] = useLocation();
+  
+  // Only podiatrists can create patients
+  const canCreatePatient = isPodiatrist;
   
   const credits = getUserCredits(user?.id || "");
   
@@ -672,15 +675,32 @@ const PatientsPage = () => {
               className="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:border-[#1a1a1a] focus:ring-1 focus:ring-[#1a1a1a]"
             />
           </div>
-          <button
-            onClick={() => setShowForm(true)}
-            className="px-4 py-2.5 bg-[#1a1a1a] text-white rounded-lg hover:bg-[#2a2a2a] transition-colors font-medium flex items-center gap-2"
-          >
-            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-            </svg>
-            {t.patients.addPatient}
-          </button>
+          {canCreatePatient ? (
+            <button
+              onClick={() => setShowForm(true)}
+              className="px-4 py-2.5 bg-[#1a1a1a] text-white rounded-lg hover:bg-[#2a2a2a] transition-colors font-medium flex items-center gap-2"
+            >
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+              </svg>
+              {t.patients.addPatient}
+            </button>
+          ) : (
+            <div className="relative group">
+              <button
+                disabled
+                className="px-4 py-2.5 bg-gray-200 text-gray-400 rounded-lg cursor-not-allowed font-medium flex items-center gap-2"
+              >
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                </svg>
+                {t.patients.addPatient}
+              </button>
+              <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-gray-800 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-10">
+                Solo los podólogos pueden crear pacientes
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Patient List */}
@@ -692,13 +712,19 @@ const PatientsPage = () => {
               </svg>
             </div>
             <h3 className="text-lg font-semibold text-[#1a1a1a] mb-2">{t.patients.noPatients}</h3>
-            <p className="text-gray-500 mb-6">Añade tu primer paciente para comenzar</p>
-            <button
-              onClick={() => setShowForm(true)}
-              className="px-6 py-2.5 bg-[#1a1a1a] text-white rounded-lg hover:bg-[#2a2a2a] transition-colors font-medium"
-            >
-              {t.patients.addPatient}
-            </button>
+            <p className="text-gray-500 mb-6">
+              {canCreatePatient 
+                ? "Añade tu primer paciente para comenzar" 
+                : "Solo los podólogos pueden crear pacientes"}
+            </p>
+            {canCreatePatient && (
+              <button
+                onClick={() => setShowForm(true)}
+                className="px-6 py-2.5 bg-[#1a1a1a] text-white rounded-lg hover:bg-[#2a2a2a] transition-colors font-medium"
+              >
+                {t.patients.addPatient}
+              </button>
+            )}
           </div>
         ) : (
           <>

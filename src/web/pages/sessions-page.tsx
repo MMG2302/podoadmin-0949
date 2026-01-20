@@ -77,7 +77,7 @@ const appointmentReasons: { value: AppointmentReason; label: string }[] = [
 const SessionsPage = () => {
   const { t } = useLanguage();
   const { user } = useAuth();
-  const { isSuperAdmin } = usePermissions();
+  const { isSuperAdmin, isPodiatrist } = usePermissions();
   const [location] = useLocation();
   
   const credits = getUserCredits(user?.id || "");
@@ -294,11 +294,30 @@ const SessionsPage = () => {
   };
 
   const handleExport = (session: ClinicalSession) => {
+    // Only podiatrists can export, and must have enough credits
+    if (!isPodiatrist) {
+      alert("Solo los podólogos pueden exportar historias clínicas.");
+      return;
+    }
+    
+    // Check credit balance before export
+    const currentCredits = getUserCredits(user?.id || "");
+    const availableCredits = currentCredits.monthlyCredits + currentCredits.extraCredits - currentCredits.reservedCredits;
+    
+    if (availableCredits < 1) {
+      alert("No tienes suficientes créditos. Contacta a tu administrador de clínica.");
+      return;
+    }
+    
     const data = exportPatientData(session.patientId);
     if (!data) return;
     
-    // Consume credit if not already done
-    consumeCredit(user?.id || "", session.id);
+    // Consume credit from the podiatrist who is exporting
+    const consumed = consumeCredit(user?.id || "", session.id);
+    if (!consumed) {
+      alert("Error al consumir crédito. No tienes suficientes créditos disponibles.");
+      return;
+    }
     
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
     const url = URL.createObjectURL(blob);
@@ -322,6 +341,8 @@ const SessionsPage = () => {
         patientId: session.patientId,
         patientName: patient ? `${patient.firstName} ${patient.lastName}` : "",
         exportType: "json",
+        creditConsumed: 1,
+        podiatristId: user?.id,
       }),
     });
   };

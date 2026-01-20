@@ -17,6 +17,7 @@ import AdminCreditsPage from "./admin-credits-page";
 import NotificationsPage from "./notifications-page";
 import CalendarPage from "./calendar-page";
 import MessagesPage from "./messages-page";
+import DistributeCreditsPage from "./distribute-credits-page";
 
 // Super Admin Dashboard - focused on Users, Credits, Settings
 const SuperAdminDashboard = () => {
@@ -554,6 +555,7 @@ const Dashboard = () => {
       
       {/* Clinic Admin routes */}
       {isClinicAdmin && <Route path="/clinic" component={ClinicManagementPage} />}
+      {isClinicAdmin && <Route path="/distribute-credits" component={DistributeCreditsPage} />}
       {isClinicAdmin && <Route path="/patients" component={PatientsPage} />}
       {isClinicAdmin && <Route path="/patients/:id" component={PatientsPage} />}
       {isClinicAdmin && <Route path="/sessions" component={SessionsPage} />}

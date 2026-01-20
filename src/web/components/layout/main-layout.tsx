@@ -1,17 +1,17 @@
-import { useState, useEffect, ReactNode } from "react";
+import { useState, useEffect, useCallback, ReactNode } from "react";
 import { useLocation } from "wouter";
 import { Sidebar } from "./sidebar";
 import { useLanguage } from "../../contexts/language-context";
 import { useAuth } from "../../contexts/auth-context";
 import { NotificationsBell } from "../notifications-bell";
 import { SettingsButton } from "../settings-button";
-import { initializeUserCredits } from "../../lib/storage";
+import { initializeUserCredits, getUserCredits } from "../../lib/storage";
 
 interface MainLayoutProps {
   children: ReactNode;
   title?: string;
   showCredits?: boolean;
-  credits?: { monthly: number; extra: number };
+  credits?: { monthly?: number; extra?: number; monthlyCredits?: number; extraCredits?: number };
 }
 
 const getCreditsColorClasses = (percentage: number, total: number) => {
@@ -36,18 +36,56 @@ const getCreditsColorClasses = (percentage: number, total: number) => {
   };
 };
 
-export const MainLayout = ({ children, title, showCredits = true, credits }: MainLayoutProps) => {
+export const MainLayout = ({ children, title, showCredits = true, credits: propCredits }: MainLayoutProps) => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const { t } = useLanguage();
   const { user } = useAuth();
   const [, setLocation] = useLocation();
+  
+  // Real-time credits state - fetched from localStorage
+  const [liveCredits, setLiveCredits] = useState<{ monthlyCredits: number; extraCredits: number }>({ monthlyCredits: 0, extraCredits: 0 });
+
+  // Function to fetch current credits from storage
+  const refreshCredits = useCallback(() => {
+    if (user?.id) {
+      const currentCredits = getUserCredits(user.id);
+      setLiveCredits(currentCredits);
+    }
+  }, [user?.id]);
 
   // Safety check: ensure credits are initialized when component mounts or user changes
   useEffect(() => {
     if (user && user.id) {
       initializeUserCredits(user.id, user.role);
+      refreshCredits();
     }
-  }, [user]);
+  }, [user, refreshCredits]);
+
+  // Listen for localStorage changes to update credits in real-time
+  useEffect(() => {
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key?.includes("credits")) {
+        refreshCredits();
+      }
+    };
+
+    // Listen for custom credit update events (for same-tab updates)
+    const handleCreditUpdate = () => {
+      refreshCredits();
+    };
+
+    window.addEventListener("storage", handleStorageChange);
+    window.addEventListener("creditsUpdated", handleCreditUpdate);
+    
+    // Also set up an interval to check for updates (fallback for same-tab changes)
+    const intervalId = setInterval(refreshCredits, 2000);
+
+    return () => {
+      window.removeEventListener("storage", handleStorageChange);
+      window.removeEventListener("creditsUpdated", handleCreditUpdate);
+      clearInterval(intervalId);
+    };
+  }, [refreshCredits]);
 
   // Default initial monthly credits based on role
   const getInitialMonthlyCredits = () => {
@@ -62,8 +100,9 @@ export const MainLayout = ({ children, title, showCredits = true, credits }: Mai
   };
 
   const initialMonthlyCredits = getInitialMonthlyCredits();
-  const monthlyCredits = credits?.monthly ?? 0;
-  const extraCredits = credits?.extra ?? 0;
+  // Use live credits from localStorage, fallback to props if provided
+  const monthlyCredits = liveCredits.monthlyCredits || (propCredits?.monthly ?? propCredits?.monthlyCredits ?? 0);
+  const extraCredits = liveCredits.extraCredits || (propCredits?.extra ?? propCredits?.extraCredits ?? 0);
   const totalCredits = monthlyCredits + extraCredits;
   const monthlyPercentage = initialMonthlyCredits > 0 ? (monthlyCredits / initialMonthlyCredits) * 100 : 0;
   const colorClasses = getCreditsColorClasses(monthlyPercentage, totalCredits);

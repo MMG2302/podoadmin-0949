@@ -1,4 +1,5 @@
 import { useState, ReactNode } from "react";
+import { useLocation } from "wouter";
 import { Sidebar } from "./sidebar";
 import { useLanguage } from "../../contexts/language-context";
 import { useAuth } from "../../contexts/auth-context";
@@ -12,11 +13,52 @@ interface MainLayoutProps {
   credits?: { monthly: number; extra: number };
 }
 
+const getCreditsColorClasses = (percentage: number, total: number) => {
+  if (total === 0) {
+    return {
+      bg: "bg-red-100",
+      text: "text-red-700",
+      icon: "text-red-600"
+    };
+  }
+  if (percentage <= 10) {
+    return {
+      bg: "bg-yellow-100",
+      text: "text-yellow-700",
+      icon: "text-yellow-600"
+    };
+  }
+  return {
+    bg: "bg-green-100",
+    text: "text-green-700",
+    icon: "text-green-600"
+  };
+};
+
 export const MainLayout = ({ children, title, showCredits = true, credits }: MainLayoutProps) => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const { t } = useLanguage();
+  const { user } = useAuth();
+  const [, setLocation] = useLocation();
 
-  const totalCredits = credits ? credits.monthly + credits.extra : 0;
+  // Default initial monthly credits based on role
+  const getInitialMonthlyCredits = () => {
+    if (!user) return 250;
+    switch (user.role) {
+      case "super_admin": return 1000;
+      case "clinic_admin": return 500;
+      case "admin": return 300;
+      case "podiatrist": return 250;
+      default: return 250;
+    }
+  };
+
+  const initialMonthlyCredits = getInitialMonthlyCredits();
+  const monthlyCredits = credits?.monthly ?? 0;
+  const extraCredits = credits?.extra ?? 0;
+  const totalCredits = monthlyCredits + extraCredits;
+  const monthlyPercentage = initialMonthlyCredits > 0 ? (monthlyCredits / initialMonthlyCredits) * 100 : 0;
+  const colorClasses = getCreditsColorClasses(monthlyPercentage, totalCredits);
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -56,16 +98,20 @@ export const MainLayout = ({ children, title, showCredits = true, credits }: Mai
               <SettingsButton />
 
               {/* Credits display */}
-              {showCredits && credits && (
-                <div className="flex items-center gap-2 px-4 py-2 bg-gray-50 rounded-lg">
-                  <svg className="w-5 h-5 text-[#1a1a1a]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+              {showCredits && (
+                <button
+                  onClick={() => setLocation(user?.role === "super_admin" ? "/credits" : "/dashboard")}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all hover:opacity-80 cursor-pointer ${colorClasses.bg}`}
+                  title={`Monthly: ${monthlyCredits} / Extra: ${extraCredits}`}
+                >
+                  <svg className={`w-5 h-5 ${colorClasses.icon}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
                   <div className="text-sm">
-                    <span className="font-semibold text-[#1a1a1a]">{totalCredits}</span>
-                    <span className="text-gray-500 ml-1">{t.credits.available}</span>
+                    <span className={`font-semibold ${colorClasses.text}`}>{totalCredits}</span>
+                    <span className={`ml-1 ${colorClasses.text} opacity-80`}>{t.credits.available}</span>
                   </div>
-                </div>
+                </button>
               )}
             </div>
           </div>

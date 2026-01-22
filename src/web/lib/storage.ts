@@ -177,6 +177,7 @@ const KEYS = {
   CLINIC_CREDITS: "podoadmin_clinic_credits",
   CLINIC_CREDIT_DISTRIBUTIONS: "podoadmin_clinic_credit_distributions",
   APPOINTMENTS: "podoadmin_appointments",
+  MOCK_USER_STATES: "podoadmin_mock_user_states", // Estados de usuarios mock
 };
 
 // Generic storage helpers - using safeStorage for Safari private mode compatibility
@@ -1044,7 +1045,8 @@ export const getClinicInfo = (clinicId: string): { clinicName: string; ownerId: 
 };
 
 // Get which clinic a user belongs to (for podiatrists)
-export const getUserClinic = (userId: string, userClinicId?: string): Clinic | undefined => {
+export const getUserClinic = (_userId: string, userClinicId?: string): Clinic | undefined => {
+  // userId is kept for API consistency but not used
   if (!userClinicId) return undefined;
   return getClinicById(userClinicId);
 };
@@ -1215,6 +1217,9 @@ export interface CreatedUser {
   password: string;
   createdAt: string;
   createdBy: string;
+  isBlocked?: boolean; // Cuenta bloqueada temporalmente
+  isEnabled?: boolean; // Cuenta habilitada (por defecto true)
+  isBanned?: boolean; // Cuenta baneada permanentemente
 }
 
 export const getCreatedUsers = (): CreatedUser[] => {
@@ -1288,6 +1293,448 @@ export const deleteCreatedUser = (userId: string): boolean => {
   if (filtered.length === users.length) return false;
   setItem(KEYS.CREATED_USERS, filtered);
   return true;
+};
+
+// Funciones para gestionar estados de cuenta
+export const blockUser = (userId: string): boolean => {
+  // Intentar con usuarios creados primero
+  const users = getCreatedUsers();
+  const index = users.findIndex(u => u.id === userId);
+  
+  if (index !== -1) {
+    users[index] = {
+      ...users[index],
+      isBlocked: true,
+      isEnabled: false,
+    };
+    setItem(KEYS.CREATED_USERS, users);
+    return true;
+  }
+  
+  // Si no es usuario creado, es usuario mock - guardar estado
+  setMockUserState(userId, {
+    isBlocked: true,
+    isEnabled: false,
+  });
+  return true;
+};
+
+export const unblockUser = (userId: string): boolean => {
+  // Intentar con usuarios creados primero
+  const users = getCreatedUsers();
+  const index = users.findIndex(u => u.id === userId);
+  
+  if (index !== -1) {
+    users[index] = {
+      ...users[index],
+      isBlocked: false,
+      isEnabled: true,
+    };
+    setItem(KEYS.CREATED_USERS, users);
+    return true;
+  }
+  
+  // Si no es usuario creado, es usuario mock - guardar estado
+  setMockUserState(userId, {
+    isBlocked: false,
+    isEnabled: true,
+  });
+  return true;
+};
+
+export const enableUser = (userId: string): boolean => {
+  // Intentar con usuarios creados primero
+  const users = getCreatedUsers();
+  const index = users.findIndex(u => u.id === userId);
+  
+  if (index !== -1) {
+    users[index] = {
+      ...users[index],
+      isEnabled: true,
+      isBlocked: false,
+    };
+    setItem(KEYS.CREATED_USERS, users);
+    return true;
+  }
+  
+  // Si no es usuario creado, es usuario mock - guardar estado
+  setMockUserState(userId, {
+    isEnabled: true,
+    isBlocked: false,
+  });
+  return true;
+};
+
+export const disableUser = (userId: string): boolean => {
+  // Intentar con usuarios creados primero
+  const users = getCreatedUsers();
+  const index = users.findIndex(u => u.id === userId);
+  
+  if (index !== -1) {
+    users[index] = {
+      ...users[index],
+      isEnabled: false,
+    };
+    setItem(KEYS.CREATED_USERS, users);
+    return true;
+  }
+  
+  // Si no es usuario creado, es usuario mock - guardar estado
+  setMockUserState(userId, {
+    isEnabled: false,
+  });
+  return true;
+};
+
+export const banUser = (userId: string): boolean => {
+  // Intentar con usuarios creados primero
+  const users = getCreatedUsers();
+  const index = users.findIndex(u => u.id === userId);
+  
+  if (index !== -1) {
+    users[index] = {
+      ...users[index],
+      isBanned: true,
+      isEnabled: false,
+      isBlocked: true,
+    };
+    setItem(KEYS.CREATED_USERS, users);
+    return true;
+  }
+  
+  // Si no es usuario creado, es usuario mock - guardar estado
+  setMockUserState(userId, {
+    isBanned: true,
+    isEnabled: false,
+    isBlocked: true,
+  });
+  return true;
+};
+
+export const unbanUser = (userId: string): boolean => {
+  // Intentar con usuarios creados primero
+  const users = getCreatedUsers();
+  const index = users.findIndex(u => u.id === userId);
+  
+  if (index !== -1) {
+    users[index] = {
+      ...users[index],
+      isBanned: false,
+      isEnabled: true,
+      isBlocked: false,
+    };
+    setItem(KEYS.CREATED_USERS, users);
+    return true;
+  }
+  
+  // Si no es usuario creado, es usuario mock - guardar estado
+  setMockUserState(userId, {
+    isBanned: false,
+    isEnabled: true,
+    isBlocked: false,
+  });
+  return true;
+};
+
+// Interface para estados de usuarios mock
+interface MockUserState {
+  isBlocked: boolean;
+  isEnabled: boolean;
+  isBanned: boolean;
+}
+
+// Obtener estados de usuarios mock
+const getMockUserStates = (): Record<string, MockUserState> => {
+  try {
+    return getItem<Record<string, MockUserState>>(KEYS.MOCK_USER_STATES, {});
+  } catch (error) {
+    console.error("Error obteniendo estados de usuarios mock:", error);
+    return {};
+  }
+};
+
+// Guardar estado de usuario mock
+const setMockUserState = (userId: string, state: Partial<MockUserState>): void => {
+  const states = getMockUserStates();
+  const currentState = states[userId] || {
+    isBlocked: false,
+    isEnabled: true,
+    isBanned: false,
+  };
+  
+  states[userId] = {
+    ...currentState,
+    ...state,
+  };
+  setItem(KEYS.MOCK_USER_STATES, states);
+};
+
+// Función para obtener el estado de un usuario (incluyendo usuarios mock)
+export const getUserStatus = (userId: string): { isBlocked: boolean; isEnabled: boolean; isBanned: boolean } => {
+  const createdUsers = getCreatedUsers();
+  const createdUser = createdUsers.find(u => u.id === userId);
+  
+  if (createdUser) {
+    return {
+      isBlocked: createdUser.isBlocked ?? false,
+      isEnabled: createdUser.isEnabled ?? true,
+      isBanned: createdUser.isBanned ?? false,
+    };
+  }
+  
+  // Para usuarios mock, obtener estado desde storage
+  const mockStates = getMockUserStates();
+  const mockState = mockStates[userId];
+  
+  if (mockState) {
+    return mockState;
+  }
+  
+  // Por defecto, usuarios mock están habilitados
+  return {
+    isBlocked: false,
+    isEnabled: true,
+    isBanned: false,
+  };
+};
+
+// Mock users para autenticación (deben coincidir con auth-context.tsx)
+const MOCK_USERS = [
+  {
+    email: "admin@podoadmin.com",
+    password: "admin123",
+    user: {
+      id: "user_super_admin",
+      email: "admin@podoadmin.com",
+      name: "Super Admin",
+      role: "super_admin" as const,
+      clinicId: undefined,
+    },
+  },
+  {
+    email: "support@podoadmin.com",
+    password: "support123",
+    user: {
+      id: "user_admin",
+      email: "support@podoadmin.com",
+      name: "Admin Support",
+      role: "admin" as const,
+      clinicId: undefined,
+    },
+  },
+  {
+    email: "maria.fernandez@premium.com",
+    password: "manager123",
+    user: {
+      id: "user_clinic_admin_001",
+      email: "maria.fernandez@premium.com",
+      name: "María Fernández",
+      role: "clinic_admin" as const,
+      clinicId: "clinic_001",
+    },
+  },
+  {
+    email: "doctor1@premium.com",
+    password: "doctor123",
+    user: {
+      id: "user_podiatrist_001",
+      email: "doctor1@premium.com",
+      name: "Dr. Juan Pérez",
+      role: "podiatrist" as const,
+      clinicId: "clinic_001",
+    },
+  },
+  {
+    email: "doctor2@premium.com",
+    password: "doctor123",
+    user: {
+      id: "user_podiatrist_002",
+      email: "doctor2@premium.com",
+      name: "Dra. Ana Martínez",
+      role: "podiatrist" as const,
+      clinicId: "clinic_001",
+    },
+  },
+  {
+    email: "doctor3@premium.com",
+    password: "doctor123",
+    user: {
+      id: "user_podiatrist_003",
+      email: "doctor3@premium.com",
+      name: "Dr. Carlos López",
+      role: "podiatrist" as const,
+      clinicId: "clinic_001",
+    },
+  },
+  {
+    email: "juan.garcia@centromedico.com",
+    password: "manager123",
+    user: {
+      id: "user_clinic_admin_002",
+      email: "juan.garcia@centromedico.com",
+      name: "Juan García",
+      role: "clinic_admin" as const,
+      clinicId: "clinic_002",
+    },
+  },
+  {
+    email: "doctor1@centromedico.com",
+    password: "doctor123",
+    user: {
+      id: "user_podiatrist_004",
+      email: "doctor1@centromedico.com",
+      name: "Dra. Laura Sánchez",
+      role: "podiatrist" as const,
+      clinicId: "clinic_002",
+    },
+  },
+  {
+    email: "doctor2@centromedico.com",
+    password: "doctor123",
+    user: {
+      id: "user_podiatrist_005",
+      email: "doctor2@centromedico.com",
+      name: "Dr. Miguel Torres",
+      role: "podiatrist" as const,
+      clinicId: "clinic_002",
+    },
+  },
+  {
+    email: "doctor3@centromedico.com",
+    password: "doctor123",
+    user: {
+      id: "user_podiatrist_006",
+      email: "doctor3@centromedico.com",
+      name: "Dra. Elena Ruiz",
+      role: "podiatrist" as const,
+      clinicId: "clinic_002",
+    },
+  },
+  {
+    email: "sofia.rodriguez@integralplus.com",
+    password: "manager123",
+    user: {
+      id: "user_clinic_admin_003",
+      email: "sofia.rodriguez@integralplus.com",
+      name: "Sofía Rodríguez",
+      role: "clinic_admin" as const,
+      clinicId: "clinic_003",
+    },
+  },
+  {
+    email: "doctor1@integralplus.com",
+    password: "doctor123",
+    user: {
+      id: "user_podiatrist_007",
+      email: "doctor1@integralplus.com",
+      name: "Dr. Roberto Díaz",
+      role: "podiatrist" as const,
+      clinicId: "clinic_003",
+    },
+  },
+  {
+    email: "doctor2@integralplus.com",
+    password: "doctor123",
+    user: {
+      id: "user_podiatrist_008",
+      email: "doctor2@integralplus.com",
+      name: "Dra. Carmen Vega",
+      role: "podiatrist" as const,
+      clinicId: "clinic_003",
+    },
+  },
+  {
+    email: "doctor3@integralplus.com",
+    password: "doctor123",
+    user: {
+      id: "user_podiatrist_009",
+      email: "doctor3@integralplus.com",
+      name: "Dr. Fernando Morales",
+      role: "podiatrist" as const,
+      clinicId: "clinic_003",
+    },
+  },
+  {
+    email: "pablo.hernandez@gmail.com",
+    password: "doctor123",
+    user: {
+      id: "user_podiatrist_010",
+      email: "pablo.hernandez@gmail.com",
+      name: "Dr. Pablo Hernández",
+      role: "podiatrist" as const,
+      clinicId: undefined,
+    },
+  },
+  {
+    email: "lucia.santos@outlook.com",
+    password: "doctor123",
+    user: {
+      id: "user_podiatrist_011",
+      email: "lucia.santos@outlook.com",
+      name: "Dra. Lucía Santos",
+      role: "podiatrist" as const,
+      clinicId: undefined,
+    },
+  },
+  {
+    email: "andres.molina@yahoo.es",
+    password: "doctor123",
+    user: {
+      id: "user_podiatrist_012",
+      email: "andres.molina@yahoo.es",
+      name: "Dr. Andrés Molina",
+      role: "podiatrist" as const,
+      clinicId: undefined,
+    },
+  },
+  {
+    email: "beatriz.ortiz@hotmail.com",
+    password: "doctor123",
+    user: {
+      id: "user_podiatrist_013",
+      email: "beatriz.ortiz@hotmail.com",
+      name: "Dra. Beatriz Ortiz",
+      role: "podiatrist" as const,
+      clinicId: undefined,
+    },
+  },
+];
+
+/**
+ * Obtiene todos los usuarios con credenciales (mock + creados)
+ * Esta función es usada por el servidor para autenticación
+ */
+export const getAllUsersWithCredentials = (): Array<{
+  email: string;
+  password: string;
+  user: {
+    id: string;
+    email: string;
+    name: string;
+    role: "super_admin" | "clinic_admin" | "admin" | "podiatrist";
+    clinicId?: string;
+    isBlocked?: boolean;
+    isEnabled?: boolean;
+    isBanned?: boolean;
+  };
+}> => {
+  const createdUsers = getCreatedUsers();
+  const createdUsersFormatted = createdUsers.map((cu) => ({
+    email: cu.email,
+    password: cu.password,
+    user: {
+      id: cu.id,
+      email: cu.email,
+      name: cu.name,
+      role: cu.role,
+      clinicId: cu.clinicId,
+      isBlocked: cu.isBlocked,
+      isEnabled: cu.isEnabled,
+      isBanned: cu.isBanned,
+    },
+  }));
+  
+  return [...MOCK_USERS, ...createdUsersFormatted];
 };
 
 // ============================================

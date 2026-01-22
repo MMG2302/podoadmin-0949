@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
-import { getCreatedUsers, CreatedUser, initializeUserCredits } from "@/lib/storage";
+import { getCreatedUsers, CreatedUser, initializeUserCredits, getUserStatus } from "@/lib/storage";
 
 export type UserRole = "super_admin" | "clinic_admin" | "admin" | "podiatrist";
 
@@ -9,12 +9,21 @@ export interface User {
   name: string;
   role: UserRole;
   clinicId?: string; // For clinic_admin and podiatrists
+  isBlocked?: boolean; // Cuenta bloqueada temporalmente
+  isEnabled?: boolean; // Cuenta habilitada (por defecto true)
+  isBanned?: boolean; // Cuenta baneada permanentemente
 }
 
 interface AuthContextType {
   user: User | null;
   isLoading: boolean;
-  login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
+  login: (email: string, password: string) => Promise<{ 
+    success: boolean; 
+    error?: string;
+    retryAfter?: number;
+    blockedUntil?: number;
+    attemptCount?: number;
+  }>;
   logout: () => void;
 }
 
@@ -237,6 +246,9 @@ const getAllUsersWithCredentials = (): { email: string; password: string; user: 
       name: cu.name,
       role: cu.role,
       clinicId: cu.clinicId,
+      isBlocked: cu.isBlocked,
+      isEnabled: cu.isEnabled,
+      isBanned: cu.isBanned,
     } as User,
   }));
   return [...MOCK_USERS, ...createdUsersFormatted];
@@ -244,49 +256,137 @@ const getAllUsersWithCredentials = (): { email: string; password: string; user: 
 
 export const getAllUsers = () => {
   const allUsers = getAllUsersWithCredentials();
-  return allUsers.map(u => u.user);
+  return allUsers.map(u => {
+    // Para usuarios mock, obtener estado desde storage si existe
+    const userStatus = getUserStatus(u.user.id);
+    return {
+      ...u.user,
+      isBlocked: u.user.isBlocked ?? userStatus.isBlocked,
+      isEnabled: u.user.isEnabled ?? userStatus.isEnabled,
+      isBanned: u.user.isBanned ?? userStatus.isBanned,
+    };
+  });
 };
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
+  // Verificar autenticación al cargar
   useEffect(() => {
-    const storedUser = localStorage.getItem("podoadmin_user");
-    if (storedUser) {
+    const verifyAuth = async () => {
+      // Obtener token CSRF al cargar (necesario para futuras solicitudes)
       try {
-        setUser(JSON.parse(storedUser));
-      } catch {
-        localStorage.removeItem("podoadmin_user");
+        const { api } = await import("../lib/api-client");
+        // Esto obtendrá el token CSRF y lo guardará en cookie
+        await api.get("/csrf/token");
+      } catch (error) {
+        console.warn("No se pudo obtener token CSRF inicial:", error);
       }
-    }
-    setIsLoading(false);
+
+      // Verificar si hay cookies de sesión (tokens HTTP-only)
+      // Los tokens ahora están en cookies, no en localStorage
+      try {
+        const { api } = await import("../lib/api-client");
+        const response = await api.get<{ user: User }>("/auth/verify");
+
+        if (response.success && response.data?.user) {
+          setUser(response.data.user);
+          // Solo guardar información del usuario (no tokens)
+          localStorage.setItem("podoadmin_user", JSON.stringify(response.data.user));
+        } else {
+          // No hay sesión válida, limpiar
+          localStorage.removeItem("podoadmin_user");
+        }
+      } catch (error) {
+        console.error("Error verificando autenticación:", error);
+        localStorage.removeItem("podoadmin_user");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    verifyAuth();
+
+    // Escuchar eventos de logout desde otras pestañas/componentes
+    const handleLogout = () => {
+      setUser(null);
+      localStorage.removeItem("podoadmin_token");
+      localStorage.removeItem("podoadmin_user");
+    };
+
+    window.addEventListener("auth:logout", handleLogout);
+    return () => window.removeEventListener("auth:logout", handleLogout);
   }, []);
 
   const login = async (email: string, password: string) => {
-    // Simulate API delay
-    await new Promise((resolve) => setTimeout(resolve, 800));
+    try {
+      const { api } = await import("../lib/api-client");
+      
+      // Obtener token CSRF antes de hacer login (aunque login no lo requiere, es buena práctica)
+      // Esto asegura que tenemos un token CSRF para futuras solicitudes
+      try {
+        await api.get("/csrf/token");
+      } catch (error) {
+        console.warn("No se pudo obtener token CSRF antes de login:", error);
+      }
+      
+      const response = await api.post<{ user: User }>("/auth/login", {
+        email,
+        password,
+      });
 
-    // Get fresh list of users (including newly created ones)
-    const allUsers = getAllUsersWithCredentials();
-    const matchedUser = allUsers.find(
-      (u) => u.email.toLowerCase() === email.toLowerCase() && u.password === password
-    );
+      if (response.success && response.data) {
+        // Los tokens ahora se almacenan en cookies HTTP-only automáticamente
+        // Solo guardar información del usuario (no tokens)
+        setUser(response.data.user);
+        localStorage.setItem("podoadmin_user", JSON.stringify(response.data.user));
+        
+        // Obtener nuevo token CSRF después del login exitoso
+        try {
+          await api.get("/csrf/token");
+        } catch (error) {
+          console.warn("No se pudo obtener token CSRF después de login:", error);
+        }
+        
+        // Initialize user credits on successful login (mantener compatibilidad)
+        initializeUserCredits(response.data.user.id, response.data.user.role);
+        
+        return { success: true };
+      } else {
+        // Extraer información de rate limiting si está presente
+        // Estos campos vienen en el nivel superior de la respuesta ApiResponse
+        const retryAfter = response.retryAfter;
+        const blockedUntil = response.blockedUntil;
+        const attemptCount = response.attemptCount;
 
-    if (matchedUser) {
-      setUser(matchedUser.user);
-      localStorage.setItem("podoadmin_user", JSON.stringify(matchedUser.user));
-      // Initialize user credits on successful login
-      initializeUserCredits(matchedUser.user.id, matchedUser.user.role);
-      return { success: true };
+        return {
+          success: false,
+          error: response.error || response.message || "Error al iniciar sesión",
+          retryAfter,
+          blockedUntil,
+          attemptCount,
+        };
+      }
+    } catch (error) {
+      console.error("Error en login:", error);
+      return { success: false, error: "Error de conexión con el servidor" };
     }
-
-    return { success: false, error: "Credenciales inválidas" };
   };
 
-  const logout = () => {
-    setUser(null);
-    localStorage.removeItem("podoadmin_user");
+  const logout = async () => {
+    try {
+      // Intentar cerrar sesión en el servidor (elimina cookies)
+      const { api } = await import("../lib/api-client");
+      await api.post("/auth/logout");
+    } catch (error) {
+      console.error("Error en logout:", error);
+      // Aún así limpiar el estado local
+    } finally {
+      setUser(null);
+      localStorage.removeItem("podoadmin_user");
+      // Las cookies se eliminan automáticamente por el servidor
+    }
   };
 
   return (

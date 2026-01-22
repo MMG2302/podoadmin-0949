@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAuth } from "../contexts/auth-context";
 import { useLanguage } from "../contexts/language-context";
 import { LanguageSwitcher } from "../components/language-switcher";
@@ -11,11 +11,37 @@ const Login = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const [errorDetails, setErrorDetails] = useState<{
+    retryAfter?: number;
+    blockedUntil?: number;
+    attemptCount?: number;
+  }>({});
   const [isLoading, setIsLoading] = useState(false);
+  const [countdown, setCountdown] = useState<number | null>(null);
+
+  // Countdown timer para rate limiting
+  useEffect(() => {
+    if (countdown !== null && countdown > 0) {
+      const timer = setTimeout(() => setCountdown(countdown - 1), 1000);
+      return () => clearTimeout(timer);
+    } else if (countdown === 0) {
+      setCountdown(null);
+    }
+  }, [countdown]);
+
+  const formatTime = (seconds: number): string => {
+    if (seconds >= 60) {
+      const minutes = Math.floor(seconds / 60);
+      const secs = seconds % 60;
+      return secs > 0 ? `${minutes}m ${secs}s` : `${minutes}m`;
+    }
+    return `${seconds}s`;
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
+    setErrorDetails({});
     setIsLoading(true);
 
     const result = await login(email, password);
@@ -23,7 +49,17 @@ const Login = () => {
     if (result.success) {
       setLocation("/");
     } else {
-      setError(t.auth.invalidCredentials);
+      setError(result.error || t.auth.invalidCredentials);
+      setErrorDetails({
+        retryAfter: result.retryAfter,
+        blockedUntil: result.blockedUntil,
+        attemptCount: result.attemptCount,
+      });
+
+      // Iniciar countdown si hay retryAfter
+      if (result.retryAfter) {
+        setCountdown(result.retryAfter);
+      }
     }
     setIsLoading(false);
   };
@@ -107,7 +143,27 @@ const Login = () => {
             <form onSubmit={handleSubmit} className="space-y-6">
               {error && (
                 <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm animate-in fade-in slide-in-from-top-2 duration-300">
-                  {error}
+                  <div className="font-semibold mb-1">{error}</div>
+                  {errorDetails.attemptCount && errorDetails.attemptCount > 0 && (
+                    <div className="text-xs text-red-600 mt-1">
+                      Intentos fallidos: {errorDetails.attemptCount}
+                    </div>
+                  )}
+                  {errorDetails.blockedUntil && (
+                    <div className="text-xs text-red-600 mt-1">
+                      Bloqueado hasta: {new Date(errorDetails.blockedUntil).toLocaleTimeString()}
+                    </div>
+                  )}
+                  {errorDetails.retryAfter && countdown !== null && countdown > 0 && (
+                    <div className="text-xs text-red-600 mt-1 font-medium">
+                      Puedes intentar nuevamente en: {formatTime(countdown)}
+                    </div>
+                  )}
+                  {errorDetails.attemptCount && errorDetails.attemptCount >= 3 && (
+                    <div className="text-xs text-red-600 mt-2 pt-2 border-t border-red-200">
+                      Se ha enviado una notificación por email sobre estos intentos.
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -143,7 +199,7 @@ const Login = () => {
 
               <button
                 type="submit"
-                disabled={isLoading}
+                disabled={isLoading || (countdown !== null && countdown > 0)}
                 className="w-full py-3.5 bg-[#1a1a1a] text-white font-medium rounded-lg hover:bg-[#2a2a2a] focus:outline-none focus:ring-2 focus:ring-[#1a1a1a] focus:ring-offset-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed relative overflow-hidden group"
               >
                 <span className={isLoading ? "opacity-0" : ""}>

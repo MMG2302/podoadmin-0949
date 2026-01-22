@@ -20,6 +20,13 @@ import {
   addClinicCredits,
   initializeClinicCredits,
   updateMonthlyRenewalAmount,
+  blockUser,
+  unblockUser,
+  enableUser,
+  disableUser,
+  banUser,
+  unbanUser,
+  deleteCreatedUser,
   Patient,
   ClinicalSession,
   CreditTransaction,
@@ -967,6 +974,53 @@ const UsersPage = () => {
     podiatrist: t.roles.podiatrist,
   };
 
+  // Función auxiliar para obtener el estado visual de un usuario
+  const getUserStatusBadge = (user: User) => {
+    if (user.isBanned) {
+      return (
+        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-700">
+          <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
+          </svg>
+          Baneado
+        </span>
+      );
+    }
+    if (user.isBlocked) {
+      return (
+        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-700">
+          <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+          </svg>
+          Bloqueado
+        </span>
+      );
+    }
+    if (user.isEnabled === false) {
+      return (
+        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-700">
+          <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          Deshabilitado
+        </span>
+      );
+    }
+    return (
+      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700">
+        <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+        Activo
+      </span>
+    );
+  };
+
+  // Verificar si el usuario es creado (puede ser gestionado)
+  const isCreatedUser = (userId: string): boolean => {
+    return userId.startsWith("user_created_");
+  };
+
   const handleCreateUser = (userData: Partial<User> & { password: string }) => {
     try {
       // Save the user to localStorage so they can log in
@@ -1200,6 +1254,249 @@ const UsersPage = () => {
     });
   };
 
+  const handleBlockUser = (user: User) => {
+    if (!window.confirm(`¿Estás seguro de que deseas bloquear la cuenta de ${user.name}?`)) {
+      return;
+    }
+    
+    const success = blockUser(user.id);
+    if (success) {
+      addAuditLog({
+        userId: currentUser?.id || "",
+        userName: currentUser?.name || "",
+        action: "BLOCK_USER",
+        entityType: "user",
+        entityId: user.id,
+        details: JSON.stringify({
+          action: "block_user",
+          targetUserId: user.id,
+          targetUserName: user.name,
+          targetUserEmail: user.email,
+        }),
+      });
+      window.location.reload(); // Recargar para actualizar la lista
+    } else {
+      alert("Error al bloquear el usuario. Solo se pueden bloquear usuarios creados.");
+    }
+  };
+
+  const handleUnblockUser = (user: User) => {
+    if (!window.confirm(`¿Estás seguro de que deseas desbloquear la cuenta de ${user.name}?`)) {
+      return;
+    }
+    
+    const success = unblockUser(user.id);
+    if (success) {
+      addAuditLog({
+        userId: currentUser?.id || "",
+        userName: currentUser?.name || "",
+        action: "UNBLOCK_USER",
+        entityType: "user",
+        entityId: user.id,
+        details: JSON.stringify({
+          action: "unblock_user",
+          targetUserId: user.id,
+          targetUserName: user.name,
+          targetUserEmail: user.email,
+        }),
+      });
+      window.location.reload(); // Recargar para actualizar la lista
+    } else {
+      alert("Error al desbloquear el usuario. Solo se pueden desbloquear usuarios creados.");
+    }
+  };
+
+  const handleEnableUser = async (user: User) => {
+    if (!window.confirm(`¿Estás seguro de que deseas habilitar la cuenta de ${user.name}?`)) {
+      return;
+    }
+    
+    try {
+      const { api } = await import("../lib/api-client");
+      const response = await api.post(`/users/${user.id}/enable`);
+      
+      if (response.success) {
+        addAuditLog({
+          userId: currentUser?.id || "",
+          userName: currentUser?.name || "",
+          action: "ENABLE_USER",
+          entityType: "user",
+          entityId: user.id,
+          details: JSON.stringify({
+            action: "enable_user",
+            targetUserId: user.id,
+            targetUserName: user.name,
+            targetUserEmail: user.email,
+          }),
+        });
+        // También actualizar localmente para respuesta inmediata
+        enableUser(user.id);
+        window.location.reload(); // Recargar para actualizar la lista
+      } else {
+        alert(response.error || "Error al habilitar el usuario");
+      }
+    } catch (error) {
+      console.error("Error habilitando usuario:", error);
+      // Fallback a función local
+      const success = enableUser(user.id);
+      if (success) {
+        addAuditLog({
+          userId: currentUser?.id || "",
+          userName: currentUser?.name || "",
+          action: "ENABLE_USER",
+          entityType: "user",
+          entityId: user.id,
+          details: JSON.stringify({
+            action: "enable_user",
+            targetUserId: user.id,
+            targetUserName: user.name,
+            targetUserEmail: user.email,
+          }),
+        });
+        window.location.reload();
+      } else {
+        alert("Error al habilitar el usuario");
+      }
+    }
+  };
+
+  const handleDisableUser = async (user: User) => {
+    if (!window.confirm(`¿Estás seguro de que deseas deshabilitar la cuenta de ${user.name}?\n\nEl usuario no podrá iniciar sesión hasta que sea habilitado nuevamente.`)) {
+      return;
+    }
+    
+    try {
+      const { api } = await import("../lib/api-client");
+      const response = await api.post(`/users/${user.id}/disable`);
+      
+      if (response.success) {
+        addAuditLog({
+          userId: currentUser?.id || "",
+          userName: currentUser?.name || "",
+          action: "DISABLE_USER",
+          entityType: "user",
+          entityId: user.id,
+          details: JSON.stringify({
+            action: "disable_user",
+            targetUserId: user.id,
+            targetUserName: user.name,
+            targetUserEmail: user.email,
+          }),
+        });
+        // También actualizar localmente para respuesta inmediata
+        disableUser(user.id);
+        window.location.reload(); // Recargar para actualizar la lista
+      } else {
+        alert(response.error || "Error al deshabilitar el usuario");
+      }
+    } catch (error) {
+      console.error("Error deshabilitando usuario:", error);
+      // Fallback a función local
+      const success = disableUser(user.id);
+      if (success) {
+        window.location.reload();
+      } else {
+        alert("Error al deshabilitar el usuario. Solo se pueden deshabilitar usuarios creados.");
+      }
+    }
+  };
+
+  const handleBanUser = (user: User) => {
+    if (!window.confirm(`¿Estás seguro de que deseas BANEAR permanentemente la cuenta de ${user.name}? Esta acción es irreversible.`)) {
+      return;
+    }
+    
+    const success = banUser(user.id);
+    if (success) {
+      addAuditLog({
+        userId: currentUser?.id || "",
+        userName: currentUser?.name || "",
+        action: "BAN_USER",
+        entityType: "user",
+        entityId: user.id,
+        details: JSON.stringify({
+          action: "ban_user",
+          targetUserId: user.id,
+          targetUserName: user.name,
+          targetUserEmail: user.email,
+        }),
+      });
+      window.location.reload(); // Recargar para actualizar la lista
+    } else {
+      alert("Error al banear el usuario. Solo se pueden banear usuarios creados.");
+    }
+  };
+
+  const handleUnbanUser = (user: User) => {
+    if (!window.confirm(`¿Estás seguro de que deseas desbanear la cuenta de ${user.name}?`)) {
+      return;
+    }
+    
+    const success = unbanUser(user.id);
+    if (success) {
+      addAuditLog({
+        userId: currentUser?.id || "",
+        userName: currentUser?.name || "",
+        action: "UNBAN_USER",
+        entityType: "user",
+        entityId: user.id,
+        details: JSON.stringify({
+          action: "unban_user",
+          targetUserId: user.id,
+          targetUserName: user.name,
+          targetUserEmail: user.email,
+        }),
+      });
+      window.location.reload(); // Recargar para actualizar la lista
+    } else {
+      alert("Error al desbanear el usuario. Solo se pueden desbanear usuarios creados.");
+    }
+  };
+
+  const handleDeleteUser = (user: User) => {
+    if (!window.confirm(`¿Estás seguro de que deseas ELIMINAR permanentemente la cuenta de ${user.name}? Esta acción es irreversible y eliminará todos los datos del usuario.`)) {
+      return;
+    }
+    
+    if (!window.confirm("Esta acción es PERMANENTE e IRREVERSIBLE. ¿Continuar?")) {
+      return;
+    }
+    
+    const success = deleteCreatedUser(user.id);
+    if (success) {
+      addAuditLog({
+        userId: currentUser?.id || "",
+        userName: currentUser?.name || "",
+        action: "DELETE_USER",
+        entityType: "user",
+        entityId: user.id,
+        details: JSON.stringify({
+          action: "delete_user",
+          targetUserId: user.id,
+          targetUserName: user.name,
+          targetUserEmail: user.email,
+        }),
+      });
+      window.location.reload(); // Recargar para actualizar la lista
+    } else {
+      alert("Error al eliminar el usuario. Solo se pueden eliminar usuarios creados.");
+    }
+  };
+
+  // Cerrar menús de cuenta al hacer clic fuera
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as HTMLElement;
+      if (!target.closest('[id^="account-menu-"]') && !target.closest('button[title="Gestionar cuenta"]')) {
+        document.querySelectorAll('[id^="account-menu-"]').forEach(menu => {
+          menu.classList.add("hidden");
+        });
+      }
+    };
+    document.addEventListener("click", handleClickOutside);
+    return () => document.removeEventListener("click", handleClickOutside);
+  }, []);
+
   return (
     <MainLayout title={t.nav.users} credits={credits}>
       <div className="space-y-6">
@@ -1267,6 +1564,9 @@ const UsersPage = () => {
                   <div className="min-w-0">
                     <p className="font-medium text-[#1a1a1a] truncate">{u.name}</p>
                     <p className="text-xs text-gray-500 truncate">{u.email}</p>
+                    <div className="mt-1">
+                      {getUserStatusBadge(u)}
+                    </div>
                   </div>
                 </div>
                 <span className={`flex-shrink-0 inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${
@@ -1337,6 +1637,62 @@ const UsersPage = () => {
                     </button>
                   </>
                 )}
+                {/* Estado de cuenta - solo para superadmin y usuarios creados */}
+                {isSuperAdmin && isCreatedUser(u.id) && (
+                  <div className="mt-2 pt-2 border-t border-gray-200 space-y-1">
+                    {u.isBanned ? (
+                      <button
+                        onClick={() => handleUnbanUser(u)}
+                        className="w-full py-2 px-3 bg-green-50 text-green-700 rounded-lg hover:bg-green-100 active:bg-green-200 transition-colors text-xs font-medium"
+                      >
+                        Desbanear
+                      </button>
+                    ) : (
+                      <button
+                        onClick={() => handleBanUser(u)}
+                        className="w-full py-2 px-3 bg-red-50 text-red-700 rounded-lg hover:bg-red-100 active:bg-red-200 transition-colors text-xs font-medium"
+                      >
+                        Banear
+                      </button>
+                    )}
+                    {u.isBlocked ? (
+                      <button
+                        onClick={() => handleUnblockUser(u)}
+                        className="w-full py-2 px-3 bg-green-50 text-green-700 rounded-lg hover:bg-green-100 active:bg-green-200 transition-colors text-xs font-medium"
+                      >
+                        Desbloquear
+                      </button>
+                    ) : (
+                      <button
+                        onClick={() => handleBlockUser(u)}
+                        className="w-full py-2 px-3 bg-orange-50 text-orange-700 rounded-lg hover:bg-orange-100 active:bg-orange-200 transition-colors text-xs font-medium"
+                      >
+                        Bloquear
+                      </button>
+                    )}
+                    {u.isEnabled === false ? (
+                      <button
+                        onClick={() => handleEnableUser(u)}
+                        className="w-full py-2.5 px-3 bg-green-50 text-green-700 rounded-lg hover:bg-green-100 active:bg-green-200 transition-colors text-xs font-semibold border border-green-200"
+                      >
+                        ✅ Habilitar cuenta
+                      </button>
+                    ) : (
+                      <button
+                        onClick={() => handleDisableUser(u)}
+                        className="w-full py-2.5 px-3 bg-yellow-50 text-yellow-700 rounded-lg hover:bg-yellow-100 active:bg-yellow-200 transition-colors text-xs font-semibold border border-yellow-200"
+                      >
+                        ⚠️ Deshabilitar cuenta
+                      </button>
+                    )}
+                    <button
+                      onClick={() => handleDeleteUser(u)}
+                      className="w-full py-2 px-3 bg-red-50 text-red-700 rounded-lg hover:bg-red-100 active:bg-red-200 transition-colors text-xs font-medium"
+                    >
+                      Eliminar
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
           ))}
@@ -1351,6 +1707,7 @@ const UsersPage = () => {
                   <th className="text-left px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Usuario</th>
                   <th className="text-left px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Email</th>
                   <th className="text-left px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Rol</th>
+                  <th className="text-left px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Estado</th>
                   <th className="text-left px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Clínica</th>
                   <th className="text-left px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Créditos</th>
                   <th className="text-left px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Datos</th>
@@ -1380,6 +1737,9 @@ const UsersPage = () => {
                       }`}>
                         {roleLabels[u.role]}
                       </span>
+                    </td>
+                    <td className="px-6 py-4">
+                      {getUserStatusBadge(u)}
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-600">
                       {u.clinicId || "-"}
@@ -1476,6 +1836,109 @@ const UsersPage = () => {
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                             </svg>
                           </button>
+                        )}
+                        
+                        {/* Account Management Actions - Solo para superadmin y usuarios creados */}
+                        {isSuperAdmin && isCreatedUser(u.id) && (
+                          <div className="relative inline-block">
+                            <button
+                              className="p-2 text-gray-400 hover:text-[#1a1a1a] hover:bg-gray-100 rounded-lg transition-colors"
+                              title="Gestionar cuenta"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                const menu = document.getElementById(`account-menu-${u.id}`);
+                                if (menu) {
+                                  menu.classList.toggle("hidden");
+                                }
+                              }}
+                            >
+                              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
+                              </svg>
+                            </button>
+                            <div
+                              id={`account-menu-${u.id}`}
+                              className="hidden absolute right-0 mt-1 w-48 bg-white rounded-lg shadow-lg border border-gray-200 z-50"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <div className="py-1">
+                                {u.isBanned ? (
+                                  <button
+                                    onClick={() => {
+                                      handleUnbanUser(u);
+                                      document.getElementById(`account-menu-${u.id}`)?.classList.add("hidden");
+                                    }}
+                                    className="w-full text-left px-4 py-2 text-sm text-green-700 hover:bg-green-50"
+                                  >
+                                    Desbanear cuenta
+                                  </button>
+                                ) : (
+                                  <button
+                                    onClick={() => {
+                                      handleBanUser(u);
+                                      document.getElementById(`account-menu-${u.id}`)?.classList.add("hidden");
+                                    }}
+                                    className="w-full text-left px-4 py-2 text-sm text-red-700 hover:bg-red-50"
+                                  >
+                                    Banear cuenta
+                                  </button>
+                                )}
+                                {u.isBlocked ? (
+                                  <button
+                                    onClick={() => {
+                                      handleUnblockUser(u);
+                                      document.getElementById(`account-menu-${u.id}`)?.classList.add("hidden");
+                                    }}
+                                    className="w-full text-left px-4 py-2 text-sm text-green-700 hover:bg-green-50"
+                                  >
+                                    Desbloquear cuenta
+                                  </button>
+                                ) : (
+                                  <button
+                                    onClick={() => {
+                                      handleBlockUser(u);
+                                      document.getElementById(`account-menu-${u.id}`)?.classList.add("hidden");
+                                    }}
+                                    className="w-full text-left px-4 py-2 text-sm text-orange-700 hover:bg-orange-50"
+                                  >
+                                    Bloquear cuenta
+                                  </button>
+                                )}
+                                {u.isEnabled === false ? (
+                                  <button
+                                    onClick={() => {
+                                      handleEnableUser(u);
+                                      document.getElementById(`account-menu-${u.id}`)?.classList.add("hidden");
+                                    }}
+                                    className="w-full text-left px-4 py-2 text-sm text-green-700 hover:bg-green-50 font-medium"
+                                  >
+                                    ✅ Habilitar cuenta
+                                  </button>
+                                ) : (
+                                  <button
+                                    onClick={() => {
+                                      handleDisableUser(u);
+                                      document.getElementById(`account-menu-${u.id}`)?.classList.add("hidden");
+                                    }}
+                                    className="w-full text-left px-4 py-2 text-sm text-yellow-700 hover:bg-yellow-50 font-medium"
+                                  >
+                                    ⚠️ Deshabilitar cuenta
+                                  </button>
+                                )}
+                                <div className="border-t border-gray-100 my-1"></div>
+                                <div className="border-t border-gray-100 my-1"></div>
+                                <button
+                                  onClick={() => {
+                                    handleDeleteUser(u);
+                                    document.getElementById(`account-menu-${u.id}`)?.classList.add("hidden");
+                                  }}
+                                  className="w-full text-left px-4 py-2 text-sm text-red-700 hover:bg-red-50"
+                                >
+                                  Eliminar cuenta
+                                </button>
+                              </div>
+                            </div>
+                          </div>
                         )}
                       </div>
                     </td>

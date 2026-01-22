@@ -30,6 +30,8 @@ interface SessionWithPatient extends ClinicalSession {
 interface AppointmentWithDetails extends Appointment {
   patient: Patient | undefined;
   podiatristName: string;
+  pendingPatientName?: string;
+  pendingPatientPhone?: string;
 }
 
 interface AppointmentFormData {
@@ -39,6 +41,8 @@ interface AppointmentFormData {
   time: string;
   duration: number;
   notes: string;
+  pendingPatientName: string;
+  pendingPatientPhone: string;
 }
 
 const emptyAppointmentForm: AppointmentFormData = {
@@ -48,6 +52,8 @@ const emptyAppointmentForm: AppointmentFormData = {
   time: "09:00",
   duration: 30,
   notes: "",
+  pendingPatientName: "",
+  pendingPatientPhone: "",
 };
 
 const CalendarPage = () => {
@@ -117,6 +123,8 @@ const CalendarPage = () => {
       ...a,
       patient: a.patientId ? allPatients.find(p => p.id === a.patientId) : undefined,
       podiatristName: clinicPodiatrists.find(p => p.id === a.podiatristId)?.name || "Desconocido",
+      pendingPatientName: a.pendingPatientName,
+      pendingPatientPhone: a.pendingPatientPhone,
     }));
   }, [allAppointments, allPatients, isClinicAdmin, podiatristFilter, clinicPodiatrists]);
 
@@ -305,14 +313,14 @@ const CalendarPage = () => {
 
   const getPatientDisplayName = (appointment: AppointmentWithDetails) => {
     if (!appointment.patientId || !appointment.patient) {
-      return "Paciente pendiente";
+      return appointment.pendingPatientName || "Paciente pendiente";
     }
     return `${appointment.patient.firstName} ${appointment.patient.lastName}`;
   };
 
   const getPatientDisplayNameShort = (appointment: AppointmentWithDetails) => {
     if (!appointment.patientId || !appointment.patient) {
-      return "Pendiente";
+      return appointment.pendingPatientName || "Pendiente";
     }
     return `${appointment.patient.firstName} ${appointment.patient.lastName?.charAt(0)}.`;
   };
@@ -320,9 +328,12 @@ const CalendarPage = () => {
   // Appointment form handlers
   const openNewAppointmentForm = (date?: Date) => {
     setEditingAppointment(null);
+    // Si es podólogo, asignar automáticamente a sí mismo
+    const defaultPodiatristId = isPodiatrist && !isClinicAdmin ? (user?.id || "") : "";
     setAppointmentForm({
       ...emptyAppointmentForm,
       date: date ? date.toISOString().split("T")[0] : new Date().toISOString().split("T")[0],
+      podiatristId: defaultPodiatristId,
     });
     setShowAppointmentForm(true);
   };
@@ -336,6 +347,8 @@ const CalendarPage = () => {
       time: appointment.time,
       duration: appointment.duration,
       notes: appointment.notes,
+      pendingPatientName: appointment.pendingPatientName || "",
+      pendingPatientPhone: appointment.pendingPatientPhone || "",
     });
     setShowAppointmentForm(true);
   };
@@ -349,6 +362,14 @@ const CalendarPage = () => {
 
     // Convert empty string to null for pending patient
     const patientId = appointmentForm.patientId === "" ? null : appointmentForm.patientId;
+    
+    // Validar que si es paciente pendiente, se proporcionen nombre y teléfono
+    if (patientId === null) {
+      if (!appointmentForm.pendingPatientName || !appointmentForm.pendingPatientPhone) {
+        alert("Por favor, complete el nombre y teléfono del paciente pendiente.");
+        return;
+      }
+    }
 
     if (editingAppointment) {
       const previousPodiatristId = editingAppointment.podiatristId;
@@ -361,6 +382,10 @@ const CalendarPage = () => {
         time: appointmentForm.time,
         duration: appointmentForm.duration,
         notes: appointmentForm.notes,
+        // Si se asigna un paciente existente, limpiar campos de paciente pendiente
+        // Si es paciente pendiente, guardar nombre y teléfono
+        pendingPatientName: patientId === null ? (appointmentForm.pendingPatientName || undefined) : undefined,
+        pendingPatientPhone: patientId === null ? (appointmentForm.pendingPatientPhone || undefined) : undefined,
       });
       
       // Send notification if podiatrist changed
@@ -420,6 +445,8 @@ const CalendarPage = () => {
         notes: appointmentForm.notes,
         status: "scheduled",
         createdBy: user?.id || "",
+        pendingPatientName: patientId === null ? appointmentForm.pendingPatientName : undefined,
+        pendingPatientPhone: patientId === null ? appointmentForm.pendingPatientPhone : undefined,
       });
       
       // Send notification to assigned podiatrist
@@ -548,8 +575,8 @@ const CalendarPage = () => {
 
               {/* View Mode & Filters */}
               <div className="flex items-center gap-3 flex-wrap">
-                {/* New Appointment Button for Clinic Admin */}
-                {isClinicAdmin && (
+                {/* New Appointment Button for Clinic Admin and Podiatrists */}
+                {(isClinicAdmin || isPodiatrist) && (
                   <button
                     onClick={() => openNewAppointmentForm(selectedDate || undefined)}
                     className="px-4 py-2 bg-[#1a1a1a] text-white rounded-lg hover:bg-[#2a2a2a] transition-colors font-medium flex items-center gap-2 text-sm"
@@ -710,11 +737,14 @@ const CalendarPage = () => {
                         }`}
                       >
                         <div className="space-y-2">
-                          {appointments.map((appt) => (
+                          {appointments.map((appt) => {
+                            // Los podólogos solo pueden editar sus propias citas, los clinic admins pueden editar todas
+                            const canEdit = isClinicAdmin || (isPodiatrist && appt.podiatristId === user?.id);
+                            return (
                             <div
                               key={appt.id}
-                              onClick={() => isClinicAdmin && openEditAppointmentForm(appt)}
-                              className="p-2 rounded-lg border cursor-pointer hover:shadow-sm transition-shadow bg-blue-50 border-blue-200 text-blue-700"
+                              onClick={() => canEdit && openEditAppointmentForm(appt)}
+                              className={`p-2 rounded-lg border transition-shadow bg-blue-50 border-blue-200 text-blue-700 ${canEdit ? "cursor-pointer hover:shadow-sm" : "cursor-default"}`}
                             >
                               <p className="text-xs font-semibold">{appt.time}</p>
                               <p className="text-xs truncate">
@@ -729,7 +759,8 @@ const CalendarPage = () => {
                                 )}
                               </div>
                             </div>
-                          ))}
+                            );
+                          })}
                           {sessions.map((session) => (
                             <Link key={session.id} href={`/sessions?id=${session.id}`}>
                               <div className={`p-2 rounded-lg border cursor-pointer hover:shadow-sm transition-shadow ${getStatusBg(session.status)}`}>
@@ -768,7 +799,7 @@ const CalendarPage = () => {
                       {currentDate.toLocaleDateString("es-ES", { weekday: "long", day: "numeric", month: "long" })}
                     </p>
                   </div>
-                  {isClinicAdmin && (
+                  {(isClinicAdmin || isPodiatrist) && (
                     <button
                       onClick={() => openNewAppointmentForm(currentDate)}
                       className="ml-auto px-4 py-2 bg-[#1a1a1a] text-white rounded-lg hover:bg-[#2a2a2a] transition-colors font-medium flex items-center gap-2 text-sm"
@@ -809,6 +840,11 @@ const CalendarPage = () => {
                             <p className="font-medium text-[#1a1a1a]">
                               {getPatientDisplayName(appt)}
                             </p>
+                            {!appt.patientId && appt.pendingPatientPhone && (
+                              <p className="text-xs text-gray-500">
+                                Tel: {appt.pendingPatientPhone}
+                              </p>
+                            )}
                             <p className="text-sm text-gray-500">
                               Podólogo: {appt.podiatristName} • {appt.duration} min
                             </p>
@@ -816,7 +852,7 @@ const CalendarPage = () => {
                               <p className="text-sm text-gray-400 mt-1">{appt.notes}</p>
                             )}
                           </div>
-                          {isClinicAdmin && (
+                          {(isClinicAdmin || isPodiatrist) && (
                             <div className="flex gap-2">
                               <button
                                 onClick={() => openEditAppointmentForm(appt)}
@@ -888,7 +924,7 @@ const CalendarPage = () => {
                 </button>
               </div>
 
-              {isClinicAdmin && (
+              {(isClinicAdmin || isPodiatrist) && (
                 <button
                   onClick={() => openNewAppointmentForm(selectedDate)}
                   className="w-full mb-4 px-3 py-2 bg-gray-100 text-[#1a1a1a] rounded-lg hover:bg-gray-200 transition-colors font-medium flex items-center justify-center gap-2 text-sm"
@@ -907,11 +943,14 @@ const CalendarPage = () => {
               ) : (
                 <div className="space-y-3">
                   {/* Appointments */}
-                  {selectedDateAppointments.map((appt) => (
+                  {selectedDateAppointments.map((appt) => {
+                    // Los podólogos solo pueden editar sus propias citas, los clinic admins pueden editar todas
+                    const canEdit = isClinicAdmin || (isPodiatrist && appt.podiatristId === user?.id);
+                    return (
                     <div
                       key={appt.id}
-                      onClick={() => isClinicAdmin && openEditAppointmentForm(appt)}
-                      className="p-3 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors cursor-pointer"
+                      onClick={() => canEdit && openEditAppointmentForm(appt)}
+                      className={`p-3 bg-blue-50 rounded-lg transition-colors ${canEdit ? "hover:bg-blue-100 cursor-pointer" : "cursor-default"}`}
                     >
                       <div className="flex items-center gap-2 mb-1">
                         <div className="w-2 h-2 rounded-full bg-blue-500" />
@@ -922,6 +961,11 @@ const CalendarPage = () => {
                           <span className="text-[10px] text-orange-600 bg-orange-100 px-1.5 py-0.5 rounded">Pendiente</span>
                         )}
                       </div>
+                      {!appt.patientId && appt.pendingPatientPhone && (
+                        <p className="text-xs text-gray-500">
+                          Tel: {appt.pendingPatientPhone}
+                        </p>
+                      )}
                       <p className="text-xs text-gray-500">
                         Podólogo: {appt.podiatristName}
                       </p>
@@ -929,7 +973,8 @@ const CalendarPage = () => {
                         <p className="text-xs text-gray-400 mt-1 line-clamp-2">{appt.notes}</p>
                       )}
                     </div>
-                  ))}
+                    );
+                  })}
                   {/* Sessions */}
                   {selectedDateSessions.map((session) => (
                     <Link key={session.id} href={`/sessions?id=${session.id}`}>
@@ -957,18 +1002,21 @@ const CalendarPage = () => {
           )}
 
           {/* Upcoming Appointments */}
-          {isClinicAdmin && upcomingAppointments.length > 0 && (
+          {(isClinicAdmin || isPodiatrist) && upcomingAppointments.length > 0 && (
             <div className="bg-white rounded-xl border border-gray-100 p-4">
               <h3 className="font-semibold text-[#1a1a1a] mb-4">
                 Próximas citas
               </h3>
               
               <div className="space-y-3">
-                {upcomingAppointments.slice(0, 5).map((appt) => (
+                {upcomingAppointments.slice(0, 5).map((appt) => {
+                  // Los podólogos solo pueden editar sus propias citas, los clinic admins pueden editar todas
+                  const canEdit = isClinicAdmin || (isPodiatrist && appt.podiatristId === user?.id);
+                  return (
                   <div
                     key={appt.id}
-                    onClick={() => openEditAppointmentForm(appt)}
-                    className="flex items-center gap-3 p-2 rounded-lg hover:bg-gray-50 transition-colors cursor-pointer"
+                    onClick={() => canEdit && openEditAppointmentForm(appt)}
+                    className={`flex items-center gap-3 p-2 rounded-lg transition-colors ${canEdit ? "hover:bg-gray-50 cursor-pointer" : "cursor-default"}`}
                   >
                     <div className="flex-shrink-0 w-10 h-10 bg-blue-100 rounded-lg flex flex-col items-center justify-center">
                       <span className="text-xs font-semibold text-blue-700">
@@ -993,7 +1041,8 @@ const CalendarPage = () => {
                     </div>
                     <div className="w-2 h-2 rounded-full bg-blue-500" />
                   </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           )}
@@ -1099,21 +1148,55 @@ const CalendarPage = () => {
                 </label>
                 <select
                   value={appointmentForm.patientId || ""}
-                  onChange={(e) => setAppointmentForm(prev => ({ ...prev, patientId: e.target.value || null }))}
+                  onChange={(e) => setAppointmentForm(prev => ({ 
+                    ...prev, 
+                    patientId: e.target.value || null,
+                    // Limpiar campos de paciente pendiente si se selecciona un paciente existente
+                    pendingPatientName: e.target.value ? "" : prev.pendingPatientName,
+                    pendingPatientPhone: e.target.value ? "" : prev.pendingPatientPhone,
+                  }))}
                   className="w-full px-3 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:border-[#1a1a1a] focus:ring-1 focus:ring-[#1a1a1a]"
                 >
-                  <option value="">Paciente pendiente (crear más tarde)</option>
+                  <option value="">Paciente pendiente de registrar</option>
                   {clinicPatients.map(patient => (
                     <option key={patient.id} value={patient.id}>
                       {patient.firstName} {patient.lastName} - {patient.email}
                     </option>
                   ))}
                 </select>
-                {appointmentForm.patientId === "" || appointmentForm.patientId === null ? (
-                  <p className="mt-1 text-xs text-gray-500">
-                    Un podólogo deberá crear el paciente y asociarlo a esta cita más tarde.
-                  </p>
-                ) : null}
+                {(appointmentForm.patientId === "" || appointmentForm.patientId === null) && (
+                  <div className="mt-3 space-y-3 p-3 bg-gray-50 rounded-lg border border-gray-200">
+                    <p className="text-xs font-medium text-gray-700 mb-2">
+                      Información del paciente pendiente:
+                    </p>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-600 mb-1">
+                        Nombre *
+                      </label>
+                      <input
+                        type="text"
+                        value={appointmentForm.pendingPatientName}
+                        onChange={(e) => setAppointmentForm(prev => ({ ...prev, pendingPatientName: e.target.value }))}
+                        placeholder="Nombre completo del paciente"
+                        className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-[#1a1a1a] focus:ring-1 focus:ring-[#1a1a1a]"
+                        required={appointmentForm.patientId === "" || appointmentForm.patientId === null}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-600 mb-1">
+                        Teléfono *
+                      </label>
+                      <input
+                        type="tel"
+                        value={appointmentForm.pendingPatientPhone}
+                        onChange={(e) => setAppointmentForm(prev => ({ ...prev, pendingPatientPhone: e.target.value }))}
+                        placeholder="Teléfono de contacto"
+                        className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-[#1a1a1a] focus:ring-1 focus:ring-[#1a1a1a]"
+                        required={appointmentForm.patientId === "" || appointmentForm.patientId === null}
+                      />
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Podiatrist Selection */}
@@ -1121,19 +1204,28 @@ const CalendarPage = () => {
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Podólogo *
                 </label>
-                <select
-                  value={appointmentForm.podiatristId}
-                  onChange={(e) => setAppointmentForm(prev => ({ ...prev, podiatristId: e.target.value }))}
-                  className="w-full px-3 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:border-[#1a1a1a] focus:ring-1 focus:ring-[#1a1a1a]"
-                  required
-                >
-                  <option value="">Seleccionar podólogo</option>
-                  {clinicPodiatrists.map(pod => (
-                    <option key={pod.id} value={pod.id}>
-                      {pod.name}
-                    </option>
-                  ))}
-                </select>
+                {isPodiatrist && !isClinicAdmin ? (
+                  <input
+                    type="text"
+                    value={user?.name || ""}
+                    disabled
+                    className="w-full px-3 py-2.5 border border-gray-200 rounded-lg bg-gray-50 text-gray-600 cursor-not-allowed"
+                  />
+                ) : (
+                  <select
+                    value={appointmentForm.podiatristId}
+                    onChange={(e) => setAppointmentForm(prev => ({ ...prev, podiatristId: e.target.value }))}
+                    className="w-full px-3 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:border-[#1a1a1a] focus:ring-1 focus:ring-[#1a1a1a]"
+                    required
+                  >
+                    <option value="">Seleccionar podólogo</option>
+                    {clinicPodiatrists.map(pod => (
+                      <option key={pod.id} value={pod.id}>
+                        {pod.name}
+                      </option>
+                    ))}
+                  </select>
+                )}
               </div>
 
               {/* Date */}

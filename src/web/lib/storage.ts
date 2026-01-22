@@ -159,6 +159,9 @@ export interface Appointment {
   createdBy: string;
   createdAt: string;
   updatedAt: string;
+  // Pending patient info (when patientId is null)
+  pendingPatientName?: string;
+  pendingPatientPhone?: string;
 }
 
 // Storage keys

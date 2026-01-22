@@ -52,12 +52,7 @@ const Login = () => {
         
         <div className="relative z-10 flex flex-col justify-center items-center w-full p-12">
           <div className="mb-8">
-            <svg className="w-20 h-20 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-              <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z"/>
-              <path d="M12 6v6l4 2"/>
-              <path d="M8 14c0 2.21 1.79 4 4 4s4-1.79 4-4"/>
-              <path d="M9 10h.01M15 10h.01"/>
-            </svg>
+            <img src="/favicon.svg" alt="Logo" className="w-40 h-40" />
           </div>
           
           <h1 className="text-white text-5xl font-light tracking-tight mb-4">

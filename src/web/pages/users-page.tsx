@@ -19,6 +19,7 @@ import {
   updateClinicCredits,
   addClinicCredits,
   initializeClinicCredits,
+  updateMonthlyRenewalAmount,
   Patient,
   ClinicalSession,
   CreditTransaction,
@@ -486,6 +487,125 @@ const CreditAdjustmentModal = ({
   );
 };
 
+// Monthly Renewal Amount Modal
+const MonthlyRenewalModal = ({ 
+  isOpen, 
+  onClose, 
+  user,
+  onSave 
+}: { 
+  isOpen: boolean; 
+  onClose: () => void; 
+  user: User | null;
+  onSave: (userId: string, renewalAmount: number) => void;
+}) => {
+  const { t } = useLanguage();
+  const [renewalAmount, setRenewalAmount] = useState(0);
+  const [error, setError] = useState<string | null>(null);
+  const currentUser = useAuth().user;
+
+  useEffect(() => {
+    if (user) {
+      const userCredits = getUserCredits(user.id);
+      setRenewalAmount(userCredits.monthlyRenewalAmount ?? userCredits.monthlyCredits);
+    }
+  }, [user]);
+
+  if (!isOpen || !user) return null;
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (renewalAmount < 0) {
+      setError("La cantidad debe ser mayor o igual a 0");
+      return;
+    }
+    
+    setError(null);
+    onSave(user.id, renewalAmount);
+    onClose();
+  };
+
+  const userCredits = getUserCredits(user.id);
+  const currentRenewalAmount = userCredits.monthlyRenewalAmount ?? userCredits.monthlyCredits;
+
+  return (
+    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+      <div className="bg-white rounded-2xl w-full max-w-md shadow-xl">
+        <div className="p-6 border-b border-gray-100">
+          <h3 className="text-lg font-semibold text-[#1a1a1a]">Gestionar Renovación Mensual</h3>
+          <p className="text-sm text-gray-500 mt-1">{user.name}</p>
+        </div>
+        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+          <div className="bg-blue-50 border border-blue-100 rounded-lg p-3">
+            <p className="text-xs text-blue-700">
+              <strong>Renovación Mensual:</strong> Esta es la cantidad de créditos que se renovarán automáticamente cada mes para este usuario.
+            </p>
+          </div>
+          
+          <div className="bg-gray-50 rounded-lg p-4">
+            <p className="text-sm text-gray-500 mb-2">Valor actual de renovación mensual</p>
+            <p className="text-2xl font-semibold text-[#1a1a1a]">{currentRenewalAmount} créditos/mes</p>
+            <p className="text-xs text-gray-500 mt-1">
+              Créditos mensuales actuales: {userCredits.monthlyCredits}
+            </p>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-[#1a1a1a] mb-1">
+              Nueva cantidad de renovación mensual
+            </label>
+            <input
+              type="number"
+              min="0"
+              value={renewalAmount}
+              onChange={(e) => {
+                setRenewalAmount(parseInt(e.target.value) || 0);
+                setError(null);
+              }}
+              className="w-full px-4 py-2.5 rounded-lg border border-gray-200 focus:border-[#1a1a1a] focus:ring-1 focus:ring-[#1a1a1a] outline-none transition-colors"
+              required
+            />
+            <p className="text-xs text-gray-500 mt-1">
+              Establece cuántos créditos se renovarán cada mes para este usuario.
+            </p>
+          </div>
+
+          {error && (
+            <div className="bg-red-50 border border-red-200 rounded-lg p-3">
+              <div className="flex items-start gap-2">
+                <svg className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <div>
+                  <p className="text-sm font-medium text-red-800">Error</p>
+                  <p className="text-sm text-red-700 mt-1">{error}</p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          <div className="flex gap-3 pt-4">
+            <button
+              type="button"
+              onClick={onClose}
+              className="flex-1 px-4 py-2.5 border border-gray-200 rounded-lg text-[#1a1a1a] font-medium hover:bg-gray-50 transition-colors"
+            >
+              {t.common.cancel}
+            </button>
+            <button
+              type="submit"
+              className="flex-1 px-4 py-2.5 bg-[#1a1a1a] text-white rounded-lg font-medium hover:bg-[#2a2a2a] transition-colors"
+            >
+              Guardar
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+};
+
 // Transfer History Modal
 const TransferHistoryModal = ({ 
   isOpen, 
@@ -807,6 +927,7 @@ const UsersPage = () => {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showCreditModal, setShowCreditModal] = useState(false);
+  const [showRenewalModal, setShowRenewalModal] = useState(false);
   const [showTransferModal, setShowTransferModal] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
@@ -901,6 +1022,31 @@ const UsersPage = () => {
         targetUserName: updates.name,
       }),
     });
+  };
+
+  const handleMonthlyRenewalUpdate = (userId: string, renewalAmount: number): void => {
+    const targetUser = getAllUsers().find(u => u.id === userId);
+    
+    // Actualizar la cantidad de renovación mensual
+    updateMonthlyRenewalAmount(userId, renewalAmount);
+    
+    // Agregar log de auditoría
+    addAuditLog({
+      userId: currentUser?.id || "",
+      userName: currentUser?.name || "",
+      action: "UPDATE_MONTHLY_RENEWAL",
+      entityType: "credit",
+      entityId: userId,
+      details: JSON.stringify({
+        action: "update_monthly_renewal_amount",
+        targetUserId: userId,
+        targetUserName: targetUser?.name,
+        newRenewalAmount: renewalAmount,
+      }),
+    });
+    
+    // Forzar actualización de la lista
+    window.dispatchEvent(new Event("creditsUpdated"));
   };
 
   const handleCreditAdjustment = (userId: string, amount: number, isAdd: boolean, reason: string): { success: boolean; error?: string } => {
@@ -1169,16 +1315,27 @@ const UsersPage = () => {
                     Editar
                   </button>
                 )}
-                {isSuperAdmin && u.role === "podiatrist" && (
-                  <button
-                    onClick={() => { setSelectedUser(u); setShowCreditModal(true); }}
-                    className="py-2.5 px-4 bg-green-50 text-green-700 rounded-lg hover:bg-green-100 active:bg-green-200 transition-colors min-h-[44px]"
-                    title="Créditos"
-                  >
-                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                  </button>
+                {isSuperAdmin && (u.role === "podiatrist" || u.role === "clinic_admin" || u.role === "admin") && (
+                  <>
+                    <button
+                      onClick={() => { setSelectedUser(u); setShowCreditModal(true); }}
+                      className="py-2.5 px-4 bg-green-50 text-green-700 rounded-lg hover:bg-green-100 active:bg-green-200 transition-colors min-h-[44px]"
+                      title="Ajustar créditos"
+                    >
+                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                    </button>
+                    <button
+                      onClick={() => { setSelectedUser(u); setShowRenewalModal(true); }}
+                      className="py-2.5 px-4 bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 active:bg-blue-200 transition-colors min-h-[44px]"
+                      title="Renovación mensual"
+                    >
+                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                      </svg>
+                    </button>
+                  </>
                 )}
               </div>
             </div>
@@ -1279,19 +1436,33 @@ const UsersPage = () => {
                         )}
                         
                         {/* Adjust Credits */}
-                        {isSuperAdmin && (u.role === "podiatrist" || u.role === "clinic_admin") && (
-                          <button
-                            onClick={() => {
-                              setSelectedUser(u);
-                              setShowCreditModal(true);
-                            }}
-                            className="p-2 text-gray-400 hover:text-[#1a1a1a] hover:bg-gray-100 rounded-lg transition-colors"
-                            title={u.role === "clinic_admin" ? "Ajustar pool de créditos de la clínica" : "Ajustar créditos"}
-                          >
-                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                            </svg>
-                          </button>
+                        {isSuperAdmin && (u.role === "podiatrist" || u.role === "clinic_admin" || u.role === "admin") && (
+                          <>
+                            <button
+                              onClick={() => {
+                                setSelectedUser(u);
+                                setShowCreditModal(true);
+                              }}
+                              className="p-2 text-gray-400 hover:text-[#1a1a1a] hover:bg-gray-100 rounded-lg transition-colors"
+                              title={u.role === "clinic_admin" ? "Ajustar pool de créditos de la clínica" : "Ajustar créditos"}
+                            >
+                              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                              </svg>
+                            </button>
+                            <button
+                              onClick={() => {
+                                setSelectedUser(u);
+                                setShowRenewalModal(true);
+                              }}
+                              className="p-2 text-gray-400 hover:text-[#1a1a1a] hover:bg-gray-100 rounded-lg transition-colors"
+                              title="Gestionar renovación mensual"
+                            >
+                              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                              </svg>
+                            </button>
+                          </>
                         )}
                         
                         {/* Export JSON */}
@@ -1344,6 +1515,13 @@ const UsersPage = () => {
         onClose={() => setShowCreditModal(false)}
         user={selectedUser}
         onSave={handleCreditAdjustment}
+      />
+      
+      <MonthlyRenewalModal
+        isOpen={showRenewalModal}
+        onClose={() => setShowRenewalModal(false)}
+        user={selectedUser}
+        onSave={handleMonthlyRenewalUpdate}
       />
       
       <TransferHistoryModal

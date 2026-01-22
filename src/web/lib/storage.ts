@@ -132,6 +132,7 @@ export interface UserCredits {
   extraCredits: number;
   reservedCredits: number;
   lastMonthlyReset: string;
+  monthlyRenewalAmount?: number; // Cantidad de créditos que se renuevan cada mes (gestionado por superadmin)
 }
 
 export interface AuditLog {
@@ -409,6 +410,7 @@ export const initializeUserCredits = (
     extraCredits,
     reservedCredits: 0,
     lastMonthlyReset: new Date().toISOString(),
+    monthlyRenewalAmount: monthlyCredits, // Por defecto, se renuevan los mismos créditos mensuales iniciales
   };
   
   // Save to storage
@@ -436,6 +438,12 @@ export const getUserCredits = (userId: string): UserCredits => {
     return initializeUserCredits(userId, role);
   }
   
+  // Migrar usuarios existentes que no tengan monthlyRenewalAmount
+  if (userCredits.monthlyRenewalAmount === undefined) {
+    userCredits.monthlyRenewalAmount = userCredits.monthlyCredits;
+    updateUserCredits(userCredits);
+  }
+  
   return userCredits;
 };
 
@@ -450,6 +458,33 @@ export const updateUserCredits = (credits: UserCredits): void => {
   }
   
   setItem(KEYS.CREDITS, allCredits);
+};
+
+// Actualizar la cantidad de créditos que se renuevan mensualmente
+export const updateMonthlyRenewalAmount = (userId: string, renewalAmount: number): void => {
+  const credits = getUserCredits(userId);
+  credits.monthlyRenewalAmount = renewalAmount;
+  updateUserCredits(credits);
+};
+
+// Renovar créditos mensuales usando el monthlyRenewalAmount configurado
+export const renewMonthlyCredits = (userId: string): void => {
+  const credits = getUserCredits(userId);
+  const renewalAmount = credits.monthlyRenewalAmount ?? credits.monthlyCredits;
+  
+  // Renovar los créditos mensuales
+  credits.monthlyCredits = renewalAmount;
+  credits.lastMonthlyReset = new Date().toISOString();
+  
+  // Agregar transacción de renovación
+  addCreditTransaction({
+    userId,
+    type: "monthly_allocation",
+    amount: renewalAmount,
+    description: `Renovación mensual de créditos (${renewalAmount} créditos)`,
+  });
+  
+  updateUserCredits(credits);
 };
 
 export const reserveCredit = (userId: string, sessionId: string): boolean => {

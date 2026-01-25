@@ -157,6 +157,9 @@ CSRF_SECRET=tu-clave-secreta-para-csrf-minimo-32-caracteres
 ```env
 IP_WHITELIST=192.168.1.1,10.0.0.0/8  # IPs confiables (bypass rate limiting)
 SENDGRID_API_KEY=...  # Para notificaciones por email
+CAPTCHA_PROVIDER=recaptcha|hcaptcha|turnstile  # Proveedor de CAPTCHA
+CAPTCHA_SITE_KEY=...  # Site key del proveedor de CAPTCHA
+CAPTCHA_SECRET_KEY=...  # Secret key del proveedor de CAPTCHA
 ```
 
 **IMPORTANTE**: 
@@ -167,13 +170,13 @@ SENDGRID_API_KEY=...  # Para notificaciones por email
 ## Próximos Pasos Recomendados
 
 1. ✅ **Migrar datos a base de datos**: Schemas y funciones de migración creados (ver `MIGRATION_GUIDE.md`)
-2. **Implementar blacklist de tokens**: Para logout completo
+2. ✅ **Implementar blacklist de tokens**: Implementado (ver `src/api/utils/token-blacklist.ts`)
 3. ✅ **Migrar rate limiting a D1**: Implementado (ver `src/api/utils/rate-limit-d1.ts`)
 4. ✅ **Integrar servicio de email real**: Implementado (Resend, SendGrid, AWS SES - ver `src/api/utils/email-service.ts`)
-5. **Agregar logging de auditoría**: Registrar todas las acciones sensibles
-6. **Agregar métricas y monitoreo**: Dashboard de seguridad
-7. **Implementar CAPTCHA**: Después de X intentos fallidos
-8. **Agregar 2FA**: Autenticación de dos factores
+5. ✅ **Agregar logging de auditoría**: Implementado (ver `src/api/utils/audit-log.ts`)
+6. ✅ **Agregar métricas y monitoreo**: Implementado (ver `src/api/utils/security-metrics.ts` y `src/api/routes/security-metrics.ts`)
+7. ✅ **Implementar CAPTCHA**: Implementado (ver `src/api/utils/captcha.ts`)
+8. ✅ **Agregar 2FA**: Implementado (ver `src/api/utils/two-factor-auth.ts` y `src/api/routes/two-factor-auth.ts`)
 
 ## Implementaciones Recientes
 
@@ -204,6 +207,54 @@ SENDGRID_API_KEY=...  # Para notificaciones por email
 - Integrado con notificaciones de seguridad
 - Ver `src/api/utils/email-service.ts`
 
+### ✅ Blacklist de Tokens
+- Tabla en base de datos para tokens revocados
+- Verificación en middleware de autenticación
+- Logout completo invalida tokens inmediatamente
+- Limpieza automática de tokens expirados
+- Ver `src/api/utils/token-blacklist.ts`
+
+### ✅ Logging de Auditoría en el Servidor
+- Registro de todas las acciones sensibles (login, logout, creación/edición de usuarios, etc.)
+- Integrado en todas las rutas críticas
+- Almacenamiento en base de datos D1
+- Endpoints para consultar logs por usuario, acción o rango de tiempo
+- Ver `src/api/utils/audit-log.ts`
+
+### ✅ Sistema de Métricas y Monitoreo
+- Registro de eventos de seguridad (intentos fallidos, bloqueos, 2FA, CAPTCHA, etc.)
+- Endpoints para consultar estadísticas y métricas
+- Dashboard de seguridad para super_admin
+- Ver `src/api/utils/security-metrics.ts` y `src/api/routes/security-metrics.ts`
+
+### ✅ CAPTCHA
+- Integración con reCAPTCHA, hCaptcha y Cloudflare Turnstile
+- Activación automática después de 3 intentos fallidos
+- Verificación en el servidor antes de procesar login
+- Configuración mediante variables de entorno
+- Ver `src/api/utils/captcha.ts`
+
+### ✅ Autenticación de Dos Factores (2FA)
+- Implementación TOTP (RFC 6238)
+- Generación de códigos QR para configuración
+- Códigos de respaldo (backup codes)
+- Verificación en login si está habilitado
+- Endpoints para habilitar/deshabilitar 2FA
+- Ver `src/api/utils/two-factor-auth.ts` y `src/api/routes/two-factor-auth.ts`
+
+### ✅ Registro Público con Todas las Medidas de Seguridad
+- Validación estricta de contraseñas (12+ caracteres, mayúsculas, minúsculas, números, especiales)
+- Rate limiting específico (3 registros por IP/hora, bloqueo 24h después de 5 fallos)
+- Verificación de email obligatoria (token único, válido 24 horas)
+- CAPTCHA siempre requerido
+- Hashing seguro de contraseñas (bcrypt, 12 rounds)
+- Prevención de cuentas duplicadas (sin revelar si email existe)
+- Validación de dominios de email (bloquea temporales, permite restricción)
+- Términos y condiciones (aceptación explícita)
+- Logging completo de todos los eventos
+- Sanitización de todos los inputs
+- Ver `src/api/routes/auth.ts` (endpoints `/register` y `/verify-email`) y `REGISTRO_IMPLEMENTADO.md`
+
 ## Archivos Creados/Modificados
 
 ### Nuevos Archivos
@@ -214,17 +265,24 @@ SENDGRID_API_KEY=...  # Para notificaciones por email
 - `src/api/utils/sanitization.ts` - Utilidades de sanitización y escapado HTML
 - `src/api/utils/validation.ts` - Schemas de validación con Zod
 - `src/api/utils/ip-tracking.ts` - Utilidades para tracking de IPs
-- `src/api/middleware/auth.ts`
+- `src/api/utils/token-blacklist.ts` - Blacklist de tokens para logout completo
+- `src/api/utils/audit-log.ts` - Logging de auditoría en el servidor
+- `src/api/utils/security-metrics.ts` - Sistema de métricas de seguridad
+- `src/api/utils/captcha.ts` - Utilidades para CAPTCHA
+- `src/api/utils/two-factor-auth.ts` - Autenticación de dos factores (TOTP)
+- `src/api/middleware/auth.ts` - Middleware de autenticación (actualizado con blacklist)
 - `src/api/middleware/authorization.ts`
 - `src/api/middleware/csrf.ts` - Protección CSRF
 - `src/api/middleware/csp.ts` - Content Security Policy
 - `src/api/middleware/sanitization.ts` - Middleware de sanitización
 - `src/api/middleware/rate-limit.ts` - Middleware de rate limiting
 - `src/api/utils/csrf.ts` - Utilidades CSRF
-- `src/api/routes/auth.ts` - Incluye endpoint de refresh y rate limiting
-- `src/api/routes/users.ts` - Con validación y sanitización
+- `src/api/routes/auth.ts` - Incluye CAPTCHA, 2FA, logging, métricas, registro y verificación de email
+- `src/api/routes/users.ts` - Con validación, sanitización y logging de auditoría
 - `src/api/routes/patients.ts` - Con validación y sanitización
 - `src/api/routes/csrf.ts` - Endpoint para tokens CSRF
+- `src/api/routes/two-factor-auth.ts` - Endpoints para gestión de 2FA
+- `src/api/routes/security-metrics.ts` - Endpoints para métricas de seguridad
 - `src/web/lib/api-client.ts` - Con renovación automática
 - `src/api/README.md`
 - `src/api/CSRF_IMPLEMENTATION.md` - Documentación CSRF
@@ -233,6 +291,8 @@ SENDGRID_API_KEY=...  # Para notificaciones por email
 - `src/api/SECURITY_CHECKLIST.md` - Checklist de seguridad
 - `src/api/tests/xss-payloads.test.md` - Payloads XSS para probar
 - `ENV_VARIABLES.md` - Documentación de variables de entorno
+- `REGISTRO_SUGERENCIAS.md` - Sugerencias para sistema de registro
+- `REGISTRO_IMPLEMENTADO.md` - Documentación del registro público implementado
 - `SECURITY_IMPLEMENTATION.md`
 
 ### Archivos Modificados

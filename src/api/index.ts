@@ -5,10 +5,14 @@ import { csrfProtection } from './middleware/csrf';
 import { cspMiddleware } from './middleware/csp';
 import { sanitizationMiddleware } from './middleware/sanitization';
 import authRoutes from './routes/auth';
+import oauthRoutes from './routes/oauth';
 import usersRoutes from './routes/users';
 import patientsRoutes from './routes/patients';
 import csrfRoutes from './routes/csrf';
 import testXssRoutes from './routes/test-xss';
+import twoFactorRoutes from './routes/two-factor-auth';
+import metricsRoutes from './routes/security-metrics';
+import auditLogRoutes from './routes/audit-logs';
 
 const app = new Hono()
   .basePath('api');
@@ -82,6 +86,9 @@ if (process.env.NODE_ENV !== 'production') {
 // Logout requiere autenticación pero puede requerir CSRF
 app.route('/auth', authRoutes);
 
+// Rutas OAuth (públicas, no requieren CSRF)
+app.route('/auth/oauth', oauthRoutes);
+
 // Aplicar protección CSRF a todas las rutas que modifican estado
 // EXCEPCIONES: /auth/login y /auth/refresh no requieren CSRF
 app.use('*', async (c, next) => {
@@ -101,6 +108,9 @@ app.use('*', async (c, next) => {
 // Rutas protegidas - requieren autenticación y autorización
 app.route('/users', usersRoutes);
 app.route('/patients', patientsRoutes);
+app.route('/2fa', twoFactorRoutes);
+app.route('/security-metrics', metricsRoutes);
+app.route('/audit-logs', auditLogRoutes);
 
 // IMPORTANTE: Todas las rutas que manejen datos sensibles DEBEN usar:
 // 1. requireAuth() - para verificar que el usuario está autenticado

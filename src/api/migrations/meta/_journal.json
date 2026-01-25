@@ -1,1 +1,27 @@
-{"version":"7","dialect":"sqlite","entries":[]}
+{
+  "version": "7",
+  "dialect": "sqlite",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "6",
+      "when": 1769093191471,
+      "tag": "0000_mysterious_mindworm",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1769250846040,
+      "tag": "0001_sour_rawhide_kid",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1769253199461,
+      "tag": "0002_equal_colossus",
+      "breakpoints": true
+    }
+  ]
+}

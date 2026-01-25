@@ -103,6 +103,19 @@ usersRoutes.post(
         currentUser!.userId
       );
 
+      // Registrar evento de auditoría
+      const { logAuditEvent } = await import('../utils/audit-log');
+      const { getClientIP } = await import('../utils/ip-tracking');
+      await logAuditEvent({
+        userId: currentUser!.userId,
+        action: 'CREATE_USER',
+        resourceType: 'user',
+        resourceId: newUser.id,
+        ipAddress: getClientIP(c.req.raw.headers),
+        userAgent: c.req.header('User-Agent') || undefined,
+        details: { email: newUser.email, role: newUser.role, clinicId: newUser.clinicId },
+      });
+
       return c.json({ success: true, user: newUser }, 201);
     } catch (error: any) {
       console.error('Error creando usuario:', error);
@@ -175,6 +188,19 @@ usersRoutes.delete(
         return c.json({ error: 'Usuario no encontrado' }, 404);
       }
 
+      // Registrar evento de auditoría
+      const { logAuditEvent } = await import('../utils/audit-log');
+      const { getClientIP } = await import('../utils/ip-tracking');
+      const currentUser = c.get('user');
+      await logAuditEvent({
+        userId: currentUser!.userId,
+        action: 'DELETE_USER',
+        resourceType: 'user',
+        resourceId: userId,
+        ipAddress: getClientIP(c.req.raw.headers),
+        userAgent: c.req.header('User-Agent') || undefined,
+      });
+
       return c.json({ success: true, message: 'Usuario eliminado correctamente' });
     } catch (error) {
       console.error('Error eliminando usuario:', error);
@@ -202,6 +228,27 @@ usersRoutes.post(
       if (!success) {
         return c.json({ error: 'Usuario no encontrado' }, 404);
       }
+
+      // Registrar eventos
+      const { logAuditEvent } = await import('../utils/audit-log');
+      const { recordSecurityMetric } = await import('../utils/security-metrics');
+      const { getClientIP } = await import('../utils/ip-tracking');
+      const currentUser = c.get('user');
+      
+      await logAuditEvent({
+        userId: currentUser!.userId,
+        action: 'BLOCK_USER',
+        resourceType: 'user',
+        resourceId: userId,
+        ipAddress: getClientIP(c.req.raw.headers),
+        userAgent: c.req.header('User-Agent') || undefined,
+      });
+
+      await recordSecurityMetric({
+        metricType: 'blocked_user',
+        userId,
+        ipAddress: getClientIP(c.req.raw.headers),
+      });
 
       return c.json({ success: true, message: 'Usuario bloqueado correctamente' });
     } catch (error) {
@@ -231,6 +278,27 @@ usersRoutes.post(
         return c.json({ error: 'Usuario no encontrado' }, 404);
       }
 
+      // Registrar eventos
+      const { logAuditEvent } = await import('../utils/audit-log');
+      const { recordSecurityMetric } = await import('../utils/security-metrics');
+      const { getClientIP } = await import('../utils/ip-tracking');
+      const currentUser = c.get('user');
+      
+      await logAuditEvent({
+        userId: currentUser!.userId,
+        action: 'UNBLOCK_USER',
+        resourceType: 'user',
+        resourceId: userId,
+        ipAddress: getClientIP(c.req.raw.headers),
+        userAgent: c.req.header('User-Agent') || undefined,
+      });
+
+      await recordSecurityMetric({
+        metricType: 'unblocked_user',
+        userId,
+        ipAddress: getClientIP(c.req.raw.headers),
+      });
+
       return c.json({ success: true, message: 'Usuario desbloqueado correctamente' });
     } catch (error) {
       console.error('Error desbloqueando usuario:', error);
@@ -258,6 +326,27 @@ usersRoutes.post(
       if (!success) {
         return c.json({ error: 'Usuario no encontrado' }, 404);
       }
+
+      // Registrar eventos
+      const { logAuditEvent } = await import('../utils/audit-log');
+      const { recordSecurityMetric } = await import('../utils/security-metrics');
+      const { getClientIP } = await import('../utils/ip-tracking');
+      const currentUser = c.get('user');
+      
+      await logAuditEvent({
+        userId: currentUser!.userId,
+        action: 'BAN_USER',
+        resourceType: 'user',
+        resourceId: userId,
+        ipAddress: getClientIP(c.req.raw.headers),
+        userAgent: c.req.header('User-Agent') || undefined,
+      });
+
+      await recordSecurityMetric({
+        metricType: 'banned_user',
+        userId,
+        ipAddress: getClientIP(c.req.raw.headers),
+      });
 
       return c.json({ success: true, message: 'Usuario baneado correctamente' });
     } catch (error) {

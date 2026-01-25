@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { MainLayout } from "../components/layout/main-layout";
 import { useLanguage } from "../contexts/language-context";
 import { useAuth, getAllUsers, User, UserRole } from "../contexts/auth-context";
@@ -617,11 +617,13 @@ const MonthlyRenewalModal = ({
 const TransferHistoryModal = ({ 
   isOpen, 
   onClose, 
-  allUsers
+  allUsers,
+  onTransferComplete
 }: { 
-  isOpen: boolean; 
+  isOpen: boolean;
   onClose: () => void; 
   allUsers: User[];
+  onTransferComplete?: () => void;
 }) => {
   const { t } = useLanguage();
   const { user: currentUser } = useAuth();
@@ -665,9 +667,28 @@ const TransferHistoryModal = ({
         return s;
       });
       
-      // Save to localStorage
-      localStorage.setItem("podoadmin_patients", JSON.stringify(updatedPatients));
-      localStorage.setItem("podoadmin_sessions", JSON.stringify(updatedSessions));
+      // Save to localStorage using the same keys as storage.ts
+      const KEYS = {
+        PATIENTS: "podoadmin_patients",
+        SESSIONS: "podoadmin_sessions",
+      };
+      
+      localStorage.setItem(KEYS.PATIENTS, JSON.stringify(updatedPatients));
+      localStorage.setItem(KEYS.SESSIONS, JSON.stringify(updatedSessions));
+      
+      // Force a custom event to trigger updates in other components
+      window.dispatchEvent(new CustomEvent('storage-update', {
+        detail: { 
+          key: KEYS.PATIENTS,
+          type: 'patients-updated'
+        }
+      }));
+      window.dispatchEvent(new CustomEvent('storage-update', {
+        detail: { 
+          key: KEYS.SESSIONS,
+          type: 'sessions-updated'
+        }
+      }));
       
       // Add audit log
       const targetUser = allUsers.find(u => u.id === targetUserId);
@@ -689,9 +710,23 @@ const TransferHistoryModal = ({
       
       setResult({
         success: true,
-        message: `Se han transferido ${sourcePatientIds.length} pacientes correctamente.`
+        message: `Se han transferido ${sourcePatientIds.length} pacientes correctamente. El usuario origen ahora tiene 0 pacientes y el usuario destino tiene más pacientes.`
       });
+      
+      // Notify parent component to refresh immediately
+      if (onTransferComplete) {
+        onTransferComplete();
+      }
+      
+      // Close modal after a delay to show success message (user can also close manually)
+      setTimeout(() => {
+        setResult(null);
+        setSourceUserId("");
+        setTargetUserId("");
+        onClose();
+      }, 3000);
     } catch (error) {
+      console.error("Error transferring history:", error);
       setResult({
         success: false,
         message: "Error al transferir los datos."
@@ -938,25 +973,45 @@ const UsersPage = () => {
   const [showTransferModal, setShowTransferModal] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
+  const [refreshKey, setRefreshKey] = useState(0);
+
+  // Listen for storage updates
+  useEffect(() => {
+    const handleStorageUpdate = () => {
+      setRefreshKey(prev => prev + 1);
+    };
+    
+    window.addEventListener('storage-update', handleStorageUpdate);
+    // Also listen to actual storage events (from other tabs)
+    window.addEventListener('storage', handleStorageUpdate);
+    
+    return () => {
+      window.removeEventListener('storage-update', handleStorageUpdate);
+      window.removeEventListener('storage', handleStorageUpdate);
+    };
+  }, []);
 
   // Enhance users with additional data
-  const usersWithData: UserWithData[] = allUsers.map(u => {
-    const userCredits = getUserCredits(u.id);
-    const patients = getPatients().filter(p => p.createdBy === u.id);
-    const sessions = getSessions().filter(s => s.createdBy === u.id);
-    
-    return {
-      ...u,
-      credits: {
-        monthly: userCredits.monthlyCredits,
-        extra: userCredits.extraCredits,
-        reserved: userCredits.reservedCredits,
-        total: userCredits.monthlyCredits + userCredits.extraCredits - userCredits.reservedCredits,
-      },
-      patientCount: patients.length,
-      sessionCount: sessions.length,
-    };
-  });
+  // Use refreshKey to force recalculation when data changes
+  const usersWithData: UserWithData[] = useMemo(() => {
+    return allUsers.map(u => {
+      const userCredits = getUserCredits(u.id);
+      const patients = getPatients().filter(p => p.createdBy === u.id);
+      const sessions = getSessions().filter(s => s.createdBy === u.id);
+      
+      return {
+        ...u,
+        credits: {
+          monthly: userCredits.monthlyCredits,
+          extra: userCredits.extraCredits,
+          reserved: userCredits.reservedCredits,
+          total: userCredits.monthlyCredits + userCredits.extraCredits - userCredits.reservedCredits,
+        },
+        patientCount: patients.length,
+        sessionCount: sessions.length,
+      };
+    });
+  }, [allUsers, refreshKey]);
 
   // Filter users
   const filteredUsers = usersWithData.filter(u => {
@@ -1989,8 +2044,14 @@ const UsersPage = () => {
       
       <TransferHistoryModal
         isOpen={showTransferModal}
-        onClose={() => setShowTransferModal(false)}
+        onClose={() => {
+          setShowTransferModal(false);
+          setRefreshKey(prev => prev + 1);
+        }}
         allUsers={allUsers}
+        onTransferComplete={() => {
+          setRefreshKey(prev => prev + 1);
+        }}
       />
       
       <UserProfileModal

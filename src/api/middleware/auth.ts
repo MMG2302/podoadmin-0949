@@ -1,6 +1,7 @@
 import { createMiddleware } from 'hono/factory';
 import { verifyAccessToken, extractTokenFromHeader } from '../utils/jwt';
 import { extractCookie } from '../utils/cookies';
+import { isTokenBlacklisted } from '../utils/token-blacklist';
 import type { JWTPayload } from '../utils/jwt';
 
 // Extender el tipo de contexto de Hono para incluir el usuario
@@ -17,6 +18,8 @@ declare module 'hono' {
  * Prioridad de lectura:
  * 1. Cookie HTTP-only (preferido para seguridad)
  * 2. Header Authorization (compatibilidad)
+ * 
+ * También verifica si el token está en la blacklist (logout)
  */
 export const authMiddleware = createMiddleware(async (c, next) => {
   // Intentar leer de cookie primero (más seguro)
@@ -30,6 +33,13 @@ export const authMiddleware = createMiddleware(async (c, next) => {
   }
 
   if (!token) {
+    c.set('user', null);
+    return next();
+  }
+
+  // Verificar si el token está en la blacklist
+  const isBlacklisted = await isTokenBlacklisted(token);
+  if (isBlacklisted) {
     c.set('user', null);
     return next();
   }

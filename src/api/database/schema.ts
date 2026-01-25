@@ -51,13 +51,22 @@ export const createdUsers = sqliteTable('created_users', {
   name: text('name').notNull(),
   role: text('role').notNull(), // 'super_admin' | 'clinic_admin' | 'admin' | 'podiatrist'
   clinicId: text('clinic_id'),
-  password: text('password').notNull(), // Hash en producción
+  password: text('password'), // Hash en producción (opcional para OAuth)
   createdAt: text('created_at').notNull(),
   updatedAt: text('updated_at').notNull(),
   createdBy: text('created_by'),
   isBlocked: integer('is_blocked', { mode: 'boolean' }).notNull().default(false),
   isBanned: integer('is_banned', { mode: 'boolean' }).notNull().default(false),
   isEnabled: integer('is_enabled', { mode: 'boolean' }).notNull().default(true),
+  emailVerified: integer('email_verified', { mode: 'boolean' }).notNull().default(false),
+  termsAccepted: integer('terms_accepted', { mode: 'boolean' }).notNull().default(false),
+  termsAcceptedAt: text('terms_accepted_at'),
+  registrationSource: text('registration_source'), // 'admin' | 'public' | 'google' | 'apple'
+  // Campos OAuth
+  googleId: text('google_id'), // ID único de Google
+  appleId: text('apple_id'), // ID único de Apple
+  oauthProvider: text('oauth_provider'), // 'google' | 'apple' | null
+  avatarUrl: text('avatar_url'), // URL del avatar (desde OAuth)
 });
 
 // Tabla de créditos de usuario
@@ -151,6 +160,57 @@ export const auditLog = sqliteTable('audit_log', {
 // Tabla de rate limiting (para persistencia)
 export const rateLimitAttempts = sqliteTable('rate_limit_attempts', {
   identifier: text('identifier').primaryKey(), // email:IP o solo email
+  count: integer('count').notNull().default(0),
+  firstAttempt: integer('first_attempt').notNull(), // Timestamp
+  lastAttempt: integer('last_attempt').notNull(), // Timestamp
+  blockedUntil: integer('blocked_until'), // Timestamp opcional
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+});
+
+// Tabla de blacklist de tokens (para logout completo)
+export const tokenBlacklist = sqliteTable('token_blacklist', {
+  tokenId: text('token_id').primaryKey(), // Hash del token JWT
+  userId: text('user_id').notNull(),
+  tokenType: text('token_type').notNull(), // 'access' | 'refresh'
+  expiresAt: integer('expires_at').notNull(), // Timestamp de expiración
+  createdAt: text('created_at').notNull(),
+});
+
+// Tabla de 2FA (TOTP secrets)
+export const twoFactorAuth = sqliteTable('two_factor_auth', {
+  userId: text('user_id').primaryKey().references(() => createdUsers.id),
+  secret: text('secret').notNull(), // TOTP secret encriptado
+  enabled: integer('enabled', { mode: 'boolean' }).notNull().default(false),
+  backupCodes: text('backup_codes'), // JSON array de códigos de respaldo
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+});
+
+// Tabla de métricas de seguridad
+export const securityMetrics = sqliteTable('security_metrics', {
+  id: text('id').primaryKey(),
+  metricType: text('metric_type').notNull(), // 'failed_login' | 'blocked_user' | '2fa_used' | 'captcha_shown' | etc.
+  userId: text('user_id'),
+  ipAddress: text('ip_address'),
+  details: text('details'), // JSON string con detalles adicionales
+  createdAt: text('created_at').notNull(),
+  clinicId: text('clinic_id'),
+});
+
+// Tabla de tokens de verificación de email
+export const emailVerificationTokens = sqliteTable('email_verification_tokens', {
+  id: text('id').primaryKey(),
+  userId: text('user_id').notNull().references(() => createdUsers.id),
+  token: text('token').notNull().unique(),
+  expiresAt: integer('expires_at').notNull(), // Timestamp en milisegundos
+  used: integer('used', { mode: 'boolean' }).notNull().default(false),
+  createdAt: text('created_at').notNull(),
+});
+
+// Tabla de rate limiting para registro
+export const registrationRateLimit = sqliteTable('registration_rate_limit', {
+  identifier: text('identifier').primaryKey(), // IP address
   count: integer('count').notNull().default(0),
   firstAttempt: integer('first_attempt').notNull(), // Timestamp
   lastAttempt: integer('last_attempt').notNull(), // Timestamp

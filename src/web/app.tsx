@@ -3,6 +3,9 @@ import { Provider } from "./components/provider";
 import { AuthProvider, useAuth } from "./contexts/auth-context";
 import { LanguageProvider } from "./contexts/language-context";
 import Login from "./pages/login";
+import Register from "./pages/register";
+import VerifyEmail from "./pages/verify-email";
+import Terms from "./pages/terms";
 import Dashboard from "./pages/dashboard";
 
 const ProtectedRoute = ({ component: Component }: { component: React.ComponentType }) => {
@@ -54,6 +57,15 @@ function AppRoutes() {
     <Switch>
       <Route path="/login">
         <PublicRoute component={Login} />
+      </Route>
+      <Route path="/register">
+        <PublicRoute component={Register} />
+      </Route>
+      <Route path="/verify-email">
+        <PublicRoute component={VerifyEmail} />
+      </Route>
+      <Route path="/terms">
+        <PublicRoute component={Terms} />
       </Route>
       <Route path="/">
         <ProtectedRoute component={Dashboard} />

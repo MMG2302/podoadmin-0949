@@ -132,6 +132,58 @@ export const createPatientSchema = z.object({
 export const updatePatientSchema = createPatientSchema.partial();
 
 /**
+ * Schema para registro público
+ * Incluye validación estricta de contraseñas y términos
+ */
+export const registerSchema = z.object({
+  email: z
+    .string()
+    .min(1, 'Email es requerido')
+    .email('Email inválido')
+    .max(255, 'Email demasiado largo')
+    .refine((val) => !containsXssPayload(val), {
+      message: 'Email contiene caracteres no permitidos',
+    })
+    .transform((val) => sanitizeEmail(val) || val),
+  password: z
+    .string()
+    .min(12, 'La contraseña debe tener al menos 12 caracteres')
+    .max(128, 'La contraseña no puede tener más de 128 caracteres')
+    .regex(/[A-Z]/, 'Debe contener al menos una letra mayúscula')
+    .regex(/[a-z]/, 'Debe contener al menos una letra minúscula')
+    .regex(/[0-9]/, 'Debe contener al menos un número')
+    .regex(/[^A-Za-z0-9]/, 'Debe contener al menos un carácter especial')
+    .refine((val) => !containsXssPayload(val), {
+      message: 'Contraseña contiene caracteres no permitidos',
+    }),
+  name: z
+    .string()
+    .min(2, 'El nombre debe tener al menos 2 caracteres')
+    .max(100, 'El nombre no puede tener más de 100 caracteres')
+    .transform((val) => escapeHtml(val)),
+  termsAccepted: z
+    .boolean()
+    .refine((val) => val === true, {
+      message: 'Debes aceptar los términos y condiciones',
+    }),
+  captchaToken: z.string().optional(), // CAPTCHA token (opcional si no está configurado)
+  clinicCode: z.string().max(100).optional(), // Código de clínica (opcional)
+});
+
+/**
+ * Schema para verificación de email
+ */
+export const verifyEmailSchema = z.object({
+  token: z
+    .string()
+    .min(1, 'Token es requerido')
+    .max(255, 'Token inválido')
+    .refine((val) => !containsXssPayload(val), {
+      message: 'Token contiene caracteres no permitidos',
+    }),
+});
+
+/**
  * Valida datos usando un schema de Zod
  */
 export function validateData<T>(

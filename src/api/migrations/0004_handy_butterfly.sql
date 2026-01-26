@@ -1,0 +1,1 @@
+ALTER TABLE `registration_rate_limit` ADD `failed_count` integer DEFAULT 0 NOT NULL;

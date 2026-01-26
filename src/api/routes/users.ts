@@ -129,7 +129,7 @@ usersRoutes.post(
 
 /**
  * PUT /api/users/:userId
- * Actualiza un usuario
+ * Actualiza un usuario (tanto en localStorage como en la base de datos)
  * Requiere: super_admin
  */
 usersRoutes.put(
@@ -141,6 +141,14 @@ usersRoutes.put(
       
       // Validar y sanitizar datos de entrada
       const rawBody = await c.req.json().catch(() => ({}));
+      
+      // Normalizar clinicId: si está vacío, establecerlo como null
+      if (rawBody.clinicId !== undefined) {
+        rawBody.clinicId = rawBody.clinicId && rawBody.clinicId.trim() !== "" 
+          ? rawBody.clinicId.trim() 
+          : null;
+      }
+      
       const validation = validateData(updateUserSchema, rawBody);
 
       if (!validation.success) {
@@ -154,13 +162,163 @@ usersRoutes.put(
         );
       }
 
-      const updatedUser = updateCreatedUser(userId, validation.data);
+      let updatedUser = null;
+      let updatedInLocalStorage = false;
+      let updatedInDB = false;
+      let userExistsInDB = false;
 
-      if (!updatedUser) {
-        return c.json({ error: 'Usuario no encontrado' }, 404);
+      // Primero verificar si el usuario existe en la base de datos
+      try {
+        const { database } = await import('../database');
+        const { createdUsers } = await import('../database/schema');
+        const { eq, or } = await import('drizzle-orm');
+        
+        // Buscar usuario por id o userId
+        const userResult = await database
+          .select()
+          .from(createdUsers)
+          .where(or(
+            eq(createdUsers.id, userId),
+            eq(createdUsers.userId, userId)
+          ))
+          .limit(1);
+        
+        userExistsInDB = userResult.length > 0;
+      } catch (dbCheckError) {
+        console.warn('Error verificando usuario en base de datos:', dbCheckError);
       }
 
-      return c.json({ success: true, user: updatedUser });
+      // Intentar actualizar en localStorage (usuarios creados)
+      try {
+        const result = updateCreatedUser(userId, validation.data);
+        if (result) {
+          updatedUser = result;
+          updatedInLocalStorage = true;
+        } else {
+          // Usuario no encontrado en localStorage, continuar para intentar en BD
+          console.log(`Usuario ${userId} no encontrado en localStorage, intentando actualizar en BD`);
+        }
+      } catch (localError: any) {
+        // Si hay un error (ej: email duplicado), registrar pero continuar
+        console.warn('Error actualizando usuario en localStorage:', localError.message);
+        // Si el error es por email duplicado, no continuar
+        if (localError.message && localError.message.includes('correo electrónico')) {
+          return c.json(
+            { error: 'Error de validación', message: localError.message },
+            400
+          );
+        }
+      }
+
+      // Intentar actualizar en la base de datos (usuarios registrados públicamente)
+      if (userExistsInDB) {
+        try {
+          const { database } = await import('../database');
+          const { createdUsers } = await import('../database/schema');
+          const { eq, or } = await import('drizzle-orm');
+          
+          // Buscar usuario por id o userId
+          const userResult = await database
+            .select()
+            .from(createdUsers)
+            .where(or(
+              eq(createdUsers.id, userId),
+              eq(createdUsers.userId, userId)
+            ))
+            .limit(1);
+          
+          if (userResult.length > 0) {
+            const dbUser = userResult[0];
+            
+            // Preparar datos de actualización
+            const updateData: any = {
+              updatedAt: new Date().toISOString(),
+            };
+            
+            if (validation.data.name !== undefined) {
+              updateData.name = validation.data.name;
+            }
+            if (validation.data.email !== undefined) {
+              updateData.email = validation.data.email.toLowerCase().trim();
+            }
+            if (validation.data.role !== undefined) {
+              updateData.role = validation.data.role;
+            }
+            if (validation.data.clinicId !== undefined) {
+              // Permitir establecer clinicId como null para eliminarlo
+              updateData.clinicId = validation.data.clinicId || null;
+            }
+            
+            await database
+              .update(createdUsers)
+              .set(updateData)
+              .where(eq(createdUsers.id, dbUser.id));
+            
+            updatedInDB = true;
+            
+            // Si no se actualizó en localStorage, obtener el usuario actualizado de BD
+            if (!updatedUser) {
+              const updatedDbUser = await database
+                .select()
+                .from(createdUsers)
+                .where(eq(createdUsers.id, dbUser.id))
+                .limit(1);
+              
+              if (updatedDbUser.length > 0) {
+                updatedUser = {
+                  id: updatedDbUser[0].id,
+                  userId: updatedDbUser[0].userId,
+                  email: updatedDbUser[0].email,
+                  name: updatedDbUser[0].name,
+                  role: updatedDbUser[0].role as any,
+                  clinicId: updatedDbUser[0].clinicId || undefined,
+                } as any;
+              }
+            }
+          }
+        } catch (dbError) {
+          console.error('Error actualizando usuario en base de datos:', dbError);
+          // Si falla la actualización en BD pero el usuario existe en localStorage, continuar
+          if (!updatedInLocalStorage) {
+            return c.json(
+              { error: 'Error al actualizar usuario', message: 'No se pudo actualizar en la base de datos' },
+              500
+            );
+          }
+        }
+      }
+
+      // Si no se actualizó en ningún lugar, el usuario no existe
+      if (!updatedInLocalStorage && !updatedInDB) {
+        return c.json({ 
+          error: 'Usuario no encontrado',
+          message: 'El usuario no existe en localStorage ni en la base de datos'
+        }, 404);
+      }
+
+      // Registrar evento de auditoría
+      const { logAuditEvent } = await import('../utils/audit-log');
+      const { getClientIP } = await import('../utils/ip-tracking');
+      const currentUser = c.get('user');
+      await logAuditEvent({
+        userId: currentUser!.userId,
+        action: 'UPDATE_USER',
+        resourceType: 'user',
+        resourceId: userId,
+        ipAddress: getClientIP(c.req.raw.headers),
+        userAgent: c.req.header('User-Agent') || undefined,
+        details: {
+          updates: validation.data,
+          updatedInLocalStorage: !!updatedUser,
+          updatedInDatabase: updatedInDB,
+        },
+      });
+
+      return c.json({ 
+        success: true, 
+        user: updatedUser,
+        message: 'Usuario actualizado correctamente'
+      });
     } catch (error: any) {
       console.error('Error actualizando usuario:', error);
       return c.json(
@@ -172,8 +330,35 @@ usersRoutes.put(
 );
 
 /**
+ * Verifica si un userId corresponde a un usuario mock (hardcodeado)
+ */
+function isMockUser(userId: string): boolean {
+  const mockUserIds = [
+    'user_super_admin',
+    'user_admin',
+    'user_clinic_admin_001',
+    'user_clinic_admin_002',
+    'user_clinic_admin_003',
+    'user_podiatrist_001',
+    'user_podiatrist_002',
+    'user_podiatrist_003',
+    'user_podiatrist_004',
+    'user_podiatrist_005',
+    'user_podiatrist_006',
+    'user_podiatrist_007',
+    'user_podiatrist_008',
+    'user_podiatrist_009',
+    'user_podiatrist_010',
+    'user_podiatrist_011',
+    'user_podiatrist_012',
+    'user_podiatrist_013',
+  ];
+  return mockUserIds.includes(userId);
+}
+
+/**
  * DELETE /api/users/:userId
- * Elimina un usuario
+ * Elimina un usuario (tanto de localStorage como de la base de datos)
  * Requiere: super_admin
  */
 usersRoutes.delete(
@@ -182,10 +367,50 @@ usersRoutes.delete(
   async (c) => {
     try {
       const userId = c.req.param('userId');
-      const success = deleteCreatedUser(userId);
+      
+      // Verificar si es un usuario mock (no se pueden eliminar)
+      if (isMockUser(userId)) {
+        return c.json({ 
+          error: 'No se puede eliminar',
+          message: 'Este usuario es un usuario de demostración (mock) y no se puede eliminar. Los usuarios mock están hardcodeados en el sistema para propósitos de prueba.'
+        }, 403);
+      }
+      
+      let deleted = false;
 
-      if (!success) {
-        return c.json({ error: 'Usuario no encontrado' }, 404);
+      // Intentar eliminar de localStorage (usuarios creados)
+      const successLocal = deleteCreatedUser(userId);
+      if (successLocal) {
+        deleted = true;
+      }
+
+      // Intentar eliminar de la base de datos (usuarios registrados públicamente)
+      try {
+        const { database } = await import('../database');
+        const { createdUsers } = await import('../database/schema');
+        const { eq, or } = await import('drizzle-orm');
+        
+        // Buscar por id o userId (ya que algunos usuarios tienen userId diferente)
+        const result = await database
+          .delete(createdUsers)
+          .where(or(
+            eq(createdUsers.id, userId),
+            eq(createdUsers.userId, userId)
+          ));
+        
+        if (result.changes && result.changes > 0) {
+          deleted = true;
+        }
+      } catch (dbError) {
+        console.error('Error eliminando usuario de base de datos:', dbError);
+        // Continuar aunque falle la eliminación de BD si ya se eliminó de localStorage
+      }
+
+      if (!deleted) {
+        return c.json({ 
+          error: 'Usuario no encontrado',
+          message: 'El usuario no existe en localStorage ni en la base de datos. Si es un usuario mock, no se puede eliminar.'
+        }, 404);
       }
 
       // Registrar evento de auditoría
@@ -199,6 +424,10 @@ usersRoutes.delete(
         resourceId: userId,
         ipAddress: getClientIP(c.req.raw.headers),
         userAgent: c.req.header('User-Agent') || undefined,
+        details: {
+          deletedFromLocalStorage: successLocal,
+          deletedFromDatabase: deleted && !successLocal,
+        },
       });
 
       return c.json({ success: true, message: 'Usuario eliminado correctamente' });

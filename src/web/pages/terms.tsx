@@ -25,7 +25,7 @@ const Terms = () => {
   return (
     <div className="min-h-screen bg-white flex">
       {/* Left Panel - Branding */}
-      <div className="hidden lg:flex lg:w-1/2 bg-[#1a1a1a] relative overflow-hidden">
+      <div className="hidden lg:flex lg:w-1/2 bg-[#1a1a1a] relative h-screen sticky top-0">
         <div className="absolute inset-0">
           <div className="absolute top-0 left-0 w-full h-full opacity-[0.03]">
             <svg width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
@@ -54,9 +54,9 @@ const Terms = () => {
       </div>
 
       {/* Right Panel - Terms Content */}
-      <div className="w-full lg:w-1/2 flex flex-col">
+      <div className="w-full lg:w-1/2 flex flex-col min-h-screen">
         {/* Language switcher in header */}
-        <div className="flex justify-end p-4">
+        <div className="flex justify-end p-4 flex-shrink-0">
           <LanguageSwitcher />
         </div>
         

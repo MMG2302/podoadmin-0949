@@ -22,6 +22,20 @@
       "when": 1769253199461,
       "tag": "0002_equal_colossus",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "6",
+      "when": 1769332671154,
+      "tag": "0003_lively_tarantula",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "6",
+      "when": 1769363339496,
+      "tag": "0004_handy_butterfly",
+      "breakpoints": true
     }
   ]
 }

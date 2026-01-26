@@ -67,7 +67,7 @@ export const updateUserSchema = z.object({
     .transform((val) => escapeHtml(val))
     .optional(),
   role: z.enum(['super_admin', 'clinic_admin', 'admin', 'podiatrist']).optional(),
-  clinicId: z.string().max(100).optional(),
+  clinicId: z.string().max(100).nullable().optional(),
 });
 
 /**

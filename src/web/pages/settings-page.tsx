@@ -945,10 +945,27 @@ const SettingsPage = () => {
                     <div className="flex">
                       <span className="w-32 text-gray-500">Web:</span>
                       <a 
-                        href={userClinic.website} 
+                        href={
+                          userClinic.website.startsWith('http://') || userClinic.website.startsWith('https://')
+                            ? userClinic.website
+                            : `https://${userClinic.website}`
+                        }
                         target="_blank" 
                         rel="noopener noreferrer"
                         className="font-medium text-blue-600 hover:underline"
+                        onClick={(e) => {
+                          // Validar que la URL sea válida antes de abrir
+                          const url = userClinic.website.startsWith('http://') || userClinic.website.startsWith('https://')
+                            ? userClinic.website
+                            : `https://${userClinic.website}`;
+                          
+                          try {
+                            new URL(url);
+                          } catch (error) {
+                            e.preventDefault();
+                            alert('La URL del sitio web no es válida. Por favor, verifica que esté correctamente configurada.');
+                          }
+                        }}
                       >
                         {userClinic.website}
                       </a>

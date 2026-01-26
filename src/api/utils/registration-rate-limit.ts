@@ -142,7 +142,8 @@ export async function recordSuccessfulRegistration(
       // Primera vez
       await database.insert(registrationRateLimit).values({
         identifier,
-        count: 1,
+        count: 1, // Contador de registros exitosos
+        failedCount: 0, // Contador de fallos (separado)
         firstAttempt: now,
         lastAttempt: now,
         blockedUntil: null,
@@ -159,13 +160,15 @@ export async function recordSuccessfulRegistration(
           .update(registrationRateLimit)
           .set({
             count: 1,
+            failedCount: 0, // Resetear también el contador de fallos
             firstAttempt: now,
             lastAttempt: now,
             updatedAt: nowISO,
           })
           .where(eq(registrationRateLimit.identifier, identifier));
       } else {
-        // Incrementar contador (dentro de alguna ventana)
+        // Incrementar contador de éxitos (dentro de alguna ventana)
+        // NO modificar failedCount aquí (solo se modifica en recordFailedRegistration)
         await database
           .update(registrationRateLimit)
           .set({
@@ -183,15 +186,22 @@ export async function recordSuccessfulRegistration(
 
 /**
  * Registra un intento de registro fallido
+ * Solo cuenta como fallido si es un error real (no errores de validación de usuario)
  */
 export async function recordFailedRegistration(
-  ipAddress: string
+  ipAddress: string,
+  isRealFailure: boolean = true // Si es false, no cuenta como fallido real (ej: errores de validación)
 ): Promise<void> {
   const now = Date.now();
   const identifier = ipAddress;
   const nowISO = new Date().toISOString();
 
   try {
+    // Si no es un fallo real (ej: error de validación del usuario), no contar
+    if (!isRealFailure) {
+      return;
+    }
+
     const result = await database
       .select()
       .from(registrationRateLimit)
@@ -202,7 +212,8 @@ export async function recordFailedRegistration(
       // Primera vez
       await database.insert(registrationRateLimit).values({
         identifier,
-        count: 0, // No contar fallidos en el límite de registros
+        count: 0, // Contador de registros exitosos (no se modifica aquí)
+        failedCount: 1, // Primer intento fallido
         firstAttempt: now,
         lastAttempt: now,
         blockedUntil: null,
@@ -211,7 +222,23 @@ export async function recordFailedRegistration(
       });
     } else {
       const record = result[0];
-      const failedCount = record.count; // Reutilizamos count para intentos fallidos
+      
+      // Si ya está bloqueado, no hacer nada más
+      if (record.blockedUntil && record.blockedUntil > now) {
+        return;
+      }
+      
+      // Resetear contador de fallidos si pasó mucho tiempo (más de 1 hora)
+      const timeSinceFirstAttempt = now - record.firstAttempt;
+      // Usar failedCount del record, o 0 si no existe (compatibilidad con registros antiguos)
+      // TypeScript puede no reconocer el campo aún, así que usamos type assertion
+      const recordWithFailedCount = record as typeof record & { failedCount?: number };
+      let failedCount = recordWithFailedCount.failedCount ?? 0;
+      
+      if (timeSinceFirstAttempt > LEVEL_3_WINDOW_MS) {
+        // Resetear contador después de 1 hora
+        failedCount = 0;
+      }
 
       // Si hay 5 o más intentos fallidos, bloquear
       if (failedCount >= MAX_FAILED_ATTEMPTS - 1) {
@@ -219,6 +246,7 @@ export async function recordFailedRegistration(
           .update(registrationRateLimit)
           .set({
             blockedUntil: now + BLOCK_DURATION_MS,
+            failedCount: 0, // Resetear contador de fallidos después de bloquear
             lastAttempt: now,
             updatedAt: nowISO,
           })
@@ -227,7 +255,7 @@ export async function recordFailedRegistration(
         await database
           .update(registrationRateLimit)
           .set({
-            count: failedCount + 1,
+            failedCount: failedCount + 1, // Incrementar contador de fallidos (NO count)
             lastAttempt: now,
             updatedAt: nowISO,
           })
@@ -236,5 +264,20 @@ export async function recordFailedRegistration(
     }
   } catch (error) {
     console.error('Error registrando registro fallido:', error);
+  }
+}
+
+/**
+ * Limpia el bloqueo de una IP (útil para desarrollo/testing)
+ */
+export async function clearIPBlock(ipAddress: string): Promise<void> {
+  const identifier = ipAddress;
+  
+  try {
+    await database
+      .delete(registrationRateLimit)
+      .where(eq(registrationRateLimit.identifier, identifier));
+  } catch (error) {
+    console.error('Error limpiando bloqueo de IP:', error);
   }
 }

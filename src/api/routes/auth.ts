@@ -663,6 +663,9 @@ authRoutes.post('/register', async (c) => {
         return issue.message;
       });
       
+      // No contar errores de validación como intentos fallidos reales
+      // Estos son errores del usuario, no intentos maliciosos
+      
       return c.json(
         {
           error: 'Datos inválidos',
@@ -677,6 +680,7 @@ authRoutes.post('/register', async (c) => {
     const { email, password, name, termsAccepted, captchaToken, clinicCode } = validation.data;
 
     if (!termsAccepted) {
+      // No contar como intento fallido real (es un error de validación del usuario)
       return c.json(
         {
           error: 'Términos no aceptados',
@@ -732,7 +736,8 @@ authRoutes.post('/register', async (c) => {
     if (captchaConfig) {
       // CAPTCHA está configurado, es obligatorio
       if (!captchaToken || captchaToken.trim().length === 0) {
-        await recordFailedRegistration(clientIP);
+        // CAPTCHA faltante SÍ cuenta como intento fallido (es un error de seguridad)
+        await recordFailedRegistration(clientIP, true);
         // Registrar métrica de registro fallido
         const { recordSecurityMetric } = await import('../utils/security-metrics');
         await recordSecurityMetric({
@@ -752,7 +757,8 @@ authRoutes.post('/register', async (c) => {
 
       const captchaResult = await verifyCaptcha(captchaToken, captchaConfig);
       if (!captchaResult.success) {
-        await recordFailedRegistration(clientIP);
+        // CAPTCHA inválido SÍ cuenta como intento fallido (es un error de seguridad)
+        await recordFailedRegistration(clientIP, true);
         const { recordSecurityMetric } = await import('../utils/security-metrics');
         await recordSecurityMetric({
           metricType: 'captcha_failed',
@@ -786,7 +792,7 @@ authRoutes.post('/register', async (c) => {
     const { validateEmailDomain } = await import('../utils/email-domains');
     const emailValidation = validateEmailDomain(email);
     if (!emailValidation.valid) {
-      await recordFailedRegistration(clientIP);
+      // No contar como intento fallido real (es un error de validación del usuario)
       // Registrar métrica de registro fallido
       const { recordSecurityMetric } = await import('../utils/security-metrics');
       await recordSecurityMetric({
@@ -813,7 +819,7 @@ authRoutes.post('/register', async (c) => {
     const emailExists = emailExistsInDatabase || emailExistsInStorage;
 
     if (emailExists) {
-      await recordFailedRegistration(clientIP);
+      // No contar como intento fallido real (es un caso normal, no malicioso)
       // Registrar métrica de registro fallido
       const { recordSecurityMetric } = await import('../utils/security-metrics');
       await recordSecurityMetric({
@@ -833,7 +839,7 @@ authRoutes.post('/register', async (c) => {
 
     // Validar que la contraseña no esté vacía
     if (!password || password.trim().length === 0) {
-      await recordFailedRegistration(clientIP);
+      // No contar como intento fallido real (es un error de validación del usuario)
       const { recordSecurityMetric } = await import('../utils/security-metrics');
       await recordSecurityMetric({
         metricType: 'registration_failed',
@@ -853,7 +859,7 @@ authRoutes.post('/register', async (c) => {
     const { validatePasswordStrength } = await import('../utils/password');
     const passwordValidation = validatePasswordStrength(password);
     if (!passwordValidation.valid) {
-      await recordFailedRegistration(clientIP);
+      // No contar como intento fallido real (es un error de validación del usuario)
       // Registrar métrica de registro fallido
       const { recordSecurityMetric } = await import('../utils/security-metrics');
       await recordSecurityMetric({
@@ -1014,7 +1020,8 @@ authRoutes.post('/register', async (c) => {
     const { getClientIP } = await import('../utils/ip-tracking');
     const clientIP = getClientIP(c.req.raw.headers);
     const { recordFailedRegistration } = await import('../utils/registration-rate-limit');
-    await recordFailedRegistration(clientIP);
+    // Error interno SÍ cuenta como intento fallido (es un error del sistema)
+    await recordFailedRegistration(clientIP, true);
 
     // Registrar métrica de registro fallido
     const { recordSecurityMetric } = await import('../utils/security-metrics');
@@ -1173,5 +1180,69 @@ authRoutes.post('/verify-email', async (c) => {
     );
   }
 });
+
+/**
+ * POST /api/auth/clear-ip-block
+ * Limpia el bloqueo de una IP (solo en desarrollo)
+ * Útil para testing y desarrollo
+ * 
+ * Uso: POST /api/auth/clear-ip-block
+ * Body: { "ipAddress": "opcional" } - Si no se proporciona, limpia la IP del request
+ */
+if (process.env.NODE_ENV !== 'production') {
+  authRoutes.post('/clear-ip-block', async (c) => {
+    try {
+      const rawBody = await c.req.json().catch(() => ({}));
+      const requestedIP = rawBody.ipAddress;
+      const clientIP = getClientIP(c.req.raw.headers);
+      const ipAddress = requestedIP || clientIP;
+      
+      const { clearIPBlock } = await import('../utils/registration-rate-limit');
+      await clearIPBlock(ipAddress);
+      
+      return c.json({
+        success: true,
+        message: `Bloqueo de IP ${ipAddress} limpiado correctamente`,
+        ipAddress,
+      });
+    } catch (error: any) {
+      console.error('Error limpiando bloqueo de IP:', error);
+      return c.json(
+        {
+          error: 'Error interno',
+          message: 'No se pudo limpiar el bloqueo de IP',
+        },
+        500
+      );
+    }
+  });
+  
+  // También permitir GET para facilitar el uso
+  authRoutes.get('/clear-ip-block', async (c) => {
+    try {
+      const requestedIP = c.req.query('ip');
+      const clientIP = getClientIP(c.req.raw.headers);
+      const ipAddress = requestedIP || clientIP;
+      
+      const { clearIPBlock } = await import('../utils/registration-rate-limit');
+      await clearIPBlock(ipAddress);
+      
+      return c.json({
+        success: true,
+        message: `Bloqueo de IP ${ipAddress} limpiado correctamente`,
+        ipAddress,
+      });
+    } catch (error: any) {
+      console.error('Error limpiando bloqueo de IP:', error);
+      return c.json(
+        {
+          error: 'Error interno',
+          message: 'No se pudo limpiar el bloqueo de IP',
+        },
+        500
+      );
+    }
+  });
+}
 
 export default authRoutes;

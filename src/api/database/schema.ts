@@ -211,7 +211,8 @@ export const emailVerificationTokens = sqliteTable('email_verification_tokens', 
 // Tabla de rate limiting para registro
 export const registrationRateLimit = sqliteTable('registration_rate_limit', {
   identifier: text('identifier').primaryKey(), // IP address
-  count: integer('count').notNull().default(0),
+  count: integer('count').notNull().default(0), // Contador de registros exitosos
+  failedCount: integer('failed_count').notNull().default(0), // Contador de intentos fallidos (separado)
   firstAttempt: integer('first_attempt').notNull(), // Timestamp
   lastAttempt: integer('last_attempt').notNull(), // Timestamp
   blockedUntil: integer('blocked_until'), // Timestamp opcional

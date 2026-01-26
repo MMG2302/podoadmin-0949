@@ -159,12 +159,14 @@ const EditUserModal = ({
   isOpen, 
   onClose, 
   user,
-  onSave 
+  onSave,
+  isMockUser = false
 }: { 
   isOpen: boolean; 
   onClose: () => void; 
   user: User | null;
   onSave: (userId: string, updates: Partial<User>) => void;
+  isMockUser?: boolean;
 }) => {
   const { t } = useLanguage();
   const [formData, setFormData] = useState({
@@ -198,6 +200,19 @@ const EditUserModal = ({
       <div className="bg-white rounded-2xl w-full max-w-md shadow-xl">
         <div className="p-6 border-b border-gray-100">
           <h3 className="text-lg font-semibold text-[#1a1a1a]">Editar usuario</h3>
+          {isMockUser && (
+            <div className="mt-2 bg-amber-50 border border-amber-200 rounded-lg p-3">
+              <div className="flex items-start gap-2">
+                <svg className="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <div>
+                  <p className="text-xs font-medium text-amber-800">⚠️ Usuario Mock</p>
+                  <p className="text-xs text-amber-700 mt-0.5">Este usuario es de demostración y no se puede editar. Los cambios no se guardarán.</p>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
           <div>
@@ -235,14 +250,33 @@ const EditUserModal = ({
           </div>
           {(formData.role === "podiatrist" || formData.role === "clinic_admin") && (
             <div>
-              <label className="block text-sm font-medium text-[#1a1a1a] mb-1">Clínica ID</label>
-              <input
-                type="text"
-                value={formData.clinicId}
-                onChange={(e) => setFormData({ ...formData, clinicId: e.target.value })}
-                className="w-full px-4 py-2.5 rounded-lg border border-gray-200 focus:border-[#1a1a1a] focus:ring-1 focus:ring-[#1a1a1a] outline-none transition-colors"
-                placeholder="clinic_001"
-              />
+              <label className="block text-sm font-medium text-[#1a1a1a] mb-1">
+                Clínica ID <span className="text-gray-400 font-normal">(opcional)</span>
+              </label>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={formData.clinicId}
+                  onChange={(e) => setFormData({ ...formData, clinicId: e.target.value })}
+                  className="flex-1 px-4 py-2.5 rounded-lg border border-gray-200 focus:border-[#1a1a1a] focus:ring-1 focus:ring-[#1a1a1a] outline-none transition-colors"
+                  placeholder="clinic_001 (dejar vacío para eliminar)"
+                />
+                {formData.clinicId && (
+                  <button
+                    type="button"
+                    onClick={() => setFormData({ ...formData, clinicId: "" })}
+                    className="px-3 py-2.5 text-red-600 hover:bg-red-50 rounded-lg border border-red-200 hover:border-red-300 transition-colors"
+                    title="Eliminar clínica"
+                  >
+                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                )}
+              </div>
+              <p className="text-xs text-gray-500 mt-1">
+                Deja vacío para eliminar la asociación con la clínica
+              </p>
             </div>
           )}
           <div className="flex gap-3 pt-4">
@@ -1071,9 +1105,51 @@ const UsersPage = () => {
     );
   };
 
-  // Verificar si el usuario es creado (puede ser gestionado)
+  // Verificar si un usuario es mock (hardcodeado)
+  const isMockUser = (userId: string): boolean => {
+    const mockUserIds = [
+      "user_super_admin",
+      "user_admin",
+      "user_clinic_admin_001",
+      "user_clinic_admin_002",
+      "user_clinic_admin_003",
+      "user_podiatrist_001",
+      "user_podiatrist_002",
+      "user_podiatrist_003",
+      "user_podiatrist_004",
+      "user_podiatrist_005",
+      "user_podiatrist_006",
+      "user_podiatrist_007",
+      "user_podiatrist_008",
+      "user_podiatrist_009",
+      "user_podiatrist_010",
+      "user_podiatrist_011",
+      "user_podiatrist_012",
+      "user_podiatrist_013",
+    ];
+    return mockUserIds.includes(userId);
+  };
+
+  // Verificar si el usuario puede ser gestionado (creado o registrado públicamente)
+  // No incluye usuarios mock del sistema
   const isCreatedUser = (userId: string): boolean => {
-    return userId.startsWith("user_created_");
+    // Usuarios creados por admin
+    if (userId.startsWith("user_created_")) {
+      return true;
+    }
+    // Usuarios registrados públicamente
+    if (userId.startsWith("user_public_")) {
+      return true;
+    }
+    
+    // Si es un usuario mock, no puede ser eliminado
+    if (isMockUser(userId)) {
+      return false;
+    }
+    
+    // Cualquier otro usuario que no sea mock puede ser gestionado
+    // Esto incluye usuarios de la base de datos (registrados públicamente)
+    return true;
   };
 
   const handleCreateUser = (userData: Partial<User> & { password: string }) => {
@@ -1116,21 +1192,91 @@ const UsersPage = () => {
     }
   };
 
-  const handleEditUser = (userId: string, updates: Partial<User>) => {
-    // In a real app, this would update the user in the backend
-    console.log("Updating user:", userId, updates);
-    addAuditLog({
-      userId: currentUser?.id || "",
-      userName: currentUser?.name || "",
-      action: "UPDATE",
-      entityType: "user",
-      entityId: userId,
-      details: JSON.stringify({
-        action: "user_update",
-        targetUserId: userId,
-        targetUserName: updates.name,
-      }),
-    });
+  const handleEditUser = async (userId: string, updates: Partial<User>) => {
+    try {
+      // Normalizar clinicId: si está vacío, establecerlo como undefined
+      const normalizedUpdates = {
+        ...updates,
+        clinicId: updates.clinicId && updates.clinicId.trim() !== "" 
+          ? updates.clinicId.trim() 
+          : undefined,
+      };
+
+      // Llamar al endpoint del backend para actualizar
+      const { api } = await import("../lib/api-client");
+      const response = await api.put(`/users/${userId}`, normalizedUpdates);
+      
+      if (response.success) {
+        // También actualizar localmente como fallback
+        updateCreatedUser(userId, normalizedUpdates);
+        
+        addAuditLog({
+          userId: currentUser?.id || "",
+          userName: currentUser?.name || "",
+          action: "UPDATE",
+          entityType: "user",
+          entityId: userId,
+          details: JSON.stringify({
+            action: "user_update",
+            targetUserId: userId,
+            targetUserName: updates.name,
+            targetUserEmail: updates.email,
+            targetUserRole: updates.role,
+            targetUserClinicId: normalizedUpdates.clinicId || null,
+            clinicIdRemoved: updates.clinicId !== undefined && normalizedUpdates.clinicId === undefined,
+          }),
+        });
+        
+        window.location.reload(); // Recargar para actualizar la lista
+      } else {
+        // Fallback: intentar actualizar solo en localStorage
+        try {
+          updateCreatedUser(userId, normalizedUpdates);
+          addAuditLog({
+            userId: currentUser?.id || "",
+            userName: currentUser?.name || "",
+            action: "UPDATE",
+            entityType: "user",
+            entityId: userId,
+            details: JSON.stringify({
+              action: "user_update",
+              targetUserId: userId,
+              targetUserName: updates.name,
+            }),
+          });
+          window.location.reload();
+        } catch (error) {
+          alert(response.error || "Error al actualizar el usuario. Por favor, intenta nuevamente.");
+        }
+      }
+    } catch (error) {
+      console.error("Error actualizando usuario:", error);
+      // Fallback: intentar actualizar solo en localStorage
+      try {
+        const normalizedUpdates = {
+          ...updates,
+          clinicId: updates.clinicId && updates.clinicId.trim() !== "" 
+            ? updates.clinicId.trim() 
+            : undefined,
+        };
+        updateCreatedUser(userId, normalizedUpdates);
+        addAuditLog({
+          userId: currentUser?.id || "",
+          userName: currentUser?.name || "",
+          action: "UPDATE",
+          entityType: "user",
+          entityId: userId,
+          details: JSON.stringify({
+            action: "user_update",
+            targetUserId: userId,
+            targetUserName: updates.name,
+          }),
+        });
+        window.location.reload();
+      } catch (fallbackError) {
+        alert("Error al actualizar el usuario. Por favor, intenta nuevamente.");
+      }
+    }
   };
 
   const handleMonthlyRenewalUpdate = (userId: string, renewalAmount: number): void => {
@@ -1508,7 +1654,13 @@ const UsersPage = () => {
     }
   };
 
-  const handleDeleteUser = (user: User) => {
+  const handleDeleteUser = async (user: User) => {
+    // Verificar si es usuario mock
+    if (isMockUser(user.id)) {
+      alert("⚠️ Este usuario es un usuario de demostración (mock) y no se puede eliminar. Los usuarios mock están hardcodeados en el sistema para propósitos de prueba.");
+      return;
+    }
+
     if (!window.confirm(`¿Estás seguro de que deseas ELIMINAR permanentemente la cuenta de ${user.name}? Esta acción es irreversible y eliminará todos los datos del usuario.`)) {
       return;
     }
@@ -1517,24 +1669,73 @@ const UsersPage = () => {
       return;
     }
     
-    const success = deleteCreatedUser(user.id);
-    if (success) {
-      addAuditLog({
-        userId: currentUser?.id || "",
-        userName: currentUser?.name || "",
-        action: "DELETE_USER",
-        entityType: "user",
-        entityId: user.id,
-        details: JSON.stringify({
-          action: "delete_user",
-          targetUserId: user.id,
-          targetUserName: user.name,
-          targetUserEmail: user.email,
-        }),
-      });
-      window.location.reload(); // Recargar para actualizar la lista
-    } else {
-      alert("Error al eliminar el usuario. Solo se pueden eliminar usuarios creados.");
+    try {
+      // Llamar al endpoint del backend para eliminar (maneja tanto localStorage como BD)
+      const { api } = await import("../lib/api-client");
+      const response = await api.delete(`/users/${user.id}`);
+      
+      if (response.success) {
+        // También intentar eliminar localmente como fallback
+        deleteCreatedUser(user.id);
+        
+        addAuditLog({
+          userId: currentUser?.id || "",
+          userName: currentUser?.name || "",
+          action: "DELETE_USER",
+          entityType: "user",
+          entityId: user.id,
+          details: JSON.stringify({
+            action: "delete_user",
+            targetUserId: user.id,
+            targetUserName: user.name,
+            targetUserEmail: user.email,
+          }),
+        });
+        window.location.reload(); // Recargar para actualizar la lista
+      } else {
+        // Fallback: intentar eliminar solo de localStorage
+        const success = deleteCreatedUser(user.id);
+        if (success) {
+          addAuditLog({
+            userId: currentUser?.id || "",
+            userName: currentUser?.name || "",
+            action: "DELETE_USER",
+            entityType: "user",
+            entityId: user.id,
+            details: JSON.stringify({
+              action: "delete_user",
+              targetUserId: user.id,
+              targetUserName: user.name,
+              targetUserEmail: user.email,
+            }),
+          });
+          window.location.reload();
+        } else {
+          alert(response.error || "Error al eliminar el usuario. Por favor, intenta nuevamente.");
+        }
+      }
+    } catch (error) {
+      console.error("Error eliminando usuario:", error);
+      // Fallback: intentar eliminar solo de localStorage
+      const success = deleteCreatedUser(user.id);
+      if (success) {
+        addAuditLog({
+          userId: currentUser?.id || "",
+          userName: currentUser?.name || "",
+          action: "DELETE_USER",
+          entityType: "user",
+          entityId: user.id,
+          details: JSON.stringify({
+            action: "delete_user",
+            targetUserId: user.id,
+            targetUserName: user.name,
+            targetUserEmail: user.email,
+          }),
+        });
+        window.location.reload();
+      } else {
+        alert("Error al eliminar el usuario. Por favor, intenta nuevamente.");
+      }
     }
   };
 
@@ -1555,6 +1756,25 @@ const UsersPage = () => {
   return (
     <MainLayout title={t.nav.users} credits={credits}>
       <div className="space-y-6">
+        {/* Leyenda informativa sobre usuarios mock */}
+        {isSuperAdmin && (
+          <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+            <div className="flex items-start gap-3">
+              <svg className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <div>
+                <p className="text-sm font-medium text-amber-800">
+                  Usuarios Mock (Demostración)
+                </p>
+                <p className="text-xs text-amber-700 mt-1">
+                  Los usuarios mock son usuarios de demostración hardcodeados en el sistema. Estos usuarios <strong>no pueden ser editados ni eliminados</strong> ya que están definidos en el código para propósitos de prueba. Puedes identificarlos porque tienen IDs como <code className="bg-amber-100 px-1 rounded">user_podiatrist_001</code>, <code className="bg-amber-100 px-1 rounded">user_clinic_admin_001</code>, etc.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Header Actions */}
         <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
           <div className="flex flex-wrap gap-2">
@@ -1617,7 +1837,17 @@ const UsersPage = () => {
                     <span className="font-medium text-[#1a1a1a]">{u.name.charAt(0)}</span>
                   </div>
                   <div className="min-w-0">
-                    <p className="font-medium text-[#1a1a1a] truncate">{u.name}</p>
+                    <div className="flex items-center gap-2">
+                      <p className="font-medium text-[#1a1a1a] truncate">{u.name}</p>
+                      {isMockUser(u.id) && (
+                        <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs font-medium bg-amber-100 text-amber-700" title="Usuario mock - No editable">
+                          <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                          </svg>
+                          Mock
+                        </span>
+                      )}
+                    </div>
                     <p className="text-xs text-gray-500 truncate">{u.email}</p>
                     <div className="mt-1">
                       {getUserStatusBadge(u)}
@@ -1692,9 +1922,15 @@ const UsersPage = () => {
                     </button>
                   </>
                 )}
-                {/* Estado de cuenta - solo para superadmin y usuarios creados */}
-                {isSuperAdmin && isCreatedUser(u.id) && (
+                {/* Estado de cuenta - para todos los usuarios (incluyendo mock) */}
+                {isSuperAdmin && (
                   <div className="mt-2 pt-2 border-t border-gray-200 space-y-1">
+                    {isMockUser(u.id) && (
+                      <div className="mb-2 px-2 py-1.5 bg-amber-50 border border-amber-200 rounded text-xs text-amber-700">
+                        <p className="font-medium">⚠️ Usuario Mock</p>
+                        <p className="text-amber-600 mt-0.5">No editable ni eliminable</p>
+                      </div>
+                    )}
                     {u.isBanned ? (
                       <button
                         onClick={() => handleUnbanUser(u)}
@@ -1742,9 +1978,14 @@ const UsersPage = () => {
                     )}
                     <button
                       onClick={() => handleDeleteUser(u)}
-                      className="w-full py-2 px-3 bg-red-50 text-red-700 rounded-lg hover:bg-red-100 active:bg-red-200 transition-colors text-xs font-medium"
+                      className={`w-full py-2 px-3 rounded-lg transition-colors text-xs font-medium ${
+                        isMockUser(u.id)
+                          ? "bg-amber-50 text-amber-700 hover:bg-amber-100 active:bg-amber-200 cursor-not-allowed opacity-75"
+                          : "bg-red-50 text-red-700 hover:bg-red-100 active:bg-red-200"
+                      }`}
+                      disabled={isMockUser(u.id)}
                     >
-                      Eliminar
+                      {isMockUser(u.id) ? "⚠️ Eliminar (Mock)" : "Eliminar"}
                     </button>
                   </div>
                 )}
@@ -1779,7 +2020,17 @@ const UsersPage = () => {
                             {u.name.charAt(0)}
                           </span>
                         </div>
-                        <span className="font-medium text-[#1a1a1a] truncate">{u.name}</span>
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium text-[#1a1a1a] truncate">{u.name}</span>
+                          {isMockUser(u.id) && (
+                            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs font-medium bg-amber-100 text-amber-700" title="Usuario mock - No editable ni eliminable">
+                              <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                              </svg>
+                              Mock
+                            </span>
+                          )}
+                        </div>
                       </div>
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-600">{u.email}</td>
@@ -1893,12 +2144,12 @@ const UsersPage = () => {
                           </button>
                         )}
                         
-                        {/* Account Management Actions - Solo para superadmin y usuarios creados */}
-                        {isSuperAdmin && isCreatedUser(u.id) && (
+                        {/* Account Management Actions - Para todos los usuarios (incluyendo mock) */}
+                        {isSuperAdmin && (
                           <div className="relative inline-block">
                             <button
                               className="p-2 text-gray-400 hover:text-[#1a1a1a] hover:bg-gray-100 rounded-lg transition-colors"
-                              title="Gestionar cuenta"
+                              title={isMockUser(u.id) ? "Gestionar cuenta (Mock - Limitado)" : "Gestionar cuenta"}
                               onClick={(e) => {
                                 e.stopPropagation();
                                 const menu = document.getElementById(`account-menu-${u.id}`);
@@ -1917,6 +2168,15 @@ const UsersPage = () => {
                               onClick={(e) => e.stopPropagation()}
                             >
                               <div className="py-1">
+                                {isMockUser(u.id) && (
+                                  <>
+                                    <div className="px-4 py-2 text-xs text-amber-700 bg-amber-50 border-b border-amber-100">
+                                      <p className="font-medium">⚠️ Usuario Mock</p>
+                                      <p className="text-amber-600 mt-0.5">No editable ni eliminable</p>
+                                    </div>
+                                    <div className="border-t border-gray-100 my-1"></div>
+                                  </>
+                                )}
                                 {u.isBanned ? (
                                   <button
                                     onClick={() => {
@@ -1987,9 +2247,14 @@ const UsersPage = () => {
                                     handleDeleteUser(u);
                                     document.getElementById(`account-menu-${u.id}`)?.classList.add("hidden");
                                   }}
-                                  className="w-full text-left px-4 py-2 text-sm text-red-700 hover:bg-red-50"
+                                  className={`w-full text-left px-4 py-2 text-sm ${
+                                    isMockUser(u.id)
+                                      ? "text-amber-700 hover:bg-amber-50 cursor-not-allowed opacity-75"
+                                      : "text-red-700 hover:bg-red-50"
+                                  }`}
+                                  disabled={isMockUser(u.id)}
                                 >
-                                  Eliminar cuenta
+                                  {isMockUser(u.id) ? "⚠️ Eliminar cuenta (Mock)" : "Eliminar cuenta"}
                                 </button>
                               </div>
                             </div>
@@ -2026,6 +2291,7 @@ const UsersPage = () => {
         onClose={() => setShowEditModal(false)}
         user={selectedUser}
         onSave={handleEditUser}
+        isMockUser={selectedUser ? isMockUser(selectedUser.id) : false}
       />
       
       <CreditAdjustmentModal

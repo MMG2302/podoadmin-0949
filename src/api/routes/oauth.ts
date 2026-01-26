@@ -3,7 +3,7 @@ import { database } from '../database';
 import { createdUsers } from '../database/schema';
 import { eq, or } from 'drizzle-orm';
 import { generateTokenPair } from '../utils/jwt';
-import { formatCookie, getAccessTokenCookieOptions, getRefreshTokenCookieOptions } from '../utils/cookies';
+import { formatCookie, getAccessTokenCookieOptions, getRefreshTokenCookieOptions, isProduction } from '../utils/cookies';
 import { getOAuthConfig, getGoogleAuthUrl, exchangeGoogleCode, getGoogleUserInfo, getAppleAuthUrl, exchangeAppleCode, decodeAppleIdToken, type OAuthUserInfo } from '../utils/oauth';
 import { getClientIP } from '../utils/ip-tracking';
 import { logAuditEvent } from '../utils/audit-log';
@@ -309,9 +309,18 @@ oauthRoutes.get('/google/callback', async (c) => {
       details: { method: 'oauth_google' },
     });
 
-    // Establecer cookies
-    c.header('Set-Cookie', formatCookie('access_token', accessToken, getAccessTokenCookieOptions()));
-    c.header('Set-Cookie', formatCookie('refresh_token', refreshToken, getRefreshTokenCookieOptions()));
+    // Determinar si estamos en producción
+    const isProd = isProduction(
+      { NODE_ENV: process.env.NODE_ENV },
+      c.req.raw.headers
+    );
+
+    // Configurar cookies HTTP-only (usar guiones para consistencia con el resto de la aplicación)
+    const accessCookieOptions = getAccessTokenCookieOptions(isProd);
+    const refreshCookieOptions = getRefreshTokenCookieOptions(isProd);
+    const accessCookie = formatCookie('access-token', accessToken, accessCookieOptions);
+    const refreshCookie = formatCookie('refresh-token', refreshToken, refreshCookieOptions);
+    c.header('Set-Cookie', [accessCookie, refreshCookie].join(', '));
 
     // Limpiar cookie de state
     c.cookie('oauth_state', '', { maxAge: 0 });
@@ -477,9 +486,18 @@ oauthRoutes.post('/apple/callback', async (c) => {
       details: { method: 'oauth_apple' },
     });
 
-    // Establecer cookies
-    c.header('Set-Cookie', formatCookie('access_token', accessToken, getAccessTokenCookieOptions()));
-    c.header('Set-Cookie', formatCookie('refresh_token', refreshToken, getRefreshTokenCookieOptions()));
+    // Determinar si estamos en producción
+    const isProd = isProduction(
+      { NODE_ENV: process.env.NODE_ENV },
+      c.req.raw.headers
+    );
+
+    // Configurar cookies HTTP-only (usar guiones para consistencia con el resto de la aplicación)
+    const accessCookieOptions = getAccessTokenCookieOptions(isProd);
+    const refreshCookieOptions = getRefreshTokenCookieOptions(isProd);
+    const accessCookie = formatCookie('access-token', accessToken, accessCookieOptions);
+    const refreshCookie = formatCookie('refresh-token', refreshToken, refreshCookieOptions);
+    c.header('Set-Cookie', [accessCookie, refreshCookie].join(', '));
 
     // Limpiar cookie de state
     c.cookie('oauth_state', '', { maxAge: 0 });

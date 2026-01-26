@@ -1,45 +1,75 @@
+#!/usr/bin/env node
 /**
- * Script para limpiar el bloqueo de una IP en el rate limiting de registro
- * Uso: node scripts/clear-ip-block.js [IP_ADDRESS]
- * Si no se proporciona IP, limpia todos los bloqueos
+ * Script helper para limpiar el bloqueo de una IP en el rate limiting de registro
+ * 
+ * ⚠️  IMPORTANTE: Este script NO puede ejecutarse directamente con Node.js porque
+ *     la base de datos requiere el entorno de Cloudflare Workers (cloudflare:workers).
+ * 
+ * 📋 OPCIONES DISPONIBLES:
+ * 
+ * 1. Usar el endpoint API (RECOMENDADO - solo en desarrollo):
+ *    curl -X POST http://localhost:8787/api/auth/clear-ip-block \\
+ *      -H "Content-Type: application/json" \\
+ *      -d '{"ipAddress": "192.168.1.1"}'  # Opcional: sin IP limpia todos los bloqueos expirados
+ * 
+ *    O con GET (más simple):
+ *    curl "http://localhost:8787/api/auth/clear-ip-block?ip=192.168.1.1"
+ *    curl "http://localhost:8787/api/auth/clear-ip-block"  # Limpia todos los expirados
+ * 
+ * 2. Usar wrangler d1 execute con SQL:
+ *    # Limpiar IP específica:
+ *    wrangler d1 execute DB --command="DELETE FROM registration_rate_limit WHERE identifier = '192.168.1.1'"
+ * 
+ *    # Limpiar todos los bloqueos expirados:
+ *    wrangler d1 execute DB --command="DELETE FROM registration_rate_limit WHERE blocked_until IS NOT NULL AND blocked_until < ${Date.now()}"
+ * 
+ *    # Limpiar TODOS los registros (cuidado):
+ *    wrangler d1 execute DB --command="DELETE FROM registration_rate_limit"
+ * 
+ * 3. Usar archivos SQL:
+ *    wrangler d1 execute DB --file=scripts/clear-ip-block.sql
+ *    wrangler d1 execute DB --file=scripts/clear-ip-block-all.sql
  */
 
-import { database } from '../src/api/database/index.js';
-import { registrationRateLimit } from '../src/api/database/schema.js';
-import { eq, lt } from 'drizzle-orm';
-
-async function clearIPBlock(ipAddress) {
-  try {
-    if (ipAddress) {
-      // Limpiar IP específica
-      const result = await database
-        .delete(registrationRateLimit)
-        .where(eq(registrationRateLimit.identifier, ipAddress));
-      console.log(`✅ Bloqueo de IP ${ipAddress} limpiado`);
-    } else {
-      // Limpiar todos los bloqueos expirados
-      const now = Date.now();
-      const result = await database
-        .delete(registrationRateLimit)
-        .where(lt(registrationRateLimit.blockedUntil, now));
-      console.log(`✅ Todos los bloqueos expirados limpiados`);
-    }
-  } catch (error) {
-    console.error('❌ Error limpiando bloqueo:', error);
-    process.exit(1);
-  }
-}
-
-// Obtener IP del argumento de línea de comandos
 const ipAddress = process.argv[2];
+const baseUrl = process.env.API_URL || 'http://localhost:8787';
 
 if (ipAddress) {
-  console.log(`Limpiando bloqueo para IP: ${ipAddress}`);
+  console.log(`
+📝 Para limpiar la IP: ${ipAddress}
+
+Ejecuta uno de estos comandos:
+
+1. Usando curl (endpoint API):
+   curl -X POST ${baseUrl}/api/auth/clear-ip-block \\
+     -H "Content-Type: application/json" \\
+     -d '{"ipAddress": "${ipAddress}"}'
+
+   O más simple (GET):
+   curl "${baseUrl}/api/auth/clear-ip-block?ip=${ipAddress}"
+
+2. Usando wrangler d1:
+   wrangler d1 execute DB --command="DELETE FROM registration_rate_limit WHERE identifier = '${ipAddress}'"
+`);
 } else {
-  console.log('Limpiando todos los bloqueos expirados...');
+  console.log(`
+📝 Para limpiar todos los bloqueos expirados:
+
+Ejecuta uno de estos comandos:
+
+1. Usando curl (endpoint API):
+   curl -X POST ${baseUrl}/api/auth/clear-ip-block \\
+     -H "Content-Type: application/json"
+
+   O más simple:
+   curl "${baseUrl}/api/auth/clear-ip-block"
+
+2. Usando wrangler d1:
+   wrangler d1 execute DB --command="DELETE FROM registration_rate_limit WHERE blocked_until IS NOT NULL AND blocked_until < ${Date.now()}"
+
+3. Usando archivo SQL:
+   wrangler d1 execute DB --file=scripts/clear-ip-block.sql
+`);
 }
 
-clearIPBlock(ipAddress).then(() => {
-  console.log('✅ Completado');
-  process.exit(0);
-});
+process.exit(0);

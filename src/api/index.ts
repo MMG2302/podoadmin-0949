@@ -90,7 +90,7 @@ app.route('/auth', authRoutes);
 app.route('/auth/oauth', oauthRoutes);
 
 // Aplicar protección CSRF a todas las rutas que modifican estado
-// EXCEPCIONES: /auth/login y /auth/refresh no requieren CSRF
+// EXCEPCIONES: /auth/login, /auth/refresh y rutas OAuth no requieren CSRF
 app.use('*', async (c, next) => {
   const path = c.req.path;
   const method = c.req.method;
@@ -102,6 +102,19 @@ app.use('*', async (c, next) => {
   ) {
     return next();
   }
+  
+  // Excluir rutas OAuth de protección CSRF (son callbacks externos)
+  // Google OAuth: GET /api/auth/oauth/google y GET /api/auth/oauth/google/callback
+  // Apple OAuth: GET /api/auth/oauth/apple y POST /api/auth/oauth/apple/callback
+  if (
+    (path === '/api/auth/oauth/google' && method === 'GET') ||
+    (path === '/api/auth/oauth/google/callback' && method === 'GET') ||
+    (path === '/api/auth/oauth/apple' && method === 'GET') ||
+    (path === '/api/auth/oauth/apple/callback' && method === 'POST')
+  ) {
+    return next();
+  }
+  
   return csrfProtection(c, next);
 });
 

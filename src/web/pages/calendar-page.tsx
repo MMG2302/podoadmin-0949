@@ -767,7 +767,7 @@ const CalendarPage = () => {
                             );
                           })}
                           {sessions.map((session) => (
-                            <Link key={session.id} href={`/sessions?id=${session.id}`}>
+                          <Link key={session.id} href={`/sessions?id=${session.id}`}>
                               <div className={`p-2 rounded-lg border cursor-pointer hover:shadow-sm transition-shadow ${getStatusBg(session.status)}`}>
                                 <p className="text-xs font-medium truncate">
                                   {session.patient?.firstName} {session.patient?.lastName}
@@ -1064,29 +1064,37 @@ const CalendarPage = () => {
               </p>
             ) : (
               <div className="space-y-3">
-                {upcomingSessions.slice(0, 5).map((session) => (
-                  <Link key={session.id} href={`/sessions?id=${session.id}`}>
-                    <div className="flex items-center gap-3 p-2 rounded-lg hover:bg-gray-50 transition-colors cursor-pointer">
-                      <div className="flex-shrink-0 w-10 h-10 bg-gray-100 rounded-lg flex flex-col items-center justify-center">
-                        <span className="text-xs font-semibold text-[#1a1a1a]">
-                          {new Date(session.sessionDate).getDate()}
-                        </span>
-                        <span className="text-[8px] text-gray-500 uppercase">
-                          {new Date(session.sessionDate).toLocaleDateString("es-ES", { month: "short" })}
-                        </span>
+                {upcomingSessions.slice(0, 5).map((session) => {
+                  // Para recepcionistas, llevar a la ficha del paciente; para el resto, a la sesión clínica
+                  const href =
+                    isReceptionist && session.patientId
+                      ? `/patients?id=${session.patientId}`
+                      : `/sessions?id=${session.id}`;
+
+                  return (
+                    <Link key={session.id} href={href}>
+                      <div className="flex items-center gap-3 p-2 rounded-lg hover:bg-gray-50 transition-colors cursor-pointer">
+                        <div className="flex-shrink-0 w-10 h-10 bg-gray-100 rounded-lg flex flex-col items-center justify-center">
+                          <span className="text-xs font-semibold text-[#1a1a1a]">
+                            {new Date(session.sessionDate).getDate()}
+                          </span>
+                          <span className="text-[8px] text-gray-500 uppercase">
+                            {new Date(session.sessionDate).toLocaleDateString("es-ES", { month: "short" })}
+                          </span>
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-[#1a1a1a] truncate">
+                            {session.patient?.firstName} {session.patient?.lastName}
+                          </p>
+                          <p className="text-xs text-gray-500">
+                            {session.status === "completed" ? "Completada" : "Borrador"}
+                          </p>
+                        </div>
+                        <div className={`w-2 h-2 rounded-full ${getStatusColor(session.status)}`} />
                       </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-[#1a1a1a] truncate">
-                          {session.patient?.firstName} {session.patient?.lastName}
-                        </p>
-                        <p className="text-xs text-gray-500">
-                          {session.status === "completed" ? "Completada" : "Borrador"}
-                        </p>
-                      </div>
-                      <div className={`w-2 h-2 rounded-full ${getStatusColor(session.status)}`} />
-                    </div>
-                  </Link>
-                ))}
+                    </Link>
+                  );
+                })}
                 {upcomingSessions.length > 5 && (
                   <p className="text-xs text-center text-gray-500">
                     +{upcomingSessions.length - 5} más

@@ -4,7 +4,7 @@ import { MainLayout } from "../components/layout/main-layout";
 import { useLanguage } from "../contexts/language-context";
 import { useAuth, getAllUsers } from "../contexts/auth-context";
 import { usePermissions } from "../hooks/use-permissions";
-import { getUserCredits, getPatients, getSessions } from "../lib/storage";
+import { getUserCredits, getPatients, getSessions, getClinicById } from "../lib/storage";
 import { seedDatabase } from "../lib/seed-data";
 import PatientsPage from "./patients-page";
 import SessionsPage from "./sessions-page";
@@ -530,14 +530,20 @@ const ReceptionistDashboard = () => {
   const allPatients = getPatients();
   const assignedIds = user?.assignedPodiatristIds ?? [];
   const patientCount = allPatients.filter((p) => assignedIds.includes(p.createdBy)).length;
+  const clinic = user?.clinicId ? getClinicById(user.clinicId) : null;
+
+  // Obtener nombres de podólogos asignados (si los hay)
+  const allUsers = getAllUsers();
+  const assignedPodiatrists = assignedIds.length
+    ? allUsers.filter((u) => assignedIds.includes(u.id))
+    : [];
 
   const stats = [
-    { label: "Pacientes (podólogos asignados)", value: patientCount.toString(), path: "/patients" },
-    { label: "Calendario", value: "—", path: "/calendar" },
+    { label: "Pacientes de podólogos asignados", value: patientCount.toString(), path: "/patients" },
   ];
 
   return (
-    <MainLayout title={t.dashboard.title} credits={credits}>
+    <MainLayout title={t.dashboard.title} credits={credits} showCredits={false}>
       <div className="space-y-8">
         <div className="bg-[#1a1a1a] rounded-2xl p-8 text-white relative overflow-hidden">
           <div className="relative z-10">
@@ -545,6 +551,20 @@ const ReceptionistDashboard = () => {
               {t.auth.welcomeBack}, <span className="font-semibold">{user?.name}</span>
             </h2>
             <p className="text-gray-400">{t.roles.receptionistDesc}</p>
+            {/* Información de asignación específica */}
+            {clinic && (
+              <p className="text-gray-300 text-sm mt-1">
+                Clínica asignada: <span className="font-semibold">{clinic.clinicName}</span>
+              </p>
+            )}
+            {assignedPodiatrists.length > 0 && (
+              <p className="text-gray-300 text-sm mt-1">
+                Podólogos asignados:{" "}
+                <span className="font-semibold">
+                  {assignedPodiatrists.map((p) => p.name).join(", ")}
+                </span>
+              </p>
+            )}
           </div>
         </div>
         <div>

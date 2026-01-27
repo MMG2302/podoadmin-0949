@@ -51,7 +51,7 @@ export const MainLayout = ({ children, title, showCredits = true, credits: propC
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const { t } = useLanguage();
   const { user } = useAuth();
-  const { isClinicAdmin } = usePermissions();
+  const { isClinicAdmin, isReceptionist } = usePermissions();
   const [, setLocation] = useLocation();
   
   // Real-time credits state - fetched from localStorage
@@ -184,8 +184,8 @@ export const MainLayout = ({ children, title, showCredits = true, credits: propC
               {/* Settings Button */}
               <SettingsButton />
 
-              {/* Credits indicator - simplified on mobile */}
-              {showCredits && (
+              {/* Credits indicator - simplified on mobile (no créditos para recepcionistas) */}
+              {showCredits && !isReceptionist && (
                 <button
                   onClick={() => setLocation(user?.role === "super_admin" ? "/credits" : "/dashboard")}
                   className={`group relative flex items-center justify-center w-10 h-10 sm:w-10 sm:h-10 rounded-full transition-all hover:scale-105 active:scale-95 cursor-pointer min-w-[44px] min-h-[44px] ${colorClasses.bg}`}

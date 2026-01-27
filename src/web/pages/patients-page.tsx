@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useLocation, Link } from "wouter";
 import { MainLayout } from "../components/layout/main-layout";
 import { useLanguage } from "../contexts/language-context";
@@ -54,7 +54,7 @@ const PatientsPage = () => {
   const { t } = useLanguage();
   const { user } = useAuth();
   const { isSuperAdmin, isPodiatrist, isClinicAdmin, isReceptionist } = usePermissions();
-  const [, setLocation] = useLocation();
+  const [location, setLocation] = useLocation();
   
   // Clinic admins should use the Clinic Management page for patient viewing/reassignment
   // Redirect them if they try to access /patients directly (recepcionistas no)
@@ -63,17 +63,49 @@ const PatientsPage = () => {
     return null;
   }
   
-  // Podiatrists and receptionists can create patients (receptionist assigns to one of assigned podiatrists)
-  const canCreatePatient = isPodiatrist || isReceptionist;
+  // Podiatrists can siempre crear pacientes.
+  // Recepcionistas solo pueden crear pacientes si tienen al menos un podólogo asignado.
+  const receptionistHasAssignedPodiatrists =
+    isReceptionist && !!user?.assignedPodiatristIds?.length;
+  const canCreatePatient = isPodiatrist || receptionistHasAssignedPodiatrists;
   
   const credits = getUserCredits(user?.id || "");
   
-  const [patients, setPatients] = useState<Patient[]>(() => getPatients());
+  // Helper para limitar pacientes según rol:
+  // - Recepcionista: solo pacientes de podólogos asignados
+  // - Podólogo: solo sus propios pacientes
+  // - Otros roles con acceso: todos
+  const getVisiblePatients = () => {
+    const all = getPatients();
+    if (isReceptionist && user?.assignedPodiatristIds?.length) {
+      return all.filter((p) => user.assignedPodiatristIds!.includes(p.createdBy));
+    }
+    if (isPodiatrist && user?.id) {
+      return all.filter((p) => p.createdBy === user.id);
+    }
+    return all;
+  };
+
+  const [patients, setPatients] = useState<Patient[]>(() => getVisiblePatients());
   const [searchQuery, setSearchQuery] = useState("");
   const [showForm, setShowForm] = useState(false);
   const [editingPatient, setEditingPatient] = useState<Patient | null>(null);
   const [formData, setFormData] = useState<PatientFormData>(emptyForm);
   const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
+
+  // Podólogos disponibles para una recepcionista (los que tiene asignados)
+  const allUsers = getAllUsers();
+  const assignedPodiatrists = isReceptionist && user?.assignedPodiatristIds?.length
+    ? allUsers.filter((u) => user.assignedPodiatristIds!.includes(u.id))
+    : [];
+  const [receptionistPodiatristId, setReceptionistPodiatristId] = useState<string>("");
+
+  // Leer id de paciente desde la URL para poder abrir directamente la ficha (/patients?id=...)
+  const searchParams =
+    typeof window !== "undefined"
+      ? new URLSearchParams(window.location.search)
+      : new URLSearchParams();
+  const patientIdFromUrl: string | null = searchParams.get("id");
 
   const filteredPatients = useMemo(() => {
     if (!searchQuery) return patients;
@@ -86,6 +118,19 @@ const PatientsPage = () => {
         p.phone.includes(query)
     );
   }, [patients, searchQuery]);
+
+  // Abrir/cerrar automáticamente el modal de detalles según /patients?id=...
+  useEffect(() => {
+    if (patientIdFromUrl) {
+      const patient = patients.find((p) => p.id === patientIdFromUrl);
+      if (patient) {
+        setSelectedPatient(patient);
+      }
+    } else {
+      // Si ya no hay id en la URL, cerramos el modal
+      setSelectedPatient(null);
+    }
+  }, [patientIdFromUrl, patients]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -134,7 +179,7 @@ const PatientsPage = () => {
       
       const updated = updatePatient(editingPatient.id, mutableUpdates);
       if (updated) {
-        setPatients(getPatients());
+        setPatients(getVisiblePatients());
         addAuditLog({
           userId: user?.id || "",
           userName: user?.name || "",
@@ -154,7 +199,7 @@ const PatientsPage = () => {
       const clinicCode = clinic?.clinicCode || null;
       
       const newPatient = savePatient(patientData, clinicCode);
-      setPatients(getPatients());
+      setPatients(getVisiblePatients());
       addAuditLog({
         userId: user?.id || "",
         userName: user?.name || "",
@@ -197,9 +242,12 @@ const PatientsPage = () => {
   };
 
   const handleDelete = (patient: Patient) => {
-    if (confirm(`¿Eliminar paciente ${patient.firstName} ${patient.lastName}?`)) {
+    // Los recepcionistas no pueden eliminar pacientes
+    if (isReceptionist) return;
+
+    if (confirm(`¿Eliminar esta ficha de paciente?\n\n${patient.firstName} ${patient.lastName}`)) {
       deletePatient(patient.id);
-      setPatients(getPatients());
+      setPatients(getVisiblePatients());
       addAuditLog({
         userId: user?.id || "",
         userName: user?.name || "",
@@ -207,6 +255,7 @@ const PatientsPage = () => {
         entityType: "patient",
         entityId: patient.id,
         details: JSON.stringify({
+          sessionId: null,
           patientId: patient.id,
           patientName: `${patient.firstName} ${patient.lastName}`,
           folio: patient.folio,
@@ -369,12 +418,15 @@ const PatientsPage = () => {
                 >
                   {t.common.edit}
                 </button>
-                <Link
-                  href={`/sessions?patient=${selectedPatient.id}`}
-                  className="flex-1 py-2 bg-[#1a1a1a] text-white rounded-lg hover:bg-[#2a2a2a] transition-colors font-medium text-sm text-center"
-                >
-                  {t.patients.viewHistory}
-                </Link>
+                {/* Ver historial clínico solo para roles con acceso a sesiones, no recepcionistas */}
+                {!isReceptionist && (
+                  <Link
+                    href={`/sessions?patient=${selectedPatient.id}`}
+                    className="flex-1 py-2 bg-[#1a1a1a] text-white rounded-lg hover:bg-[#2a2a2a] transition-colors font-medium text-sm text-center"
+                  >
+                    {t.patients.viewHistory}
+                  </Link>
+                )}
               </div>
             </div>
           </div>
@@ -806,14 +858,16 @@ const PatientsPage = () => {
                     >
                       {t.common.edit}
                     </button>
-                    <button
-                      onClick={() => handleDelete(patient)}
-                      className="py-2.5 px-4 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 active:bg-red-200 transition-colors min-h-[44px]"
-                    >
-                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                      </svg>
-                    </button>
+                    {!isReceptionist && (
+                      <button
+                        onClick={() => handleDelete(patient)}
+                        className="py-2.5 px-4 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 active:bg-red-200 transition-colors min-h-[44px]"
+                      >
+                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        </svg>
+                      </button>
+                    )}
                   </div>
                 </div>
               ))}
@@ -868,15 +922,17 @@ const PatientsPage = () => {
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                               </svg>
                             </button>
-                            <button
-                              onClick={() => handleDelete(patient)}
-                              className="p-2 hover:bg-red-50 rounded-lg transition-colors"
-                              title={t.common.delete}
-                            >
-                              <svg className="w-4 h-4 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                              </svg>
-                            </button>
+                            {!isReceptionist && (
+                              <button
+                                onClick={() => handleDelete(patient)}
+                                className="p-2 hover:bg-red-50 rounded-lg transition-colors"
+                                title={t.common.delete}
+                              >
+                                <svg className="w-4 h-4 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                </svg>
+                              </button>
+                            )}
                           </div>
                         </td>
                       </tr>

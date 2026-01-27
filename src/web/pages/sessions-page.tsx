@@ -101,11 +101,37 @@ const SessionsPage = () => {
   }
   
   const credits = getUserCredits(user?.id || "");
-  const params = new URLSearchParams(location.split("?")[1] || "");
-  const filterPatientId = params.get("patient");
-  const sessionIdFromUrl = params.get("id");
+
+  // Helper para limitar sesiones según rol:
+  // - Podólogo: solo sus propias sesiones
+  // - Otros roles con acceso: todas
+  const getVisibleSessions = () => {
+    const all = getSessions();
+    if (isPodiatrist && user?.id) {
+      return all.filter((s) => s.createdBy === user.id);
+    }
+    return all;
+  };
+
+  // Leer siempre la query y el path reales del navegador (wouter no incluye la query en location)
+  const searchParams =
+    typeof window !== "undefined"
+      ? new URLSearchParams(window.location.search)
+      : new URLSearchParams();
+  const filterPatientId = searchParams.get("patient");
+  let sessionIdFromUrl: string | null = searchParams.get("id");
+
+  // Soportar también la ruta /sessions/:id (ej. /sessions/123)
+  if (!sessionIdFromUrl) {
+    const path =
+      typeof window !== "undefined" ? window.location.pathname : location;
+    const match = path.match(/^\/sessions\/([^/?#]+)/);
+    if (match) {
+      sessionIdFromUrl = match[1];
+    }
+  }
   
-  const [sessions, setSessions] = useState<ClinicalSession[]>(() => getSessions());
+  const [sessions, setSessions] = useState<ClinicalSession[]>(() => getVisibleSessions());
   const [patients] = useState<Patient[]>(() => getPatients());
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | "draft" | "completed">("all");
@@ -154,12 +180,13 @@ const SessionsPage = () => {
           return;
         }
         setSelectedSession(session);
+        loadSessionPrescriptions(session);
       }
     } else {
       // Clear selected session if no id in URL
       setSelectedSession(null);
     }
-  }, [sessionIdFromUrl, isPodiatrist, user?.id, location]);
+  }, [sessionIdFromUrl, isPodiatrist, user?.id]);
 
   // Detect print attempts from session form
   useEffect(() => {
@@ -405,7 +432,7 @@ const SessionsPage = () => {
       });
     }
 
-    setSessions(getSessions());
+    setSessions(getVisibleSessions());
     setShowForm(false);
     setEditingSession(null);
     setFormData(emptyForm);
@@ -440,7 +467,7 @@ const SessionsPage = () => {
         releaseCredit(user?.id || "", session.id);
       }
       deleteSession(session.id);
-      setSessions(getSessions());
+      setSessions(getVisibleSessions());
       
       addAuditLog({
         userId: user?.id || "",

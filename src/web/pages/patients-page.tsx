@@ -5,16 +5,12 @@ import { useLanguage } from "../contexts/language-context";
 import { useAuth, getAllUsers } from "../contexts/auth-context";
 import { usePermissions } from "../hooks/use-permissions";
 import {
-  getPatients,
-  savePatient,
-  updatePatient,
-  deletePatient,
   getSessionsByPatient,
   getUserCredits,
   Patient,
   addAuditLog,
-  getClinicById,
 } from "../lib/storage";
+import { api } from "../lib/api-client";
 
 interface PatientFormData {
   firstName: string;
@@ -71,22 +67,7 @@ const PatientsPage = () => {
   
   const credits = getUserCredits(user?.id || "");
   
-  // Helper para limitar pacientes según rol:
-  // - Recepcionista: solo pacientes de podólogos asignados
-  // - Podólogo: solo sus propios pacientes
-  // - Otros roles con acceso: todos
-  const getVisiblePatients = () => {
-    const all = getPatients();
-    if (isReceptionist && user?.assignedPodiatristIds?.length) {
-      return all.filter((p) => user.assignedPodiatristIds!.includes(p.createdBy));
-    }
-    if (isPodiatrist && user?.id) {
-      return all.filter((p) => p.createdBy === user.id);
-    }
-    return all;
-  };
-
-  const [patients, setPatients] = useState<Patient[]>(() => getVisiblePatients());
+  const [patients, setPatients] = useState<Patient[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [showForm, setShowForm] = useState(false);
   const [editingPatient, setEditingPatient] = useState<Patient | null>(null);
@@ -106,6 +87,36 @@ const PatientsPage = () => {
       ? new URLSearchParams(window.location.search)
       : new URLSearchParams();
   const patientIdFromUrl: string | null = searchParams.get("id");
+
+  // Cargar pacientes desde la API (backend aplica reglas de visibilidad por rol)
+  useEffect(() => {
+    const loadPatients = async () => {
+      try {
+        // Para recepcionistas (que hoy pueden ser solo locales), mantenemos el fallback en localStorage
+        if (isReceptionist) {
+          const { getPatients } = await import("../lib/storage");
+          const all = getPatients() as Patient[];
+          if (user?.assignedPodiatristIds?.length) {
+            setPatients(all.filter((p) => user.assignedPodiatristIds!.includes(p.createdBy)));
+          } else {
+            setPatients([]);
+          }
+          return;
+        }
+
+        const response = await api.get<{ success: boolean; patients: Patient[] }>("/patients");
+        if (response.success && response.data?.success) {
+          setPatients(response.data.patients);
+        } else {
+          console.error("Error cargando pacientes:", response.error || response.data?.message);
+        }
+      } catch (error) {
+        console.error("Error cargando pacientes:", error);
+      }
+    };
+
+    loadPatients();
+  }, [isReceptionist, user?.id, user?.assignedPodiatristIds]);
 
   const filteredPatients = useMemo(() => {
     if (!searchQuery) return patients;
@@ -132,7 +143,7 @@ const PatientsPage = () => {
     }
   }, [patientIdFromUrl, patients]);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const createdBy = isReceptionist && receptionistPodiatristId ? receptionistPodiatristId : (user?.id || "");
     if (isReceptionist && !receptionistPodiatristId && !editingPatient) {
@@ -158,60 +169,76 @@ const PatientsPage = () => {
         given: formData.consentGiven,
         date: formData.consentGiven ? new Date().toISOString() : null,
       },
-      createdBy,
     };
 
-    if (editingPatient) {
-      // Only update mutable fields - protect immutable fields from being changed
-      const mutableUpdates = {
-        phone: formData.phone,
-        email: formData.email,
-        address: formData.address,
-        city: formData.city,
-        postalCode: formData.postalCode,
-        medicalHistory: {
-          allergies: formData.allergies.split(",").map((s) => s.trim()).filter(Boolean),
-          medications: formData.medications.split(",").map((s) => s.trim()).filter(Boolean),
-          conditions: formData.conditions.split(",").map((s) => s.trim()).filter(Boolean),
-        },
-        // Note: firstName, lastName, dateOfBirth, idNumber, gender, consent are immutable
-      };
-      
-      const updated = updatePatient(editingPatient.id, mutableUpdates);
-      if (updated) {
-        setPatients(getVisiblePatients());
-        addAuditLog({
-          userId: user?.id || "",
-          userName: user?.name || "",
-          action: "UPDATE",
-          entityType: "patient",
-          entityId: updated.id,
-          details: JSON.stringify({
-            patientId: updated.id,
-            patientName: `${updated.firstName} ${updated.lastName}`,
-            folio: updated.folio,
-          }),
-        });
+    try {
+      if (editingPatient) {
+        // Only update mutable fields - protect immutable fields from being changed
+        const mutableUpdates = {
+          phone: formData.phone,
+          email: formData.email,
+          address: formData.address,
+          city: formData.city,
+          postalCode: formData.postalCode,
+          medicalHistory: patientData.medicalHistory,
+          consent: patientData.consent,
+        };
+
+        // Backend aplica permisos y lógica de negocio
+        const response = await api.put<{ success: boolean; patient: Patient }>(
+          `/patients/${editingPatient.id}`,
+          mutableUpdates
+        );
+
+        if (response.success && response.data?.success) {
+          const updated = response.data.patient;
+          setPatients((prev) =>
+            prev.map((p) => (p.id === updated.id ? updated : p))
+          );
+          addAuditLog({
+            userId: user?.id || "",
+            userName: user?.name || "",
+            action: "UPDATE",
+            entityType: "patient",
+            entityId: updated.id,
+            details: JSON.stringify({
+              patientId: updated.id,
+              patientName: `${updated.firstName} ${updated.lastName}`,
+              folio: updated.folio,
+            }),
+          });
+        } else {
+          alert(response.error || response.data?.message || "No se pudo actualizar el paciente.");
+        }
+      } else {
+        // Crear nuevo paciente vía API (backend genera folio y createdBy)
+        const response = await api.post<{ success: boolean; patient: Patient }>(
+          "/patients",
+          patientData
+        );
+
+        if (response.success && response.data?.success) {
+          const newPatient = response.data.patient;
+          setPatients((prev) => [newPatient, ...prev]);
+          addAuditLog({
+            userId: user?.id || "",
+            userName: user?.name || "",
+            action: "CREATE",
+            entityType: "patient",
+            entityId: newPatient.id,
+            details: JSON.stringify({
+              patientId: newPatient.id,
+              patientName: `${newPatient.firstName} ${newPatient.lastName}`,
+              folio: newPatient.folio,
+            }),
+          });
+        } else {
+          alert(response.error || response.data?.message || "No se pudo crear el paciente.");
+        }
       }
-    } else {
-      // Get clinic code for folio generation
-      const clinic = user?.clinicId ? getClinicById(user.clinicId) : null;
-      const clinicCode = clinic?.clinicCode || null;
-      
-      const newPatient = savePatient(patientData, clinicCode);
-      setPatients(getVisiblePatients());
-      addAuditLog({
-        userId: user?.id || "",
-        userName: user?.name || "",
-        action: "CREATE",
-        entityType: "patient",
-        entityId: newPatient.id,
-        details: JSON.stringify({
-          patientId: newPatient.id,
-          patientName: `${newPatient.firstName} ${newPatient.lastName}`,
-          folio: newPatient.folio,
-        }),
-      });
+    } catch (error) {
+      console.error("Error guardando paciente:", error);
+      alert("Ha ocurrido un error al guardar el paciente.");
     }
 
     setShowForm(false);
@@ -241,26 +268,41 @@ const PatientsPage = () => {
     setShowForm(true);
   };
 
-  const handleDelete = (patient: Patient) => {
+  const handleDelete = async (patient: Patient) => {
     // Los recepcionistas no pueden eliminar pacientes
     if (isReceptionist) return;
 
-    if (confirm(`¿Eliminar esta ficha de paciente?\n\n${patient.firstName} ${patient.lastName}`)) {
-      deletePatient(patient.id);
-      setPatients(getVisiblePatients());
-      addAuditLog({
-        userId: user?.id || "",
-        userName: user?.name || "",
-        action: "DELETE",
-        entityType: "patient",
-        entityId: patient.id,
-        details: JSON.stringify({
-          sessionId: null,
-          patientId: patient.id,
-          patientName: `${patient.firstName} ${patient.lastName}`,
-          folio: patient.folio,
-        }),
-      });
+    if (!confirm(`¿Eliminar esta ficha de paciente?\n\n${patient.firstName} ${patient.lastName}`)) {
+      return;
+    }
+
+    try {
+      // Recepcionistas nunca deberían llegar aquí por el guard anterior
+      const response = await api.delete<{ success: boolean; message?: string }>(
+        `/patients/${patient.id}`
+      );
+
+      if (response.success && response.data?.success) {
+        setPatients((prev) => prev.filter((p) => p.id !== patient.id));
+        addAuditLog({
+          userId: user?.id || "",
+          userName: user?.name || "",
+          action: "DELETE",
+          entityType: "patient",
+          entityId: patient.id,
+          details: JSON.stringify({
+            sessionId: null,
+            patientId: patient.id,
+            patientName: `${patient.firstName} ${patient.lastName}`,
+            folio: patient.folio,
+          }),
+        });
+      } else {
+        alert(response.error || response.data?.message || "No se pudo eliminar el paciente.");
+      }
+    } catch (error) {
+      console.error("Error eliminando paciente:", error);
+      alert("Ha ocurrido un error al eliminar el paciente.");
     }
   };
 

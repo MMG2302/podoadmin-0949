@@ -10,13 +10,8 @@ const canCreatePrescriptions = (role: string | undefined): boolean => {
   return role === "podiatrist";
 };
 import {
-  getSessions,
-  getSessionById,
   getPatients,
   getPatientById,
-  saveSession,
-  updateSession,
-  deleteSession,
   getUserCredits,
   reserveCredit,
   consumeCredit,
@@ -38,6 +33,7 @@ import {
   AppointmentReason,
   Prescription,
 } from "../lib/storage";
+import { api } from "../lib/api-client";
 
 interface SessionFormData {
   patientId: string;
@@ -102,17 +98,6 @@ const SessionsPage = () => {
   
   const credits = getUserCredits(user?.id || "");
 
-  // Helper para limitar sesiones según rol:
-  // - Podólogo: solo sus propias sesiones
-  // - Otros roles con acceso: todas
-  const getVisibleSessions = () => {
-    const all = getSessions();
-    if (isPodiatrist && user?.id) {
-      return all.filter((s) => s.createdBy === user.id);
-    }
-    return all;
-  };
-
   // Leer siempre la query y el path reales del navegador (wouter no incluye la query en location)
   const searchParams =
     typeof window !== "undefined"
@@ -131,7 +116,7 @@ const SessionsPage = () => {
     }
   }
   
-  const [sessions, setSessions] = useState<ClinicalSession[]>(() => getVisibleSessions());
+  const [sessions, setSessions] = useState<ClinicalSession[]>([]);
   const [patients] = useState<Patient[]>(() => getPatients());
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | "draft" | "completed">("all");
@@ -169,16 +154,29 @@ const SessionsPage = () => {
     }, 100);
   };
   
+  // Cargar sesiones desde la API (el backend aplica reglas de visibilidad por rol)
+  useEffect(() => {
+    const loadSessions = async () => {
+      try {
+        const response = await api.get<{ success: boolean; sessions: ClinicalSession[] }>("/sessions");
+        if (response.success && response.data?.success) {
+          setSessions(response.data.sessions);
+        } else {
+          console.error("Error cargando sesiones:", response.error || response.data?.message);
+        }
+      } catch (error) {
+        console.error("Error cargando sesiones:", error);
+      }
+    };
+
+    loadSessions();
+  }, [isPodiatrist, user?.id]);
+
   // Auto-open session if id is in URL
   useEffect(() => {
     if (sessionIdFromUrl) {
-      const session = getSessionById(sessionIdFromUrl);
+      const session = sessions.find((s) => s.id === sessionIdFromUrl);
       if (session) {
-        // Check if user has permission to view this session
-        if (isPodiatrist && session.createdBy !== user?.id) {
-          // Podiatrists can only see their own sessions
-          return;
-        }
         setSelectedSession(session);
         loadSessionPrescriptions(session);
       }
@@ -186,7 +184,7 @@ const SessionsPage = () => {
       // Clear selected session if no id in URL
       setSelectedSession(null);
     }
-  }, [sessionIdFromUrl, isPodiatrist, user?.id]);
+  }, [sessionIdFromUrl, sessions]);
 
   // Detect print attempts from session form
   useEffect(() => {
@@ -347,7 +345,7 @@ const SessionsPage = () => {
     }));
   };
 
-  const handleSubmit = (e: React.FormEvent, asDraft: boolean) => {
+  const handleSubmit = async (e: React.FormEvent, asDraft: boolean) => {
     e.preventDefault();
     
     if (!formData.patientId) return;
@@ -370,72 +368,97 @@ const SessionsPage = () => {
       appointmentReason: formData.appointmentReason || null,
     };
 
-    if (editingSession) {
-      // Release credit if was draft and stays draft
-      if (editingSession.creditReservedAt && !asDraft) {
-        consumeCredit(user?.id || "", editingSession.id);
-      } else if (editingSession.creditReservedAt && asDraft) {
-        // Keep reservation
-      }
-      
-      updateSession(editingSession.id, {
-        ...sessionData,
-        completedAt: asDraft ? null : new Date().toISOString(),
-      });
-      
-      const patient = getPatientById(editingSession.patientId);
-      addAuditLog({
-        userId: user?.id || "",
-        userName: user?.name || "",
-        action: asDraft ? "UPDATE_DRAFT" : "COMPLETE",
-        entityType: "session",
-        entityId: editingSession.id,
-        details: JSON.stringify({
-          sessionId: editingSession.id,
-          patientId: editingSession.patientId,
-          patientName: patient ? `${patient.firstName} ${patient.lastName}` : "",
-          status: asDraft ? "draft" : "completed",
-        }),
-      });
-    } else {
-      // Reserve credit for new session
-      if (asDraft) {
-        const reserved = reserveCredit(user?.id || "", "pending");
-        if (!reserved) {
-          alert(t.credits.insufficientCredits);
+    try {
+      if (editingSession) {
+        // Liberar/consumir crédito al completar
+        if (editingSession.creditReservedAt && !asDraft) {
+          consumeCredit(user?.id || "", editingSession.id);
+        }
+
+        const response = await api.put<{ success: boolean; session: ClinicalSession }>(
+          `/sessions/${editingSession.id}`,
+          {
+            ...sessionData,
+            completedAt: asDraft ? null : new Date().toISOString(),
+          }
+        );
+
+        if (response.success && response.data?.success) {
+          const updated = response.data.session;
+          setSessions((prev) => prev.map((s) => (s.id === updated.id ? updated : s)));
+
+          const patient = getPatientById(editingSession.patientId);
+          addAuditLog({
+            userId: user?.id || "",
+            userName: user?.name || "",
+            action: asDraft ? "UPDATE_DRAFT" : "COMPLETE",
+            entityType: "session",
+            entityId: editingSession.id,
+            details: JSON.stringify({
+              sessionId: editingSession.id,
+              patientId: editingSession.patientId,
+              patientName: patient ? `${patient.firstName} ${patient.lastName}` : "",
+              status: asDraft ? "draft" : "completed",
+            }),
+          });
+        } else {
+          alert(response.error || response.data?.message || "No se pudo actualizar la sesión.");
+          return;
+        }
+      } else {
+        // Reserve credit for new session
+        if (asDraft) {
+          const reserved = reserveCredit(user?.id || "", "pending");
+          if (!reserved) {
+            alert(t.credits.insufficientCredits);
+            return;
+          }
+        }
+        
+        const response = await api.post<{ success: boolean; session: ClinicalSession }>(
+          "/sessions",
+          {
+            ...sessionData,
+            creditReservedAt: asDraft ? new Date().toISOString() : null,
+          }
+        );
+
+        if (response.success && response.data?.success) {
+          const newSession = response.data.session;
+
+          if (!asDraft) {
+            consumeCredit(user?.id || "", newSession.id);
+          }
+
+          setSessions((prev) => [newSession, ...prev]);
+
+          const patient = getPatientById(newSession.patientId);
+          addAuditLog({
+            userId: user?.id || "",
+            userName: user?.name || "",
+            action: "CREATE",
+            entityType: "session",
+            entityId: newSession.id,
+            details: JSON.stringify({
+              sessionId: newSession.id,
+              patientId: newSession.patientId,
+              patientName: patient ? `${patient.firstName} ${patient.lastName}` : "",
+              status: asDraft ? "draft" : "completed",
+            }),
+          });
+        } else {
+          alert(response.error || response.data?.message || "No se pudo crear la sesión.");
           return;
         }
       }
-      
-      const newSession = saveSession({
-        ...sessionData,
-        creditReservedAt: asDraft ? new Date().toISOString() : null,
-      });
-      
-      if (!asDraft) {
-        consumeCredit(user?.id || "", newSession.id);
-      }
-      
-      const patient = getPatientById(newSession.patientId);
-      addAuditLog({
-        userId: user?.id || "",
-        userName: user?.name || "",
-        action: "CREATE",
-        entityType: "session",
-        entityId: newSession.id,
-        details: JSON.stringify({
-          sessionId: newSession.id,
-          patientId: newSession.patientId,
-          patientName: patient ? `${patient.firstName} ${patient.lastName}` : "",
-          status: asDraft ? "draft" : "completed",
-        }),
-      });
-    }
 
-    setSessions(getVisibleSessions());
-    setShowForm(false);
-    setEditingSession(null);
-    setFormData(emptyForm);
+      setShowForm(false);
+      setEditingSession(null);
+      setFormData(emptyForm);
+    } catch (error) {
+      console.error("Error guardando sesión:", error);
+      alert("Ha ocurrido un error al guardar la sesión.");
+    }
   };
 
   const handleEdit = (session: ClinicalSession) => {
@@ -458,29 +481,44 @@ const SessionsPage = () => {
     setShowForm(true);
   };
 
-  const handleDelete = (session: ClinicalSession) => {
+  const handleDelete = async (session: ClinicalSession) => {
     if (session.status === "completed") return;
     
-    if (confirm("¿Eliminar esta sesión?")) {
-      const patient = getPatientById(session.patientId);
-      if (session.creditReservedAt) {
-        releaseCredit(user?.id || "", session.id);
+    if (!confirm("¿Eliminar esta sesión?")) {
+      return;
+    }
+
+    try {
+      const response = await api.delete<{ success: boolean; message?: string }>(
+        `/sessions/${session.id}`
+      );
+
+      if (response.success && response.data?.success) {
+        const patient = getPatientById(session.patientId);
+        if (session.creditReservedAt) {
+          releaseCredit(user?.id || "", session.id);
+        }
+
+        setSessions((prev) => prev.filter((s) => s.id !== session.id));
+        
+        addAuditLog({
+          userId: user?.id || "",
+          userName: user?.name || "",
+          action: "DELETE",
+          entityType: "session",
+          entityId: session.id,
+          details: JSON.stringify({
+            sessionId: session.id,
+            patientId: session.patientId,
+            patientName: patient ? `${patient.firstName} ${patient.lastName}` : "",
+          }),
+        });
+      } else {
+        alert(response.error || response.data?.message || "No se pudo eliminar la sesión.");
       }
-      deleteSession(session.id);
-      setSessions(getVisibleSessions());
-      
-      addAuditLog({
-        userId: user?.id || "",
-        userName: user?.name || "",
-        action: "DELETE",
-        entityType: "session",
-        entityId: session.id,
-        details: JSON.stringify({
-          sessionId: session.id,
-          patientId: session.patientId,
-          patientName: patient ? `${patient.firstName} ${patient.lastName}` : "",
-        }),
-      });
+    } catch (error) {
+      console.error("Error eliminando sesión:", error);
+      alert("Ha ocurrido un error al eliminar la sesión.");
     }
   };
 

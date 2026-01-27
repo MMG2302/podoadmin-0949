@@ -8,6 +8,8 @@ import authRoutes from './routes/auth';
 import oauthRoutes from './routes/oauth';
 import usersRoutes from './routes/users';
 import patientsRoutes from './routes/patients';
+import sessionsRoutes from './routes/sessions';
+import creditsRoutes from './routes/credits';
 import csrfRoutes from './routes/csrf';
 import testXssRoutes from './routes/test-xss';
 import twoFactorRoutes from './routes/two-factor-auth';
@@ -121,6 +123,8 @@ app.use('*', async (c, next) => {
 // Rutas protegidas - requieren autenticación y autorización
 app.route('/users', usersRoutes);
 app.route('/patients', patientsRoutes);
+app.route('/sessions', sessionsRoutes);
+app.route('/credits', creditsRoutes);
 app.route('/2fa', twoFactorRoutes);
 app.route('/security-metrics', metricsRoutes);
 app.route('/audit-logs', auditLogRoutes);

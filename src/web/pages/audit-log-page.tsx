@@ -1,8 +1,9 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { MainLayout } from "../components/layout/main-layout";
 import { useLanguage } from "../contexts/language-context";
 import { useAuth, getAllUsers } from "../contexts/auth-context";
-import { getUserCredits, getAuditLogs, AuditLog } from "../lib/storage";
+import { getUserCredits, AuditLog } from "../lib/storage";
+import { api } from "../lib/api-client";
 
 const ITEMS_PER_PAGE = 20;
 
@@ -11,7 +12,7 @@ const AuditLogPage = () => {
   const { user } = useAuth();
   
   const credits = getUserCredits(user?.id || "");
-  const [logs] = useState<AuditLog[]>(() => getAuditLogs());
+  const [logs, setLogs] = useState<AuditLog[]>([]);
   const allUsers = getAllUsers();
   
   // Filters
@@ -27,6 +28,33 @@ const AuditLogPage = () => {
   
   // Expanded details
   const [expandedLogId, setExpandedLogId] = useState<string | null>(null);
+
+  // Cargar logs desde la API (backend aplica reglas de acceso por rol)
+  useEffect(() => {
+    const loadLogs = async () => {
+      if (!user) return;
+
+      try {
+        let endpoint = "";
+        if (user.role === "super_admin") {
+          endpoint = "/audit-logs/all?limit=500";
+        } else {
+          endpoint = `/audit-logs/user/${encodeURIComponent(user.id)}?limit=200`;
+        }
+
+        const response = await api.get<{ success: boolean; logs: AuditLog[] }>(endpoint);
+        if (response.success && response.data?.success) {
+          setLogs(response.data.logs);
+        } else {
+          console.error("Error cargando auditoría:", response.error || response.data?.message);
+        }
+      } catch (error) {
+        console.error("Error cargando auditoría:", error);
+      }
+    };
+
+    loadLogs();
+  }, [user]);
 
   const filteredLogs = useMemo(() => {
     let filtered = logs;

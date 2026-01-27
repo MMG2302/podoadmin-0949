@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { MainLayout } from "../components/layout/main-layout";
 import { useLanguage } from "../contexts/language-context";
-import { useAuth, getAllUsers, User, UserRole, isEmailTaken } from "../contexts/auth-context";
+import { useAuth, User, UserRole } from "../contexts/auth-context";
 import { usePermissions } from "../hooks/use-permissions";
 import { 
   getUserCredits, 
@@ -12,25 +12,17 @@ import {
   addCreditTransaction,
   addAuditLog,
   exportPatientData,
-  generateId,
-  saveCreatedUser,
   getClinicCredits,
   getClinicAvailableCredits,
   updateClinicCredits,
   addClinicCredits,
   initializeClinicCredits,
   updateMonthlyRenewalAmount,
-  blockUser,
-  unblockUser,
-  enableUser,
-  disableUser,
-  banUser,
-  unbanUser,
-  deleteCreatedUser,
   Patient,
   ClinicalSession,
   CreditTransaction,
 } from "../lib/storage";
+import { api } from "../lib/api-client";
 
 interface UserWithData extends User {
   credits: {
@@ -927,7 +919,7 @@ const UsersPage = () => {
   const { user: currentUser } = useAuth();
   const { isSuperAdmin } = usePermissions();
   const credits = getUserCredits(currentUser?.id || "");
-  const allUsers = getAllUsers();
+  const [allUsers, setAllUsers] = useState<User[]>([]);
   
   const [searchTerm, setSearchTerm] = useState("");
   const [roleFilter, setRoleFilter] = useState<UserRole | "all">("all");
@@ -938,6 +930,24 @@ const UsersPage = () => {
   const [showTransferModal, setShowTransferModal] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
+
+  // Cargar usuarios desde la API (incluye usuarios mock + creados según backend)
+  useEffect(() => {
+    const loadUsers = async () => {
+      try {
+        const response = await api.get<{ success: boolean; users: User[] }>("/users");
+        if (response.success && response.data?.success) {
+          setAllUsers(response.data.users);
+        } else {
+          console.error("Error cargando usuarios:", response.error || response.data?.message);
+        }
+      } catch (error) {
+        console.error("Error cargando usuarios:", error);
+      }
+    };
+
+    loadUsers();
+  }, []);
 
   // Enhance users with additional data
   const usersWithData: UserWithData[] = allUsers.map(u => {
@@ -1022,44 +1032,58 @@ const UsersPage = () => {
   };
 
   const handleCreateUser = (userData: Partial<User> & { password: string }) => {
-    const email = (userData.email || "").trim();
-    if (!email) {
-      alert("El correo electrónico es obligatorio.");
-      return;
-    }
-    if (isEmailTaken(email)) {
-      alert("Ya existe una cuenta con este correo electrónico.");
-      return;
-    }
-    try {
-      const newUser = saveCreatedUser(
-        {
+    (async () => {
+      const email = (userData.email || "").trim();
+      if (!email) {
+        alert("El correo electrónico es obligatorio.");
+        return;
+      }
+
+      // Validación rápida en cliente usando lista actual
+      const emailExists = allUsers.some(
+        (u) => u.email.toLowerCase() === email.toLowerCase()
+      );
+      if (emailExists) {
+        alert("Ya existe una cuenta con este correo electrónico.");
+        return;
+      }
+
+      try {
+        const response = await api.post<{ success: boolean; user: User }>("/users", {
           email,
           name: userData.name || "",
           role: userData.role || "podiatrist",
           clinicId: userData.clinicId,
-        },
-        userData.password,
-        currentUser?.id || ""
-      );
-      addAuditLog({
-        userId: currentUser?.id || "",
-        userName: currentUser?.name || "",
-        action: "CREATE",
-        entityType: "user",
-        entityId: newUser.id,
-        details: JSON.stringify({
-          action: "user_create",
-          newUserName: userData.name,
-          newUserEmail: userData.email,
-          newUserRole: userData.role,
-          newUserClinicId: userData.clinicId,
-        }),
-      });
-      alert("Usuario creado exitosamente. El usuario puede iniciar sesión inmediatamente.");
-    } catch (error) {
-      alert(error instanceof Error ? error.message : "Error al crear usuario");
-    }
+          password: userData.password,
+        });
+
+        if (response.success && response.data?.success) {
+          const newUser = response.data.user;
+          setAllUsers((prev) => [...prev, newUser]);
+
+          addAuditLog({
+            userId: currentUser?.id || "",
+            userName: currentUser?.name || "",
+            action: "CREATE",
+            entityType: "user",
+            entityId: newUser.id,
+            details: JSON.stringify({
+              action: "user_create",
+              newUserName: newUser.name,
+              newUserEmail: newUser.email,
+              newUserRole: newUser.role,
+              newUserClinicId: newUser.clinicId,
+            }),
+          });
+          alert("Usuario creado exitosamente. El usuario puede iniciar sesión inmediatamente.");
+        } else {
+          alert(response.error || response.data?.message || "Error al crear usuario");
+        }
+      } catch (error) {
+        console.error("Error creando usuario:", error);
+        alert("Error al crear usuario");
+      }
+    })();
   };
 
   const handleEditUser = (userId: string, updates: Partial<User>) => {
@@ -1080,7 +1104,7 @@ const UsersPage = () => {
   };
 
   const handleMonthlyRenewalUpdate = (userId: string, renewalAmount: number): void => {
-    const targetUser = getAllUsers().find(u => u.id === userId);
+    const targetUser = allUsers.find(u => u.id === userId);
     
     // Actualizar la cantidad de renovación mensual
     updateMonthlyRenewalAmount(userId, renewalAmount);
@@ -1105,7 +1129,7 @@ const UsersPage = () => {
   };
 
   const handleCreditAdjustment = (userId: string, amount: number, isAdd: boolean, reason: string): { success: boolean; error?: string } => {
-    const targetUser = getAllUsers().find(u => u.id === userId);
+    const targetUser = allUsers.find(u => u.id === userId);
     
     // If user is clinic_admin, adjust clinic pool credits
     if (targetUser?.role === "clinic_admin" && targetUser.clinicId) {
@@ -1260,25 +1284,35 @@ const UsersPage = () => {
       return;
     }
     
-    const success = blockUser(user.id);
-    if (success) {
-      addAuditLog({
-        userId: currentUser?.id || "",
-        userName: currentUser?.name || "",
-        action: "BLOCK_USER",
-        entityType: "user",
-        entityId: user.id,
-        details: JSON.stringify({
-          action: "block_user",
-          targetUserId: user.id,
-          targetUserName: user.name,
-          targetUserEmail: user.email,
-        }),
-      });
-      window.location.reload(); // Recargar para actualizar la lista
-    } else {
-      alert("Error al bloquear el usuario. Solo se pueden bloquear usuarios creados.");
-    }
+    (async () => {
+      try {
+        const response = await api.post<{ success: boolean; message?: string }>(`/users/${user.id}/block`);
+        if (response.success && response.data?.success) {
+          setAllUsers((prev) =>
+            prev.map((u) => (u.id === user.id ? { ...u, isBlocked: true } : u))
+          );
+
+          addAuditLog({
+            userId: currentUser?.id || "",
+            userName: currentUser?.name || "",
+            action: "BLOCK_USER",
+            entityType: "user",
+            entityId: user.id,
+            details: JSON.stringify({
+              action: "block_user",
+              targetUserId: user.id,
+              targetUserName: user.name,
+              targetUserEmail: user.email,
+            }),
+          });
+        } else {
+          alert(response.error || response.data?.message || "Error al bloquear el usuario.");
+        }
+      } catch (error) {
+        console.error("Error bloqueando usuario:", error);
+        alert("Error al bloquear el usuario.");
+      }
+    })();
   };
 
   const handleUnblockUser = (user: User) => {
@@ -1286,25 +1320,35 @@ const UsersPage = () => {
       return;
     }
     
-    const success = unblockUser(user.id);
-    if (success) {
-      addAuditLog({
-        userId: currentUser?.id || "",
-        userName: currentUser?.name || "",
-        action: "UNBLOCK_USER",
-        entityType: "user",
-        entityId: user.id,
-        details: JSON.stringify({
-          action: "unblock_user",
-          targetUserId: user.id,
-          targetUserName: user.name,
-          targetUserEmail: user.email,
-        }),
-      });
-      window.location.reload(); // Recargar para actualizar la lista
-    } else {
-      alert("Error al desbloquear el usuario. Solo se pueden desbloquear usuarios creados.");
-    }
+    (async () => {
+      try {
+        const response = await api.post<{ success: boolean; message?: string }>(`/users/${user.id}/unblock`);
+        if (response.success && response.data?.success) {
+          setAllUsers((prev) =>
+            prev.map((u) => (u.id === user.id ? { ...u, isBlocked: false } : u))
+          );
+
+          addAuditLog({
+            userId: currentUser?.id || "",
+            userName: currentUser?.name || "",
+            action: "UNBLOCK_USER",
+            entityType: "user",
+            entityId: user.id,
+            details: JSON.stringify({
+              action: "unblock_user",
+              targetUserId: user.id,
+              targetUserName: user.name,
+              targetUserEmail: user.email,
+            }),
+          });
+        } else {
+          alert(response.error || response.data?.message || "Error al desbloquear el usuario.");
+        }
+      } catch (error) {
+        console.error("Error desbloqueando usuario:", error);
+        alert("Error al desbloquear el usuario.");
+      }
+    })();
   };
 
   const handleEnableUser = async (user: User) => {
@@ -1313,10 +1357,15 @@ const UsersPage = () => {
     }
     
     try {
-      const { api } = await import("../lib/api-client");
-      const response = await api.post(`/users/${user.id}/enable`);
+      const response = await api.post<{ success: boolean; message?: string }>(`/users/${user.id}/enable`);
       
-      if (response.success) {
+      if (response.success && response.data?.success) {
+        setAllUsers((prev) =>
+          prev.map((u) =>
+            u.id === user.id ? { ...u, isEnabled: true, isBlocked: false } : u
+          )
+        );
+
         addAuditLog({
           userId: currentUser?.id || "",
           userName: currentUser?.name || "",
@@ -1330,34 +1379,12 @@ const UsersPage = () => {
             targetUserEmail: user.email,
           }),
         });
-        // También actualizar localmente para respuesta inmediata
-        enableUser(user.id);
-        window.location.reload(); // Recargar para actualizar la lista
       } else {
-        alert(response.error || "Error al habilitar el usuario");
+        alert(response.error || response.data?.message || "Error al habilitar el usuario");
       }
     } catch (error) {
       console.error("Error habilitando usuario:", error);
-      // Fallback a función local
-      const success = enableUser(user.id);
-      if (success) {
-        addAuditLog({
-          userId: currentUser?.id || "",
-          userName: currentUser?.name || "",
-          action: "ENABLE_USER",
-          entityType: "user",
-          entityId: user.id,
-          details: JSON.stringify({
-            action: "enable_user",
-            targetUserId: user.id,
-            targetUserName: user.name,
-            targetUserEmail: user.email,
-          }),
-        });
-        window.location.reload();
-      } else {
-        alert("Error al habilitar el usuario");
-      }
+      alert("Error al habilitar el usuario");
     }
   };
 
@@ -1367,10 +1394,15 @@ const UsersPage = () => {
     }
     
     try {
-      const { api } = await import("../lib/api-client");
-      const response = await api.post(`/users/${user.id}/disable`);
+      const response = await api.post<{ success: boolean; message?: string }>(`/users/${user.id}/disable`);
       
-      if (response.success) {
+      if (response.success && response.data?.success) {
+        setAllUsers((prev) =>
+          prev.map((u) =>
+            u.id === user.id ? { ...u, isEnabled: false } : u
+          )
+        );
+
         addAuditLog({
           userId: currentUser?.id || "",
           userName: currentUser?.name || "",
@@ -1384,21 +1416,12 @@ const UsersPage = () => {
             targetUserEmail: user.email,
           }),
         });
-        // También actualizar localmente para respuesta inmediata
-        disableUser(user.id);
-        window.location.reload(); // Recargar para actualizar la lista
       } else {
-        alert(response.error || "Error al deshabilitar el usuario");
+        alert(response.error || response.data?.message || "Error al deshabilitar el usuario");
       }
     } catch (error) {
       console.error("Error deshabilitando usuario:", error);
-      // Fallback a función local
-      const success = disableUser(user.id);
-      if (success) {
-        window.location.reload();
-      } else {
-        alert("Error al deshabilitar el usuario. Solo se pueden deshabilitar usuarios creados.");
-      }
+      alert("Error al deshabilitar el usuario");
     }
   };
 
@@ -1407,25 +1430,37 @@ const UsersPage = () => {
       return;
     }
     
-    const success = banUser(user.id);
-    if (success) {
-      addAuditLog({
-        userId: currentUser?.id || "",
-        userName: currentUser?.name || "",
-        action: "BAN_USER",
-        entityType: "user",
-        entityId: user.id,
-        details: JSON.stringify({
-          action: "ban_user",
-          targetUserId: user.id,
-          targetUserName: user.name,
-          targetUserEmail: user.email,
-        }),
-      });
-      window.location.reload(); // Recargar para actualizar la lista
-    } else {
-      alert("Error al banear el usuario. Solo se pueden banear usuarios creados.");
-    }
+    (async () => {
+      try {
+        const response = await api.post<{ success: boolean; message?: string }>(`/users/${user.id}/ban`);
+        if (response.success && response.data?.success) {
+          setAllUsers((prev) =>
+            prev.map((u) =>
+              u.id === user.id ? { ...u, isBanned: true, isEnabled: false, isBlocked: true } : u
+            )
+          );
+
+          addAuditLog({
+            userId: currentUser?.id || "",
+            userName: currentUser?.name || "",
+            action: "BAN_USER",
+            entityType: "user",
+            entityId: user.id,
+            details: JSON.stringify({
+              action: "ban_user",
+              targetUserId: user.id,
+              targetUserName: user.name,
+              targetUserEmail: user.email,
+            }),
+          });
+        } else {
+          alert(response.error || response.data?.message || "Error al banear el usuario.");
+        }
+      } catch (error) {
+        console.error("Error baneando usuario:", error);
+        alert("Error al banear el usuario.");
+      }
+    })();
   };
 
   const handleUnbanUser = (user: User) => {
@@ -1433,25 +1468,37 @@ const UsersPage = () => {
       return;
     }
     
-    const success = unbanUser(user.id);
-    if (success) {
-      addAuditLog({
-        userId: currentUser?.id || "",
-        userName: currentUser?.name || "",
-        action: "UNBAN_USER",
-        entityType: "user",
-        entityId: user.id,
-        details: JSON.stringify({
-          action: "unban_user",
-          targetUserId: user.id,
-          targetUserName: user.name,
-          targetUserEmail: user.email,
-        }),
-      });
-      window.location.reload(); // Recargar para actualizar la lista
-    } else {
-      alert("Error al desbanear el usuario. Solo se pueden desbanear usuarios creados.");
-    }
+    (async () => {
+      try {
+        const response = await api.post<{ success: boolean; message?: string }>(`/users/${user.id}/unban`);
+        if (response.success && response.data?.success) {
+          setAllUsers((prev) =>
+            prev.map((u) =>
+              u.id === user.id ? { ...u, isBanned: false } : u
+            )
+          );
+
+          addAuditLog({
+            userId: currentUser?.id || "",
+            userName: currentUser?.name || "",
+            action: "UNBAN_USER",
+            entityType: "user",
+            entityId: user.id,
+            details: JSON.stringify({
+              action: "unban_user",
+              targetUserId: user.id,
+              targetUserName: user.name,
+              targetUserEmail: user.email,
+            }),
+          });
+        } else {
+          alert(response.error || response.data?.message || "Error al desbanear el usuario.");
+        }
+      } catch (error) {
+        console.error("Error desbaneando usuario:", error);
+        alert("Error al desbanear el usuario.");
+      }
+    })();
   };
 
   const handleDeleteUser = (user: User) => {
@@ -1463,25 +1510,33 @@ const UsersPage = () => {
       return;
     }
     
-    const success = deleteCreatedUser(user.id);
-    if (success) {
-      addAuditLog({
-        userId: currentUser?.id || "",
-        userName: currentUser?.name || "",
-        action: "DELETE_USER",
-        entityType: "user",
-        entityId: user.id,
-        details: JSON.stringify({
-          action: "delete_user",
-          targetUserId: user.id,
-          targetUserName: user.name,
-          targetUserEmail: user.email,
-        }),
-      });
-      window.location.reload(); // Recargar para actualizar la lista
-    } else {
-      alert("Error al eliminar el usuario. Solo se pueden eliminar usuarios creados.");
-    }
+    (async () => {
+      try {
+        const response = await api.delete<{ success: boolean; message?: string }>(`/users/${user.id}`);
+        if (response.success && response.data?.success) {
+          setAllUsers((prev) => prev.filter((u) => u.id !== user.id));
+
+          addAuditLog({
+            userId: currentUser?.id || "",
+            userName: currentUser?.name || "",
+            action: "DELETE_USER",
+            entityType: "user",
+            entityId: user.id,
+            details: JSON.stringify({
+              action: "delete_user",
+              targetUserId: user.id,
+              targetUserName: user.name,
+              targetUserEmail: user.email,
+            }),
+          });
+        } else {
+          alert(response.error || response.data?.message || "Error al eliminar el usuario.");
+        }
+      } catch (error) {
+        console.error("Error eliminando usuario:", error);
+        alert("Error al eliminar el usuario.");
+      }
+    })();
   };
 
   // Cerrar menús de cuenta al hacer clic fuera

@@ -9,6 +9,33 @@ import {
 
 const auditLogRoutes = new Hono();
 
+// Normaliza el registro de auditoría de la base de datos
+// al shape usado por el frontend (AuditLog de web/lib/storage)
+function mapDbLogToApiLog(log: any) {
+  const rawDetails = log.details;
+  const detailsString =
+    typeof rawDetails === 'string'
+      ? rawDetails
+      : rawDetails
+      ? JSON.stringify(rawDetails)
+      : '';
+
+  return {
+    id: log.id,
+    userId: log.userId,
+    userName: log.userName || log.userId, // DB no almacena userName, usamos userId como fallback
+    action: log.action,
+    entityType: log.resourceType,
+    entityId: log.resourceId || '',
+    details: detailsString,
+    createdAt: log.createdAt,
+    // Campos adicionales disponibles para futuros usos
+    ipAddress: log.ipAddress || null,
+    userAgent: log.userAgent || null,
+    clinicId: log.clinicId || null,
+  };
+}
+
 // Todas las rutas requieren autenticación
 auditLogRoutes.use('*', requireAuth);
 
@@ -31,7 +58,8 @@ auditLogRoutes.get('/user/:userId', async (c) => {
       );
     }
 
-    const logs = await getAuditLogsByUser(userId, limit);
+    const dbLogs = await getAuditLogsByUser(userId, limit);
+    const logs = dbLogs.map(mapDbLogToApiLog);
 
     return c.json({
       success: true,
@@ -57,7 +85,8 @@ auditLogRoutes.get(
       const action = c.req.param('action');
       const limit = parseInt(c.req.query('limit') || '100');
 
-      const logs = await getAuditLogsByAction(action, limit);
+      const dbLogs = await getAuditLogsByAction(action, limit);
+      const logs = dbLogs.map(mapDbLogToApiLog);
 
       return c.json({
         success: true,
@@ -80,7 +109,8 @@ auditLogRoutes.get('/all', requireRole('super_admin'), async (c) => {
   try {
     const limit = parseInt(c.req.query('limit') || '500');
 
-    const logs = await getAllAuditLogs(limit);
+    const dbLogs = await getAllAuditLogs(limit);
+    const logs = dbLogs.map(mapDbLogToApiLog);
 
     return c.json({
       success: true,

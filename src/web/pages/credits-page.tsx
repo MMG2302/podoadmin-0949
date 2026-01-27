@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { MainLayout } from "../components/layout/main-layout";
 import { useLanguage } from "../contexts/language-context";
 import { useAuth } from "../contexts/auth-context";
@@ -6,21 +6,46 @@ import { usePermissions } from "../hooks/use-permissions";
 import { 
   getUserCredits, 
   getCreditTransactions, 
-  addCreditTransaction, 
-  updateUserCredits,
   getClinicAvailableCredits,
   getClinicCredits,
   initializeClinicCredits,
+  UserCredits,
+  CreditTransaction,
 } from "../lib/storage";
+import { api } from "../lib/api-client";
 
 const CreditsPage = () => {
   const { t } = useLanguage();
   const { user } = useAuth();
   const { isSuperAdmin, isClinicAdmin, hasPermission } = usePermissions();
   
-  const [credits, setCredits] = useState(() => getUserCredits(user?.id || ""));
-  const [transactions, setTransactions] = useState(() => getCreditTransactions(user?.id));
+  const [credits, setCredits] = useState<UserCredits | null>(() =>
+    user ? getUserCredits(user.id) : null
+  );
+  const [transactions, setTransactions] = useState<CreditTransaction[]>(() =>
+    user ? getCreditTransactions(user.id) : []
+  );
   const [showPurchaseModal, setShowPurchaseModal] = useState(false);
+  
+  // Cargar créditos y transacciones desde la API (backend como fuente de verdad)
+  useEffect(() => {
+    const loadCredits = async () => {
+      if (!user) return;
+      try {
+        const response = await api.get<{ success: boolean; credits: UserCredits; transactions: CreditTransaction[] }>("/credits/me");
+        if (response.success && response.data?.success) {
+          setCredits(response.data.credits);
+          setTransactions(response.data.transactions);
+        } else {
+          console.error("Error cargando créditos:", response.error || response.data?.message);
+        }
+      } catch (error) {
+        console.error("Error cargando créditos:", error);
+      }
+    };
+
+    loadCredits();
+  }, [user?.id]);
   
   // For clinic_admin, get clinic credits instead of personal credits
   const clinicId = user?.clinicId || "";
@@ -45,30 +70,35 @@ const CreditsPage = () => {
     { id: 4, amount: 500, price: 175, popular: false },
   ];
 
-  const handlePurchase = (amount: number) => {
+  const handlePurchase = async (amount: number) => {
     if (!user) return;
     
-    const newCredits = {
-      ...credits,
-      extraCredits: credits.extraCredits + amount,
-    };
-    updateUserCredits(newCredits);
-    setCredits(newCredits);
-    
-    const transaction = addCreditTransaction({
-      userId: user.id,
-      type: "purchase",
-      amount,
-      description: `Compra de ${amount} créditos extra`,
-    });
-    setTransactions([transaction, ...transactions]);
-    setShowPurchaseModal(false);
+    try {
+      const response = await api.post<{ success: boolean; credits: UserCredits; transaction: CreditTransaction }>(
+        "/credits/purchase",
+        { amount }
+      );
+
+      if (response.success && response.data?.success) {
+        const { credits: newCredits, transaction } = response.data;
+        setCredits(newCredits);
+        setTransactions((prev) => [transaction, ...prev]);
+        setShowPurchaseModal(false);
+      } else {
+        alert(response.error || response.data?.message || "No se pudo completar la compra de créditos.");
+      }
+    } catch (error) {
+      console.error("Error al comprar créditos:", error);
+      alert("Ha ocurrido un error al procesar la compra de créditos.");
+    }
   };
 
   // For clinic_admin, show clinic pool credits; for others, show personal credits
   const totalAvailable = isClinicAdmin 
     ? clinicAvailableCredits 
-    : credits.monthlyCredits + credits.extraCredits - credits.reservedCredits;
+    : credits
+    ? credits.monthlyCredits + credits.extraCredits - credits.reservedCredits
+    : 0;
 
   const formatDate = (dateStr: string) => {
     return new Date(dateStr).toLocaleDateString("es-ES", {

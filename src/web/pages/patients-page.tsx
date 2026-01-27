@@ -278,7 +278,11 @@ const PatientsPage = () => {
               <div className="flex items-center justify-between mb-2">
                 <h3 className="text-lg sm:text-xl font-semibold text-[#1a1a1a]">{t.patients.patientDetails}</h3>
                 <button
-                  onClick={() => setSelectedPatient(null)}
+                  onClick={() => {
+                    // Al cerrar manualmente el modal, limpiamos también el parámetro ?id de la URL
+                    setLocation("/patients");
+                    setSelectedPatient(null);
+                  }}
                   className="p-2 hover:bg-gray-100 active:bg-gray-200 rounded-lg transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center -mr-2"
                 >
                   <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -411,6 +415,8 @@ const PatientsPage = () => {
               <div className="flex gap-3 pt-4 border-t border-gray-100">
                 <button
                   onClick={() => {
+                    // Al pasar de vista a edición, limpiamos el ?id para que la URL refleje el estado actual
+                    setLocation("/patients");
                     setSelectedPatient(null);
                     handleEdit(selectedPatient);
                   }}

@@ -122,6 +122,7 @@ export const MainLayout = ({ children, title, showCredits = true, credits: propC
       case "clinic_admin": return 500;
       case "admin": return 300;
       case "podiatrist": return 250;
+      case "receptionist": return 0;
       default: return 250;
     }
   };

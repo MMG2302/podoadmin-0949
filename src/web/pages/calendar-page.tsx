@@ -59,13 +59,15 @@ const emptyAppointmentForm: AppointmentFormData = {
 const CalendarPage = () => {
   const { t } = useLanguage();
   const { user } = useAuth();
-  const { isClinicAdmin, isPodiatrist } = usePermissions();
+  const { isClinicAdmin, isPodiatrist, isReceptionist } = usePermissions();
   const credits = getUserCredits(user?.id || "");
   
   const allUsers = getAllUsers();
-  const clinicPodiatrists = allUsers.filter(
-    u => u.role === "podiatrist" && u.clinicId === user?.clinicId
-  );
+  const clinicPodiatrists = isReceptionist && user?.assignedPodiatristIds?.length
+    ? allUsers.filter((u) => user.assignedPodiatristIds!.includes(u.id))
+    : allUsers.filter(
+        (u) => u.role === "podiatrist" && u.clinicId === user?.clinicId
+      );
   
   const [viewMode, setViewMode] = useState<ViewMode>("month");
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -81,9 +83,11 @@ const CalendarPage = () => {
   // Get all sessions, patients, and appointments (refresh when trigger changes)
   const allSessions = getSessions();
   const allPatients = getPatients();
-  const allAppointments = (isClinicAdmin && user?.clinicId 
+  const allAppointments = (isClinicAdmin && user?.clinicId
     ? getAppointmentsByClinic(user.clinicId)
-    : getAppointments().filter(a => a.podiatristId === user?.id));
+    : isReceptionist && user?.assignedPodiatristIds?.length
+    ? getAppointments().filter((a) => user.assignedPodiatristIds!.includes(a.podiatristId))
+    : getAppointments().filter((a) => a.podiatristId === user?.id));
   
   // Force re-render when appointments change
   useEffect(() => {
@@ -115,7 +119,7 @@ const CalendarPage = () => {
   const filteredAppointments: AppointmentWithDetails[] = useMemo(() => {
     let appointments = allAppointments;
     
-    if (isClinicAdmin && podiatristFilter !== "all") {
+    if ((isClinicAdmin || isReceptionist) && podiatristFilter !== "all") {
       appointments = appointments.filter(a => a.podiatristId === podiatristFilter);
     }
     
@@ -126,7 +130,7 @@ const CalendarPage = () => {
       pendingPatientName: a.pendingPatientName,
       pendingPatientPhone: a.pendingPatientPhone,
     }));
-  }, [allAppointments, allPatients, isClinicAdmin, podiatristFilter, clinicPodiatrists]);
+  }, [allAppointments, allPatients, isClinicAdmin, isReceptionist, podiatristFilter, clinicPodiatrists]);
 
   // Calendar navigation
   const navigatePrev = () => {
@@ -328,8 +332,9 @@ const CalendarPage = () => {
   // Appointment form handlers
   const openNewAppointmentForm = (date?: Date) => {
     setEditingAppointment(null);
-    // Si es podólogo, asignar automáticamente a sí mismo
-    const defaultPodiatristId = isPodiatrist && !isClinicAdmin ? (user?.id || "") : "";
+    let defaultPodiatristId = "";
+    if (isPodiatrist && !isClinicAdmin) defaultPodiatristId = user?.id || "";
+    else if (isReceptionist && user?.assignedPodiatristIds?.length === 1) defaultPodiatristId = user.assignedPodiatristIds[0];
     setAppointmentForm({
       ...emptyAppointmentForm,
       date: date ? date.toISOString().split("T")[0] : new Date().toISOString().split("T")[0],
@@ -521,14 +526,14 @@ const CalendarPage = () => {
     }
   };
 
-  // Get clinic patients for the form
+  // Get clinic patients for the form (podólogos de la clínica, o del usuario, o de los asignados a la recepcionista)
   const clinicPatients = useMemo(() => {
-    if (isClinicAdmin) {
-      const clinicPodiatristIds = clinicPodiatrists.map(p => p.id);
-      return allPatients.filter(p => clinicPodiatristIds.includes(p.createdBy));
+    if (isClinicAdmin || isReceptionist) {
+      const podiatristIds = clinicPodiatrists.map(p => p.id);
+      return allPatients.filter(p => podiatristIds.includes(p.createdBy));
     }
     return allPatients.filter(p => p.createdBy === user?.id);
-  }, [allPatients, isClinicAdmin, clinicPodiatrists, user]);
+  }, [allPatients, isClinicAdmin, isReceptionist, clinicPodiatrists, user]);
 
   return (
     <MainLayout title="Calendario" credits={credits}>
@@ -576,7 +581,7 @@ const CalendarPage = () => {
               {/* View Mode & Filters */}
               <div className="flex items-center gap-3 flex-wrap">
                 {/* New Appointment Button for Clinic Admin and Podiatrists */}
-                {(isClinicAdmin || isPodiatrist) && (
+                {(isClinicAdmin || isPodiatrist || isReceptionist) && (
                   <button
                     onClick={() => openNewAppointmentForm(selectedDate || undefined)}
                     className="px-4 py-2 bg-[#1a1a1a] text-white rounded-lg hover:bg-[#2a2a2a] transition-colors font-medium flex items-center gap-2 text-sm"
@@ -589,7 +594,7 @@ const CalendarPage = () => {
                 )}
 
                 {/* Podiatrist filter for clinic admin */}
-                {isClinicAdmin && (
+                {(isClinicAdmin || isReceptionist) && (
                   <select
                     value={podiatristFilter}
                     onChange={(e) => setPodiatristFilter(e.target.value)}
@@ -739,7 +744,7 @@ const CalendarPage = () => {
                         <div className="space-y-2">
                           {appointments.map((appt) => {
                             // Los podólogos solo pueden editar sus propias citas, los clinic admins pueden editar todas
-                            const canEdit = isClinicAdmin || (isPodiatrist && appt.podiatristId === user?.id);
+                            const canEdit = isClinicAdmin || (isPodiatrist && appt.podiatristId === user?.id) || (isReceptionist && user?.assignedPodiatristIds?.includes(appt.podiatristId));
                             return (
                             <div
                               key={appt.id}
@@ -799,7 +804,7 @@ const CalendarPage = () => {
                       {currentDate.toLocaleDateString("es-ES", { weekday: "long", day: "numeric", month: "long" })}
                     </p>
                   </div>
-                  {(isClinicAdmin || isPodiatrist) && (
+                  {(isClinicAdmin || isPodiatrist || isReceptionist) && (
                     <button
                       onClick={() => openNewAppointmentForm(currentDate)}
                       className="ml-auto px-4 py-2 bg-[#1a1a1a] text-white rounded-lg hover:bg-[#2a2a2a] transition-colors font-medium flex items-center gap-2 text-sm"
@@ -852,7 +857,7 @@ const CalendarPage = () => {
                               <p className="text-sm text-gray-400 mt-1">{appt.notes}</p>
                             )}
                           </div>
-                          {(isClinicAdmin || isPodiatrist) && (
+                          {(isClinicAdmin || isPodiatrist || isReceptionist) && (
                             <div className="flex gap-2">
                               <button
                                 onClick={() => openEditAppointmentForm(appt)}
@@ -945,7 +950,7 @@ const CalendarPage = () => {
                   {/* Appointments */}
                   {selectedDateAppointments.map((appt) => {
                     // Los podólogos solo pueden editar sus propias citas, los clinic admins pueden editar todas
-                    const canEdit = isClinicAdmin || (isPodiatrist && appt.podiatristId === user?.id);
+                    const canEdit = isClinicAdmin || (isPodiatrist && appt.podiatristId === user?.id) || (isReceptionist && user?.assignedPodiatristIds?.includes(appt.podiatristId));
                     return (
                     <div
                       key={appt.id}
@@ -988,7 +993,7 @@ const CalendarPage = () => {
                         <p className="text-xs text-gray-500 line-clamp-2">
                           {session.clinicalNotes || session.diagnosis || "Sin notas"}
                         </p>
-                        {isClinicAdmin && (
+                        {(isClinicAdmin || isReceptionist) && (
                           <p className="text-[10px] text-gray-400 mt-1">
                             {getPodiatristName(session.createdBy)}
                           </p>
@@ -1011,7 +1016,7 @@ const CalendarPage = () => {
               <div className="space-y-3">
                 {upcomingAppointments.slice(0, 5).map((appt) => {
                   // Los podólogos solo pueden editar sus propias citas, los clinic admins pueden editar todas
-                  const canEdit = isClinicAdmin || (isPodiatrist && appt.podiatristId === user?.id);
+                  const canEdit = isClinicAdmin || (isPodiatrist && appt.podiatristId === user?.id) || (isReceptionist && user?.assignedPodiatristIds?.includes(appt.podiatristId));
                   return (
                   <div
                     key={appt.id}

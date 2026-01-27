@@ -1,5 +1,6 @@
 import { Route, Switch, Redirect } from "wouter";
 import { Provider } from "./components/provider";
+import { ErrorBoundary } from "./components/error-boundary";
 import { AuthProvider, useAuth } from "./contexts/auth-context";
 import { LanguageProvider } from "./contexts/language-context";
 import Login from "./pages/login";
@@ -82,7 +83,9 @@ function App() {
     <Provider>
       <LanguageProvider>
         <AuthProvider>
-          <AppRoutes />
+          <ErrorBoundary>
+            <AppRoutes />
+          </ErrorBoundary>
         </AuthProvider>
       </LanguageProvider>
     </Provider>

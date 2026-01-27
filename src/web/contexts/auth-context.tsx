@@ -1,14 +1,15 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
 import { getCreatedUsers, CreatedUser, initializeUserCredits, getUserStatus } from "@/lib/storage";
 
-export type UserRole = "super_admin" | "clinic_admin" | "admin" | "podiatrist";
+export type UserRole = "super_admin" | "clinic_admin" | "admin" | "podiatrist" | "receptionist";
 
 export interface User {
   id: string;
   email: string;
   name: string;
   role: UserRole;
-  clinicId?: string; // For clinic_admin and podiatrists
+  clinicId?: string; // For clinic_admin, podiatrists and receptionists (clinic context)
+  assignedPodiatristIds?: string[]; // Solo para receptionist: podólogos a los que da servicio
   isBlocked?: boolean; // Cuenta bloqueada temporalmente
   isEnabled?: boolean; // Cuenta habilitada (por defecto true)
   isBanned?: boolean; // Cuenta baneada permanentemente
@@ -246,6 +247,7 @@ const getAllUsersWithCredentials = (): { email: string; password: string; user: 
       name: cu.name,
       role: cu.role,
       clinicId: cu.clinicId,
+      assignedPodiatristIds: cu.role === "receptionist" ? (cu.assignedPodiatristIds ?? []) : undefined,
       isBlocked: cu.isBlocked,
       isEnabled: cu.isEnabled,
       isBanned: cu.isBanned,
@@ -266,6 +268,13 @@ export const getAllUsers = () => {
       isBanned: u.user.isBanned ?? userStatus.isBanned,
     };
   });
+};
+
+/** Indica si un correo ya está en uso (mock + usuarios creados). Usar antes de dar de alta. */
+export const isEmailTaken = (email: string): boolean => {
+  return getAllUsersWithCredentials().some(
+    (u) => u.email.toLowerCase().trim() === email.toLowerCase().trim()
+  );
 };
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
@@ -292,15 +301,45 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
         if (response.success && response.data?.user) {
           setUser(response.data.user);
-          // Solo guardar información del usuario (no tokens)
           localStorage.setItem("podoadmin_user", JSON.stringify(response.data.user));
         } else {
-          // No hay sesión válida, limpiar
-          localStorage.removeItem("podoadmin_user");
+          // Si no hay sesión API, revisar si hay usuario creado localmente (recepcionistas, etc.)
+          const stored = localStorage.getItem("podoadmin_user");
+          if (stored) {
+            try {
+              const parsed = JSON.parse(stored) as User;
+              const created = getCreatedUsers();
+              if (created.some((cu) => cu.id === parsed.id)) {
+                setUser(parsed);
+              } else {
+                localStorage.removeItem("podoadmin_user");
+              }
+            } catch {
+              localStorage.removeItem("podoadmin_user");
+            }
+          } else {
+            localStorage.removeItem("podoadmin_user");
+          }
         }
       } catch (error) {
         console.error("Error verificando autenticación:", error);
-        localStorage.removeItem("podoadmin_user");
+        // Misma lógica: si hay usuario local válido en localStorage, restaurarlo
+        const stored = localStorage.getItem("podoadmin_user");
+        if (stored) {
+          try {
+            const parsed = JSON.parse(stored) as User;
+            const created = getCreatedUsers();
+            if (created.some((cu) => cu.id === parsed.id)) {
+              setUser(parsed);
+            } else {
+              localStorage.removeItem("podoadmin_user");
+            }
+          } catch {
+            localStorage.removeItem("podoadmin_user");
+          }
+        } else {
+          localStorage.removeItem("podoadmin_user");
+        }
       } finally {
         setIsLoading(false);
       }
@@ -323,8 +362,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     try {
       const { api } = await import("../lib/api-client");
       
-      // Obtener token CSRF antes de hacer login (aunque login no lo requiere, es buena práctica)
-      // Esto asegura que tenemos un token CSRF para futuras solicitudes
       try {
         await api.get("/csrf/token");
       } catch (error) {
@@ -337,40 +374,57 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       });
 
       if (response.success && response.data) {
-        // Los tokens ahora se almacenan en cookies HTTP-only automáticamente
-        // Solo guardar información del usuario (no tokens)
         setUser(response.data.user);
         localStorage.setItem("podoadmin_user", JSON.stringify(response.data.user));
-        
-        // Obtener nuevo token CSRF después del login exitoso
         try {
           await api.get("/csrf/token");
         } catch (error) {
           console.warn("No se pudo obtener token CSRF después de login:", error);
         }
-        
-        // Initialize user credits on successful login (mantener compatibilidad)
         initializeUserCredits(response.data.user.id, response.data.user.role);
-        
         return { success: true };
-      } else {
-        // Extraer información de rate limiting si está presente
-        // Estos campos vienen en el nivel superior de la respuesta ApiResponse
-        const retryAfter = response.retryAfter;
-        const blockedUntil = response.blockedUntil;
-        const attemptCount = response.attemptCount;
-
-        return {
-          success: false,
-          error: response.error || response.message || "Error al iniciar sesión",
-          retryAfter,
-          blockedUntil,
-          attemptCount,
-        };
       }
+
+      // Si la API falla, intentar con usuarios creados localmente (recepcionistas, etc.)
+      const all = getAllUsersWithCredentials();
+      const found = all.find(
+        (x) =>
+          x.email.toLowerCase().trim() === email.toLowerCase().trim() &&
+          x.password === password
+      );
+      if (found) {
+        setUser(found.user);
+        localStorage.setItem("podoadmin_user", JSON.stringify(found.user));
+        initializeUserCredits(found.user.id, found.user.role);
+        return { success: true };
+      }
+
+      const retryAfter = response.retryAfter;
+      const blockedUntil = response.blockedUntil;
+      const attemptCount = response.attemptCount;
+      return {
+        success: false,
+        error: response.error || response.message || "Credenciales incorrectas",
+        retryAfter,
+        blockedUntil,
+        attemptCount,
+      };
     } catch (error) {
       console.error("Error en login:", error);
-      return { success: false, error: "Error de conexión con el servidor" };
+      // Fallback: usuarios creados localmente
+      const all = getAllUsersWithCredentials();
+      const found = all.find(
+        (x) =>
+          x.email.toLowerCase().trim() === email.toLowerCase().trim() &&
+          x.password === password
+      );
+      if (found) {
+        setUser(found.user);
+        localStorage.setItem("podoadmin_user", JSON.stringify(found.user));
+        initializeUserCredits(found.user.id, found.user.role);
+        return { success: true };
+      }
+      return { success: false, error: "Credenciales incorrectas" };
     }
   };
 

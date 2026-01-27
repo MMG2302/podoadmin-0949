@@ -18,7 +18,8 @@ type Permission =
   | "manage_settings"
   | "view_clinic_stats"
   | "reassign_patients"
-  | "adjust_credits";
+  | "adjust_credits"
+  | "view_calendar";
 
 const rolePermissions: Record<UserRole, Permission[]> = {
   // Super Admin: Users Management, Credits Management (Whop.io), Settings, Audit Log
@@ -41,6 +42,7 @@ const rolePermissions: Record<UserRole, Permission[]> = {
     "view_dashboard",
     "view_patients",
     "view_sessions",
+    "view_calendar",
     "view_credits",
     "view_clinic_stats",
     "reassign_patients",
@@ -64,8 +66,18 @@ const rolePermissions: Record<UserRole, Permission[]> = {
     "manage_patients",
     "view_sessions",
     "manage_sessions",
+    "view_calendar",
     "view_credits",
     "print_documents",
+    "view_settings",
+  ],
+  
+  // Recepcionista: sin créditos; crear pacientes, crear/editar citas en calendario; ve podólogos que la asignaron
+  receptionist: [
+    "view_dashboard",
+    "view_patients",
+    "manage_patients",
+    "view_calendar",
     "view_settings",
   ],
 };
@@ -75,7 +87,8 @@ export const usePermissions = () => {
 
   const hasPermission = (permission: Permission): boolean => {
     if (!user) return false;
-    return rolePermissions[user.role].includes(permission);
+    const perms = rolePermissions[user.role as UserRole];
+    return perms ? perms.includes(permission) : false;
   };
 
   const hasAnyPermission = (permissions: Permission[]): boolean => {
@@ -90,6 +103,7 @@ export const usePermissions = () => {
   const isClinicAdmin = user?.role === "clinic_admin";
   const isAdmin = user?.role === "admin";
   const isPodiatrist = user?.role === "podiatrist";
+  const isReceptionist = user?.role === "receptionist";
 
   return {
     hasPermission,
@@ -99,6 +113,7 @@ export const usePermissions = () => {
     isClinicAdmin,
     isAdmin,
     isPodiatrist,
-    permissions: user ? rolePermissions[user.role] : [],
+    isReceptionist,
+    permissions: user ? (rolePermissions[user.role as UserRole] ?? []) : [],
   };
 };

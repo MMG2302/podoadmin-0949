@@ -2,7 +2,7 @@ import { useState, useMemo } from "react";
 import { useLocation, Link } from "wouter";
 import { MainLayout } from "../components/layout/main-layout";
 import { useLanguage } from "../contexts/language-context";
-import { useAuth } from "../contexts/auth-context";
+import { useAuth, getAllUsers } from "../contexts/auth-context";
 import { usePermissions } from "../hooks/use-permissions";
 import {
   getPatients,
@@ -53,18 +53,18 @@ const emptyForm: PatientFormData = {
 const PatientsPage = () => {
   const { t } = useLanguage();
   const { user } = useAuth();
-  const { isSuperAdmin, isPodiatrist, isClinicAdmin } = usePermissions();
+  const { isSuperAdmin, isPodiatrist, isClinicAdmin, isReceptionist } = usePermissions();
   const [, setLocation] = useLocation();
   
   // Clinic admins should use the Clinic Management page for patient viewing/reassignment
-  // Redirect them if they try to access /patients directly
+  // Redirect them if they try to access /patients directly (recepcionistas no)
   if (isClinicAdmin) {
     setLocation("/clinic");
     return null;
   }
   
-  // Only podiatrists can create patients
-  const canCreatePatient = isPodiatrist;
+  // Podiatrists and receptionists can create patients (receptionist assigns to one of assigned podiatrists)
+  const canCreatePatient = isPodiatrist || isReceptionist;
   
   const credits = getUserCredits(user?.id || "");
   
@@ -89,7 +89,10 @@ const PatientsPage = () => {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    
+    const createdBy = isReceptionist && receptionistPodiatristId ? receptionistPodiatristId : (user?.id || "");
+    if (isReceptionist && !receptionistPodiatristId && !editingPatient) {
+      return; // receptionist must select podiatrist when creating
+    }
     const patientData = {
       firstName: formData.firstName,
       lastName: formData.lastName,
@@ -110,7 +113,7 @@ const PatientsPage = () => {
         given: formData.consentGiven,
         date: formData.consentGiven ? new Date().toISOString() : null,
       },
-      createdBy: user?.id || "",
+      createdBy,
     };
 
     if (editingPatient) {
@@ -169,6 +172,7 @@ const PatientsPage = () => {
     setShowForm(false);
     setEditingPatient(null);
     setFormData(emptyForm);
+    setReceptionistPodiatristId("");
   };
 
   const handleEdit = (patient: Patient) => {
@@ -390,6 +394,7 @@ const PatientsPage = () => {
                   setShowForm(false);
                   setEditingPatient(null);
                   setFormData(emptyForm);
+                  setReceptionistPodiatristId("");
                 }}
                 className="p-2 hover:bg-gray-100 active:bg-gray-200 rounded-lg transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center -mr-2"
               >
@@ -414,6 +419,25 @@ const PatientsPage = () => {
                       </p>
                     </div>
                   </div>
+                </div>
+              )}
+
+              {/* Podólogo asignado (solo recepcionista al crear) */}
+              {isReceptionist && !editingPatient && assignedPodiatrists.length > 0 && (
+                <div>
+                  <label className="block text-sm font-medium text-[#1a1a1a] mb-1">Podólogo para el paciente *</label>
+                  <select
+                    value={receptionistPodiatristId}
+                    onChange={(e) => setReceptionistPodiatristId(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:border-[#1a1a1a] focus:ring-1 focus:ring-[#1a1a1a]"
+                    required
+                  >
+                    <option value="">Seleccionar podólogo</option>
+                    {assignedPodiatrists.map((p) => (
+                      <option key={p.id} value={p.id}>{p.name}</option>
+                    ))}
+                  </select>
+                  <p className="text-xs text-gray-500 mt-0.5">El paciente quedará asignado a este podólogo.</p>
                 </div>
               )}
 

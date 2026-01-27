@@ -1,7 +1,7 @@
 import { useState, useRef, useMemo, useEffect } from "react";
 import { MainLayout } from "../components/layout/main-layout";
 import { useLanguage } from "../contexts/language-context";
-import { useAuth } from "../contexts/auth-context";
+import { useAuth, getAllUsers, isEmailTaken } from "../contexts/auth-context";
 import { 
   getUserCredits, 
   getClinicById, 
@@ -19,6 +19,10 @@ import {
   getProfessionalCredentials,
   saveProfessionalCredentials,
   addAuditLog,
+  getCreatedUsers,
+  saveCreatedUser,
+  updateCreatedUser,
+  getAssignedPodiatristIdsForReceptionist,
   ProfessionalInfo,
   Clinic 
 } from "../lib/storage";
@@ -64,6 +68,7 @@ const SettingsPage = () => {
   const isPodiatristWithClinic = user?.role === "podiatrist" && user?.clinicId;
   const isPodiatristIndependent = user?.role === "podiatrist" && !user?.clinicId;
   const isAdminRole = user?.role === "super_admin" || user?.role === "admin";
+  const isReceptionist = user?.role === "receptionist";
   
   // Get the clinic for this user
   const userClinic = useMemo((): Clinic | null => {
@@ -133,6 +138,15 @@ const SettingsPage = () => {
   const [credentialsRegistro, setCredentialsRegistro] = useState<string>("");
   const [credentialsSaved, setCredentialsSaved] = useState(false);
   
+  // Recepcionista (solo podólogo independiente: una sola recepcionista)
+  const [receptionistForm, setReceptionistForm] = useState({ name: "", email: "", password: "" });
+  const [receptionistError, setReceptionistError] = useState<string | null>(null);
+  const [receptionistSuccess, setReceptionistSuccess] = useState(false);
+  
+  // Recepcionista: edición de podólogos asignados (solo si es de clínica)
+  const [assignedPodiatristIds, setAssignedPodiatristIds] = useState<string[]>([]);
+  const [assignedPodiatristsSaved, setAssignedPodiatristsSaved] = useState(false);
+  
   // Initialize clinic info form from existing clinic data
   useEffect(() => {
     if (userClinic) {
@@ -177,6 +191,13 @@ const SettingsPage = () => {
     }
   }, [user?.role, user?.id]);
   
+  // Initialize assigned podiatrists for receptionist
+  useEffect(() => {
+    if (isReceptionist && user?.id) {
+      setAssignedPodiatristIds(getAssignedPodiatristIdsForReceptionist(user.id));
+    }
+  }, [isReceptionist, user?.id]);
+
   // Initialize professional credentials for clinic podiatrists
   useEffect(() => {
     if (isPodiatristWithClinic && user?.id) {
@@ -288,6 +309,64 @@ const SettingsPage = () => {
     
     setCredentialsSaved(true);
     setTimeout(() => setCredentialsSaved(false), 2000);
+  };
+
+  // Crear recepcionista (solo podólogo independiente, una sola)
+  const handleCreateReceptionist = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!isPodiatristIndependent || !user?.id) return;
+    setReceptionistError(null);
+    if (isEmailTaken(receptionistForm.email.trim())) {
+      setReceptionistError("Ya existe una cuenta con este correo electrónico");
+      return;
+    }
+    try {
+      saveCreatedUser(
+        {
+          email: receptionistForm.email,
+          name: receptionistForm.name,
+          role: "receptionist",
+          assignedPodiatristIds: [user.id],
+        },
+        receptionistForm.password,
+        user.id
+      );
+      addAuditLog({
+        userId: user.id,
+        userName: user.name,
+        action: "CREATE",
+        entityType: "receptionist",
+        entityId: "",
+        details: JSON.stringify({
+          action: "receptionist_create_by_podiatrist",
+          receptionistEmail: receptionistForm.email,
+          podiatristId: user.id,
+        }),
+      });
+      setReceptionistForm({ name: "", email: "", password: "" });
+      setReceptionistSuccess(true);
+      setTimeout(() => setReceptionistSuccess(false), 3000);
+    } catch (err) {
+      setReceptionistError(err instanceof Error ? err.message : "Error al crear recepcionista");
+    }
+  };
+
+  const handleSaveAssignedPodiatrists = () => {
+    if (!isReceptionist || !user?.id) return;
+    updateCreatedUser(user.id, { assignedPodiatristIds });
+    addAuditLog({
+      userId: user.id,
+      userName: user.name,
+      action: "UPDATE",
+      entityType: "receptionist_assigned_podiatrists",
+      entityId: user.id,
+      details: JSON.stringify({
+        action: "receptionist_edit_assigned_podiatrists",
+        assignedPodiatristIds,
+      }),
+    });
+    setAssignedPodiatristsSaved(true);
+    setTimeout(() => setAssignedPodiatristsSaved(false), 2000);
   };
 
   const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -484,7 +563,7 @@ const SettingsPage = () => {
             <div className="flex items-center gap-4">
               <div className="w-16 h-16 bg-[#1a1a1a] rounded-full flex items-center justify-center">
                 <span className="text-white text-2xl font-semibold">
-                  {user?.name.charAt(0).toUpperCase()}
+                  {(user?.name ?? "").charAt(0).toUpperCase() || "?"}
                 </span>
               </div>
               <div>
@@ -520,6 +599,85 @@ const SettingsPage = () => {
             </div>
           </div>
         </div>
+
+        {/* Podólogos asignados - Solo recepcionista: ver y editar quiénes la asignaron */}
+        {isReceptionist && user?.id && (() => {
+          const ids = user.assignedPodiatristIds ?? getAssignedPodiatristIdsForReceptionist(user.id);
+          const allUsersList = getAllUsers();
+          const clinicPodiatrists = user.clinicId
+            ? allUsersList.filter((u) => u.role === "podiatrist" && u.clinicId === user.clinicId)
+            : allUsersList.filter((u) => ids.includes(u.id));
+          const isFromClinic = !!user.clinicId;
+          return (
+            <div className="bg-white rounded-xl border border-gray-100 p-6">
+              <h3 className="text-lg font-semibold text-[#1a1a1a] mb-2">Podólogos asignados</h3>
+              <p className="text-sm text-gray-500 mb-4">
+                {isFromClinic
+                  ? "Podólogos de tu clínica a los que puedes dar servicio. Marca o desmarca para gestionar citas y pacientes de cada uno."
+                  : "Podólogo que te asignó. Puedes crear pacientes y gestionar su calendario."}
+              </p>
+              {isFromClinic ? (
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    {clinicPodiatrists.map((pod) => {
+                      const checked = assignedPodiatristIds.includes(pod.id);
+                      return (
+                        <label
+                          key={pod.id}
+                          className="flex items-center gap-3 p-3 rounded-lg border border-gray-100 hover:bg-gray-50 cursor-pointer"
+                        >
+                          <input
+                            type="checkbox"
+                            checked={checked}
+                            onChange={() => {
+                              setAssignedPodiatristIds((prev) =>
+                                prev.includes(pod.id)
+                                  ? prev.filter((id) => id !== pod.id)
+                                  : [...prev, pod.id]
+                              );
+                            }}
+                            className="rounded border-gray-300 text-[#1a1a1a] focus:ring-[#1a1a1a]"
+                          />
+                          <span className="font-medium text-[#1a1a1a]">{pod.name}</span>
+                          <span className="text-sm text-gray-500">{pod.email}</span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                  {clinicPodiatrists.length === 0 ? (
+                    <p className="text-sm text-gray-500">No hay podólogos en tu clínica.</p>
+                  ) : (
+                    <div className="flex items-center gap-4 pt-2">
+                      <button
+                        onClick={handleSaveAssignedPodiatrists}
+                        className="px-4 py-2.5 bg-[#1a1a1a] text-white rounded-lg text-sm font-medium hover:bg-[#2a2a2a] transition-colors"
+                      >
+                        Guardar asignación
+                      </button>
+                      {assignedPodiatristsSaved && (
+                        <span className="text-sm text-green-600 font-medium">Guardado</span>
+                      )}
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="bg-gray-50 rounded-lg p-4">
+                  {ids.length > 0 ? (
+                    allUsersList
+                      .filter((u) => ids.includes(u.id))
+                      .map((u) => (
+                        <p key={u.id} className="font-medium text-[#1a1a1a]">
+                          {u.name} <span className="text-gray-500 font-normal">({u.email})</span>
+                        </p>
+                      ))
+                  ) : (
+                    <p className="text-sm text-gray-500">Sin podólogo asignado.</p>
+                  )}
+                </div>
+              )}
+            </div>
+          );
+        })()}
 
         {/* Clinic Logo Upload - Only for Clinic Admin and Podiatrist with clinic */}
         {(canUploadLogo || isPodiatristWithClinic) && (
@@ -767,6 +925,81 @@ const SettingsPage = () => {
             </div>
           </div>
         )}
+
+        {/* Recepcionista - Solo podólogo independiente: una sola recepcionista ligada directamente */}
+        {isPodiatristIndependent && user?.id && (() => {
+          const myReceptionists = getCreatedUsers().filter(
+            (u) => u.role === "receptionist" && u.createdBy === user.id
+          );
+          const hasReceptionist = myReceptionists.length >= 1;
+          return (
+            <div className="bg-white rounded-xl border border-gray-100 p-6">
+              <h3 className="text-lg font-semibold text-[#1a1a1a] mb-2">Recepcionista</h3>
+              <p className="text-sm text-gray-500 mb-4">
+                Como podólogo independiente puedes crear una recepcionista vinculada a tu cuenta. Tendrá acceso sin créditos a crear pacientes, crear y editar citas en tu calendario.
+              </p>
+              {hasReceptionist ? (
+                <div className="bg-green-50 border border-green-100 rounded-lg p-4">
+                  <p className="text-sm text-green-700 font-medium">Recepcionista asignada</p>
+                  <p className="text-sm text-green-600 mt-1">
+                    {myReceptionists[0].name} ({myReceptionists[0].email})
+                  </p>
+                  <p className="text-xs text-green-600 mt-2">
+                    Ya tienes una recepcionista ligada a tu cuenta. Solo puedes tener una.
+                  </p>
+                </div>
+              ) : (
+                <form onSubmit={handleCreateReceptionist} className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Nombre</label>
+                    <input
+                      type="text"
+                      value={receptionistForm.name}
+                      onChange={(e) => setReceptionistForm((f) => ({ ...f, name: e.target.value }))}
+                      className="w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#1a1a1a] focus:border-transparent"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                    <input
+                      type="email"
+                      value={receptionistForm.email}
+                      onChange={(e) => setReceptionistForm((f) => ({ ...f, email: e.target.value }))}
+                      className="w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#1a1a1a] focus:border-transparent"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Contraseña inicial</label>
+                    <input
+                      type="password"
+                      value={receptionistForm.password}
+                      onChange={(e) => setReceptionistForm((f) => ({ ...f, password: e.target.value }))}
+                      className="w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#1a1a1a] focus:border-transparent"
+                      required
+                      minLength={6}
+                    />
+                  </div>
+                  {receptionistError && (
+                    <div className="text-sm text-red-600 bg-red-50 border border-red-100 rounded-lg p-3">{receptionistError}</div>
+                  )}
+                  {receptionistSuccess && (
+                    <div className="text-sm text-green-600 bg-green-50 border border-green-100 rounded-lg p-3">
+                      Recepcionista creada. Ya puede iniciar sesión con su email y contraseña.
+                    </div>
+                  )}
+                  <button
+                    type="submit"
+                    className="px-4 py-2.5 bg-[#1a1a1a] text-white rounded-lg text-sm font-medium hover:bg-[#2a2a2a] transition-colors"
+                  >
+                    Crear recepcionista
+                  </button>
+                </form>
+              )}
+            </div>
+          );
+        })()}
         
         {/* Clinic Information - Only for Clinic Admin (editable) or Podiatrists with clinic (read-only) */}
         {(canUploadLogo || isPodiatristWithClinic) && userClinic && (

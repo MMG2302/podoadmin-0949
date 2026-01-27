@@ -522,9 +522,88 @@ const ClinicAdminDashboard = () => {
   );
 };
 
+// Receptionist Dashboard - pacientes y calendario de podólogos asignados, sin créditos ni sesiones
+const ReceptionistDashboard = () => {
+  const { t } = useLanguage();
+  const { user } = useAuth();
+  const credits = getUserCredits(user?.id || "");
+  const allPatients = getPatients();
+  const assignedIds = user?.assignedPodiatristIds ?? [];
+  const patientCount = allPatients.filter((p) => assignedIds.includes(p.createdBy)).length;
+
+  const stats = [
+    { label: "Pacientes (podólogos asignados)", value: patientCount.toString(), path: "/patients" },
+    { label: "Calendario", value: "—", path: "/calendar" },
+  ];
+
+  return (
+    <MainLayout title={t.dashboard.title} credits={credits}>
+      <div className="space-y-8">
+        <div className="bg-[#1a1a1a] rounded-2xl p-8 text-white relative overflow-hidden">
+          <div className="relative z-10">
+            <h2 className="text-2xl font-light mb-2">
+              {t.auth.welcomeBack}, <span className="font-semibold">{user?.name}</span>
+            </h2>
+            <p className="text-gray-400">{t.roles.receptionistDesc}</p>
+          </div>
+        </div>
+        <div>
+          <h3 className="text-lg font-semibold text-[#1a1a1a] mb-4">{t.dashboard.quickStats}</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {stats.map((stat, i) => (
+              <Link key={i} href={stat.path}>
+                <div className="bg-white rounded-xl p-6 border border-gray-100 hover:border-gray-200 transition-colors cursor-pointer group">
+                  <p className="text-sm text-gray-500 mb-1">{stat.label}</p>
+                  <span className="text-3xl font-semibold text-[#1a1a1a] group-hover:text-[#1a1a1a]/80">{stat.value}</span>
+                </div>
+              </Link>
+            ))}
+          </div>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <Link href="/patients">
+            <div className="bg-white rounded-xl p-5 border border-gray-100 hover:border-[#1a1a1a] transition-colors cursor-pointer group">
+              <div className="w-10 h-10 bg-gray-100 group-hover:bg-[#1a1a1a] rounded-lg flex items-center justify-center mb-3 transition-colors">
+                <svg className="w-5 h-5 text-gray-600 group-hover:text-white transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
+                </svg>
+              </div>
+              <p className="font-medium text-[#1a1a1a]">{t.patients.addPatient}</p>
+              <p className="text-sm text-gray-500 mt-1">Crear y gestionar pacientes</p>
+            </div>
+          </Link>
+          <Link href="/calendar">
+            <div className="bg-white rounded-xl p-5 border border-gray-100 hover:border-[#1a1a1a] transition-colors cursor-pointer group">
+              <div className="w-10 h-10 bg-gray-100 group-hover:bg-[#1a1a1a] rounded-lg flex items-center justify-center mb-3 transition-colors">
+                <svg className="w-5 h-5 text-gray-600 group-hover:text-white transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                </svg>
+              </div>
+              <p className="font-medium text-[#1a1a1a]">Calendario</p>
+              <p className="text-sm text-gray-500 mt-1">Crear y editar citas</p>
+            </div>
+          </Link>
+          <Link href="/settings" className="sm:col-span-2">
+            <div className="bg-white rounded-xl p-5 border border-gray-100 hover:border-[#1a1a1a] transition-colors cursor-pointer group">
+              <div className="w-10 h-10 bg-gray-100 group-hover:bg-[#1a1a1a] rounded-lg flex items-center justify-center mb-3 transition-colors">
+                <svg className="w-5 h-5 text-gray-600 group-hover:text-white transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+              </div>
+              <p className="font-medium text-[#1a1a1a]">{t.settings.title}</p>
+              <p className="text-sm text-gray-500 mt-1">Podólogos asignados y preferencias</p>
+            </div>
+          </Link>
+        </div>
+      </div>
+    </MainLayout>
+  );
+};
+
 // Dashboard Home - routes to appropriate dashboard based on role
 const DashboardHome = () => {
-  const { isSuperAdmin, isClinicAdmin, isAdmin, isPodiatrist } = usePermissions();
+  const { isSuperAdmin, isClinicAdmin, isAdmin, isPodiatrist, isReceptionist } = usePermissions();
 
   // Seed database on first load
   useEffect(() => {
@@ -534,11 +613,12 @@ const DashboardHome = () => {
   if (isSuperAdmin) return <SuperAdminDashboard />;
   if (isClinicAdmin) return <ClinicAdminDashboard />;
   if (isAdmin) return <AdminDashboard />;
+  if (isReceptionist) return <ReceptionistDashboard />;
   return <PodiatristDashboard />;
 };
 
 const Dashboard = () => {
-  const { isSuperAdmin, isClinicAdmin, isAdmin, isPodiatrist } = usePermissions();
+  const { isSuperAdmin, isClinicAdmin, isAdmin, isPodiatrist, isReceptionist } = usePermissions();
 
   return (
     <Switch>
@@ -561,6 +641,11 @@ const Dashboard = () => {
       {isClinicAdmin && <Route path="/sessions" component={SessionsPage} />}
       {isClinicAdmin && <Route path="/sessions/:id" component={SessionsPage} />}
       {isClinicAdmin && <Route path="/calendar" component={CalendarPage} />}
+      
+      {/* Receptionist routes - pacientes y calendario, sin sesiones */}
+      {isReceptionist && <Route path="/patients" component={PatientsPage} />}
+      {isReceptionist && <Route path="/patients/:id" component={PatientsPage} />}
+      {isReceptionist && <Route path="/calendar" component={CalendarPage} />}
       
       {/* Podiatrist routes */}
       {isPodiatrist && <Route path="/patients" component={PatientsPage} />}

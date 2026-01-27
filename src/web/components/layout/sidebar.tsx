@@ -13,13 +13,15 @@ export const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
   const [location] = useLocation();
   const { user, logout } = useAuth();
   const { t } = useLanguage();
-  const { hasPermission, isSuperAdmin, isClinicAdmin, isAdmin, isPodiatrist } = usePermissions();
+  const { hasPermission, isSuperAdmin, isClinicAdmin, isAdmin, isPodiatrist, isReceptionist } = usePermissions();
 
   const getRoleLabel = () => {
     if (isSuperAdmin) return t.roles.superAdmin;
     if (isClinicAdmin) return t.roles.clinicAdmin;
     if (isAdmin) return t.roles.admin;
-    return t.roles.podiatrist;
+    if (isReceptionist) return t.roles.receptionist;
+    if (isPodiatrist) return t.roles.podiatrist;
+    return user?.role ? String(user.role) : t.roles.podiatrist;
   };
 
   const navItems = [
@@ -32,7 +34,7 @@ export const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
         </svg>
       ),
       permission: "view_dashboard" as const,
-      roles: ["super_admin", "clinic_admin", "admin", "podiatrist"] as const,
+      roles: ["super_admin", "clinic_admin", "admin", "podiatrist", "receptionist"] as const,
     },
     {
       path: "/users",
@@ -76,7 +78,7 @@ export const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
         </svg>
       ),
       permission: "view_patients" as const,
-      roles: ["podiatrist"] as const,
+      roles: ["podiatrist", "receptionist"] as const,
     },
     {
       path: "/sessions",
@@ -97,8 +99,8 @@ export const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
           <path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
         </svg>
       ),
-      permission: "view_sessions" as const,
-      roles: ["clinic_admin", "podiatrist"] as const,
+      permission: "view_calendar" as const,
+      roles: ["clinic_admin", "podiatrist", "receptionist"] as const,
     },
     {
       path: "/credits",
@@ -140,6 +142,14 @@ export const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
     // Check if user role is in the allowed roles
     return item.roles.includes(user.role as typeof item.roles[number]) && hasPermission(item.permission);
   });
+
+  // Si no hay ningún ítem (rol no reconocido o permisos raros), mostrar al menos Inicio para no dejar sin nada
+  const itemsToShow =
+    filteredNavItems.length > 0
+      ? filteredNavItems
+      : user
+        ? navItems.filter((item) => item.path === "/")
+        : [];
 
   const isActive = (path: string) => {
     if (path === "/") return location === "/";
@@ -185,7 +195,7 @@ export const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 bg-white/10 rounded-full flex items-center justify-center flex-shrink-0">
                 <span className="text-white font-medium">
-                  {user?.name.charAt(0).toUpperCase()}
+                  {(user?.name ?? "").charAt(0).toUpperCase() || "?"}
                 </span>
               </div>
               <div className="flex-1 min-w-0">
@@ -200,7 +210,7 @@ export const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
           {/* Navigation - scrollable */}
           <nav className="flex-1 overflow-y-auto py-3 md:py-4 px-2 md:px-3 overscroll-contain">
             <ul className="space-y-1">
-              {filteredNavItems.map((item) => (
+              {itemsToShow.map((item) => (
                 <li key={item.path}>
                   <Link
                     href={item.path}

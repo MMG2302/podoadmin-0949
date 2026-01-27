@@ -9,6 +9,8 @@ import {
   addAuditLog,
   addNotification,
   getAllProfessionalLicenses,
+  getCreatedUsers,
+  saveCreatedUser,
   Patient,
   ClinicalSession,
 } from "../lib/storage";
@@ -159,11 +161,14 @@ const ClinicPage = () => {
   const credits = getUserCredits(currentUser?.id || "");
   const allUsers = getAllUsers();
   
-  const [activeTab, setActiveTab] = useState<"overview" | "podiatrists" | "patients">("overview");
+  const [activeTab, setActiveTab] = useState<"overview" | "podiatrists" | "patients" | "receptionists">("overview");
   const [podiatristFilter, setPodiatristFilter] = useState<string>("all");
   const [patientSearch, setPatientSearch] = useState("");
   const [showReassignModal, setShowReassignModal] = useState(false);
   const [selectedPatient, setSelectedPatient] = useState<PatientWithPodiatrist | null>(null);
+  const [showCreateReceptionistModal, setShowCreateReceptionistModal] = useState(false);
+  const [receptionistForm, setReceptionistForm] = useState({ name: "", email: "", password: "" });
+  const [receptionistError, setReceptionistError] = useState<string | null>(null);
 
   // Get podiatrists in this clinic
   const clinicPodiatrists = allUsers.filter(
@@ -354,6 +359,52 @@ const ClinicPage = () => {
     });
   };
 
+  // Recepcionistas de la clínica
+  const clinicReceptionists = getCreatedUsers().filter(
+    (u) => u.role === "receptionist" && u.clinicId === currentUser?.clinicId
+  );
+
+  const handleCreateReceptionist = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!currentUser?.clinicId || !currentUser?.id) return;
+    setReceptionistError(null);
+    if (isEmailTaken(receptionistForm.email.trim())) {
+      setReceptionistError("Ya existe una cuenta con este correo electrónico");
+      return;
+    }
+    try {
+      const podiatristIds = clinicPodiatrists.map((p) => p.id);
+      saveCreatedUser(
+        {
+          email: receptionistForm.email,
+          name: receptionistForm.name,
+          role: "receptionist",
+          clinicId: currentUser.clinicId,
+          assignedPodiatristIds: podiatristIds,
+        },
+        receptionistForm.password,
+        currentUser.id
+      );
+      addAuditLog({
+        userId: currentUser.id,
+        userName: currentUser.name,
+        action: "CREATE",
+        entityType: "receptionist",
+        entityId: "",
+        details: JSON.stringify({
+          action: "receptionist_create_by_clinic_admin",
+          receptionistEmail: receptionistForm.email,
+          clinicId: currentUser.clinicId,
+          assignedPodiatristIds: podiatristIds,
+        }),
+      });
+      setReceptionistForm({ name: "", email: "", password: "" });
+      setShowCreateReceptionistModal(false);
+    } catch (err) {
+      setReceptionistError(err instanceof Error ? err.message : "Error al crear recepcionista");
+    }
+  };
+
   return (
     <MainLayout title={t.nav.clinicManagement} credits={credits}>
       <div className="space-y-6">
@@ -388,6 +439,16 @@ const ClinicPage = () => {
             }`}
           >
             Pacientes
+          </button>
+          <button
+            onClick={() => setActiveTab("receptionists")}
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+              activeTab === "receptionists" 
+                ? "bg-white text-[#1a1a1a] shadow-sm" 
+                : "text-gray-600 hover:text-[#1a1a1a]"
+            }`}
+          >
+            Recepcionistas
           </button>
         </div>
 
@@ -613,7 +674,129 @@ const ClinicPage = () => {
             </div>
           </div>
         )}
+
+        {/* Recepcionistas Tab - clinic_admin crea recepcionistas y les asigna podólogos de la clínica */}
+        {activeTab === "receptionists" && (
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <p className="text-sm text-gray-500">
+                Las recepcionistas tienen acceso sin créditos a crear pacientes, crear y editar citas en el calendario de los podólogos que les asignes. Por defecto se asignan todos los podólogos de la clínica.
+              </p>
+              <button
+                onClick={() => {
+                  setReceptionistError(null);
+                  setReceptionistForm({ name: "", email: "", password: "" });
+                  setShowCreateReceptionistModal(true);
+                }}
+                className="px-4 py-2 bg-[#1a1a1a] text-white rounded-lg text-sm font-medium hover:bg-[#2a2a2a] transition-colors flex items-center gap-2"
+              >
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                </svg>
+                Crear recepcionista
+              </button>
+            </div>
+            <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b border-gray-100 bg-gray-50">
+                      <th className="text-left px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Nombre</th>
+                      <th className="text-left px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Email</th>
+                      <th className="text-left px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Podólogos asignados</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-50">
+                    {clinicReceptionists.map((rec) => {
+                      const ids = rec.assignedPodiatristIds ?? [];
+                      const names = ids.map((id) => clinicPodiatrists.find((p) => p.id === id)?.name ?? id).filter(Boolean);
+                      return (
+                        <tr key={rec.id} className="hover:bg-gray-50 transition-colors">
+                          <td className="px-6 py-4 font-medium text-[#1a1a1a]">{rec.name}</td>
+                          <td className="px-6 py-4 text-sm text-gray-600">{rec.email}</td>
+                          <td className="px-6 py-4">
+                            <span className="text-xs text-gray-600">
+                              {names.length > 0 ? names.join(", ") : "Sin asignar"}
+                            </span>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+              {clinicReceptionists.length === 0 && (
+                <div className="p-12 text-center">
+                  <p className="text-gray-500">No hay recepcionistas. Crear una para que gestione citas y pacientes de los podólogos de la clínica.</p>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
       </div>
+
+      {/* Create Receptionist Modal */}
+      {showCreateReceptionistModal && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl w-full max-w-md shadow-xl">
+            <div className="p-6 border-b border-gray-100">
+              <h3 className="text-lg font-semibold text-[#1a1a1a]">Crear recepcionista</h3>
+              <p className="text-sm text-gray-500 mt-1">Se asignarán todos los podólogos de la clínica por defecto.</p>
+            </div>
+            <form onSubmit={handleCreateReceptionist} className="p-6 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-[#1a1a1a] mb-1">Nombre</label>
+                <input
+                  type="text"
+                  value={receptionistForm.name}
+                  onChange={(e) => setReceptionistForm((f) => ({ ...f, name: e.target.value }))}
+                  className="w-full px-4 py-2.5 rounded-lg border border-gray-200 focus:border-[#1a1a1a] focus:ring-1 focus:ring-[#1a1a1a] outline-none transition-colors"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-[#1a1a1a] mb-1">Email</label>
+                <input
+                  type="email"
+                  value={receptionistForm.email}
+                  onChange={(e) => setReceptionistForm((f) => ({ ...f, email: e.target.value }))}
+                  className="w-full px-4 py-2.5 rounded-lg border border-gray-200 focus:border-[#1a1a1a] focus:ring-1 focus:ring-[#1a1a1a] outline-none transition-colors"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-[#1a1a1a] mb-1">Contraseña inicial</label>
+                <input
+                  type="password"
+                  value={receptionistForm.password}
+                  onChange={(e) => setReceptionistForm((f) => ({ ...f, password: e.target.value }))}
+                  className="w-full px-4 py-2.5 rounded-lg border border-gray-200 focus:border-[#1a1a1a] focus:ring-1 focus:ring-[#1a1a1a] outline-none transition-colors"
+                  required
+                  minLength={6}
+                />
+              </div>
+              {receptionistError && (
+                <div className="text-sm text-red-600 bg-red-50 border border-red-100 rounded-lg p-3">{receptionistError}</div>
+              )}
+              <div className="flex gap-3 pt-4">
+                <button
+                  type="button"
+                  onClick={() => setShowCreateReceptionistModal(false)}
+                  className="flex-1 px-4 py-2.5 border border-gray-200 rounded-lg text-[#1a1a1a] font-medium hover:bg-gray-50 transition-colors"
+                >
+                  {t.common.cancel}
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 px-4 py-2.5 bg-[#1a1a1a] text-white rounded-lg font-medium hover:bg-[#2a2a2a] transition-colors"
+                >
+                  Crear recepcionista
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {/* Reassign Modal */}
       <ReassignPatientModal

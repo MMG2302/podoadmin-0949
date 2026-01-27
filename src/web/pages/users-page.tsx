@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { MainLayout } from "../components/layout/main-layout";
 import { useLanguage } from "../contexts/language-context";
-import { useAuth, getAllUsers, User, UserRole } from "../contexts/auth-context";
+import { useAuth, getAllUsers, User, UserRole, isEmailTaken } from "../contexts/auth-context";
 import { usePermissions } from "../hooks/use-permissions";
 import { 
   getUserCredits, 
@@ -1022,11 +1022,19 @@ const UsersPage = () => {
   };
 
   const handleCreateUser = (userData: Partial<User> & { password: string }) => {
+    const email = (userData.email || "").trim();
+    if (!email) {
+      alert("El correo electrónico es obligatorio.");
+      return;
+    }
+    if (isEmailTaken(email)) {
+      alert("Ya existe una cuenta con este correo electrónico.");
+      return;
+    }
     try {
-      // Save the user to localStorage so they can log in
       const newUser = saveCreatedUser(
         {
-          email: userData.email || "",
+          email,
           name: userData.name || "",
           role: userData.role || "podiatrist",
           clinicId: userData.clinicId,
@@ -1034,8 +1042,6 @@ const UsersPage = () => {
         userData.password,
         currentUser?.id || ""
       );
-      
-      // Add audit log
       addAuditLog({
         userId: currentUser?.id || "",
         userName: currentUser?.name || "",
@@ -1050,11 +1056,6 @@ const UsersPage = () => {
           newUserClinicId: userData.clinicId,
         }),
       });
-      
-      // Refresh users list
-      setUsers(loadUsersWithData());
-      
-      // Show success (toast would be better but using alert for simplicity)
       alert("Usuario creado exitosamente. El usuario puede iniciar sesión inmediatamente.");
     } catch (error) {
       alert(error instanceof Error ? error.message : "Error al crear usuario");

@@ -302,10 +302,12 @@ export interface Translations {
     clinicAdmin: string;
     admin: string;
     podiatrist: string;
+    receptionist: string;
     superAdminDesc: string;
     clinicAdminDesc: string;
     adminDesc: string;
     podiatristDesc: string;
+    receptionistDesc: string;
   };
   
   // Errors
@@ -612,10 +614,12 @@ export const translations: Record<Language, Translations> = {
       clinicAdmin: "Administrador de Clínica",
       admin: "Soporte",
       podiatrist: "Podólogo",
+      receptionist: "Recepcionista",
       superAdminDesc: "Gestión de usuarios, créditos y configuración del sistema",
       clinicAdminDesc: "Gestión de podólogos y pacientes de la clínica",
       adminDesc: "Ajustes de créditos y soporte técnico",
       podiatristDesc: "Gestión de pacientes y sesiones clínicas",
+      receptionistDesc: "Crear pacientes, citas y gestionar calendario de los podólogos asignados",
     },
     errors: {
       generic: "Ha ocurrido un error",
@@ -982,10 +986,12 @@ export const translations: Record<Language, Translations> = {
       clinicAdmin: "Clinic Administrator",
       admin: "Support",
       podiatrist: "Podiatrist",
+      receptionist: "Receptionist",
       superAdminDesc: "User management, credits, and system configuration",
       clinicAdminDesc: "Clinic podiatrists and patients management",
       adminDesc: "Credit adjustments and technical support",
       podiatristDesc: "Patient and clinical session management",
+      receptionistDesc: "Create patients, appointments and manage calendar for assigned podiatrists",
     },
     errors: {
       generic: "An error occurred",
@@ -1352,10 +1358,12 @@ export const translations: Record<Language, Translations> = {
       clinicAdmin: "Administrador de Clínica",
       admin: "Suporte",
       podiatrist: "Podólogo",
+      receptionist: "Recepcionista",
       superAdminDesc: "Gestão de usuários, créditos e configuração do sistema",
       clinicAdminDesc: "Gestão de podólogos e pacientes da clínica",
       adminDesc: "Ajustes de créditos e suporte técnico",
       podiatristDesc: "Gestão de pacientes e sessões clínicas",
+      receptionistDesc: "Criar pacientes, agendamentos e gerir calendário dos podólogos atribuídos",
     },
     errors: {
       generic: "Ocorreu um erro",
@@ -1722,10 +1730,12 @@ export const translations: Record<Language, Translations> = {
       clinicAdmin: "Administrateur de Clinique",
       admin: "Support",
       podiatrist: "Podologue",
+      receptionist: "Réceptionniste",
       superAdminDesc: "Gestion des utilisateurs, crédits et configuration du système",
       clinicAdminDesc: "Gestion des podologues et patients de la clinique",
       adminDesc: "Ajustements de crédits et support technique",
       podiatristDesc: "Gestion des patients et des séances cliniques",
+      receptionistDesc: "Créer des patients, rendez-vous et gérer le calendrier des podologues assignés",
     },
     errors: {
       generic: "Une erreur s'est produite",

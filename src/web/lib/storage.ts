@@ -379,7 +379,7 @@ export const deleteAppointment = (id: string): boolean => {
 // Initialize user credits based on role
 export const initializeUserCredits = (
   userId: string, 
-  role: "super_admin" | "clinic_admin" | "admin" | "podiatrist"
+  role: "super_admin" | "clinic_admin" | "admin" | "podiatrist" | "receptionist"
 ): UserCredits => {
   // Define initial credits based on role
   let monthlyCredits: number;
@@ -397,6 +397,10 @@ export const initializeUserCredits = (
     case "admin":
       monthlyCredits = 300;
       extraCredits = 100;
+      break;
+    case "receptionist":
+      monthlyCredits = 0;
+      extraCredits = 0;
       break;
     case "podiatrist":
     default:
@@ -1212,8 +1216,9 @@ export interface CreatedUser {
   id: string;
   email: string;
   name: string;
-  role: "super_admin" | "clinic_admin" | "admin" | "podiatrist";
+  role: "super_admin" | "clinic_admin" | "admin" | "podiatrist" | "receptionist";
   clinicId?: string;
+  assignedPodiatristIds?: string[]; // Solo receptionist: podólogos asignados
   password: string;
   createdAt: string;
   createdBy: string;
@@ -1230,8 +1235,9 @@ export const saveCreatedUser = (
   userData: {
     email: string;
     name: string;
-    role: "super_admin" | "clinic_admin" | "admin" | "podiatrist";
+    role: "super_admin" | "clinic_admin" | "admin" | "podiatrist" | "receptionist";
     clinicId?: string;
+    assignedPodiatristIds?: string[]; // Para receptionist: podólogos asignados
   },
   password: string,
   createdBy: string
@@ -1250,6 +1256,7 @@ export const saveCreatedUser = (
     name: userData.name,
     role: userData.role,
     clinicId: userData.clinicId,
+    assignedPodiatristIds: userData.assignedPodiatristIds,
     password: password,
     createdAt: new Date().toISOString(),
     createdBy: createdBy,
@@ -1258,7 +1265,7 @@ export const saveCreatedUser = (
   users.push(newUser);
   setItem(KEYS.CREATED_USERS, users);
   
-  // Initialize credits for the new user based on their role
+  // Initialize credits for the new user based on their role (receptionist = 0)
   initializeUserCredits(newUser.id, userData.role);
   
   return newUser;
@@ -1293,6 +1300,13 @@ export const deleteCreatedUser = (userId: string): boolean => {
   if (filtered.length === users.length) return false;
   setItem(KEYS.CREATED_USERS, filtered);
   return true;
+};
+
+/** Para recepcionistas: devuelve los ids de podólogos asignados */
+export const getAssignedPodiatristIdsForReceptionist = (receptionistId: string): string[] => {
+  const u = getCreatedUsers().find(u => u.id === receptionistId);
+  if (!u || u.role !== "receptionist") return [];
+  return u.assignedPodiatristIds ?? [];
 };
 
 // Funciones para gestionar estados de cuenta

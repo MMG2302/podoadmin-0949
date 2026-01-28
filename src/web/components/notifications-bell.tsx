@@ -2,14 +2,8 @@ import { useState, useEffect, useRef } from "react";
 import { Link } from "wouter";
 import { useLanguage } from "../contexts/language-context";
 import { useAuth } from "../contexts/auth-context";
-import {
-  getNotifications,
-  getUnreadNotificationCount,
-  markNotificationAsRead,
-  markAllNotificationsAsRead,
-  Notification,
-  NotificationType,
-} from "../lib/storage";
+import { api } from "../lib/api-client";
+import { Notification, NotificationType } from "../lib/storage";
 
 const NotificationIcon = ({ type }: { type: NotificationType }) => {
   switch (type) {
@@ -70,39 +64,29 @@ export const NotificationsBell = () => {
   const [unreadCount, setUnreadCount] = useState(0);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  const loadNotifications = () => {
-    if (!user) return;
-    const userNotifications = getNotifications(user.id);
-    setNotifications(userNotifications);
-    setUnreadCount(getUnreadNotificationCount(user.id));
+  const loadNotifications = async () => {
+    if (!user?.id) return;
+    const [listRes, countRes] = await Promise.all([
+      api.get<{ success?: boolean; notifications?: Notification[] }>("/notifications"),
+      api.get<{ success?: boolean; unreadCount?: number }>("/notifications/unread-count"),
+    ]);
+    if (listRes.success && Array.isArray(listRes.data?.notifications)) {
+      setNotifications(listRes.data.notifications);
+    }
+    if (countRes.success && typeof countRes.data?.unreadCount === "number") {
+      setUnreadCount(countRes.data.unreadCount);
+    }
   };
 
   useEffect(() => {
     loadNotifications();
     // Refresh notifications every 30 seconds
     const interval = setInterval(loadNotifications, 30000);
-    
-    // Listen for localStorage changes to update in real-time
-    const handleStorageChange = (e: StorageEvent) => {
-      if (e.key === "podoadmin_notifications") {
-        loadNotifications();
-      }
-    };
-    
-    // Also listen for custom event for same-tab updates
-    const handleNotificationUpdate = () => {
-      loadNotifications();
-    };
-    
-    window.addEventListener("storage", handleStorageChange);
-    window.addEventListener("notification-update", handleNotificationUpdate);
-    
+
     return () => {
       clearInterval(interval);
-      window.removeEventListener("storage", handleStorageChange);
-      window.removeEventListener("notification-update", handleNotificationUpdate);
     };
-  }, [user]);
+  }, [user?.id]);
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -116,15 +100,15 @@ export const NotificationsBell = () => {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  const handleMarkAsRead = (notificationId: string) => {
-    markNotificationAsRead(notificationId);
-    loadNotifications();
+  const handleMarkAsRead = async (notificationId: string) => {
+    const r = await api.patch<{ success?: boolean }>(`/notifications/${notificationId}/read`);
+    if (r.success) loadNotifications();
   };
 
-  const handleMarkAllAsRead = () => {
-    if (!user) return;
-    markAllNotificationsAsRead(user.id);
-    loadNotifications();
+  const handleMarkAllAsRead = async () => {
+    if (!user?.id) return;
+    const r = await api.post<{ success?: boolean }>("/notifications/read-all");
+    if (r.success) loadNotifications();
   };
 
   const recentNotifications = notifications.slice(0, 5);

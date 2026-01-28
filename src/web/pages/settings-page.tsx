@@ -1,31 +1,9 @@
-import { useState, useRef, useMemo, useEffect } from "react";
+import { useState, useRef, useEffect } from "react";
 import { MainLayout } from "../components/layout/main-layout";
 import { useLanguage } from "../contexts/language-context";
-import { useAuth, getAllUsers, isEmailTaken } from "../contexts/auth-context";
-import { 
-  getUserCredits, 
-  getClinicById, 
-  updateClinic, 
-  getClinicLogo,
-  setClinicLogo,
-  removeClinicLogo,
-  getProfessionalLogo,
-  setProfessionalLogo,
-  removeProfessionalLogo,
-  getProfessionalInfo,
-  saveProfessionalInfo,
-  getProfessionalLicense,
-  saveProfessionalLicense,
-  getProfessionalCredentials,
-  saveProfessionalCredentials,
-  addAuditLog,
-  getCreatedUsers,
-  saveCreatedUser,
-  updateCreatedUser,
-  getAssignedPodiatristIdsForReceptionist,
-  ProfessionalInfo,
-  Clinic 
-} from "../lib/storage";
+import { useAuth, getAllUsers } from "../contexts/auth-context";
+import { getUserCredits, getClinicLogo, getProfessionalLogo, ProfessionalInfo, type Clinic } from "../lib/storage";
+import { api } from "../lib/api-client";
 
 interface ClinicInfoForm {
   phone: string;
@@ -37,12 +15,9 @@ interface ClinicInfoForm {
   website: string;
 }
 
-// Get clinic name from storage
-const getClinicName = (clinicId: string): string => {
-  const clinic = getClinicById(clinicId);
-  if (clinic) return clinic.clinicName;
-  return `Clínica ${clinicId}`;
-};
+// Nombre de clínica desde datos cargados o fallback
+const getClinicNameFrom = (clinic: Clinic | null, clinicId: string): string =>
+  clinic?.clinicName ?? (clinicId ? `Clínica ${clinicId}` : "");
 
 // Get logo for a user (considering clinic membership) - exported for PDF use
 export const getLogoForUser = (userId: string, clinicId?: string): string | null => {
@@ -70,37 +45,51 @@ const SettingsPage = () => {
   const isAdminRole = user?.role === "super_admin" || user?.role === "admin";
   const isReceptionist = user?.role === "receptionist";
   
-  // Get the clinic for this user
-  const userClinic = useMemo((): Clinic | null => {
-    if (user?.clinicId) {
-      return getClinicById(user.clinicId) || null;
-    }
-    return null;
-  }, [user]);
-  
+  const [userClinic, setUserClinic] = useState<Clinic | null>(null);
   const [saved, setSaved] = useState(false);
-  const [currentLogo, setCurrentLogo] = useState<string | null>(() => {
-    // Initial load: check clinic logo first, then professional logo
-    if (user?.clinicId) {
-      return getClinicLogo(user.clinicId) || null;
-    }
-    if (isPodiatristIndependent && user?.id) {
-      return getProfessionalLogo(user.id) || null;
-    }
-    return null;
-  });
+  const [currentLogo, setCurrentLogo] = useState<string | null>(null);
   const [logoError, setLogoError] = useState<string | null>(null);
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   
-  // Load clinic logo when user.clinicId changes (for podiatrists with clinic)
+  // Cargar clínica desde API
+  useEffect(() => {
+    if (!user?.clinicId) {
+      setUserClinic(null);
+      return;
+    }
+    api.get<{ success: boolean; clinic?: Record<string, unknown> }>(`/clinics/${user.clinicId}`).then((res) => {
+      if (res.success && res.data?.clinic) {
+        const c = res.data.clinic as Record<string, unknown>;
+        setUserClinic({
+          clinicId: String(c.clinicId ?? user.clinicId),
+          clinicName: String(c.clinicName ?? ""),
+          clinicCode: String(c.clinicCode ?? ""),
+          ownerId: String(c.ownerId ?? ""),
+          phone: (c.phone as string) ?? "",
+          email: (c.email as string) ?? "",
+          address: (c.address as string) ?? "",
+          city: (c.city as string) ?? "",
+          postalCode: (c.postalCode as string) ?? "",
+          licenseNumber: (c.licenseNumber as string) ?? "",
+          website: (c.website as string) ?? "",
+        } as Clinic);
+      }
+    }).catch(() => setUserClinic(null));
+  }, [user?.clinicId]);
+  
+  // Cargar logo desde API (clínica o profesional)
   useEffect(() => {
     if (user?.clinicId) {
-      const logo = getClinicLogo(user.clinicId);
-      setCurrentLogo(logo || null);
+      api.get<{ success?: boolean; logo?: string | null }>(`/clinics/${user.clinicId}/logo`).then((res) => {
+        setCurrentLogo(res.success && res.data?.logo ? res.data.logo : null);
+      }).catch(() => setCurrentLogo(null));
     } else if (isPodiatristIndependent && user?.id) {
-      const logo = getProfessionalLogo(user.id);
-      setCurrentLogo(logo || null);
+      api.get<{ success?: boolean; logo?: string | null }>(`/professionals/logo/${user.id}`).then((res) => {
+        setCurrentLogo(res.success && res.data?.logo ? res.data.logo : null);
+      }).catch(() => setCurrentLogo(null));
+    } else {
+      setCurrentLogo(null);
     }
   }, [user?.clinicId, user?.id, isPodiatristIndependent]);
   
@@ -142,6 +131,7 @@ const SettingsPage = () => {
   const [receptionistForm, setReceptionistForm] = useState({ name: "", email: "", password: "" });
   const [receptionistError, setReceptionistError] = useState<string | null>(null);
   const [receptionistSuccess, setReceptionistSuccess] = useState(false);
+  const [myReceptionists, setMyReceptionists] = useState<{ id: string; name: string; email: string }[]>([]);
   
   // Recepcionista: edición de podólogos asignados (solo si es de clínica)
   const [assignedPodiatristIds, setAssignedPodiatristIds] = useState<string[]>([]);
@@ -162,88 +152,97 @@ const SettingsPage = () => {
     }
   }, [userClinic]);
   
-  // Initialize professional info for independent podiatrists
+  // Cargar professional info desde API (podólogos independientes)
   useEffect(() => {
     if (isPodiatristIndependent && user?.id) {
-      const info = getProfessionalInfo(user.id);
-      if (info) {
-        setProfessionalInfoForm(info);
-      } else {
-        setProfessionalInfoForm({
-          name: user?.name || "",
-          phone: "",
-          email: user?.email || "",
-          address: "",
-          city: "",
-          postalCode: "",
-          licenseNumber: "",
-          professionalLicense: "",
-        });
-      }
+      api.get<{ success?: boolean; info?: ProfessionalInfo | null }>(`/professionals/info/${user.id}`).then((res) => {
+        if (res.success && res.data?.info) {
+          setProfessionalInfoForm(res.data.info);
+        } else {
+          setProfessionalInfoForm({
+            name: user?.name || "",
+            phone: "",
+            email: user?.email || "",
+            address: "",
+            city: "",
+            postalCode: "",
+            licenseNumber: "",
+            professionalLicense: "",
+          });
+        }
+      });
     }
   }, [isPodiatristIndependent, user?.id, user?.name, user?.email]);
   
-  // Initialize professional license for all podiatrists
+  // Cargar professional license desde API
   useEffect(() => {
     if (user?.role === "podiatrist" && user?.id) {
-      const license = getProfessionalLicense(user.id);
-      setProfessionalLicenseState(license || "");
+      api.get<{ success?: boolean; license?: string | null }>(`/professionals/license/${user.id}`).then((res) => {
+        if (res.success && res.data?.license != null) setProfessionalLicenseState(res.data.license || "");
+      });
     }
   }, [user?.role, user?.id]);
   
-  // Initialize assigned podiatrists for receptionist
+  // Cargar podólogos asignados para recepcionista desde API
   useEffect(() => {
     if (isReceptionist && user?.id) {
-      setAssignedPodiatristIds(getAssignedPodiatristIdsForReceptionist(user.id));
+      api.get<{ success?: boolean; assignedPodiatristIds?: string[] }>(`/receptionists/assigned-podiatrists/${user.id}`).then((res) => {
+        if (res.success && Array.isArray(res.data?.assignedPodiatristIds)) {
+          setAssignedPodiatristIds(res.data.assignedPodiatristIds);
+        }
+      });
     }
   }, [isReceptionist, user?.id]);
 
-  // Initialize professional credentials for clinic podiatrists
+  // Cargar professional credentials desde API (podólogos de clínica)
   useEffect(() => {
     if (isPodiatristWithClinic && user?.id) {
-      const credentials = getProfessionalCredentials(user.id);
-      if (credentials) {
-        setCredentialsCedula(credentials.cedula || "");
-        setCredentialsRegistro(credentials.registro || "");
-      }
+      api.get<{ success?: boolean; credentials?: { cedula?: string; registro?: string } | null }>(`/professionals/credentials/${user.id}`).then((res) => {
+        if (res.success && res.data?.credentials) {
+          setCredentialsCedula(res.data.credentials.cedula || "");
+          setCredentialsRegistro(res.data.credentials.registro || "");
+        }
+      });
     }
   }, [isPodiatristWithClinic, user?.id]);
 
-  // Clinic name for display
-  const clinicName = userClinic?.clinicName || (user?.clinicId ? getClinicName(user.clinicId) : "");
+  // Cargar "mis recepcionistas" desde API (podólogo independiente)
+  useEffect(() => {
+    if (isPodiatristIndependent && user?.id) {
+      api.get<{ success?: boolean; receptionists?: { id: string; name: string; email: string }[] }>("/receptionists").then((res) => {
+        if (res.success && Array.isArray(res.data?.receptionists)) {
+          setMyReceptionists(res.data.receptionists);
+        }
+      });
+    }
+  }, [isPodiatristIndependent, user?.id]);
+
+  const clinicName = userClinic?.clinicName ?? getClinicNameFrom(userClinic, user?.clinicId ?? "");
   
   const handleClinicInfoChange = (field: keyof ClinicInfoForm, value: string) => {
     setClinicInfoForm(prev => ({ ...prev, [field]: value }));
   };
   
-  const handleSaveClinicInfo = () => {
+  const handleSaveClinicInfo = async () => {
     if (!canUploadLogo || !user?.clinicId) return;
-    
-    updateClinic(user.clinicId, {
-      phone: clinicInfoForm.phone,
-      email: clinicInfoForm.email,
-      address: clinicInfoForm.address,
-      city: clinicInfoForm.city,
-      postalCode: clinicInfoForm.postalCode,
-      licenseNumber: clinicInfoForm.licenseNumber,
-      website: clinicInfoForm.website,
-    });
-    
-    addAuditLog({
-      userId: user.id,
-      userName: user.name,
-      action: "UPDATE",
-      entityType: "clinic",
-      entityId: user.clinicId,
-      details: JSON.stringify({
-        action: "clinic_info_update",
-        clinicId: user.clinicId,
-        clinicName: clinicName,
-      }),
-    });
-    
-    setClinicInfoSaved(true);
-    setTimeout(() => setClinicInfoSaved(false), 2000);
+    try {
+      const res = await api.patch<{ success?: boolean; clinic?: Clinic }>(`/clinics/${user.clinicId}`, {
+        phone: clinicInfoForm.phone,
+        email: clinicInfoForm.email,
+        address: clinicInfoForm.address,
+        city: clinicInfoForm.city,
+        postalCode: clinicInfoForm.postalCode,
+        licenseNumber: clinicInfoForm.licenseNumber,
+        website: clinicInfoForm.website,
+      });
+      if (res.success && res.data?.clinic) {
+        setUserClinic(res.data.clinic as Clinic);
+        setClinicInfoSaved(true);
+        setTimeout(() => setClinicInfoSaved(false), 2000);
+      }
+    } catch (err) {
+      // Error ya se muestra en consola desde api-client; no marcamos como guardado
+    }
   };
   
   // Professional info handlers (for independent podiatrists)
@@ -272,101 +271,64 @@ const SettingsPage = () => {
   };
   
   // Professional license handler (for all podiatrists)
-  const handleSaveProfessionalLicense = () => {
+  const handleSaveProfessionalLicense = async () => {
     if (user?.role !== "podiatrist" || !user?.id) return;
-    saveProfessionalLicense(user.id, professionalLicense);
-    
-    addAuditLog({
-      userId: user.id,
-      userName: user.name,
-      action: "UPDATE",
-      entityType: "professional_credentials",
-      entityId: user.id,
-      details: JSON.stringify({
-        action: "license_update",
-      }),
-    });
-    
-    setLicenseSaved(true);
-    setTimeout(() => setLicenseSaved(false), 2000);
+    try {
+      const res = await api.put<{ success?: boolean }>(`/professionals/license/${user.id}`, { license: professionalLicense });
+      if (res.success) {
+        setLicenseSaved(true);
+        setTimeout(() => setLicenseSaved(false), 2000);
+      }
+    } catch {
+      // Silenciar, no marcar como guardado
+    }
   };
   
   // Professional credentials handler (for clinic podiatrists)
-  const handleSaveCredentials = () => {
+  const handleSaveCredentials = async () => {
     if (!isPodiatristWithClinic || !user?.id) return;
-    saveProfessionalCredentials(user.id, credentialsCedula, credentialsRegistro);
-    
-    addAuditLog({
-      userId: user.id,
-      userName: user.name,
-      action: "UPDATE",
-      entityType: "professional_credentials",
-      entityId: user.id,
-      details: JSON.stringify({
-        action: "credentials_update",
-      }),
-    });
-    
-    setCredentialsSaved(true);
-    setTimeout(() => setCredentialsSaved(false), 2000);
+    try {
+      const res = await api.put<{ success?: boolean }>(`/professionals/credentials/${user.id}`, { cedula: credentialsCedula, registro: credentialsRegistro });
+      if (res.success) {
+        setCredentialsSaved(true);
+        setTimeout(() => setCredentialsSaved(false), 2000);
+      }
+    } catch {
+      // No marcar como guardado en caso de error
+    }
   };
 
-  // Crear recepcionista (solo podólogo independiente, una sola)
-  const handleCreateReceptionist = (e: React.FormEvent) => {
+  const handleCreateReceptionist = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!isPodiatristIndependent || !user?.id) return;
     setReceptionistError(null);
-    if (isEmailTaken(receptionistForm.email.trim())) {
-      setReceptionistError("Ya existe una cuenta con este correo electrónico");
-      return;
-    }
-    try {
-      saveCreatedUser(
-        {
-          email: receptionistForm.email,
-          name: receptionistForm.name,
-          role: "receptionist",
-          assignedPodiatristIds: [user.id],
-        },
-        receptionistForm.password,
-        user.id
-      );
-      addAuditLog({
-        userId: user.id,
-        userName: user.name,
-        action: "CREATE",
-        entityType: "receptionist",
-        entityId: "",
-        details: JSON.stringify({
-          action: "receptionist_create_by_podiatrist",
-          receptionistEmail: receptionistForm.email,
-          podiatristId: user.id,
-        }),
-      });
+    const res = await api.post<{ success?: boolean; user?: { id: string; name: string; email: string }; message?: string }>("/receptionists", {
+      name: receptionistForm.name,
+      email: receptionistForm.email,
+      password: receptionistForm.password,
+    });
+    if (res.success && (res.data as { user?: { id: string; name: string; email: string } })?.user) {
+      const u = (res.data as { user: { id: string; name: string; email: string } }).user;
+      setMyReceptionists((prev) => [...prev, u]);
       setReceptionistForm({ name: "", email: "", password: "" });
       setReceptionistSuccess(true);
       setTimeout(() => setReceptionistSuccess(false), 3000);
-    } catch (err) {
-      setReceptionistError(err instanceof Error ? err.message : "Error al crear recepcionista");
+    } else {
+      setReceptionistError(res.error ?? (res.data as { error?: string; message?: string })?.error ?? (res.data as { message?: string })?.message ?? "Error al crear recepcionista");
     }
   };
 
-  const handleSaveAssignedPodiatrists = () => {
+  const handleSaveAssignedPodiatrists = async () => {
     if (!isReceptionist || !user?.id) return;
-    updateCreatedUser(user.id, { assignedPodiatristIds });
-    addAuditLog({
-      userId: user.id,
-      userName: user.name,
-      action: "UPDATE",
-      entityType: "receptionist_assigned_podiatrists",
-      entityId: user.id,
-      details: JSON.stringify({
-        action: "receptionist_edit_assigned_podiatrists",
-        assignedPodiatristIds,
-      }),
-    });
-    setAssignedPodiatristsSaved(true);
-    setTimeout(() => setAssignedPodiatristsSaved(false), 2000);
+    try {
+      const res = await api.patch<{ success?: boolean }>(`/receptionists/${user.id}/assigned-podiatrists`, { assignedPodiatristIds });
+      if (res.success) {
+        setAssignedPodiatristsSaved(true);
+        setTimeout(() => setAssignedPodiatristsSaved(false), 2000);
+      }
+    } catch {
+      // No marcar como guardado si la API falla
+    }
   };
 
   const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -398,59 +360,28 @@ const SettingsPage = () => {
     reader.readAsDataURL(file);
   };
 
-  const handleSaveLogo = () => {
+  const handleSaveLogo = async () => {
     if (!canUploadLogo || !logoPreview || !user?.clinicId) return;
-    
-    // Save logo to separate storage key (podoadmin_clinic_logos)
-    setClinicLogo(user.clinicId, logoPreview);
-    setCurrentLogo(logoPreview);
-    // Clear preview after successful save
-    setLogoPreview(null);
-    // Clear file input
-    if (fileInputRef.current) {
-      fileInputRef.current.value = "";
+    try {
+      const res = await api.put<{ success?: boolean }>(`/clinics/${user.clinicId}/logo`, { logo: logoPreview });
+      if (res.success) {
+        setCurrentLogo(logoPreview);
+        setLogoPreview(null);
+        if (fileInputRef.current) fileInputRef.current.value = "";
+        setSaved(true);
+        setTimeout(() => setSaved(false), 2000);
+      }
+    } catch {
+      // No marcar como guardado si falla
     }
-    
-    addAuditLog({
-      userId: user.id,
-      userName: user.name,
-      action: "UPDATE",
-      entityType: "logo",
-      entityId: user.clinicId,
-      details: JSON.stringify({
-        action: "clinic_logo_upload",
-        clinicId: user.clinicId,
-        clinicName: clinicName,
-      }),
-    });
-    
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2000);
   };
 
-  const handleRemoveLogo = () => {
+  const handleRemoveLogo = async () => {
     if (!canUploadLogo || !user?.clinicId) return;
-    
-    // Remove logo from separate storage key
-    removeClinicLogo(user.clinicId);
+    await api.delete(`/clinics/${user.clinicId}/logo`);
     setCurrentLogo(null);
     setLogoPreview(null);
-    if (fileInputRef.current) {
-      fileInputRef.current.value = "";
-    }
-    
-    addAuditLog({
-      userId: user.id,
-      userName: user.name,
-      action: "DELETE",
-      entityType: "logo",
-      entityId: user.clinicId,
-      details: JSON.stringify({
-        action: "clinic_logo_remove",
-        clinicId: user.clinicId,
-        clinicName: clinicName,
-      }),
-    });
+    if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
   // Professional logo upload handler for independent podiatrists
@@ -483,52 +414,22 @@ const SettingsPage = () => {
     reader.readAsDataURL(file);
   };
 
-  const handleSaveProfessionalLogo = () => {
+  const handleSaveProfessionalLogo = async () => {
     if (!isPodiatristIndependent || !logoPreview || !user?.id) return;
-    
-    // Save logo to professional logos storage key
-    setProfessionalLogo(user.id, logoPreview);
+    await api.put(`/professionals/logo/${user.id}`, { logo: logoPreview });
     setCurrentLogo(logoPreview);
     setLogoPreview(null);
-    if (fileInputRef.current) {
-      fileInputRef.current.value = "";
-    }
-    
-    addAuditLog({
-      userId: user.id,
-      userName: user.name,
-      action: "UPDATE",
-      entityType: "logo",
-      entityId: user.id,
-      details: JSON.stringify({
-        action: "professional_logo_upload",
-      }),
-    });
-    
+    if (fileInputRef.current) fileInputRef.current.value = "";
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);
   };
 
-  const handleRemoveProfessionalLogo = () => {
+  const handleRemoveProfessionalLogo = async () => {
     if (!isPodiatristIndependent || !user?.id) return;
-    
-    removeProfessionalLogo(user.id);
+    await api.delete(`/professionals/logo/${user.id}`);
     setCurrentLogo(null);
     setLogoPreview(null);
-    if (fileInputRef.current) {
-      fileInputRef.current.value = "";
-    }
-    
-    addAuditLog({
-      userId: user.id,
-      userName: user.name,
-      action: "DELETE",
-      entityType: "logo",
-      entityId: user.id,
-      details: JSON.stringify({
-        action: "professional_logo_remove",
-      }),
-    });
+    if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
   return (
@@ -602,7 +503,7 @@ const SettingsPage = () => {
 
         {/* Podólogos asignados - Solo recepcionista: ver y editar quiénes la asignaron */}
         {isReceptionist && user?.id && (() => {
-          const ids = user.assignedPodiatristIds ?? getAssignedPodiatristIdsForReceptionist(user.id);
+          const ids = assignedPodiatristIds;
           const allUsersList = getAllUsers();
           const clinicPodiatrists = user.clinicId
             ? allUsersList.filter((u) => u.role === "podiatrist" && u.clinicId === user.clinicId)
@@ -928,9 +829,6 @@ const SettingsPage = () => {
 
         {/* Recepcionista - Solo podólogo independiente: una sola recepcionista ligada directamente */}
         {isPodiatristIndependent && user?.id && (() => {
-          const myReceptionists = getCreatedUsers().filter(
-            (u) => u.role === "receptionist" && u.createdBy === user.id
-          );
           const hasReceptionist = myReceptionists.length >= 1;
           return (
             <div className="bg-white rounded-xl border border-gray-100 p-6">

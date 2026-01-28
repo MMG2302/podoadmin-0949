@@ -1,19 +1,9 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
 import { MainLayout } from "../components/layout/main-layout";
 import { useLanguage } from "../contexts/language-context";
 import { useAuth, getAllUsers, User } from "../contexts/auth-context";
 import { usePermissions } from "../hooks/use-permissions";
-import {
-  getUserCredits,
-  getClinicCredits,
-  getClinicAvailableCredits,
-  distributeCreditsToDoctor,
-  subtractCreditsFromDoctor,
-  getCreditDistributions,
-  initializeClinicCredits,
-  addAuditLog,
-  CreditDistribution,
-} from "../lib/storage";
+import { api } from "../lib/api-client";
 
 interface CreditModalProps {
   isOpen: boolean;
@@ -130,59 +120,62 @@ const CreditModal = ({ isOpen, onClose, podiatrist, type, maxAmount, onSubmit, e
   );
 };
 
+type ClinicCreditsApi = { clinicId: string; totalCredits: number; distributedToDate: number; available: number };
+type DistributionApi = { id: string; clinicId: string; userId: string; toPodiatrist: string; amount: number; reason?: string; createdAt: string };
+
 const DistributeCreditsPage = () => {
   const { t } = useLanguage();
   const { user } = useAuth();
   const { isClinicAdmin } = usePermissions();
   
-  const [refreshKey, setRefreshKey] = useState(0);
+  const clinicId = user?.clinicId || "";
+  const [clinicCredits, setClinicCredits] = useState<ClinicCreditsApi | null>(null);
+  const [distributions, setDistributions] = useState<DistributionApi[]>([]);
+  const [creditsByUser, setCreditsByUser] = useState<Record<string, number>>({});
+  const [loading, setLoading] = useState(true);
+  
   const [selectedPodiatrist, setSelectedPodiatrist] = useState("");
   const [amount, setAmount] = useState("");
   const [reason, setReason] = useState("");
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   
-  // Modal state
   const [modalOpen, setModalOpen] = useState(false);
   const [modalType, setModalType] = useState<"add" | "subtract">("add");
   const [modalPodiatrist, setModalPodiatrist] = useState<User | null>(null);
   const [modalError, setModalError] = useState("");
 
-  // Get clinic info
-  const clinicId = user?.clinicId || "";
-  
-  // Initialize clinic credits if not exists
-  const clinicCredits = useMemo(() => {
-    if (!clinicId) return null;
-    const credits = getClinicCredits(clinicId);
-    if (!credits) {
-      return initializeClinicCredits(clinicId, 500);
+  const loadClinicData = useCallback(() => {
+    if (!clinicId) {
+      setLoading(false);
+      return;
     }
-    return credits;
-  }, [clinicId, refreshKey]);
-  
-  const availableCredits = useMemo(() => {
-    if (!clinicId) return 0;
-    return getClinicAvailableCredits(clinicId);
-  }, [clinicId, refreshKey]);
+    setLoading(true);
+    Promise.all([
+      api.get<{ success?: boolean; credits?: ClinicCreditsApi }>(`/clinic-credits/${clinicId}`),
+      api.get<{ success?: boolean; distributions?: DistributionApi[] }>(`/clinic-credits/${clinicId}/distributions`),
+      api.get<{ success?: boolean; byUser?: Record<string, number> }>(`/credits/balances?clinicId=${clinicId}`),
+    ]).then(([credRes, distRes, balRes]) => {
+      if (credRes.success && credRes.data?.credits) setClinicCredits(credRes.data.credits);
+      if (distRes.success && Array.isArray(distRes.data?.distributions)) setDistributions(distRes.data.distributions);
+      if (balRes.success && balRes.data?.byUser && typeof balRes.data.byUser === "object") setCreditsByUser(balRes.data.byUser);
+    }).finally(() => setLoading(false));
+  }, [clinicId]);
 
-  // Get podiatrists in the clinic
+  useEffect(() => {
+    loadClinicData();
+  }, [loadClinicData]);
+
+  const availableCredits = clinicCredits?.available ?? 0;
+
   const allUsers = getAllUsers();
   const clinicPodiatrists = useMemo(() => {
     return allUsers.filter(u => u.role === "podiatrist" && u.clinicId === clinicId);
   }, [allUsers, clinicId]);
 
-  // Get distribution history
-  const distributions = useMemo(() => {
-    return getCreditDistributions(clinicId).sort(
-      (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-    );
-  }, [clinicId, refreshKey]);
-
   // Get podiatrist credits
   const getPodiatristCredits = (podId: string) => {
-    const credits = getUserCredits(podId);
-    return credits.monthlyCredits + credits.extraCredits - credits.reservedCredits;
+    return creditsByUser[podId] ?? 0;
   };
 
   const getPodiatristName = (userId: string) => {
@@ -190,7 +183,7 @@ const DistributeCreditsPage = () => {
     return user?.name || "Usuario desconocido";
   };
 
-  const handleDistribute = () => {
+  const handleDistribute = async () => {
     setError("");
     setSuccess("");
 
@@ -210,40 +203,22 @@ const DistributeCreditsPage = () => {
       return;
     }
 
-    const result = distributeCreditsToDoctor(
-      clinicId,
-      selectedPodiatrist,
-      amountNum,
-      user?.id || "",
-      reason.trim()
-    );
+    const res = await api.post<{ success?: boolean; error?: string }>(`/clinic-credits/${clinicId}/distribute`, {
+      userId: selectedPodiatrist,
+      amount: amountNum,
+      reason: reason.trim(),
+    });
 
-    if (!result.success) {
-      setError(result.error || "Error al distribuir créditos");
+    if (!res.success) {
+      setError(res.error || (res.data as { error?: string })?.error || "Error al distribuir créditos");
       return;
     }
-
-    // Log audit
-    addAuditLog({
-      userId: user?.id || "",
-      userName: user?.name || "",
-      action: "CREDIT_DISTRIBUTION",
-      entityType: "credit",
-      entityId: result.distribution?.id || "",
-      details: JSON.stringify({
-        clinicId,
-        toPodiatrist: selectedPodiatrist,
-        toPodiatristName: getPodiatristName(selectedPodiatrist),
-        amount: amountNum,
-        reason: reason.trim(),
-      }),
-    });
 
     setSuccess(`Se distribuyeron ${amountNum} créditos a ${getPodiatristName(selectedPodiatrist)}`);
     setSelectedPodiatrist("");
     setAmount("");
     setReason("");
-    setRefreshKey(k => k + 1);
+    loadClinicData();
   };
 
   const handleOpenAddModal = (pod: User) => {
@@ -260,7 +235,7 @@ const DistributeCreditsPage = () => {
     setModalOpen(true);
   };
 
-  const handleModalSubmit = (amountNum: number, reasonText: string) => {
+  const handleModalSubmit = async (amountNum: number, reasonText: string) => {
     if (!modalPodiatrist) return;
     
     setModalError("");
@@ -271,72 +246,36 @@ const DistributeCreditsPage = () => {
     }
 
     if (modalType === "add") {
-      const result = distributeCreditsToDoctor(
-        clinicId,
-        modalPodiatrist.id,
-        amountNum,
-        user?.id || "",
-        reasonText.trim()
-      );
+      const res = await api.post<{ success?: boolean; error?: string }>(`/clinic-credits/${clinicId}/distribute`, {
+        userId: modalPodiatrist.id,
+        amount: amountNum,
+        reason: reasonText.trim(),
+      });
 
-      if (!result.success) {
-        setModalError(result.error || "Error al agregar créditos");
+      if (!res.success) {
+        setModalError(res.error || (res.data as { error?: string })?.error || "Error al agregar créditos");
         return;
       }
-
-      addAuditLog({
-        userId: user?.id || "",
-        userName: user?.name || "",
-        action: "CREDIT_DISTRIBUTION",
-        entityType: "credit",
-        entityId: result.distribution?.id || "",
-        details: JSON.stringify({
-          clinicId,
-          toPodiatrist: modalPodiatrist.id,
-          toPodiatristName: modalPodiatrist.name,
-          amount: amountNum,
-          reason: reasonText.trim(),
-          type: "add",
-        }),
-      });
 
       setSuccess(`Se agregaron ${amountNum} créditos a ${modalPodiatrist.name}`);
     } else {
-      const result = subtractCreditsFromDoctor(
-        clinicId,
-        modalPodiatrist.id,
-        amountNum,
-        user?.id || "",
-        reasonText.trim()
-      );
+      const res = await api.post<{ success?: boolean; error?: string }>(`/clinic-credits/${clinicId}/subtract`, {
+        userId: modalPodiatrist.id,
+        amount: amountNum,
+        reason: reasonText.trim(),
+      });
 
-      if (!result.success) {
-        setModalError(result.error || "Error al restar créditos");
+      if (!res.success) {
+        setModalError(res.error || (res.data as { error?: string })?.error || "Error al restar créditos");
         return;
       }
-
-      addAuditLog({
-        userId: user?.id || "",
-        userName: user?.name || "",
-        action: "CREDIT_SUBTRACTION",
-        entityType: "credit",
-        entityId: result.distribution?.id || "",
-        details: JSON.stringify({
-          clinicId,
-          fromPodiatrist: modalPodiatrist.id,
-          fromPodiatristName: modalPodiatrist.name,
-          amount: amountNum,
-          reason: reasonText.trim(),
-          type: "subtract",
-        }),
-      });
 
       setSuccess(`Se restaron ${amountNum} créditos de ${modalPodiatrist.name} y se devolvieron al pool`);
     }
 
     setModalOpen(false);
     setModalPodiatrist(null);
-    setRefreshKey(k => k + 1);
+    loadClinicData();
   };
 
   const formatDate = (dateStr: string) => {
@@ -508,8 +447,7 @@ const DistributeCreditsPage = () => {
             ) : (
               <div className="space-y-3">
                 {clinicPodiatrists.map(pod => {
-                  const credits = getUserCredits(pod.id);
-                  const total = credits.monthlyCredits + credits.extraCredits - credits.reservedCredits;
+                  const total = getPodiatristCredits(pod.id);
                   return (
                     <div 
                       key={pod.id} 

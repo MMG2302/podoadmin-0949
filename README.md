@@ -54,12 +54,19 @@ import { Route, Switch } from "wouter";
 
 Uses [Drizzle ORM](https://orm.drizzle.team/) with Cloudflare D1.
 
+- **Schema:** `src/api/database/schema.ts`
+- **Migrations:** `src/api/migrations/` (applied in filename order by Wrangler)
+
 ```bash
-bun db:generate       # Generate migrations from schema
-bun db:migrate        # Apply migrations locally
+bun db:generate         # Generate new migrations after changing schema
+bun db:migrate          # Apply migrations to local D1
+bun db:migrate:remote   # Apply migrations to remote D1 (production)
 ```
 
-Schema is in `src/api/database/schema.ts`, migrations in `src/api/migrations/`.
+**When to run migrations:**
+- After cloning or pulling the repo: `bun run db:migrate`
+- After changing `schema.ts`: `bun run db:generate` then `bun run db:migrate`
+- Before deploy / on production: `bun run db:migrate:remote` (or your CI step)
 
 ## Coding Style
 

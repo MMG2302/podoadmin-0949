@@ -15,6 +15,13 @@ import testXssRoutes from './routes/test-xss';
 import twoFactorRoutes from './routes/two-factor-auth';
 import metricsRoutes from './routes/security-metrics';
 import auditLogRoutes from './routes/audit-logs';
+import clinicsRoutes from './routes/clinics';
+import professionalsRoutes from './routes/professionals';
+import receptionistsRoutes from './routes/receptionists';
+import clinicCreditsRoutes from './routes/clinic-credits';
+import appointmentsRoutes from './routes/appointments';
+import notificationsRoutes from './routes/notifications';
+import messagesRoutes from './routes/messages';
 
 const app = new Hono()
   .basePath('api');
@@ -128,6 +135,13 @@ app.route('/credits', creditsRoutes);
 app.route('/2fa', twoFactorRoutes);
 app.route('/security-metrics', metricsRoutes);
 app.route('/audit-logs', auditLogRoutes);
+app.route('/clinics', clinicsRoutes);
+app.route('/professionals', professionalsRoutes);
+app.route('/receptionists', receptionistsRoutes);
+app.route('/clinic-credits', clinicCreditsRoutes);
+app.route('/appointments', appointmentsRoutes);
+app.route('/notifications', notificationsRoutes);
+app.route('/messages', messagesRoutes);
 
 // IMPORTANTE: Todas las rutas que manejen datos sensibles DEBEN usar:
 // 1. requireAuth() - para verificar que el usuario está autenticado

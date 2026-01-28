@@ -2,15 +2,8 @@ import { useState, useEffect, useMemo } from "react";
 import { MainLayout } from "../components/layout/main-layout";
 import { useLanguage } from "../contexts/language-context";
 import { useAuth } from "../contexts/auth-context";
-import {
-  getNotifications,
-  markNotificationAsRead,
-  markAllNotificationsAsRead,
-  deleteNotification,
-  getUserCredits,
-  Notification,
-  NotificationType,
-} from "../lib/storage";
+import { api } from "../lib/api-client";
+import { getUserCredits, Notification, NotificationType } from "../lib/storage";
 
 type FilterTab = "all" | "unread" | "read";
 type TypeFilter = "all" | NotificationType;
@@ -90,14 +83,15 @@ const NotificationsPage = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedNotifications, setSelectedNotifications] = useState<Set<string>>(new Set());
 
-  const loadNotifications = () => {
-    if (!user) return;
-    setNotifications(getNotifications(user.id));
+  const loadNotifications = async () => {
+    if (!user?.id) return;
+    const r = await api.get<{ success?: boolean; notifications?: Notification[] }>("/notifications");
+    if (r.success && Array.isArray(r.data?.notifications)) setNotifications(r.data.notifications);
   };
 
   useEffect(() => {
     loadNotifications();
-  }, [user]);
+  }, [user?.id]);
 
   // Filter notifications
   const filteredNotifications = useMemo(() => {
@@ -124,39 +118,37 @@ const NotificationsPage = () => {
 
   const unreadCount = notifications.filter(n => !n.read).length;
 
-  const handleMarkAsRead = (id: string) => {
-    markNotificationAsRead(id);
-    loadNotifications();
+  const handleMarkAsRead = async (id: string) => {
+    const r = await api.patch<{ success?: boolean }>(`/notifications/${id}/read`);
+    if (r.success) loadNotifications();
   };
 
-  const handleMarkAllAsRead = () => {
-    if (!user) return;
-    markAllNotificationsAsRead(user.id);
-    loadNotifications();
+  const handleMarkAllAsRead = async () => {
+    if (!user?.id) return;
+    const r = await api.post<{ success?: boolean }>("/notifications/read-all");
+    if (r.success) loadNotifications();
   };
 
-  const handleDelete = (id: string) => {
-    deleteNotification(id);
-    setSelectedNotifications(prev => {
-      const next = new Set(prev);
-      next.delete(id);
-      return next;
-    });
-    loadNotifications();
+  const handleDelete = async (id: string) => {
+    const r = await api.delete<{ success?: boolean }>(`/notifications/${id}`);
+    if (r.success) {
+      setSelectedNotifications((prev) => {
+        const next = new Set(prev);
+        next.delete(id);
+        return next;
+      });
+      loadNotifications();
+    }
   };
 
-  const handleBulkDelete = () => {
-    selectedNotifications.forEach((id) => {
-      deleteNotification(id);
-    });
+  const handleBulkDelete = async () => {
+    await Promise.all(Array.from(selectedNotifications).map((id) => api.delete<{ success?: boolean }>(`/notifications/${id}`)));
     setSelectedNotifications(new Set());
     loadNotifications();
   };
 
-  const handleBulkMarkAsRead = () => {
-    selectedNotifications.forEach((id) => {
-      markNotificationAsRead(id);
-    });
+  const handleBulkMarkAsRead = async () => {
+    await Promise.all(Array.from(selectedNotifications).map((id) => api.patch<{ success?: boolean }>(`/notifications/${id}/read`)));
     setSelectedNotifications(new Set());
     loadNotifications();
   };

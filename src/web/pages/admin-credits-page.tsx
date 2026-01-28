@@ -2,14 +2,8 @@ import { useState, useMemo, useEffect } from "react";
 import { MainLayout } from "../components/layout/main-layout";
 import { useLanguage } from "../contexts/language-context";
 import { useAuth, getAllUsers, User } from "../contexts/auth-context";
-import { 
-  getUserCredits, 
-  getCreditTransactions,
-  updateUserCredits,
-  addCreditTransaction,
-  addAuditLog,
-  CreditTransaction,
-} from "../lib/storage";
+import { api } from "../lib/api-client";
+import { getUserCredits } from "../lib/storage";
 
 interface AdminAdjustment {
   id: string;
@@ -24,7 +18,7 @@ interface AdminAdjustment {
 
 const ADMIN_ADJUSTMENTS_KEY = "podoadmin_admin_adjustments";
 
-// Get admin adjustments from localStorage - with cleanup
+// Get admin adjustments from localStorage - con limpieza básica (solo para historial UI)
 const getAdminAdjustments = (): AdminAdjustment[] => {
   try {
     const data = localStorage.getItem(ADMIN_ADJUSTMENTS_KEY);
@@ -94,18 +88,21 @@ const getMonthlyAdjustmentsForUser = (targetUserId: string): AdminAdjustment[] =
   });
 };
 
-// Calculate 10% limit for a user
-const calculateMonthlyLimit = (userId: string): number => {
-  const userCredits = getUserCredits(userId);
-  return Math.floor(userCredits.monthlyCredits * 0.1);
-};
+const defaultCredits = { userId: "", monthlyCredits: 0, extraCredits: 0, reservedCredits: 0, lastMonthlyReset: "", monthlyRenewalAmount: 0 };
 
-// Main Admin Credits Page
+// Main Admin Credits Page - aplica ajustes vía API POST /credits/adjust
 const AdminCreditsPage = () => {
   const { t } = useLanguage();
   const { user: currentUser } = useAuth();
-  const credits = getUserCredits(currentUser?.id || "");
+  const [credits, setCredits] = useState(defaultCredits);
   const allUsers = getAllUsers();
+
+  useEffect(() => {
+    if (!currentUser?.id) return;
+    api.get<{ success?: boolean; credits?: typeof defaultCredits }>("/credits/me").then((r) => {
+      if (r.success && r.data?.credits) setCredits(r.data.credits as typeof defaultCredits);
+    });
+  }, [currentUser?.id]);
   
   const [selectedUserId, setSelectedUserId] = useState("");
   const [amount, setAmount] = useState(1);
@@ -114,6 +111,10 @@ const AdminCreditsPage = () => {
   const [success, setSuccess] = useState("");
   const [filterUserId, setFilterUserId] = useState<string>("all");
   const [refreshKey, setRefreshKey] = useState(0);
+  const [limitInfo, setLimitInfo] = useState<{ monthlyLimit: number; adjustedThisMonth: number }>({
+    monthlyLimit: 0,
+    adjustedThisMonth: 0,
+  });
 
   // Get clinic_admins and podiatrists (admin can adjust credits for both)
   const clinicAdmins = allUsers.filter(u => u.role === "clinic_admin");
@@ -125,19 +126,29 @@ const AdminCreditsPage = () => {
   // Get selected user info with fresh data
   const selectedUser = adjustableUsers.find(u => u.id === selectedUserId);
   const isClinicAdminUser = selectedUser?.role === "clinic_admin";
-  
-  // Calculate limits using fresh data every time
-  const selectedUserLimit = useMemo(() => {
-    if (!selectedUserId) return 0;
-    return calculateMonthlyLimit(selectedUserId);
+
+  // Cargar límites y ajustes desde la API (fuente de verdad en DB)
+  useEffect(() => {
+    if (!selectedUserId) {
+      setLimitInfo({ monthlyLimit: 0, adjustedThisMonth: 0 });
+      return;
+    }
+    api
+      .get<{ success?: boolean; monthlyLimit?: number; adjustedThisMonth?: number }>(`/credits/limits/${selectedUserId}`)
+      .then((r) => {
+        if (r.success && typeof r.data?.monthlyLimit === "number" && typeof r.data?.adjustedThisMonth === "number") {
+          setLimitInfo({ monthlyLimit: r.data.monthlyLimit, adjustedThisMonth: r.data.adjustedThisMonth });
+        } else {
+          setLimitInfo({ monthlyLimit: 0, adjustedThisMonth: 0 });
+        }
+      })
+      .catch(() => {
+        setLimitInfo({ monthlyLimit: 0, adjustedThisMonth: 0 });
+      });
   }, [selectedUserId, refreshKey]);
-  
-  const selectedUserAdjusted = useMemo(() => {
-    if (!selectedUserId) return 0;
-    const adjustments = getMonthlyAdjustmentsForUser(selectedUserId);
-    return adjustments.reduce((sum, adj) => sum + adj.amount, 0);
-  }, [selectedUserId, refreshKey]);
-  
+
+  const selectedUserLimit = limitInfo.monthlyLimit;
+  const selectedUserAdjusted = limitInfo.adjustedThisMonth;
   const selectedUserRemaining = selectedUserLimit - selectedUserAdjusted;
 
   // All adjustments for history
@@ -147,12 +158,11 @@ const AdminCreditsPage = () => {
     return adjustments.filter(adj => adj.userId === filterUserId).reverse();
   }, [filterUserId, refreshKey]);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
     setSuccess("");
 
-    // Basic validations
     if (!selectedUserId) {
       setError("Selecciona un usuario");
       return;
@@ -168,26 +178,50 @@ const AdminCreditsPage = () => {
       return;
     }
 
-    // FRESH validation - get latest data right now
-    const freshLimit = calculateMonthlyLimit(selectedUserId);
-    const freshAdjustments = getMonthlyAdjustmentsForUser(selectedUserId);
-    const freshTotalAdjusted = freshAdjustments.reduce((sum, adj) => sum + adj.amount, 0);
-    const freshRemaining = freshLimit - freshTotalAdjusted;
+    // Validación con datos frescos desde la API en el momento del envío
+    const limitsRes = await api.get<{ success?: boolean; monthlyLimit?: number; adjustedThisMonth?: number; error?: string; message?: string }>(
+      `/credits/limits/${selectedUserId}`
+    );
 
-    console.log("[Admin Credits] Validación:", {
-      usuario: selectedUser?.name,
-      limite: freshLimit,
-      yaAjustado: freshTotalAdjusted,
-      disponible: freshRemaining,
-      intentando: amount
-    });
+    if (!limitsRes.success || typeof limitsRes.data?.monthlyLimit !== "number" || typeof limitsRes.data?.adjustedThisMonth !== "number") {
+      setError(limitsRes.error || (limitsRes.data as { message?: string })?.message || "No se pudieron obtener los límites actualizados. Intenta de nuevo.");
+      return;
+    }
+
+    const freshLimit = limitsRes.data.monthlyLimit;
+    const freshTotalAdjusted = limitsRes.data.adjustedThisMonth;
+    const freshRemaining = freshLimit - freshTotalAdjusted;
 
     if (amount > freshRemaining) {
       setError(`Límite excedido. Este usuario solo puede recibir ${freshRemaining} créditos más este mes (${freshTotalAdjusted}/${freshLimit} ya asignados por todos los admins)`);
       return;
     }
 
-    // Save adjustment record FIRST
+    const res = await api.post<{ success?: boolean; error?: string; monthlyLimit?: number; adjustedThisMonth?: number; message?: string }>("/credits/adjust", {
+      userId: selectedUserId,
+      amount,
+      reason,
+    });
+
+    if (!res.success) {
+      const data = res.data as { error?: string; message?: string; monthlyLimit?: number; adjustedThisMonth?: number } | undefined;
+      if (data?.error === "limit_exceeded") {
+        const ml = data.monthlyLimit ?? freshLimit;
+        const adj = data.adjustedThisMonth ?? freshTotalAdjusted;
+        const remainingAfter = ml - adj;
+        setError(
+          data.message ||
+            `Límite excedido. Este usuario solo puede recibir ${remainingAfter} créditos más este mes (${adj}/${ml} ya asignados por todos los admins)`
+        );
+        // Forzar recálculo de límites desde la API
+        setRefreshKey((prev) => prev + 1);
+        return;
+      }
+      setError(res.error || data?.error || data?.message || "Error al aplicar el ajuste");
+      return;
+    }
+
+    // Registrar el ajuste en localStorage SOLO si la operación en backend fue exitosa
     const savedAdj = saveAdminAdjustment({
       userId: selectedUserId,
       userName: selectedUser?.name || "",
@@ -198,50 +232,18 @@ const AdminCreditsPage = () => {
     });
 
     if (!savedAdj) {
-      setError("Error al guardar el registro. Intente de nuevo.");
-      return;
+      // Si fallara el guardado local, no afecta al saldo real en DB; sólo al histórico local
+      console.error("No se pudo registrar el ajuste en el historial local");
     }
-
-    // Add credits to user
-    const userCredits = getUserCredits(selectedUserId);
-    userCredits.extraCredits += amount;
-    updateUserCredits(userCredits);
-
-    // Add transaction
-    addCreditTransaction({
-      userId: selectedUserId,
-      type: "purchase",
-      amount,
-      description: `Ajuste de soporte: ${reason}`,
-    });
-
-    // Add audit log
-    addAuditLog({
-      userId: currentUser?.id || "",
-      userName: currentUser?.name || "",
-      action: "ADMIN_CREDIT_ADJUSTMENT",
-      entityType: "credit",
-      entityId: selectedUserId,
-      details: JSON.stringify({
-        targetUserId: selectedUserId,
-        targetUserName: selectedUser?.name,
-        amount,
-        reason,
-        totalAdjustedAfter: freshTotalAdjusted + amount,
-        monthlyLimit: freshLimit,
-      }),
-    });
 
     const addedAmount = amount;
     const userName = selectedUser?.name;
     
-    // Reset form
     setAmount(1);
     setReason("");
     setSelectedUserId("");
     setSuccess(`✓ Se añadieron ${addedAmount} créditos a ${userName}`);
     
-    // Refresh data and reload page
     setRefreshKey(prev => prev + 1);
     setTimeout(() => window.location.reload(), 1500);
   };

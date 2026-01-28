@@ -57,7 +57,9 @@
     "preview": "bun run build && vite preview",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "wrangler d1 migrations apply DB --local",
+    "db:migrate:remote": "wrangler d1 migrations apply DB --remote",
     "db:studio": "drizzle-kit studio",
+    "db:seed-mock-users": "node scripts/seed-mock-users.cjs",
     "setup:env": "node scripts/setup-env.js"
   },
   "type": "module"

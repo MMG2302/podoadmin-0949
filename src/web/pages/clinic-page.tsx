@@ -1,13 +1,11 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { MainLayout } from "../components/layout/main-layout";
 import { useLanguage } from "../contexts/language-context";
-import { useAuth, getAllUsers, User } from "../contexts/auth-context";
+import { useAuth, getAllUsers, isEmailTaken, User } from "../contexts/auth-context";
+import { api } from "../lib/api-client";
 import { 
   getUserCredits, 
-  getPatients, 
-  getSessions,
   addAuditLog,
-  addNotification,
   getAllProfessionalLicenses,
   getCreatedUsers,
   saveCreatedUser,
@@ -154,12 +152,19 @@ const StatCard = ({
   </div>
 );
 
-// Main Clinic Page
+// Tipos mínimos para respuestas API
+type PatientApi = Patient & { createdBy: string };
+type SessionApi = ClinicalSession & { sessionDate: string; createdBy: string };
+
+// Main Clinic Page - pacientes y sesiones desde API
 const ClinicPage = () => {
   const { t } = useLanguage();
   const { user: currentUser } = useAuth();
   const credits = getUserCredits(currentUser?.id || "");
   const allUsers = getAllUsers();
+
+  const [allPatients, setAllPatients] = useState<PatientApi[]>([]);
+  const [allSessions, setAllSessions] = useState<SessionApi[]>([]);
   
   const [activeTab, setActiveTab] = useState<"overview" | "podiatrists" | "patients" | "receptionists">("overview");
   const [podiatristFilter, setPodiatristFilter] = useState<string>("all");
@@ -174,10 +179,27 @@ const ClinicPage = () => {
   const clinicPodiatrists = allUsers.filter(
     u => u.role === "podiatrist" && u.clinicId === currentUser?.clinicId
   );
+  const clinicPodiatristIds = useMemo(() => new Set(clinicPodiatrists.map(p => p.id)), [clinicPodiatrists]);
 
-  // Get all patients and sessions
-  const allPatients = getPatients();
-  const allSessions = getSessions();
+  // Cargar pacientes y sesiones desde API (clinic_admin ve todos; filtramos por clínica en cliente)
+  useEffect(() => {
+    api.get<{ success?: boolean; patients?: PatientApi[] }>("/patients").then((r) => {
+      if (r.success && Array.isArray(r.data?.patients)) setAllPatients(r.data.patients);
+    });
+    api.get<{ success?: boolean; sessions?: SessionApi[] }>("/sessions").then((r) => {
+      if (r.success && Array.isArray(r.data?.sessions)) setAllSessions(r.data.sessions);
+    });
+  }, []);
+
+  // Pacientes y sesiones de la clínica (filtrados por podólogos de la clínica)
+  const clinicPatients = useMemo(
+    () => allPatients.filter((p) => clinicPodiatristIds.has(p.createdBy)),
+    [allPatients, clinicPodiatristIds]
+  );
+  const clinicSessions = useMemo(
+    () => allSessions.filter((s) => clinicPodiatristIds.has(s.createdBy)),
+    [allSessions, clinicPodiatristIds]
+  );
 
   // Calculate podiatrist stats
   const podiatristStats: PodiatristStats[] = useMemo(() => {
@@ -188,8 +210,8 @@ const ClinicPage = () => {
 
     return clinicPodiatrists.map(pod => {
       const podCredits = getUserCredits(pod.id);
-      const patients = allPatients.filter(p => p.createdBy === pod.id);
-      const sessions = allSessions.filter(s => s.createdBy === pod.id);
+      const patients = clinicPatients.filter(p => p.createdBy === pod.id);
+      const sessions = clinicSessions.filter(s => s.createdBy === pod.id);
       const sessionsThisMonth = sessions.filter(s => {
         const date = new Date(s.sessionDate);
         return date.getMonth() === thisMonth && date.getFullYear() === thisYear;
@@ -208,27 +230,25 @@ const ClinicPage = () => {
         },
       };
     });
-  }, [clinicPodiatrists, allPatients, allSessions]);
+  }, [clinicPodiatrists, clinicPatients, clinicSessions]);
 
   // Get patients with podiatrist info
   const patientsWithPodiatrist: PatientWithPodiatrist[] = useMemo(() => {
     const podiatristMap = new Map(clinicPodiatrists.map(p => [p.id, p.name]));
     
-    return allPatients
-      .filter(p => podiatristMap.has(p.createdBy))
-      .map(p => {
-        const patientSessions = allSessions.filter(s => s.patientId === p.id);
-        const lastSession = patientSessions.sort(
-          (a, b) => new Date(b.sessionDate).getTime() - new Date(a.sessionDate).getTime()
-        )[0];
+    return clinicPatients.map(p => {
+      const patientSessions = clinicSessions.filter(s => s.patientId === p.id);
+      const lastSession = patientSessions.sort(
+        (a, b) => new Date(b.sessionDate).getTime() - new Date(a.sessionDate).getTime()
+      )[0];
 
-        return {
-          ...p,
-          podiatristName: podiatristMap.get(p.createdBy) || "Desconocido",
-          lastSessionDate: lastSession?.sessionDate || null,
-        };
-      });
-  }, [allPatients, allSessions, clinicPodiatrists]);
+      return {
+        ...p,
+        podiatristName: podiatristMap.get(p.createdBy) || "Desconocido",
+        lastSessionDate: lastSession?.sessionDate || null,
+      };
+    });
+  }, [clinicPatients, clinicSessions, clinicPodiatrists]);
 
   // Filter patients
   const filteredPatients = patientsWithPodiatrist.filter(p => {
@@ -246,11 +266,9 @@ const ClinicPage = () => {
     const thisMonth = now.getMonth();
     const thisYear = now.getFullYear();
     
-    const sessionsThisMonth = allSessions.filter(s => {
+    const sessionsThisMonth = clinicSessions.filter(s => {
       const date = new Date(s.sessionDate);
-      return date.getMonth() === thisMonth && 
-             date.getFullYear() === thisYear &&
-             clinicPodiatrists.some(p => p.id === s.createdBy);
+      return date.getMonth() === thisMonth && date.getFullYear() === thisYear;
     });
 
     const totalCredits = podiatristStats.reduce((acc, p) => acc + p.credits.total, 0);
@@ -261,38 +279,34 @@ const ClinicPage = () => {
       totalCredits,
       podiatrists: clinicPodiatrists.length,
     };
-  }, [patientsWithPodiatrist, allSessions, clinicPodiatrists, podiatristStats]);
+  }, [patientsWithPodiatrist, clinicSessions, clinicPodiatrists, podiatristStats]);
 
-  // Handle patient reassignment
-  const handleReassign = (patientId: string, newPodiatristId: string) => {
-    const patients = getPatients();
-    const sessions = getSessions();
-    
+  // Handle patient reassignment (persiste en DB vía API)
+  const handleReassign = async (patientId: string, newPodiatristId: string) => {
     const patient = patientsWithPodiatrist.find(p => p.id === patientId);
     const previousPodiatristId = patient?.createdBy || "";
     const previousPodiatrist = clinicPodiatrists.find(p => p.id === previousPodiatristId);
     const newPodiatrist = clinicPodiatrists.find(p => p.id === newPodiatristId);
     const patientFullName = `${patient?.firstName} ${patient?.lastName}`;
-    
-    // Update patient
-    const updatedPatients = patients.map(p => {
-      if (p.id === patientId) {
-        return { ...p, createdBy: newPodiatristId, updatedAt: new Date().toISOString() };
-      }
-      return p;
-    });
-    
-    // Update sessions
-    const patientSessionIds = sessions.filter(s => s.patientId === patientId).map(s => s.id);
-    const updatedSessions = sessions.map(s => {
-      if (patientSessionIds.includes(s.id)) {
-        return { ...s, createdBy: newPodiatristId, updatedAt: new Date().toISOString() };
-      }
-      return s;
-    });
-    
-    localStorage.setItem("podoadmin_patients", JSON.stringify(updatedPatients));
-    localStorage.setItem("podoadmin_sessions", JSON.stringify(updatedSessions));
+
+    // Persistir reasignación en backend/DB
+    const reassignRes = await api.post<{ success?: boolean; patient?: PatientApi | null; error?: string; message?: string }>(
+      `/patients/${patientId}/reassign`,
+      { newPodiatristId }
+    );
+
+    if (!reassignRes.success || !reassignRes.data?.success) {
+      console.error("Error reasignando paciente:", reassignRes.error || reassignRes.data?.error || reassignRes.data?.message);
+      return;
+    }
+
+    // Refrescar datos desde API para mantener consistencia (DB es la fuente de verdad)
+    const [patientsRes, sessionsRes] = await Promise.all([
+      api.get<{ success?: boolean; patients?: PatientApi[] }>("/patients"),
+      api.get<{ success?: boolean; sessions?: SessionApi[] }>("/sessions"),
+    ]);
+    if (patientsRes.success && Array.isArray(patientsRes.data?.patients)) setAllPatients(patientsRes.data.patients);
+    if (sessionsRes.success && Array.isArray(sessionsRes.data?.sessions)) setAllSessions(sessionsRes.data.sessions);
     
     addAuditLog({
       userId: currentUser?.id || "",
@@ -313,7 +327,6 @@ const ClinicPage = () => {
       }),
     });
 
-    // Common metadata for all 3 notifications
     const reassignmentDate = new Date().toISOString();
     const commonMetadata = {
       patientId: patientId,
@@ -329,34 +342,20 @@ const ClinicPage = () => {
       reassignmentDate: reassignmentDate,
     };
 
-    // 1. Notification to the clinic admin (manager) - confirmation of their action
-    addNotification({
-      userId: currentUser?.id || "",
-      type: "reassignment",
-      title: "Reasignación realizada",
-      message: `Has reasignado al paciente ${patientFullName} del Dr. ${previousPodiatrist?.name || "sin asignar"} al Dr. ${newPodiatrist?.name}.`,
-      metadata: commonMetadata,
-    });
-
-    // 2. Notification to previous podiatrist (losing the patient)
+    const notifications: Array<{ userId: string; type: string; title: string; message: string; metadata: typeof commonMetadata }> = [
+      { userId: currentUser?.id || "", type: "reassignment", title: "Reasignación realizada", message: `Has reasignado al paciente ${patientFullName} del Dr. ${previousPodiatrist?.name || "sin asignar"} al Dr. ${newPodiatrist?.name}.`, metadata: commonMetadata },
+      { userId: newPodiatristId, type: "reassignment", title: "Nuevo paciente asignado", message: `El paciente ${patientFullName} te ha sido asignado desde el Dr. ${previousPodiatrist?.name || "sin asignar"} por ${currentUser?.name}.`, metadata: commonMetadata },
+    ];
     if (previousPodiatristId && previousPodiatristId !== newPodiatristId) {
-      addNotification({
-        userId: previousPodiatristId,
-        type: "reassignment",
-        title: "Paciente reasignado",
-        message: `El paciente ${patientFullName} ha sido reasignado de ti al Dr. ${newPodiatrist?.name} por ${currentUser?.name}.`,
-        metadata: commonMetadata,
-      });
+      notifications.push({ userId: previousPodiatristId, type: "reassignment", title: "Paciente reasignado", message: `El paciente ${patientFullName} ha sido reasignado de ti al Dr. ${newPodiatrist?.name} por ${currentUser?.name}.`, metadata: commonMetadata });
     }
-
-    // 3. Notification to new podiatrist (receiving the patient)
-    addNotification({
-      userId: newPodiatristId,
-      type: "reassignment",
-      title: "Nuevo paciente asignado",
-      message: `El paciente ${patientFullName} te ha sido asignado desde el Dr. ${previousPodiatrist?.name || "sin asignar"} por ${currentUser?.name}.`,
-      metadata: commonMetadata,
-    });
+    await Promise.all(
+      notifications.map((n) =>
+        api.post("/notifications", n).catch(() => {
+          // Silenciar error por ahora; la auditoría principal se hace en backend
+        })
+      )
+    );
   };
 
   // Recepcionistas de la clínica

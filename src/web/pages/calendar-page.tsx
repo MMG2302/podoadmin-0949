@@ -4,21 +4,12 @@ import { MainLayout } from "../components/layout/main-layout";
 import { useLanguage } from "../contexts/language-context";
 import { useAuth, getAllUsers } from "../contexts/auth-context";
 import { usePermissions } from "../hooks/use-permissions";
+import { api } from "../lib/api-client";
 import { 
   getUserCredits, 
-  getSessions, 
-  getPatients, 
-  getPatientById,
   ClinicalSession, 
   Patient,
   Appointment,
-  getAppointments,
-  getAppointmentsByClinic,
-  saveAppointment,
-  updateAppointment,
-  deleteAppointment,
-  addAuditLog,
-  addNotification,
 } from "../lib/storage";
 
 type ViewMode = "month" | "week" | "day";
@@ -75,24 +66,29 @@ const CalendarPage = () => {
   const [podiatristFilter, setPodiatristFilter] = useState<string>("all");
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   
-  // Appointment form state (for clinic admin)
+  const [allSessions, setAllSessions] = useState<ClinicalSession[]>([]);
+  const [allPatients, setAllPatients] = useState<Patient[]>([]);
+  const [allAppointments, setAllAppointments] = useState<Appointment[]>([]);
+
   const [showAppointmentForm, setShowAppointmentForm] = useState(false);
   const [appointmentForm, setAppointmentForm] = useState<AppointmentFormData>(emptyAppointmentForm);
   const [editingAppointment, setEditingAppointment] = useState<Appointment | null>(null);
 
-  // Get all sessions, patients, and appointments (refresh when trigger changes)
-  const allSessions = getSessions();
-  const allPatients = getPatients();
-  const allAppointments = (isClinicAdmin && user?.clinicId
-    ? getAppointmentsByClinic(user.clinicId)
-    : isReceptionist && user?.assignedPodiatristIds?.length
-    ? getAppointments().filter((a) => user.assignedPodiatristIds!.includes(a.podiatristId))
-    : getAppointments().filter((a) => a.podiatristId === user?.id));
-  
-  // Force re-render when appointments change
+  // Cargar sesiones, pacientes y citas desde API
   useEffect(() => {
-    // This effect will run when refreshTrigger changes, causing a re-render
-  }, [refreshTrigger]);
+    if (!user?.id) return;
+    const load = async () => {
+      const [sessRes, patRes, aptRes] = await Promise.all([
+        api.get<{ success?: boolean; sessions?: ClinicalSession[] }>("/sessions"),
+        api.get<{ success?: boolean; patients?: Patient[] }>("/patients"),
+        api.get<{ success?: boolean; appointments?: Appointment[] }>("/appointments"),
+      ]);
+      if (sessRes.success && Array.isArray(sessRes.data?.sessions)) setAllSessions(sessRes.data.sessions);
+      if (patRes.success && Array.isArray(patRes.data?.patients)) setAllPatients(patRes.data.patients);
+      if (aptRes.success && Array.isArray(aptRes.data?.appointments)) setAllAppointments(aptRes.data.appointments);
+    };
+    load();
+  }, [user?.id, refreshTrigger]);
 
   // Filter sessions based on role and podiatrist filter
   const filteredSessions: SessionWithPatient[] = useMemo(() => {
@@ -358,17 +354,17 @@ const CalendarPage = () => {
     setShowAppointmentForm(true);
   };
 
-  const handleAppointmentSubmit = (e: React.FormEvent) => {
+  const getPatientById = (id: string) => allPatients.find((p) => p.id === id) ?? null;
+
+  const handleAppointmentSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!appointmentForm.podiatristId || !appointmentForm.date) {
       return;
     }
 
-    // Convert empty string to null for pending patient
     const patientId = appointmentForm.patientId === "" ? null : appointmentForm.patientId;
     
-    // Validar que si es paciente pendiente, se proporcionen nombre y teléfono
     if (patientId === null) {
       if (!appointmentForm.pendingPatientName || !appointmentForm.pendingPatientPhone) {
         alert("Por favor, complete el nombre y teléfono del paciente pendiente.");
@@ -376,38 +372,34 @@ const CalendarPage = () => {
       }
     }
 
+    const body = {
+      patientId,
+      podiatristId: appointmentForm.podiatristId,
+      date: appointmentForm.date,
+      time: appointmentForm.time,
+      duration: appointmentForm.duration,
+      notes: appointmentForm.notes,
+      clinicId: user?.clinicId || undefined,
+      pendingPatientName: patientId === null ? appointmentForm.pendingPatientName : undefined,
+      pendingPatientPhone: patientId === null ? appointmentForm.pendingPatientPhone : undefined,
+    };
+
     if (editingAppointment) {
       const previousPodiatristId = editingAppointment.podiatristId;
       const newPodiatristId = appointmentForm.podiatristId;
       
-      updateAppointment(editingAppointment.id, {
-        patientId: patientId,
-        podiatristId: appointmentForm.podiatristId,
-        date: appointmentForm.date,
-        time: appointmentForm.time,
-        duration: appointmentForm.duration,
-        notes: appointmentForm.notes,
-        // Si se asigna un paciente existente, limpiar campos de paciente pendiente
-        // Si es paciente pendiente, guardar nombre y teléfono
-        pendingPatientName: patientId === null ? (appointmentForm.pendingPatientName || undefined) : undefined,
-        pendingPatientPhone: patientId === null ? (appointmentForm.pendingPatientPhone || undefined) : undefined,
-      });
+      const res = await api.put<{ success?: boolean; appointment?: Appointment }>(`/appointments/${editingAppointment.id}`, body);
+      if (!res.success) return;
       
-      // Send notification if podiatrist changed
       if (previousPodiatristId !== newPodiatristId) {
         const assignedPodiatrist = allUsers.find(u => u.id === newPodiatristId);
         const patient = patientId ? getPatientById(patientId) : null;
-        const appointmentDate = new Date(`${appointmentForm.date}T${appointmentForm.time}`);
-        const formattedDate = appointmentDate.toLocaleDateString("es-ES", {
-          weekday: "long",
-          day: "numeric",
-          month: "long",
-          year: "numeric",
+        const formattedDate = new Date(`${appointmentForm.date}T${appointmentForm.time}`).toLocaleDateString("es-ES", {
+          weekday: "long", day: "numeric", month: "long", year: "numeric",
         });
         const formattedTime = appointmentForm.time;
-        
         if (assignedPodiatrist) {
-          addNotification({
+          await api.post("/notifications", {
             userId: assignedPodiatrist.id,
             type: "appointment",
             title: "Cita reasignada",
@@ -425,49 +417,19 @@ const CalendarPage = () => {
           });
         }
       }
-      
-      addAuditLog({
-        userId: user?.id || "",
-        userName: user?.name || "",
-        action: "UPDATE_APPOINTMENT",
-        entityType: "appointment",
-        entityId: editingAppointment.id,
-        details: JSON.stringify({
-          appointmentId: editingAppointment.id,
-          patientId: patientId,
-          podiatristId: appointmentForm.podiatristId,
-          date: appointmentForm.date,
-        }),
-      });
     } else {
-      const newAppointment = saveAppointment({
-        patientId: patientId,
-        podiatristId: appointmentForm.podiatristId,
-        clinicId: user?.clinicId || "",
-        date: appointmentForm.date,
-        time: appointmentForm.time,
-        duration: appointmentForm.duration,
-        notes: appointmentForm.notes,
-        status: "scheduled",
-        createdBy: user?.id || "",
-        pendingPatientName: patientId === null ? appointmentForm.pendingPatientName : undefined,
-        pendingPatientPhone: patientId === null ? appointmentForm.pendingPatientPhone : undefined,
-      });
+      const res = await api.post<{ success?: boolean; appointment?: Appointment }>("/appointments", body);
+      if (!res.success) return;
+      const newAppointment = res.data?.appointment!;
       
-      // Send notification to assigned podiatrist
       const assignedPodiatrist = allUsers.find(u => u.id === appointmentForm.podiatristId);
       const patient = patientId ? getPatientById(patientId) : null;
-      const appointmentDate = new Date(`${appointmentForm.date}T${appointmentForm.time}`);
-      const formattedDate = appointmentDate.toLocaleDateString("es-ES", {
-        weekday: "long",
-        day: "numeric",
-        month: "long",
-        year: "numeric",
+      const formattedDate = new Date(`${appointmentForm.date}T${appointmentForm.time}`).toLocaleDateString("es-ES", {
+        weekday: "long", day: "numeric", month: "long", year: "numeric",
       });
       const formattedTime = appointmentForm.time;
-      
       if (assignedPodiatrist) {
-        addNotification({
+        await api.post("/notifications", {
           userId: assignedPodiatrist.id,
           type: "appointment",
           title: "Nueva cita asignada",
@@ -484,46 +446,19 @@ const CalendarPage = () => {
           },
         });
       }
-      
-      addAuditLog({
-        userId: user?.id || "",
-        userName: user?.name || "",
-        action: "CREATE_APPOINTMENT",
-        entityType: "appointment",
-        entityId: newAppointment.id,
-        details: JSON.stringify({
-          appointmentId: newAppointment.id,
-          patientId: patientId,
-          podiatristId: appointmentForm.podiatristId,
-          date: appointmentForm.date,
-        }),
-      });
     }
     
     setShowAppointmentForm(false);
     setAppointmentForm(emptyAppointmentForm);
     setEditingAppointment(null);
+    setRefreshTrigger((prev) => prev + 1);
   };
 
-  const handleCancelAppointment = (appointment: Appointment) => {
-    if (confirm("¿Cancelar esta cita?")) {
-      updateAppointment(appointment.id, { status: "cancelled" });
-      
-      addAuditLog({
-        userId: user?.id || "",
-        userName: user?.name || "",
-        action: "CANCEL_APPOINTMENT",
-        entityType: "appointment",
-        entityId: appointment.id,
-        details: JSON.stringify({
-          appointmentId: appointment.id,
-          patientId: appointment.patientId,
-        }),
-      });
-      
-      // Trigger refresh to update the view
-      setRefreshTrigger(prev => prev + 1);
-    }
+  const handleCancelAppointment = async (appointment: Appointment) => {
+    if (!confirm("¿Cancelar esta cita?")) return;
+    const res = await api.delete<{ success?: boolean }>(`/appointments/${appointment.id}`);
+    if (!res.success) return;
+    setRefreshTrigger((prev) => prev + 1);
   };
 
   // Get clinic patients for the form (podólogos de la clínica, o del usuario, o de los asignados a la recepcionista)

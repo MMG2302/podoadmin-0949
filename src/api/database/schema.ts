@@ -67,6 +67,7 @@ export const createdUsers = sqliteTable('created_users', {
   appleId: text('apple_id'), // ID único de Apple
   oauthProvider: text('oauth_provider'), // 'google' | 'apple' | null
   avatarUrl: text('avatar_url'), // URL del avatar (desde OAuth)
+  assignedPodiatristIds: text('assigned_podiatrist_ids'), // JSON array para receptionists
 });
 
 // Tabla de créditos de usuario
@@ -157,6 +158,30 @@ export const auditLog = sqliteTable('audit_log', {
   clinicId: text('clinic_id'),
 });
 
+// Tabla de notificaciones (recipient = userId)
+export const notifications = sqliteTable('notifications', {
+  id: text('id').primaryKey(),
+  userId: text('user_id').notNull(), // destinatario
+  type: text('type').notNull(), // reassignment | appointment | credit | system | admin_message
+  title: text('title').notNull(),
+  message: text('message').notNull(),
+  read: integer('read', { mode: 'boolean' }).notNull().default(false),
+  metadata: text('metadata'), // JSON
+  createdAt: text('created_at').notNull(),
+});
+
+// Tabla de mensajes enviados (admin/super_admin)
+export const sentMessages = sqliteTable('sent_messages', {
+  id: text('id').primaryKey(),
+  senderId: text('sender_id').notNull(),
+  senderName: text('sender_name').notNull(),
+  subject: text('subject').notNull(),
+  body: text('body').notNull(),
+  recipientIds: text('recipient_ids').notNull(), // JSON array
+  recipientType: text('recipient_type').notNull(), // all | specific | single
+  sentAt: text('sent_at').notNull(),
+});
+
 // Tabla de rate limiting (para persistencia)
 export const rateLimitAttempts = sqliteTable('rate_limit_attempts', {
   identifier: text('identifier').primaryKey(), // email:IP o solo email
@@ -206,6 +231,38 @@ export const emailVerificationTokens = sqliteTable('email_verification_tokens', 
   expiresAt: integer('expires_at').notNull(), // Timestamp en milisegundos
   used: integer('used', { mode: 'boolean' }).notNull().default(false),
   createdAt: text('created_at').notNull(),
+});
+
+// Información profesional (podólogos independientes)
+export const professionalInfo = sqliteTable('professional_info', {
+  userId: text('user_id').primaryKey(),
+  name: text('name').notNull(),
+  phone: text('phone').notNull().default(''),
+  email: text('email').notNull().default(''),
+  address: text('address').notNull().default(''),
+  city: text('city').notNull().default(''),
+  postalCode: text('postal_code').notNull().default(''),
+  licenseNumber: text('license_number').notNull().default(''),
+  professionalLicense: text('professional_license').notNull().default(''),
+});
+
+// Licencia profesional (todos los podólogos)
+export const professionalLicenses = sqliteTable('professional_licenses', {
+  userId: text('user_id').primaryKey(),
+  license: text('license').notNull().default(''),
+});
+
+// Credenciales profesionales (podólogos de clínica)
+export const professionalCredentials = sqliteTable('professional_credentials', {
+  userId: text('user_id').primaryKey(),
+  cedula: text('cedula').notNull().default(''),
+  registro: text('registro').notNull().default(''),
+});
+
+// Logos profesionales (podólogos independientes)
+export const professionalLogos = sqliteTable('professional_logos', {
+  userId: text('user_id').primaryKey(),
+  logo: text('logo').notNull(), // base64
 });
 
 // Tabla de rate limiting para registro

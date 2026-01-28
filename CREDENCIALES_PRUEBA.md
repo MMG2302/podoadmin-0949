@@ -148,6 +148,28 @@ Si ves este error, verifica:
 
 ---
 
+## 🗄️ Usuarios mock cuando todo usa DB
+
+Si la app está **migrada a base de datos (D1)** y el login busca primero en DB (`getUserByEmailFromDB`), los usuarios mock (estas credenciales) **deben estar en la DB** para poder iniciar sesión.
+
+### Cómo dejar los usuarios mock en la DB
+
+1. **Generar el SQL de seed** (si aún no existe o cambiaste la lista de mock):
+   ```bash
+   npm run db:seed-mock-users
+   ```
+   Eso crea/actualiza `src/api/migrations/0006_seed_mock_users.sql` con los mismos usuarios y contraseñas hasheadas.
+
+2. **Aplicar el seed a tu base D1** (tras las migraciones de schema):
+   ```bash
+   wrangler d1 execute <NOMBRE_DE_TU_DB> --remote --file=src/api/migrations/0006_seed_mock_users.sql
+   ```
+   Usa `--local` en lugar de `--remote` si estás en entorno local.
+
+Con eso, **admin@podoadmin.com** / **admin123** y el resto de credenciales de esta guía siguen funcionando aunque todo el auth use DB.
+
+---
+
 ## 📝 Notas
 
 - Todos los passwords son en minúsculas

@@ -5,7 +5,9 @@ import {
   getAuditLogsByUser,
   getAuditLogsByAction,
   getAllAuditLogs,
+  logAuditEvent,
 } from '../utils/audit-log';
+import { getClientIP } from '../utils/ip-tracking';
 
 const auditLogRoutes = new Hono();
 
@@ -38,6 +40,48 @@ function mapDbLogToApiLog(log: any) {
 
 // Todas las rutas requieren autenticación
 auditLogRoutes.use('*', requireAuth);
+
+/**
+ * POST /api/audit-logs
+ * Registra un evento de auditoría desde el frontend (solo para eventos UI/cliente).
+ * IMPORTANTE: Acciones críticas deben registrarse dentro de los endpoints de negocio.
+ */
+auditLogRoutes.post('/', async (c) => {
+  try {
+    const user = c.get('user');
+    const body = (await c.req.json().catch(() => ({}))) as {
+      action?: string;
+      resourceType?: string;
+      resourceId?: string;
+      details?: Record<string, unknown>;
+      clinicId?: string;
+    };
+
+    const action = String(body.action ?? '').trim();
+    const resourceType = String(body.resourceType ?? '').trim();
+    const resourceId = body.resourceId ? String(body.resourceId) : undefined;
+
+    if (!action || !resourceType) {
+      return c.json({ error: 'action y resourceType son requeridos' }, 400);
+    }
+
+    await logAuditEvent({
+      userId: user.userId,
+      action,
+      resourceType,
+      resourceId,
+      details: body.details ?? undefined,
+      ipAddress: getClientIP(c.req.raw.headers),
+      userAgent: c.req.header('User-Agent') || undefined,
+      clinicId: body.clinicId ?? user.clinicId ?? undefined,
+    });
+
+    return c.json({ success: true });
+  } catch (error) {
+    console.error('Error registrando evento de auditoría:', error);
+    return c.json({ error: 'Error interno' }, 500);
+  }
+});
 
 /**
  * GET /api/audit-logs/user/:userId

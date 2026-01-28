@@ -1,11 +1,10 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Route, Switch, Link } from "wouter";
 import { MainLayout } from "../components/layout/main-layout";
 import { useLanguage } from "../contexts/language-context";
-import { useAuth, getAllUsers } from "../contexts/auth-context";
+import { useAuth } from "../contexts/auth-context";
 import { usePermissions } from "../hooks/use-permissions";
-import { getUserCredits, getPatients, getSessions, getClinicById } from "../lib/storage";
-import { seedDatabase } from "../lib/seed-data";
+import { api } from "../lib/api-client";
 import PatientsPage from "./patients-page";
 import SessionsPage from "./sessions-page";
 import CreditsPage from "./credits-page";
@@ -19,20 +18,36 @@ import CalendarPage from "./calendar-page";
 import MessagesPage from "./messages-page";
 import DistributeCreditsPage from "./distribute-credits-page";
 
+// Créditos por defecto para MainLayout hasta que cargue la API
+const defaultCredits = { userId: "", monthlyCredits: 0, extraCredits: 0, reservedCredits: 0, lastMonthlyReset: "", monthlyRenewalAmount: 0 };
+
 // Super Admin Dashboard - focused on Users, Credits, Settings
 const SuperAdminDashboard = () => {
   const { t } = useLanguage();
   const { user } = useAuth();
-  const credits = getUserCredits(user?.id || "");
-  const allUsers = getAllUsers();
+  const [credits, setCredits] = useState(defaultCredits);
+  const [allUsers, setAllUsers] = useState<{ id: string; name: string; email: string; role: string }[]>([]);
+  const [totalCreditsInSystem, setTotalCreditsInSystem] = useState(0);
+  const [creditsByUser, setCreditsByUser] = useState<Record<string, number>>({});
+
+  useEffect(() => {
+    if (!user?.id) return;
+    api.get<{ success?: boolean; credits?: typeof defaultCredits }>("/credits/me").then((r) => {
+      if (r.success && r.data?.credits) setCredits(r.data.credits as typeof defaultCredits);
+    });
+    api.get<{ success?: boolean; users?: { id: string; name: string; email: string; role: string }[] }>("/users").then((r) => {
+      if (r.success && Array.isArray(r.data?.users)) setAllUsers(r.data.users);
+    });
+    api.get<{ success?: boolean; totalCreditsInSystem?: number; byUser?: Record<string, number> }>("/credits/summary").then((r) => {
+      if (r.success) {
+        if (typeof r.data?.totalCreditsInSystem === "number") setTotalCreditsInSystem(r.data.totalCreditsInSystem);
+        if (r.data?.byUser && typeof r.data.byUser === "object") setCreditsByUser(r.data.byUser);
+      }
+    });
+  }, [user?.id]);
+
   const podiatrists = allUsers.filter(u => u.role === "podiatrist");
   const clinicAdmins = allUsers.filter(u => u.role === "clinic_admin");
-
-  // Calculate total credits across all podiatrists
-  const totalCreditsInSystem = podiatrists.reduce((acc, pod) => {
-    const podCredits = getUserCredits(pod.id);
-    return acc + podCredits.monthlyCredits + podCredits.extraCredits;
-  }, 0);
 
   const stats = [
     { label: t.nav.users, value: allUsers.length.toString(), path: "/users" },
@@ -132,7 +147,7 @@ const SuperAdminDashboard = () => {
           </div>
           <div className="bg-white rounded-xl border border-gray-100 divide-y divide-gray-50">
             {allUsers.slice(0, 5).map((u) => {
-              const userCredits = getUserCredits(u.id);
+              const userCreditsDisplay = creditsByUser[u.id] ?? 0;
               const roleLabel = {
                 super_admin: t.roles.superAdmin,
                 clinic_admin: t.roles.clinicAdmin,
@@ -161,7 +176,7 @@ const SuperAdminDashboard = () => {
                   </span>
                   {u.role === "podiatrist" && (
                     <span className="text-sm text-gray-500">
-                      {userCredits.monthlyCredits + userCredits.extraCredits} créditos
+                      {userCreditsDisplay} créditos
                     </span>
                   )}
                 </div>
@@ -174,24 +189,42 @@ const SuperAdminDashboard = () => {
   );
 };
 
-// Podiatrist Dashboard - Patient and session focused
+// Tipos mínimos para pacientes/sesiones desde API
+type PatientRow = { id: string; firstName: string; lastName: string; createdBy: string };
+type SessionRow = { id: string; patientId: string; sessionDate: string; status: string; createdAt: string; createdBy: string };
+
+// Podiatrist Dashboard - Patient and session focused (datos desde API)
 const PodiatristDashboard = () => {
   const { t } = useLanguage();
   const { user } = useAuth();
+  const [credits, setCredits] = useState(defaultCredits);
+  const [patients, setPatients] = useState<PatientRow[]>([]);
+  const [sessions, setSessions] = useState<SessionRow[]>([]);
 
-  const credits = getUserCredits(user?.id || "");
-  const patients = getPatients().filter(p => p.createdBy === user?.id);
-  const sessions = getSessions().filter(s => s.createdBy === user?.id);
+  useEffect(() => {
+    if (!user?.id) return;
+    api.get<{ success?: boolean; credits?: typeof defaultCredits }>("/credits/me").then((r) => {
+      if (r.success && r.data?.credits) setCredits(r.data.credits as typeof defaultCredits);
+    });
+    api.get<{ success?: boolean; patients?: PatientRow[] }>("/patients").then((r) => {
+      if (r.success && Array.isArray(r.data?.patients)) setPatients(r.data.patients.filter((p: PatientRow) => p.createdBy === user?.id));
+    });
+    api.get<{ success?: boolean; sessions?: SessionRow[] }>("/sessions").then((r) => {
+      if (r.success && Array.isArray(r.data?.sessions)) setSessions(r.data.sessions.filter((s: SessionRow) => s.createdBy === user?.id));
+    });
+  }, [user?.id]);
+
   const sessionsThisMonth = sessions.filter((s) => {
     const sessionDate = new Date(s.sessionDate);
     const now = new Date();
     return sessionDate.getMonth() === now.getMonth() && sessionDate.getFullYear() === now.getFullYear();
   });
 
+  const creditsRemaining = credits.monthlyCredits + credits.extraCredits - credits.reservedCredits;
   const stats = [
     { label: t.dashboard.totalPatients, value: patients.length.toString(), path: "/patients" },
     { label: t.dashboard.sessionsThisMonth, value: sessionsThisMonth.length.toString(), path: "/sessions" },
-    { label: t.dashboard.creditsRemaining, value: `${credits.monthlyCredits + credits.extraCredits - credits.reservedCredits}`, path: "/credits" },
+    { label: t.dashboard.creditsRemaining, value: `${creditsRemaining}`, path: "/credits" },
   ];
 
   const recentSessions = sessions
@@ -360,11 +393,18 @@ const PodiatristDashboard = () => {
   );
 };
 
-// Admin (Support) Dashboard
+// Admin (Support) Dashboard - créditos desde API
 const AdminDashboard = () => {
   const { t } = useLanguage();
   const { user } = useAuth();
-  const credits = getUserCredits(user?.id || "");
+  const [credits, setCredits] = useState(defaultCredits);
+
+  useEffect(() => {
+    if (!user?.id) return;
+    api.get<{ success?: boolean; credits?: typeof defaultCredits }>("/credits/me").then((r) => {
+      if (r.success && r.data?.credits) setCredits(r.data.credits as typeof defaultCredits);
+    });
+  }, [user?.id]);
 
   return (
     <MainLayout title={t.dashboard.title} credits={credits}>
@@ -435,11 +475,18 @@ const AdminDashboard = () => {
   );
 };
 
-// Clinic Admin Dashboard - Placeholder for now (task 14)
+// Clinic Admin Dashboard - créditos desde API
 const ClinicAdminDashboard = () => {
   const { t } = useLanguage();
   const { user } = useAuth();
-  const credits = getUserCredits(user?.id || "");
+  const [credits, setCredits] = useState(defaultCredits);
+
+  useEffect(() => {
+    if (!user?.id) return;
+    api.get<{ success?: boolean; credits?: typeof defaultCredits }>("/credits/me").then((r) => {
+      if (r.success && r.data?.credits) setCredits(r.data.credits as typeof defaultCredits);
+    });
+  }, [user?.id]);
 
   return (
     <MainLayout title={t.dashboard.title} credits={credits}>
@@ -522,21 +569,41 @@ const ClinicAdminDashboard = () => {
   );
 };
 
-// Receptionist Dashboard - pacientes y calendario de podólogos asignados, sin créditos ni sesiones
+// Receptionist Dashboard - datos desde API (pacientes, clínica, podólogos asignados)
 const ReceptionistDashboard = () => {
   const { t } = useLanguage();
   const { user } = useAuth();
-  const credits = getUserCredits(user?.id || "");
-  const allPatients = getPatients();
+  const [credits, setCredits] = useState(defaultCredits);
+  const [allPatients, setAllPatients] = useState<{ createdBy: string }[]>([]);
+  const [clinic, setClinic] = useState<{ clinicName: string } | null>(null);
+  const [assignedPodiatrists, setAssignedPodiatrists] = useState<{ id: string; name: string }[]>([]);
+
   const assignedIds = user?.assignedPodiatristIds ?? [];
   const patientCount = allPatients.filter((p) => assignedIds.includes(p.createdBy)).length;
-  const clinic = user?.clinicId ? getClinicById(user.clinicId) : null;
 
-  // Obtener nombres de podólogos asignados (si los hay)
-  const allUsers = getAllUsers();
-  const assignedPodiatrists = assignedIds.length
-    ? allUsers.filter((u) => assignedIds.includes(u.id))
-    : [];
+  useEffect(() => {
+    if (!user?.id) return;
+    api.get<{ success?: boolean; credits?: typeof defaultCredits }>("/credits/me").then((r) => {
+      if (r.success && r.data?.credits) setCredits(r.data.credits as typeof defaultCredits);
+    });
+    api.get<{ success?: boolean; patients?: { createdBy: string }[] }>("/patients").then((r) => {
+      if (r.success && Array.isArray(r.data?.patients)) setAllPatients(r.data.patients);
+    });
+    api
+      .get<{ success?: boolean; assignedPodiatristIds?: string[]; podiatrists?: { id: string; name: string }[] }>(
+        `/receptionists/assigned-podiatrists/${user.id}`
+      )
+      .then((r) => {
+        if (r.success && Array.isArray(r.data?.podiatrists)) {
+          setAssignedPodiatrists(r.data.podiatrists);
+        }
+      });
+    if (user?.clinicId) {
+      api.get<{ success?: boolean; clinic?: { clinicName: string } }>(`/clinics/${user.clinicId}`).then((r) => {
+        if (r.success && r.data?.clinic) setClinic(r.data.clinic);
+      });
+    }
+  }, [user?.id, user?.clinicId]);
 
   const stats = [
     { label: "Pacientes de podólogos asignados", value: patientCount.toString(), path: "/patients" },
@@ -624,11 +691,6 @@ const ReceptionistDashboard = () => {
 // Dashboard Home - routes to appropriate dashboard based on role
 const DashboardHome = () => {
   const { isSuperAdmin, isClinicAdmin, isAdmin, isPodiatrist, isReceptionist } = usePermissions();
-
-  // Seed database on first load
-  useEffect(() => {
-    seedDatabase();
-  }, []);
 
   if (isSuperAdmin) return <SuperAdminDashboard />;
   if (isClinicAdmin) return <ClinicAdminDashboard />;

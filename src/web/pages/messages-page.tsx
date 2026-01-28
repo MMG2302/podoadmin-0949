@@ -1,16 +1,9 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { MainLayout } from "../components/layout/main-layout";
 import { useLanguage } from "../contexts/language-context";
 import { useAuth, getAllUsers } from "../contexts/auth-context";
-import {
-  getUserCredits,
-  addNotification,
-  addSentMessage,
-  getSentMessages,
-  getSentMessageReadStatus,
-  addAuditLog,
-  SentMessage,
-} from "../lib/storage";
+import { api } from "../lib/api-client";
+import { getUserCredits, SentMessage } from "../lib/storage";
 
 type RecipientMode = "all" | "specific" | "single";
 type ViewMode = "compose" | "sent";
@@ -31,12 +24,16 @@ const MessagesPage = () => {
   const [isSending, setIsSending] = useState(false);
   const [successMessage, setSuccessMessage] = useState("");
   const [error, setError] = useState("");
-  const [sentMessages, setSentMessages] = useState<SentMessage[]>(getSentMessages());
+  const [sentMessages, setSentMessages] = useState<(SentMessage & { readStatus?: { total: number; read: number; unread: number } })[]>([]);
 
-  // Refresh sent messages
-  const refreshSentMessages = () => {
-    setSentMessages(getSentMessages());
+  const refreshSentMessages = async () => {
+    const r = await api.get<{ success?: boolean; messages?: (SentMessage & { readStatus?: { total: number; read: number; unread: number } })[] }>("/messages");
+    if (r.success && Array.isArray(r.data?.messages)) setSentMessages(r.data.messages);
   };
+
+  useEffect(() => {
+    refreshSentMessages();
+  }, [user?.id]);
 
   // Get recipients based on mode
   const getRecipients = (): string[] => {
@@ -64,11 +61,10 @@ const MessagesPage = () => {
     });
   };
 
-  const handleSend = () => {
+  const handleSend = async () => {
     setError("");
     setSuccessMessage("");
 
-    // Validation
     if (!subject.trim()) {
       setError(t.messaging.subjectRequired);
       return;
@@ -85,64 +81,28 @@ const MessagesPage = () => {
 
     setIsSending(true);
 
-    // Simulate sending delay
-    setTimeout(() => {
-      // Save sent message
-      const sentMessage = addSentMessage({
-        senderId: user?.id || "",
-        senderName: user?.name || "",
-        subject: subject.trim(),
-        body: messageBody.trim(),
-        recipientIds: recipients,
-        recipientType: recipientMode,
-      });
+    const res = await api.post<{ success?: boolean; error?: string }>("/messages", {
+      subject: subject.trim(),
+      body: messageBody.trim(),
+      recipientIds: recipients,
+      recipientType: recipientMode,
+    });
 
-      // Create notification for each recipient
-      recipients.forEach(recipientId => {
-        addNotification({
-          userId: recipientId,
-          type: "admin_message",
-          title: subject.trim(),
-          message: messageBody.trim(),
-          metadata: {
-            senderId: user?.id,
-            senderName: user?.name,
-            messageId: sentMessage.id,
-            sentAt: sentMessage.sentAt,
-            subject: subject.trim(),
-          },
-        });
-      });
-      
-      // Audit log for message sent
-      addAuditLog({
-        userId: user?.id || "",
-        userName: user?.name || "",
-        action: "CREATE",
-        entityType: "message",
-        entityId: sentMessage.id,
-        details: JSON.stringify({
-          action: "admin_message_sent",
-          recipientCount: recipients.length,
-          recipientType: recipientMode,
-          subject: subject.trim(),
-        }),
-      });
+    setIsSending(false);
+    if (!res.success) {
+      setError(res.error || (res.data as { error?: string })?.error || "Error al enviar");
+      return;
+    }
 
-      // Reset form
-      setSubject("");
-      setMessageBody("");
-      setSelectedUsers(new Set());
-      setSingleUser("");
-      setRecipientMode("all");
-      setShowPreview(false);
-      setIsSending(false);
-      setSuccessMessage(t.messaging.messageSent);
-      refreshSentMessages();
-
-      // Clear success message after 3 seconds
-      setTimeout(() => setSuccessMessage(""), 3000);
-    }, 500);
+    setSubject("");
+    setMessageBody("");
+    setSelectedUsers(new Set());
+    setSingleUser("");
+    setRecipientMode("all");
+    setShowPreview(false);
+    setSuccessMessage(t.messaging.messageSent);
+    refreshSentMessages();
+    setTimeout(() => setSuccessMessage(""), 3000);
   };
 
   const formatDate = (dateStr: string) => {
@@ -459,7 +419,7 @@ const MessagesPage = () => {
             ) : (
               <div className="divide-y divide-gray-50">
                 {sentMessages.map((msg) => {
-                  const readStatus = getSentMessageReadStatus(msg.id);
+                  const readStatus = msg.readStatus ?? { total: 0, read: 0, unread: 0 };
                   return (
                     <div key={msg.id} className="p-4 hover:bg-gray-50 transition-colors">
                       <div className="flex items-start gap-4">

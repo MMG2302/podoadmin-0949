@@ -3,8 +3,10 @@ import { requireAuth } from '../middleware/auth';
 import { requirePermission } from '../middleware/authorization';
 import { validateData, createPatientSchema, updatePatientSchema } from '../utils/validation';
 import { database } from '../database';
-import { patients as patientsTable } from '../database/schema';
+import { patients as patientsTable, clinicalSessions as sessionsTable, createdUsers as createdUsersTable } from '../database/schema';
 import { eq } from 'drizzle-orm';
+import { logAuditEvent } from '../utils/audit-log';
+import { getClientIP } from '../utils/ip-tracking';
 
 const patientsRoutes = new Hono();
 
@@ -85,6 +87,104 @@ async function generateFolio(clinicId?: string | null): Promise<string> {
 
 // Todas las rutas de pacientes requieren autenticación
 patientsRoutes.use('*', requireAuth);
+
+/**
+ * POST /api/patients/:patientId/reassign
+ * Reasigna el paciente (y todas sus sesiones) a otro podólogo.
+ * Body: { newPodiatristId: string }
+ * Requiere: permiso reassign_patients (clinic_admin)
+ */
+patientsRoutes.post(
+  '/:patientId/reassign',
+  requirePermission('reassign_patients'),
+  async (c) => {
+    try {
+      const user = c.get('user');
+      const patientId = c.req.param('patientId');
+      const body = (await c.req.json().catch(() => ({}))) as { newPodiatristId?: string };
+      const newPodiatristId = String(body.newPodiatristId ?? '').trim();
+
+      if (!newPodiatristId) {
+        return c.json({ error: 'newPodiatristId es requerido' }, 400);
+      }
+
+      // Validar paciente existente
+      const patientRows = await database
+        .select()
+        .from(patientsTable)
+        .where(eq(patientsTable.id, patientId))
+        .limit(1);
+      const patient = patientRows[0];
+      if (!patient) return c.json({ error: 'Paciente no encontrado' }, 404);
+
+      // En clinic_admin, restringir a su clínica cuando exista clinicId
+      if (user?.role === 'clinic_admin' && user.clinicId) {
+        // Si el paciente tiene clinicId, debe coincidir. Si no, igualmente validamos por destino (podólogo de la clínica).
+        if (patient.clinicId && patient.clinicId !== user.clinicId) {
+          return c.json({ error: 'Acceso denegado' }, 403);
+        }
+      }
+
+      // Validar que el destino exista y sea podiatrist (y, si aplica, de la misma clínica)
+      const targetRows = await database
+        .select()
+        .from(createdUsersTable)
+        .where(eq(createdUsersTable.id, newPodiatristId))
+        .limit(1);
+      const target = targetRows[0];
+      if (!target || target.role !== 'podiatrist') {
+        return c.json({ error: 'Podólogo destino no encontrado' }, 404);
+      }
+      if (user?.role === 'clinic_admin' && user.clinicId) {
+        if (target.clinicId !== user.clinicId) {
+          return c.json({ error: 'Acceso denegado' }, 403);
+        }
+      }
+
+      const previousPodiatristId = patient.createdBy;
+      const now = new Date().toISOString();
+
+      // Persistir reasignación en DB (paciente + todas sus sesiones)
+      await database
+        .update(patientsTable)
+        .set({ createdBy: newPodiatristId, updatedAt: now })
+        .where(eq(patientsTable.id, patientId));
+
+      await database
+        .update(sessionsTable)
+        .set({ createdBy: newPodiatristId, updatedAt: now })
+        .where(eq(sessionsTable.patientId, patientId));
+
+      await logAuditEvent({
+        userId: user.userId,
+        action: 'REASSIGN',
+        resourceType: 'reassignment',
+        resourceId: patientId,
+        details: {
+          action: 'patient_reassignment',
+          patientId,
+          fromUserId: previousPodiatristId,
+          toUserId: newPodiatristId,
+        },
+        ipAddress: getClientIP(c.req.raw.headers),
+        userAgent: c.req.header('User-Agent') ?? undefined,
+        clinicId: user.clinicId ?? undefined,
+      });
+
+      const updatedPatient = (
+        await database.select().from(patientsTable).where(eq(patientsTable.id, patientId)).limit(1)
+      )[0];
+
+      return c.json({
+        success: true,
+        patient: updatedPatient ? mapDbPatient(updatedPatient) : null,
+      });
+    } catch (error) {
+      console.error('Error reasignando paciente:', error);
+      return c.json({ error: 'Error interno', message: 'Error al reasignar paciente' }, 500);
+    }
+  }
+);
 
 /**
  * GET /api/patients

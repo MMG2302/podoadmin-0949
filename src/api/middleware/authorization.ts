@@ -7,6 +7,7 @@ type Permission =
   | 'manage_patients'
   | 'view_sessions'
   | 'manage_sessions'
+  | 'manage_appointments'
   | 'view_credits'
   | 'manage_credits'
   | 'purchase_credits'
@@ -37,6 +38,7 @@ const rolePermissions: Record<UserRole, Permission[]> = {
     'view_dashboard',
     'view_patients',
     'view_sessions',
+    'manage_appointments',
     'view_credits',
     'view_clinic_stats',
     'reassign_patients',
@@ -56,8 +58,17 @@ const rolePermissions: Record<UserRole, Permission[]> = {
     'manage_patients',
     'view_sessions',
     'manage_sessions',
+    'manage_appointments',
     'view_credits',
     'print_documents',
+    'view_settings',
+  ],
+  receptionist: [
+    'view_dashboard',
+    'view_patients',
+    'manage_patients',
+    'view_sessions',
+    'manage_appointments',
     'view_settings',
   ],
 };

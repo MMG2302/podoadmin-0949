@@ -18,7 +18,6 @@ import {
   releaseCredit,
   exportPatientData,
   addAuditLog,
-  addNotification,
   getClinicLogo,
   getProfessionalLogo,
   getClinicById,
@@ -193,13 +192,11 @@ const SessionsPage = () => {
       if (!showForm) return;
       
       // Log violation
-      addAuditLog({
-        userId: user?.id || "",
-        userName: user?.name || "",
+      api.post("/audit-logs", {
         action: "PRINT_VIOLATION_FORM",
-        entityType: "session",
-        entityId: editingSession?.id || "new_session",
-        details: JSON.stringify({
+        resourceType: "session",
+        resourceId: editingSession?.id || "new_session",
+        details: {
           sessionId: editingSession?.id || "new_session",
           patientId: formData.patientId || null,
           podiatristId: user?.id,
@@ -207,11 +204,11 @@ const SessionsPage = () => {
           timestamp: new Date().toISOString(),
           message: "Intento de impresión desde formulario de sesión - Incumplimiento con el servicio otorgado",
           violationType: "print_from_form",
-        }),
+        },
       });
       
       // Send notification
-      addNotification({
+      api.post("/notifications", {
         userId: user?.id || "",
         type: "system",
         title: "Incumplimiento detectado",

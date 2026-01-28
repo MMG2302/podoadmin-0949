@@ -2,7 +2,7 @@ import { Hono } from 'hono';
 import { generateTokenPair, verifyRefreshToken } from '../utils/jwt';
 import { requireAuth } from '../middleware/auth';
 import { formatCookie, getAccessTokenCookieOptions, getRefreshTokenCookieOptions, createDeleteCookie, isProduction } from '../utils/cookies';
-import { checkRateLimit, recordFailedAttempt, clearFailedAttempts, getFailedAttemptCount } from '../utils/rate-limit';
+import { checkRateLimitD1, recordFailedAttemptD1, clearFailedAttemptsD1, getFailedAttemptCountD1 } from '../utils/rate-limit-d1';
 import { sendFailedLoginNotification, shouldSendNotification } from '../utils/email-notifications';
 import { validateData, loginSchema, registerSchema, verifyEmailSchema } from '../utils/validation';
 import { escapeHtml, sanitizeEmail } from '../utils/sanitization';
@@ -57,8 +57,8 @@ authRoutes.post('/login', async (c) => {
     let rateLimitCheck = { allowed: true as boolean };
     let attemptCount = 0;
     if (!isWhitelisted) {
-      rateLimitCheck = checkRateLimit(identifier);
-      attemptCount = getFailedAttemptCount(identifier);
+      rateLimitCheck = await checkRateLimitD1(identifier);
+      attemptCount = await getFailedAttemptCountD1(identifier);
     }
 
     // Verificar CAPTCHA si hay muchos intentos fallidos
@@ -222,7 +222,7 @@ authRoutes.post('/login', async (c) => {
       let attemptCount = 0;
       
       if (!isWhitelisted) {
-        failedAttempt = recordFailedAttempt(identifier);
+        failedAttempt = await recordFailedAttemptD1(identifier);
         attemptCount = failedAttempt.count;
       }
 
@@ -423,7 +423,7 @@ authRoutes.post('/login', async (c) => {
 
     // Limpiar intentos fallidos en login exitoso (solo si no está whitelisted)
     if (!isWhitelisted) {
-      clearFailedAttempts(identifier);
+      await clearFailedAttemptsD1(identifier);
     }
 
     // Registrar métrica de login exitoso

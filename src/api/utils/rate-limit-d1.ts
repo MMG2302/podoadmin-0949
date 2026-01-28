@@ -1,6 +1,6 @@
 import { database } from '../database';
 import { rateLimitAttempts } from '../database/schema';
-import { eq, and, gt, lt } from 'drizzle-orm';
+import { eq, lt } from 'drizzle-orm';
 
 /**
  * Rate limiting con persistencia en D1
@@ -258,13 +258,7 @@ export async function cleanupOldAttemptsD1(): Promise<void> {
 
     await database
       .delete(rateLimitAttempts)
-      .where(
-        and(
-          lt(rateLimitAttempts.firstAttempt, cutoffTime),
-          // Solo eliminar si no está bloqueado o el bloqueo expiró
-          // (esto se maneja mejor con una query más compleja, simplificado aquí)
-        )
-      );
+      .where(lt(rateLimitAttempts.firstAttempt, cutoffTime));
   } catch (error) {
     console.error('Error limpiando intentos antiguos en D1:', error);
   }

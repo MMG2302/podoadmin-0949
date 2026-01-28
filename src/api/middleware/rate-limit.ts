@@ -1,9 +1,9 @@
 import { createMiddleware } from 'hono/factory';
-import { checkRateLimit } from '../utils/rate-limit';
+import { checkRateLimitD1 } from '../utils/rate-limit-d1';
 
 /**
  * Middleware de rate limiting para endpoints de autenticación
- * Puede aplicarse a rutas específicas que requieren protección
+ * Usa D1 para persistencia entre Workers y cold starts.
  */
 export const rateLimitMiddleware = createMiddleware(async (c, next) => {
   // Obtener identificador (email, IP, etc.)
@@ -15,7 +15,7 @@ export const rateLimitMiddleware = createMiddleware(async (c, next) => {
   }
 
   const identifier = email.toLowerCase().trim();
-  const rateLimitCheck = checkRateLimit(identifier);
+  const rateLimitCheck = await checkRateLimitD1(identifier);
 
   if (!rateLimitCheck.allowed) {
     const delayMs = rateLimitCheck.delay || 0;

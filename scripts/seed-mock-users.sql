@@ -1,5 +1,6 @@
--- Seed de usuarios mock para que el login siga funcionando cuando todo use DB.
--- Ejecutar después de las migraciones de schema. INSERT OR IGNORE evita duplicados.
+-- Seed de usuarios mock/demo (SOLO PARA USO LOCAL).
+-- Aplicar con: bun db:seed:local (o wrangler d1 execute DB --local --file=scripts/seed-mock-users.sql)
+-- INSERT OR IGNORE evita duplicados. No se ejecuta en db:migrate:remote.
 
 INSERT OR IGNORE INTO created_users (id, user_id, email, name, role, clinic_id, password, created_at, updated_at, created_by, is_blocked, is_banned, is_enabled, email_verified, terms_accepted, registration_source) VALUES ('user_super_admin', 'user_super_admin', 'admin@podoadmin.com', 'Super Admin', 'super_admin', NULL, '$2b$12$dShxP8XPTwyaJ7PcLu0Jve019e5mCppccLuCHzVXvA.uk7qAGnQzy', '2026-01-28T03:18:48.747Z', '2026-01-28T03:18:48.747Z', 'seed_mock', 0, 0, 1, 0, 0, 'admin');
 INSERT OR IGNORE INTO created_users (id, user_id, email, name, role, clinic_id, password, created_at, updated_at, created_by, is_blocked, is_banned, is_enabled, email_verified, terms_accepted, registration_source) VALUES ('user_admin', 'user_admin', 'support@podoadmin.com', 'Admin Support', 'admin', NULL, '$2b$12$346OLxbHicrkyglXOqxFc.GQHxnbmKFPvPSe4AYpXDO9TyMD5vKva', '2026-01-28T03:18:48.747Z', '2026-01-28T03:18:48.747Z', 'seed_mock', 0, 0, 1, 0, 0, 'admin');

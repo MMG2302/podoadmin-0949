@@ -582,20 +582,6 @@ export const addCreditTransaction = (
 // Audit log
 export const getAuditLogs = (): AuditLog[] => getItem<AuditLog[]>(KEYS.AUDIT_LOG, []);
 
-// Helper to get super admin user IDs
-const getSuperAdminUserIds = (): string[] => {
-  // Known super admin IDs from the system
-  const knownSuperAdmins = ["user_super_admin_001"];
-  
-  // Also check created users for super admins
-  const createdUsers = getCreatedUsers();
-  const createdSuperAdmins = createdUsers
-    .filter(u => u.role === "super_admin")
-    .map(u => u.id);
-  
-  return [...knownSuperAdmins, ...createdSuperAdmins];
-};
-
 export const addAuditLog = (log: Omit<AuditLog, "id" | "createdAt">): AuditLog => {
   const logs = getAuditLogs();
   const newLog: AuditLog = {
@@ -605,69 +591,6 @@ export const addAuditLog = (log: Omit<AuditLog, "id" | "createdAt">): AuditLog =
   };
   logs.unshift(newLog); // Add to beginning
   setItem(KEYS.AUDIT_LOG, logs.slice(0, 500)); // Keep only last 500 entries
-  
-  // Check for 5 consecutive PRINT_VIOLATION_FORM actions from the same user
-  if (log.action === "PRINT_VIOLATION_FORM") {
-    const recentViolations = logs
-      .filter(l => 
-        l.action === "PRINT_VIOLATION_FORM" &&
-        l.userId === log.userId
-      )
-      .slice(0, 5); // Get the 5 most recent violations from this user
-    
-    // If we have exactly 5 consecutive violations
-    if (recentViolations.length === 5) {
-      // Check if they are all within a reasonable time window (e.g., last hour)
-      const now = new Date().getTime();
-      const oneHourAgo = now - (60 * 60 * 1000);
-      const recentWithinHour = recentViolations.filter(l => 
-        new Date(l.createdAt).getTime() >= oneHourAgo
-      );
-      
-      // If 5 violations within the last hour, generate alert
-      if (recentWithinHour.length >= 5) {
-        // Get all super admin user IDs
-        const superAdminIds = getSuperAdminUserIds();
-        
-        // Send notification to all super admins
-        superAdminIds.forEach(superAdminId => {
-          addNotification({
-            userId: superAdminId,
-            type: "system",
-            title: "⚠️ Alerta: Múltiples violaciones de impresión",
-            message: `El usuario ${log.userName} (${log.userId}) ha intentado imprimir desde el formulario 5 veces consecutivas en la última hora. Esto indica un incumplimiento repetido con el servicio otorgado.`,
-            metadata: {
-              fromUserId: log.userId,
-              fromUserName: log.userName,
-              reason: "multiple_print_violations_alert",
-            },
-          });
-        });
-        
-        // Also create a special audit log entry for the alert
-        const alertLog: AuditLog = {
-          id: generateId(),
-          userId: log.userId,
-          userName: log.userName,
-          action: "ALERT_MULTIPLE_PRINT_VIOLATIONS",
-          entityType: "user",
-          entityId: log.userId,
-          details: JSON.stringify({
-            message: "Alerta generada: 5 intentos consecutivos de impresión desde formulario detectados",
-            violations: recentWithinHour.length,
-            timeWindow: "1 hora",
-            userId: log.userId,
-            userName: log.userName,
-            timestamp: new Date().toISOString(),
-          }),
-          createdAt: new Date().toISOString(),
-        };
-        logs.unshift(alertLog);
-        setItem(KEYS.AUDIT_LOG, logs.slice(0, 500));
-      }
-    }
-  }
-  
   return newLog;
 };
 
@@ -843,7 +766,7 @@ export const exportPatientData = (patientId: string, tenantId: string = "tenant_
   };
 };
 
-// Admin Messages (Sent Messages tracking)
+// Admin Messages (Sent Messages) - tipo compartido; persistencia vía API /api/messages
 export interface SentMessage {
   id: string;
   senderId: string;
@@ -854,38 +777,6 @@ export interface SentMessage {
   recipientType: "all" | "specific" | "single";
   sentAt: string;
 }
-
-const SENT_MESSAGES_KEY = "podoadmin_sent_messages";
-
-export const getSentMessages = (): SentMessage[] => {
-  return getItem<SentMessage[]>(SENT_MESSAGES_KEY, []);
-};
-
-export const addSentMessage = (message: Omit<SentMessage, "id" | "sentAt">): SentMessage => {
-  const messages = getSentMessages();
-  const newMessage: SentMessage = {
-    ...message,
-    id: generateId(),
-    sentAt: new Date().toISOString(),
-  };
-  messages.unshift(newMessage);
-  setItem(SENT_MESSAGES_KEY, messages.slice(0, 200)); // Keep max 200
-  return newMessage;
-};
-
-// Get read status count for a sent message
-export const getSentMessageReadStatus = (messageId: string): { total: number; read: number; unread: number } => {
-  const notifications = getItem<Notification[]>(NOTIFICATIONS_KEY, []);
-  const messageNotifications = notifications.filter(
-    n => n.type === "admin_message" && n.metadata?.messageId === messageId
-  );
-  const read = messageNotifications.filter(n => n.read).length;
-  return {
-    total: messageNotifications.length,
-    read,
-    unread: messageNotifications.length - read,
-  };
-};
 
 // ============================================
 // CLINIC MANAGEMENT

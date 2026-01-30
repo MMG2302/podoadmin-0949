@@ -22,6 +22,7 @@ export async function getUserByEmailFromDB(email: string): Promise<{
   isBlocked: boolean;
   isBanned: boolean;
   registrationSource?: string | null;
+  oauthProvider?: string | null;
 } | null> {
   try {
     const emailLower = email.toLowerCase().trim();
@@ -50,6 +51,7 @@ export async function getUserByEmailFromDB(email: string): Promise<{
       isBlocked: user.isBlocked || false,
       isBanned: user.isBanned || false,
       registrationSource: user.registrationSource || null,
+      oauthProvider: user.oauthProvider || null,
     };
   } catch (error) {
     console.error('Error obteniendo usuario por email:', error);

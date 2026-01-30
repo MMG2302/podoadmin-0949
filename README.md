@@ -60,13 +60,16 @@ Uses [Drizzle ORM](https://orm.drizzle.team/) with Cloudflare D1.
 ```bash
 bun db:generate         # Generate new migrations after changing schema
 bun db:migrate          # Apply migrations to local D1
+bun db:seed:local       # Insert mock users only in local D1 (optional, for dev)
 bun db:migrate:remote   # Apply migrations to remote D1 (production)
 ```
 
 **When to run migrations:**
-- After cloning or pulling the repo: `bun run db:migrate`
+- After cloning or pulling the repo: `bun run db:migrate`; luego `bun db:seed:local` si quieres usuarios mock en local
 - After changing `schema.ts`: `bun run db:generate` then `bun run db:migrate`
 - Before deploy / on production: `bun run db:migrate:remote` (or your CI step)
+
+**Usuarios mock (solo local):** Los usuarios de demostración ya no forman parte de las migraciones. Para tenerlos **solo en local**, tras `bun db:migrate` ejecuta `bun db:seed:local`; así el seed se aplica solo a la D1 local. `db:migrate:remote` no incluye seed, por lo que en remoto/producción no se insertan usuarios mock.
 
 ## Coding Style
 

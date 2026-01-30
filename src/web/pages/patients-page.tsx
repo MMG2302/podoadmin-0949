@@ -2,7 +2,7 @@ import { useState, useMemo, useEffect } from "react";
 import { useLocation, Link } from "wouter";
 import { MainLayout } from "../components/layout/main-layout";
 import { useLanguage } from "../contexts/language-context";
-import { useAuth, getAllUsers } from "../contexts/auth-context";
+import { useAuth } from "../contexts/auth-context";
 import { usePermissions } from "../hooks/use-permissions";
 import {
   getSessionsByPatient,
@@ -48,7 +48,7 @@ const emptyForm: PatientFormData = {
 
 const PatientsPage = () => {
   const { t } = useLanguage();
-  const { user } = useAuth();
+  const { user, getAllUsers } = useAuth();
   const { isSuperAdmin, isPodiatrist, isClinicAdmin, isReceptionist } = usePermissions();
   const [location, setLocation] = useLocation();
   

@@ -1,8 +1,8 @@
 import { useState, useRef, useEffect } from "react";
 import { MainLayout } from "../components/layout/main-layout";
 import { useLanguage } from "../contexts/language-context";
-import { useAuth, getAllUsers } from "../contexts/auth-context";
-import { getUserCredits, getClinicLogo, getProfessionalLogo, ProfessionalInfo, type Clinic } from "../lib/storage";
+import { useAuth } from "../contexts/auth-context";
+import { getUserCredits, ProfessionalInfo, type Clinic } from "../lib/storage";
 import { api } from "../lib/api-client";
 
 interface ClinicInfoForm {
@@ -19,22 +19,20 @@ interface ClinicInfoForm {
 const getClinicNameFrom = (clinic: Clinic | null, clinicId: string): string =>
   clinic?.clinicName ?? (clinicId ? `Clínica ${clinicId}` : "");
 
-// Get logo for a user (considering clinic membership) - exported for PDF use
-export const getLogoForUser = (userId: string, clinicId?: string): string | null => {
-  // If user belongs to a clinic, return clinic logo
+// Get logo for a user (considering clinic membership) - exported for PDF/async use (API)
+export async function getLogoForUser(userId: string, clinicId?: string): Promise<string | null> {
   if (clinicId) {
-    const logo = getClinicLogo(clinicId);
-    if (logo) return logo;
+    const r = await api.get<{ success?: boolean; logo?: string | null }>(`/clinics/${clinicId}/logo`);
+    if (r.success && r.data?.logo) return r.data.logo;
   }
-  // For independent users, return professional logo
-  const professionalLogo = getProfessionalLogo(userId);
-  if (professionalLogo) return professionalLogo;
+  const r = await api.get<{ success?: boolean; logo?: string | null }>(`/professionals/logo/${userId}`);
+  if (r.success && r.data?.logo) return r.data.logo;
   return null;
-};
+}
 
 const SettingsPage = () => {
   const { t, language, setLanguage, languageNames, availableLanguages } = useLanguage();
-  const { user } = useAuth();
+  const { user, getAllUsers } = useAuth();
   
   const credits = getUserCredits(user?.id || "");
   
@@ -245,29 +243,22 @@ const SettingsPage = () => {
     }
   };
   
-  // Professional info handlers (for independent podiatrists)
+  // Professional info handlers (for independent podiatrists) - persistencia vía API
   const handleProfessionalInfoChange = (field: keyof ProfessionalInfo, value: string) => {
     setProfessionalInfoForm(prev => ({ ...prev, [field]: value }));
   };
   
-  const handleSaveProfessionalInfo = () => {
+  const handleSaveProfessionalInfo = async () => {
     if (!isPodiatristIndependent || !user?.id) return;
-    saveProfessionalInfo(user.id, professionalInfoForm);
-    
-    addAuditLog({
-      userId: user.id,
-      userName: user.name,
-      action: "UPDATE",
-      entityType: "professional_info",
-      entityId: user.id,
-      details: JSON.stringify({
-        action: "professional_info_update",
-        name: professionalInfoForm.name,
-      }),
-    });
-    
-    setProfessionalInfoSaved(true);
-    setTimeout(() => setProfessionalInfoSaved(false), 2000);
+    try {
+      const res = await api.put<{ success?: boolean }>(`/professionals/info/${user.id}`, professionalInfoForm);
+      if (res.success) {
+        setProfessionalInfoSaved(true);
+        setTimeout(() => setProfessionalInfoSaved(false), 2000);
+      }
+    } catch {
+      // No marcar como guardado si la API falla
+    }
   };
   
   // Professional license handler (for all podiatrists)

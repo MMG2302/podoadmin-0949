@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect } from "react";
 import { MainLayout } from "../components/layout/main-layout";
 import { useLanguage } from "../contexts/language-context";
-import { useAuth, getAllUsers } from "../contexts/auth-context";
+import { useAuth } from "../contexts/auth-context";
 import { getUserCredits, AuditLog } from "../lib/storage";
 import { api } from "../lib/api-client";
 
@@ -9,7 +9,7 @@ const ITEMS_PER_PAGE = 20;
 
 const AuditLogPage = () => {
   const { t } = useLanguage();
-  const { user } = useAuth();
+  const { user, getAllUsers } = useAuth();
   
   const credits = getUserCredits(user?.id || "");
   const [logs, setLogs] = useState<AuditLog[]>([]);

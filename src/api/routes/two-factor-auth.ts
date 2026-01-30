@@ -13,7 +13,7 @@ import {
 import { logAuditEvent } from '../utils/audit-log';
 import { recordSecurityMetric } from '../utils/security-metrics';
 import { getClientIP } from '../utils/ip-tracking';
-import { getAllUsersWithCredentials } from '../../web/lib/storage';
+import { getUserByIdFromDB } from '../utils/user-db';
 
 const twoFactorRoutes = new Hono();
 
@@ -66,16 +66,14 @@ twoFactorRoutes.post('/setup', async (c) => {
       );
     }
 
-    // Obtener email del usuario
-    const allUsers = getAllUsersWithCredentials();
-    const matchedUser = allUsers.find((u) => u.user.id === user.userId);
-
-    if (!matchedUser) {
+    // Obtener usuario desde DB (para email del QR)
+    const dbUser = await getUserByIdFromDB(user.userId);
+    if (!dbUser) {
       return c.json({ error: 'Usuario no encontrado' }, 404);
     }
 
     // Generar secreto y QR code
-    const { secret, qrCodeUrl } = generateTOTPSecret(user.userId, matchedUser.user.email);
+    const { secret, qrCodeUrl } = generateTOTPSecret(user.userId, dbUser.email);
 
     // Registrar evento de auditoría
     await logAuditEvent({

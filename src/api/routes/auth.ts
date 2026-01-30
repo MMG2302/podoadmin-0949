@@ -8,7 +8,7 @@ import { validateData, loginSchema, registerSchema, verifyEmailSchema } from '..
 import { escapeHtml, sanitizeEmail } from '../utils/sanitization';
 import { getClientIP, createRateLimitIdentifier, isIPWhitelisted, getIPWhitelist } from '../utils/ip-tracking';
 import type { User } from '../../web/contexts/auth-context';
-import { getAllUsersWithCredentials, getUserStatus } from '../../web/lib/storage';
+import { getUserByIdFromDB } from '../utils/user-db';
 
 const authRoutes = new Hono();
 
@@ -140,13 +140,10 @@ authRoutes.post('/login', async (c) => {
       );
     }
 
-    // Buscar usuario en base de datos primero (usuarios registrados públicamente)
+    // Buscar usuario solo en base de datos (usuarios seed + registrados)
     const { getUserByEmailFromDB } = await import('../utils/user-db');
     const dbUser = await getUserByEmailFromDB(emailLower);
-    
-    // Obtener usuarios mock/creados para tipo
-    const allUsers = getAllUsersWithCredentials();
-    let matchedUser: typeof allUsers[0] | null = null;
+    let matchedUser: { email: string; password: string; user: User } | null = null;
     let passwordValid = false;
 
     if (dbUser) {
@@ -178,10 +175,9 @@ authRoutes.post('/login', async (c) => {
       passwordValid = await verifyPassword(password, dbUser.password);
       
       if (passwordValid) {
-        // Convertir a formato esperado
         matchedUser = {
           email: dbUser.email,
-          password: dbUser.password, // Hash, no texto plano
+          password: dbUser.password,
           user: {
             id: dbUser.userId,
             email: dbUser.email,
@@ -193,26 +189,6 @@ authRoutes.post('/login', async (c) => {
             isBanned: dbUser.isBanned,
           },
         };
-      }
-    } else {
-      // Buscar en usuarios mock/creados (localStorage)
-      const mockUser = allUsers.find(
-        (u) => u.email.toLowerCase() === emailLower
-      );
-
-      if (mockUser) {
-        // Si la contraseña parece un hash, usar bcrypt
-        if (mockUser.password.startsWith('$2a$') || mockUser.password.startsWith('$2b$')) {
-          const { verifyPassword } = await import('../utils/password');
-          passwordValid = await verifyPassword(password, mockUser.password);
-        } else {
-          // Contraseña en texto plano (usuarios mock)
-          passwordValid = mockUser.password === password;
-        }
-        
-        if (passwordValid) {
-          matchedUser = mockUser;
-        }
       }
     }
 
@@ -294,60 +270,47 @@ authRoutes.post('/login', async (c) => {
       }
     }
 
-    // Verificar estados de cuenta en el servidor
-    try {
-      const userStatus = getUserStatus(matchedUser.user.id);
-
-      if (userStatus.isBanned) {
-        // Registrar métrica
-        const { recordSecurityMetric } = await import('../utils/security-metrics');
-        await recordSecurityMetric({
-          metricType: 'banned_user',
-          userId: matchedUser.user.id,
-          ipAddress: clientIP,
-          details: { email: emailLower },
-        });
-
-        return c.json(
-          {
-            error: 'Cuenta baneada',
-            message: 'Tu cuenta ha sido baneada permanentemente. Contacta al administrador.',
-          },
-          403
-        );
-      }
-
-      if (userStatus.isBlocked) {
-        // Registrar métrica
-        const { recordSecurityMetric } = await import('../utils/security-metrics');
-        await recordSecurityMetric({
-          metricType: 'blocked_user',
-          userId: matchedUser.user.id,
-          ipAddress: clientIP,
-          details: { email: emailLower },
-        });
-
-        return c.json(
-          {
-            error: 'Cuenta bloqueada',
-            message: 'Tu cuenta está bloqueada temporalmente. Contacta al administrador.',
-          },
-          403
-        );
-      }
-
-      if (userStatus.isEnabled === false) {
-        return c.json(
-          {
-            error: 'Cuenta deshabilitada',
-            message: 'Tu cuenta está deshabilitada. Contacta al administrador.',
-          },
-          403
-        );
-      }
-    } catch (error) {
-      console.error('Error verificando estado de usuario:', error);
-      // Continuar con el login si hay error verificando estado
+    // Verificar estados de cuenta (desde DB, ya en matchedUser.user)
+    if (matchedUser.user.isBanned) {
+      const { recordSecurityMetric } = await import('../utils/security-metrics');
+      await recordSecurityMetric({
+        metricType: 'banned_user',
+        userId: matchedUser.user.id,
+        ipAddress: clientIP,
+        details: { email: emailLower },
+      });
+      return c.json(
+        {
+          error: 'Cuenta baneada',
+          message: 'Tu cuenta ha sido baneada permanentemente. Contacta al administrador.',
+        },
+        403
+      );
+    }
+    if (matchedUser.user.isBlocked) {
+      const { recordSecurityMetric } = await import('../utils/security-metrics');
+      await recordSecurityMetric({
+        metricType: 'blocked_user',
+        userId: matchedUser.user.id,
+        ipAddress: clientIP,
+        details: { email: emailLower },
+      });
+      return c.json(
+        {
+          error: 'Cuenta bloqueada',
+          message: 'Tu cuenta está bloqueada temporalmente. Contacta al administrador.',
+        },
+        403
+      );
+    }
+    if (matchedUser.user.isEnabled === false) {
+      return c.json(
+        {
+          error: 'Cuenta deshabilitada',
+          message: 'Tu cuenta está deshabilitada. Contacta al administrador.',
+        },
+        403
+      );
     }
 
     // Verificar 2FA si está habilitado
@@ -447,10 +410,7 @@ authRoutes.post('/login', async (c) => {
       details: { email: emailLower, has2FA },
     });
 
-    // Inicializar créditos si es necesario (esto debería moverse a la base de datos)
-    // Por ahora lo mantenemos para compatibilidad
-    const { initializeUserCredits } = await import('../../web/lib/storage');
-    initializeUserCredits(matchedUser.user.id, matchedUser.user.role);
+    // Créditos del usuario están en DB; el endpoint /credits/me crea la fila si no existe
 
     // NO devolver tokens en el body por seguridad (están en cookies HTTP-only)
     return c.json({
@@ -535,18 +495,13 @@ authRoutes.get('/verify', requireAuth, async (c) => {
     return c.json({ error: 'Token inválido' }, 401);
   }
 
-  // Obtener información completa del usuario
-  const allUsers = getAllUsersWithCredentials();
-  const matchedUser = allUsers.find((u) => u.user.id === user.userId);
-
-  if (!matchedUser) {
+  // Obtener usuario desde DB
+  const dbUser = await getUserByIdFromDB(user.userId);
+  if (!dbUser) {
     return c.json({ error: 'Usuario no encontrado' }, 404);
   }
 
-  // Verificar estados de cuenta
-  const userStatus = getUserStatus(matchedUser.user.id);
-
-  if (userStatus.isBanned || userStatus.isBlocked || userStatus.isEnabled === false) {
+  if (dbUser.isBanned || dbUser.isBlocked || dbUser.isEnabled === false) {
     return c.json(
       {
         error: 'Cuenta no disponible',
@@ -559,11 +514,11 @@ authRoutes.get('/verify', requireAuth, async (c) => {
   return c.json({
     success: true,
     user: {
-      id: matchedUser.user.id,
-      email: matchedUser.user.email,
-      name: matchedUser.user.name,
-      role: matchedUser.user.role,
-      clinicId: matchedUser.user.clinicId,
+      id: dbUser.userId,
+      email: dbUser.email,
+      name: dbUser.name,
+      role: dbUser.role,
+      clinicId: dbUser.clinicId || undefined,
     },
   });
 });
@@ -597,9 +552,9 @@ authRoutes.post('/refresh', async (c) => {
       );
     }
 
-    // Verificar estados de cuenta
-    const userStatus = getUserStatus(payload.userId);
-    if (userStatus.isBanned || userStatus.isBlocked || userStatus.isEnabled === false) {
+    // Verificar estados de cuenta desde DB
+    const dbUser = await getUserByIdFromDB(payload.userId);
+    if (!dbUser || dbUser.isBanned || dbUser.isBlocked || dbUser.isEnabled === false) {
       return c.json(
         {
           error: 'Cuenta no disponible',
@@ -811,12 +766,9 @@ authRoutes.post('/register', async (c) => {
 
     const emailLower = email.toLowerCase().trim();
 
-    // Verificar que el email no exista (sin revelar si existe)
+    // Verificar que el email no exista en DB (sin revelar si existe)
     const { emailExistsInDB } = await import('../utils/user-db');
-    const emailExistsInDatabase = await emailExistsInDB(emailLower);
-    const allUsers = getAllUsersWithCredentials();
-    const emailExistsInStorage = allUsers.some((u) => u.email.toLowerCase() === emailLower);
-    const emailExists = emailExistsInDatabase || emailExistsInStorage;
+    const emailExists = await emailExistsInDB(emailLower);
 
     if (emailExists) {
       // No contar como intento fallido real (es un caso normal, no malicioso)

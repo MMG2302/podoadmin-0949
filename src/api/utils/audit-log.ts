@@ -1,6 +1,6 @@
 import { database } from '../database';
 import { auditLog } from '../database/schema';
-import { eq, desc } from 'drizzle-orm';
+import { eq, desc, and, gte } from 'drizzle-orm';
 
 /**
  * Utilidades para logging de auditoría en el servidor
@@ -113,5 +113,31 @@ export async function getAllAuditLogs(limit: number = 500): Promise<any[]> {
   } catch (error) {
     console.error('Error obteniendo todos los logs:', error);
     return [];
+  }
+}
+
+/**
+ * Cuenta cuántas veces un usuario ha registrado PRINT_VIOLATION_FORM desde una fecha.
+ * Usado para alertar a super admins cuando hay >= 5 violaciones en la última hora.
+ */
+export async function getRecentPrintViolationCount(
+  userId: string,
+  sinceIso: string
+): Promise<number> {
+  try {
+    const rows = await database
+      .select({ id: auditLog.id })
+      .from(auditLog)
+      .where(
+        and(
+          eq(auditLog.userId, userId),
+          eq(auditLog.action, 'PRINT_VIOLATION_FORM'),
+          gte(auditLog.createdAt, sinceIso)
+        )
+      );
+    return rows.length;
+  } catch (error) {
+    console.error('Error contando violaciones de impresión:', error);
+    return 0;
   }
 }

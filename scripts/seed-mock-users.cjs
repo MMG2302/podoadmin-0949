@@ -1,11 +1,9 @@
 /**
- * Genera la migración SQL para insertar usuarios mock en D1.
+ * Genera el SQL de seed de usuarios mock (solo para uso local).
  * Ejecutar: node scripts/seed-mock-users.cjs
- * Luego aplicar: wrangler d1 execute <DB> --remote --file=src/api/migrations/0006_seed_mock_users.sql
+ * Luego aplicar en local: bun db:seed:local (o wrangler d1 execute DB --local --file=scripts/seed-mock-users.sql)
  *
- * Los usuarios mock (credenciales de prueba) quedarán en la DB y el login
- * los encontrará vía getUserByEmailFromDB, de modo que sigan funcionando
- * cuando todo use DB en lugar de storage/local.
+ * Los usuarios mock no se aplican en db:migrate:remote; quedan solo en local.
  */
 
 const bcrypt = require('bcryptjs');
@@ -41,8 +39,8 @@ function esc(s) {
 async function main() {
   const now = new Date().toISOString();
   const lines = [
-    '-- Seed de usuarios mock para que el login siga funcionando cuando todo use DB.',
-    '-- Ejecutar después de las migraciones de schema. INSERT OR IGNORE evita duplicados.',
+    '-- Seed de usuarios mock (SOLO PARA USO LOCAL). Aplicar con: bun db:seed:local',
+    '-- INSERT OR IGNORE evita duplicados. No se ejecuta en db:migrate:remote.',
     '',
   ];
 
@@ -61,11 +59,10 @@ async function main() {
     );
   }
 
-  const outPath = path.join(__dirname, '..', 'src', 'api', 'migrations', '0006_seed_mock_users.sql');
-  fs.mkdirSync(path.dirname(outPath), { recursive: true });
+  const outPath = path.join(__dirname, 'seed-mock-users.sql');
   fs.writeFileSync(outPath, lines.join('\n'), 'utf8');
   console.log('Generado:', outPath);
-  console.log('Aplicar con: wrangler d1 execute <NOMBRE_DB> --remote --file=src/api/migrations/0006_seed_mock_users.sql');
+  console.log('Aplicar solo en local: bun db:seed:local');
 }
 
 main().catch((err) => {

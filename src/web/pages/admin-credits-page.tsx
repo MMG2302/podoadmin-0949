@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect } from "react";
 import { MainLayout } from "../components/layout/main-layout";
 import { useLanguage } from "../contexts/language-context";
-import { useAuth, getAllUsers, User } from "../contexts/auth-context";
+import { useAuth, User } from "../contexts/auth-context";
 import { api } from "../lib/api-client";
 import { getUserCredits } from "../lib/storage";
 
@@ -93,7 +93,7 @@ const defaultCredits = { userId: "", monthlyCredits: 0, extraCredits: 0, reserve
 // Main Admin Credits Page - aplica ajustes vía API POST /credits/adjust
 const AdminCreditsPage = () => {
   const { t } = useLanguage();
-  const { user: currentUser } = useAuth();
+  const { user: currentUser, getAllUsers } = useAuth();
   const [credits, setCredits] = useState(defaultCredits);
   const allUsers = getAllUsers();
 

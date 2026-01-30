@@ -2,7 +2,7 @@ import { useState, useMemo, useEffect } from "react";
 import { Link } from "wouter";
 import { MainLayout } from "../components/layout/main-layout";
 import { useLanguage } from "../contexts/language-context";
-import { useAuth, getAllUsers } from "../contexts/auth-context";
+import { useAuth } from "../contexts/auth-context";
 import { usePermissions } from "../hooks/use-permissions";
 import { api } from "../lib/api-client";
 import { 
@@ -49,7 +49,7 @@ const emptyAppointmentForm: AppointmentFormData = {
 
 const CalendarPage = () => {
   const { t } = useLanguage();
-  const { user } = useAuth();
+  const { user, getAllUsers } = useAuth();
   const { isClinicAdmin, isPodiatrist, isReceptionist } = usePermissions();
   const credits = getUserCredits(user?.id || "");
   

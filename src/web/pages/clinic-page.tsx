@@ -1,14 +1,12 @@
 import { useState, useMemo, useEffect } from "react";
 import { MainLayout } from "../components/layout/main-layout";
 import { useLanguage } from "../contexts/language-context";
-import { useAuth, getAllUsers, isEmailTaken, User } from "../contexts/auth-context";
+import { useAuth, User } from "../contexts/auth-context";
 import { api } from "../lib/api-client";
 import { 
   getUserCredits, 
   addAuditLog,
   getAllProfessionalLicenses,
-  getCreatedUsers,
-  saveCreatedUser,
   Patient,
   ClinicalSession,
 } from "../lib/storage";
@@ -159,7 +157,7 @@ type SessionApi = ClinicalSession & { sessionDate: string; createdBy: string };
 // Main Clinic Page - pacientes y sesiones desde API
 const ClinicPage = () => {
   const { t } = useLanguage();
-  const { user: currentUser } = useAuth();
+  const { user: currentUser, getAllUsers, fetchUsers, isEmailTaken } = useAuth();
   const credits = getUserCredits(currentUser?.id || "");
   const allUsers = getAllUsers();
 
@@ -358,12 +356,12 @@ const ClinicPage = () => {
     );
   };
 
-  // Recepcionistas de la clínica
-  const clinicReceptionists = getCreatedUsers().filter(
+  // Recepcionistas de la clínica (desde API / users)
+  const clinicReceptionists = allUsers.filter(
     (u) => u.role === "receptionist" && u.clinicId === currentUser?.clinicId
   );
 
-  const handleCreateReceptionist = (e: React.FormEvent) => {
+  const handleCreateReceptionist = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!currentUser?.clinicId || !currentUser?.id) return;
     setReceptionistError(null);
@@ -371,32 +369,23 @@ const ClinicPage = () => {
       setReceptionistError("Ya existe una cuenta con este correo electrónico");
       return;
     }
+    const podiatristIds = clinicPodiatrists.map((p) => p.id);
     try {
-      const podiatristIds = clinicPodiatrists.map((p) => p.id);
-      saveCreatedUser(
-        {
-          email: receptionistForm.email,
-          name: receptionistForm.name,
-          role: "receptionist",
-          clinicId: currentUser.clinicId,
-          assignedPodiatristIds: podiatristIds,
-        },
-        receptionistForm.password,
-        currentUser.id
-      );
-      addAuditLog({
-        userId: currentUser.id,
-        userName: currentUser.name,
-        action: "CREATE",
-        entityType: "receptionist",
-        entityId: "",
-        details: JSON.stringify({
-          action: "receptionist_create_by_clinic_admin",
-          receptionistEmail: receptionistForm.email,
-          clinicId: currentUser.clinicId,
-          assignedPodiatristIds: podiatristIds,
-        }),
+      const res = await api.post<{ success?: boolean; user?: { id: string } }>("/receptionists", {
+        name: receptionistForm.name.trim(),
+        email: receptionistForm.email.trim(),
+        password: receptionistForm.password,
       });
+      if (!res.success || !res.data?.user?.id) {
+        setReceptionistError(res.error ?? "Error al crear recepcionista");
+        return;
+      }
+      if (podiatristIds.length > 0) {
+        await api.patch(`/receptionists/${res.data.user.id}/assigned-podiatrists`, {
+          assignedPodiatristIds: podiatristIds,
+        });
+      }
+      await fetchUsers();
       setReceptionistForm({ name: "", email: "", password: "" });
       setShowCreateReceptionistModal(false);
     } catch (err) {

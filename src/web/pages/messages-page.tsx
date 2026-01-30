@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect } from "react";
 import { MainLayout } from "../components/layout/main-layout";
 import { useLanguage } from "../contexts/language-context";
-import { useAuth, getAllUsers } from "../contexts/auth-context";
+import { useAuth } from "../contexts/auth-context";
 import { api } from "../lib/api-client";
 import { getUserCredits, SentMessage } from "../lib/storage";
 
@@ -10,7 +10,7 @@ type ViewMode = "compose" | "sent";
 
 const MessagesPage = () => {
   const { t } = useLanguage();
-  const { user } = useAuth();
+  const { user, getAllUsers } = useAuth();
   const credits = getUserCredits(user?.id || "");
   const allUsers = getAllUsers().filter(u => u.id !== user?.id); // Exclude current user
 

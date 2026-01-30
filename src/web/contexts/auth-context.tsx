@@ -1,5 +1,4 @@
-import { createContext, useContext, useState, useEffect, ReactNode } from "react";
-import { getCreatedUsers, CreatedUser, initializeUserCredits, getUserStatus } from "@/lib/storage";
+import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from "react";
 
 export type UserRole = "super_admin" | "clinic_admin" | "admin" | "podiatrist" | "receptionist";
 
@@ -17,6 +16,7 @@ export interface User {
 
 interface AuthContextType {
   user: User | null;
+  users: User[];
   isLoading: boolean;
   login: (email: string, password: string) => Promise<{ 
     success: boolean; 
@@ -26,275 +26,50 @@ interface AuthContextType {
     attemptCount?: number;
   }>;
   logout: () => void;
+  /** Lista de usuarios (desde API). Solo disponible para super_admin, admin, clinic_admin. */
+  getAllUsers: () => User[];
+  /** Recarga la lista de usuarios desde la API. */
+  fetchUsers: () => Promise<void>;
+  /** Comprueba si un email está en uso (según la lista cargada desde API). */
+  isEmailTaken: (email: string) => boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-const MOCK_USERS: { email: string; password: string; user: User }[] = [
-  // Super Admin - full platform access
-  {
-    email: "admin@podoadmin.com",
-    password: "admin123",
-    user: {
-      id: "user_super_admin_001",
-      email: "admin@podoadmin.com",
-      name: "Super Administrador",
-      role: "super_admin",
-    },
-  },
-  // Admin (Support) - limited credit adjustment capabilities
-  {
-    email: "support@podoadmin.com",
-    password: "support123",
-    user: {
-      id: "user_admin_001",
-      email: "support@podoadmin.com",
-      name: "Soporte Técnico",
-      role: "admin",
-    },
-  },
-  
-  // ============ CLINIC 1: Clínica Podológica Premium ============
-  {
-    email: "maria.fernandez@premium.com",
-    password: "manager123",
-    user: {
-      id: "user_clinic_admin_001",
-      email: "maria.fernandez@premium.com",
-      name: "María Fernández",
-      role: "clinic_admin",
-      clinicId: "clinic_001",
-    },
-  },
-  {
-    email: "doctor1@premium.com",
-    password: "doctor123",
-    user: {
-      id: "user_podiatrist_001",
-      email: "doctor1@premium.com",
-      name: "Dra. Ana Belén Ruiz",
-      role: "podiatrist",
-      clinicId: "clinic_001",
-    },
-  },
-  {
-    email: "doctor2@premium.com",
-    password: "doctor123",
-    user: {
-      id: "user_podiatrist_002",
-      email: "doctor2@premium.com",
-      name: "Dr. Carlos Moreno",
-      role: "podiatrist",
-      clinicId: "clinic_001",
-    },
-  },
-  {
-    email: "doctor3@premium.com",
-    password: "doctor123",
-    user: {
-      id: "user_podiatrist_003",
-      email: "doctor3@premium.com",
-      name: "Dra. Laura Vidal",
-      role: "podiatrist",
-      clinicId: "clinic_001",
-    },
-  },
-  
-  // ============ CLINIC 2: Centro Médico Podológico ============
-  {
-    email: "juan.garcia@centromedico.com",
-    password: "manager123",
-    user: {
-      id: "user_clinic_admin_002",
-      email: "juan.garcia@centromedico.com",
-      name: "Juan García",
-      role: "clinic_admin",
-      clinicId: "clinic_002",
-    },
-  },
-  {
-    email: "doctor1@centromedico.com",
-    password: "doctor123",
-    user: {
-      id: "user_podiatrist_004",
-      email: "doctor1@centromedico.com",
-      name: "Dr. Miguel Ángel Torres",
-      role: "podiatrist",
-      clinicId: "clinic_002",
-    },
-  },
-  {
-    email: "doctor2@centromedico.com",
-    password: "doctor123",
-    user: {
-      id: "user_podiatrist_005",
-      email: "doctor2@centromedico.com",
-      name: "Dra. Patricia Navarro",
-      role: "podiatrist",
-      clinicId: "clinic_002",
-    },
-  },
-  {
-    email: "doctor3@centromedico.com",
-    password: "doctor123",
-    user: {
-      id: "user_podiatrist_006",
-      email: "doctor3@centromedico.com",
-      name: "Dr. Fernando Ramos",
-      role: "podiatrist",
-      clinicId: "clinic_002",
-    },
-  },
-  
-  // ============ CLINIC 3: Podología Integral Plus ============
-  {
-    email: "sofia.rodriguez@integralplus.com",
-    password: "manager123",
-    user: {
-      id: "user_clinic_admin_003",
-      email: "sofia.rodriguez@integralplus.com",
-      name: "Sofía Rodríguez",
-      role: "clinic_admin",
-      clinicId: "clinic_003",
-    },
-  },
-  {
-    email: "doctor1@integralplus.com",
-    password: "doctor123",
-    user: {
-      id: "user_podiatrist_007",
-      email: "doctor1@integralplus.com",
-      name: "Dra. Carmen Delgado",
-      role: "podiatrist",
-      clinicId: "clinic_003",
-    },
-  },
-  {
-    email: "doctor2@integralplus.com",
-    password: "doctor123",
-    user: {
-      id: "user_podiatrist_008",
-      email: "doctor2@integralplus.com",
-      name: "Dr. Alberto Serrano",
-      role: "podiatrist",
-      clinicId: "clinic_003",
-    },
-  },
-  {
-    email: "doctor3@integralplus.com",
-    password: "doctor123",
-    user: {
-      id: "user_podiatrist_009",
-      email: "doctor3@integralplus.com",
-      name: "Dra. Isabel Castro",
-      role: "podiatrist",
-      clinicId: "clinic_003",
-    },
-  },
-  
-  // ============ INDEPENDENT PODIATRISTS (no clinic) ============
-  {
-    email: "pablo.hernandez@gmail.com",
-    password: "doctor123",
-    user: {
-      id: "user_podiatrist_010",
-      email: "pablo.hernandez@gmail.com",
-      name: "Dr. Pablo Hernández",
-      role: "podiatrist",
-    },
-  },
-  {
-    email: "lucia.santos@outlook.com",
-    password: "doctor123",
-    user: {
-      id: "user_podiatrist_011",
-      email: "lucia.santos@outlook.com",
-      name: "Dra. Lucía Santos",
-      role: "podiatrist",
-    },
-  },
-  {
-    email: "andres.molina@yahoo.es",
-    password: "doctor123",
-    user: {
-      id: "user_podiatrist_012",
-      email: "andres.molina@yahoo.es",
-      name: "Dr. Andrés Molina",
-      role: "podiatrist",
-    },
-  },
-  {
-    email: "beatriz.ortiz@hotmail.com",
-    password: "doctor123",
-    user: {
-      id: "user_podiatrist_013",
-      email: "beatriz.ortiz@hotmail.com",
-      name: "Dra. Beatriz Ortiz",
-      role: "podiatrist",
-    },
-  },
-];
-
-// Helper function to get all users (mock + created)
-const getAllUsersWithCredentials = (): { email: string; password: string; user: User }[] => {
-  const createdUsers = getCreatedUsers();
-  const createdUsersFormatted = createdUsers.map((cu: CreatedUser) => ({
-    email: cu.email,
-    password: cu.password,
-    user: {
-      id: cu.id,
-      email: cu.email,
-      name: cu.name,
-      role: cu.role,
-      clinicId: cu.clinicId,
-      assignedPodiatristIds: cu.role === "receptionist" ? (cu.assignedPodiatristIds ?? []) : undefined,
-      isBlocked: cu.isBlocked,
-      isEnabled: cu.isEnabled,
-      isBanned: cu.isBanned,
-    } as User,
-  }));
-  return [...MOCK_USERS, ...createdUsersFormatted];
-};
-
-export const getAllUsers = () => {
-  const allUsers = getAllUsersWithCredentials();
-  return allUsers.map(u => {
-    // Para usuarios mock, obtener estado desde storage si existe
-    const userStatus = getUserStatus(u.user.id);
-    return {
-      ...u.user,
-      isBlocked: u.user.isBlocked ?? userStatus.isBlocked,
-      isEnabled: u.user.isEnabled ?? userStatus.isEnabled,
-      isBanned: u.user.isBanned ?? userStatus.isBanned,
-    };
-  });
-};
-
-/** Indica si un correo ya está en uso (mock + usuarios creados). Usar antes de dar de alta. */
-export const isEmailTaken = (email: string): boolean => {
-  return getAllUsersWithCredentials().some(
-    (u) => u.email.toLowerCase().trim() === email.toLowerCase().trim()
-  );
-};
-
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
+  const [users, setUsers] = useState<User[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Verificar autenticación al cargar
+  const fetchUsers = useCallback(async () => {
+    if (!user) return;
+    try {
+      const { api } = await import("../lib/api-client");
+      const r = await api.get<{ success?: boolean; users?: User[] }>("/users");
+      if (r.success && Array.isArray(r.data?.users)) setUsers(r.data.users);
+      else setUsers([]);
+    } catch {
+      setUsers([]);
+    }
+  }, [user]);
+
+  useEffect(() => {
+    if (!user) {
+      setUsers([]);
+      return;
+    }
+    fetchUsers();
+  }, [user, fetchUsers]);
+
   useEffect(() => {
     const verifyAuth = async () => {
-      // Obtener token CSRF al cargar (necesario para futuras solicitudes)
       try {
         const { api } = await import("../lib/api-client");
-        // Esto obtendrá el token CSRF y lo guardará en cookie
         await api.get("/csrf/token");
       } catch (error) {
         console.warn("No se pudo obtener token CSRF inicial:", error);
       }
 
-      // Verificar si hay cookies de sesión (tokens HTTP-only)
-      // Los tokens ahora están en cookies, no en localStorage
       try {
         const { api } = await import("../lib/api-client");
         const response = await api.get<{ user: User }>("/auth/verify");
@@ -303,51 +78,19 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           setUser(response.data.user);
           localStorage.setItem("podoadmin_user", JSON.stringify(response.data.user));
         } else {
-          // Si no hay sesión API, revisar si hay usuario creado localmente (recepcionistas, etc.)
-          const stored = localStorage.getItem("podoadmin_user");
-          if (stored) {
-            try {
-              const parsed = JSON.parse(stored) as User;
-              const created = getCreatedUsers();
-              if (created.some((cu) => cu.id === parsed.id)) {
-                setUser(parsed);
-              } else {
-                localStorage.removeItem("podoadmin_user");
-              }
-            } catch {
-              localStorage.removeItem("podoadmin_user");
-            }
-          } else {
-            localStorage.removeItem("podoadmin_user");
-          }
+          setUser(null);
+          localStorage.removeItem("podoadmin_user");
         }
       } catch (error) {
         console.error("Error verificando autenticación:", error);
-        // Misma lógica: si hay usuario local válido en localStorage, restaurarlo
-        const stored = localStorage.getItem("podoadmin_user");
-        if (stored) {
-          try {
-            const parsed = JSON.parse(stored) as User;
-            const created = getCreatedUsers();
-            if (created.some((cu) => cu.id === parsed.id)) {
-              setUser(parsed);
-            } else {
-              localStorage.removeItem("podoadmin_user");
-            }
-          } catch {
-            localStorage.removeItem("podoadmin_user");
-          }
-        } else {
-          localStorage.removeItem("podoadmin_user");
-        }
-      } finally {
-        setIsLoading(false);
+        setUser(null);
+        localStorage.removeItem("podoadmin_user");
       }
+      setIsLoading(false);
     };
 
     verifyAuth();
 
-    // Escuchar eventos de logout desde otras pestañas/componentes
     const handleLogout = () => {
       setUser(null);
       localStorage.removeItem("podoadmin_token");
@@ -361,13 +104,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const login = async (email: string, password: string) => {
     try {
       const { api } = await import("../lib/api-client");
-      
+
       try {
         await api.get("/csrf/token");
       } catch (error) {
         console.warn("No se pudo obtener token CSRF antes de login:", error);
       }
-      
+
       const response = await api.post<{ user: User }>("/auth/login", {
         email,
         password,
@@ -381,21 +124,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         } catch (error) {
           console.warn("No se pudo obtener token CSRF después de login:", error);
         }
-        initializeUserCredits(response.data.user.id, response.data.user.role);
-        return { success: true };
-      }
-
-      // Si la API falla, intentar con usuarios creados localmente (recepcionistas, etc.)
-      const all = getAllUsersWithCredentials();
-      const found = all.find(
-        (x) =>
-          x.email.toLowerCase().trim() === email.toLowerCase().trim() &&
-          x.password === password
-      );
-      if (found) {
-        setUser(found.user);
-        localStorage.setItem("podoadmin_user", JSON.stringify(found.user));
-        initializeUserCredits(found.user.id, found.user.role);
         return { success: true };
       }
 
@@ -411,40 +139,40 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       };
     } catch (error) {
       console.error("Error en login:", error);
-      // Fallback: usuarios creados localmente
-      const all = getAllUsersWithCredentials();
-      const found = all.find(
-        (x) =>
-          x.email.toLowerCase().trim() === email.toLowerCase().trim() &&
-          x.password === password
-      );
-      if (found) {
-        setUser(found.user);
-        localStorage.setItem("podoadmin_user", JSON.stringify(found.user));
-        initializeUserCredits(found.user.id, found.user.role);
-        return { success: true };
-      }
       return { success: false, error: "Credenciales incorrectas" };
     }
   };
 
   const logout = async () => {
     try {
-      // Intentar cerrar sesión en el servidor (elimina cookies)
       const { api } = await import("../lib/api-client");
       await api.post("/auth/logout");
     } catch (error) {
       console.error("Error en logout:", error);
-      // Aún así limpiar el estado local
     } finally {
       setUser(null);
+      setUsers([]);
       localStorage.removeItem("podoadmin_user");
-      // Las cookies se eliminan automáticamente por el servidor
     }
   };
 
+  const getAllUsers = () => users;
+  const isEmailTaken = (email: string) =>
+    users.some((u) => u.email.toLowerCase().trim() === email.toLowerCase().trim());
+
   return (
-    <AuthContext.Provider value={{ user, isLoading, login, logout }}>
+    <AuthContext.Provider
+      value={{
+        user,
+        users,
+        isLoading,
+        login,
+        logout,
+        getAllUsers,
+        fetchUsers,
+        isEmailTaken,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );

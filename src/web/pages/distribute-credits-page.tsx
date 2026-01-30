@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect, useCallback } from "react";
 import { MainLayout } from "../components/layout/main-layout";
 import { useLanguage } from "../contexts/language-context";
-import { useAuth, getAllUsers, User } from "../contexts/auth-context";
+import { useAuth, User } from "../contexts/auth-context";
 import { usePermissions } from "../hooks/use-permissions";
 import { api } from "../lib/api-client";
 
@@ -125,7 +125,7 @@ type DistributionApi = { id: string; clinicId: string; userId: string; toPodiatr
 
 const DistributeCreditsPage = () => {
   const { t } = useLanguage();
-  const { user } = useAuth();
+  const { user, getAllUsers } = useAuth();
   const { isClinicAdmin } = usePermissions();
   
   const clinicId = user?.clinicId || "";

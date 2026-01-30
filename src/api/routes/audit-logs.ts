@@ -1,4 +1,5 @@
 import { Hono } from 'hono';
+import { eq } from 'drizzle-orm';
 import { requireAuth } from '../middleware/auth';
 import { requireRole } from '../middleware/authorization';
 import {
@@ -6,8 +7,11 @@ import {
   getAuditLogsByAction,
   getAllAuditLogs,
   logAuditEvent,
+  getRecentPrintViolationCount,
 } from '../utils/audit-log';
 import { getClientIP } from '../utils/ip-tracking';
+import { database } from '../database';
+import { createdUsers, notifications as notificationsTable } from '../database/schema';
 
 const auditLogRoutes = new Hono();
 
@@ -75,6 +79,55 @@ auditLogRoutes.post('/', async (c) => {
       userAgent: c.req.header('User-Agent') || undefined,
       clinicId: body.clinicId ?? user.clinicId ?? undefined,
     });
+
+    // Si es violación de impresión, comprobar si hay >= 5 en la última hora y notificar a super admins
+    if (action === 'PRINT_VIOLATION_FORM') {
+      const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+      const count = await getRecentPrintViolationCount(user.userId, oneHourAgo);
+      if (count >= 5) {
+        const details = (body.details ?? {}) as Record<string, unknown>;
+        const violatorName = (details.podiatristName as string) ?? user.userId;
+        const superAdminRows = await database
+          .select({ id: createdUsers.id })
+          .from(createdUsers)
+          .where(eq(createdUsers.role, 'super_admin'));
+        const now = new Date().toISOString();
+        const title = '⚠️ Alerta: Múltiples violaciones de impresión';
+        const message = `El usuario ${violatorName} (${user.userId}) ha intentado imprimir desde el formulario 5 veces consecutivas en la última hora. Esto indica un incumplimiento repetido con el servicio otorgado.`;
+        const metadata = JSON.stringify({
+          fromUserId: user.userId,
+          fromUserName: violatorName,
+          reason: 'multiple_print_violations_alert',
+        });
+        for (const row of superAdminRows) {
+          const notifId = `notif_${Date.now()}_${row.id}_${Math.random().toString(36).slice(2, 9)}`;
+          await database.insert(notificationsTable).values({
+            id: notifId,
+            userId: row.id,
+            type: 'system',
+            title,
+            message,
+            read: false,
+            metadata,
+            createdAt: now,
+          });
+        }
+        await logAuditEvent({
+          userId: user.userId,
+          action: 'ALERT_MULTIPLE_PRINT_VIOLATIONS',
+          resourceType: 'user',
+          resourceId: user.userId,
+          details: {
+            message: 'Alerta generada: 5 intentos consecutivos de impresión desde formulario detectados',
+            violations: count,
+            timeWindow: '1 hora',
+            userId: user.userId,
+            userName: violatorName,
+            timestamp: now,
+          },
+        });
+      }
+    }
 
     return c.json({ success: true });
   } catch (error) {

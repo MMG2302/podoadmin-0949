@@ -9,6 +9,16 @@ import { eq } from 'drizzle-orm';
 /**
  * Obtiene un usuario por email desde la base de datos
  */
+function safeJsonParseArray(value: string | null): string[] {
+  if (!value) return [];
+  try {
+    const parsed = JSON.parse(value);
+    return Array.isArray(parsed) ? parsed.map(String) : [];
+  } catch {
+    return [];
+  }
+}
+
 export async function getUserByEmailFromDB(email: string): Promise<{
   id: string;
   userId: string;
@@ -23,6 +33,7 @@ export async function getUserByEmailFromDB(email: string): Promise<{
   isBanned: boolean;
   registrationSource?: string | null;
   oauthProvider?: string | null;
+  assignedPodiatristIds?: string[] | null;
 } | null> {
   try {
     const emailLower = email.toLowerCase().trim();
@@ -52,6 +63,7 @@ export async function getUserByEmailFromDB(email: string): Promise<{
       isBanned: user.isBanned || false,
       registrationSource: user.registrationSource || null,
       oauthProvider: user.oauthProvider || null,
+      assignedPodiatristIds: user.assignedPodiatristIds ? safeJsonParseArray(user.assignedPodiatristIds) : undefined,
     };
   } catch (error) {
     console.error('Error obteniendo usuario por email:', error);
@@ -75,6 +87,7 @@ export async function getUserByIdFromDB(userId: string): Promise<{
   isBlocked: boolean;
   isBanned: boolean;
   registrationSource?: string | null;
+  assignedPodiatristIds?: string[] | null;
 } | null> {
   try {
     const result = await database
@@ -101,6 +114,7 @@ export async function getUserByIdFromDB(userId: string): Promise<{
       isBlocked: user.isBlocked || false,
       isBanned: user.isBanned || false,
       registrationSource: user.registrationSource || null,
+      assignedPodiatristIds: user.assignedPodiatristIds ? safeJsonParseArray(user.assignedPodiatristIds) : undefined,
     };
   } catch (error) {
     console.error('Error obteniendo usuario por ID:', error);

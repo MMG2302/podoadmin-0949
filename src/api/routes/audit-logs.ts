@@ -87,8 +87,9 @@ auditLogRoutes.post('/', async (c) => {
       if (count >= 5) {
         const details = (body.details ?? {}) as Record<string, unknown>;
         const violatorName = (details.podiatristName as string) ?? user.userId;
+        // Seleccionar userId (no id): las notificaciones se filtran por JWT userId = createdUsers.userId
         const superAdminRows = await database
-          .select({ id: createdUsers.id })
+          .select({ userId: createdUsers.userId })
           .from(createdUsers)
           .where(eq(createdUsers.role, 'super_admin'));
         const now = new Date().toISOString();
@@ -100,10 +101,10 @@ auditLogRoutes.post('/', async (c) => {
           reason: 'multiple_print_violations_alert',
         });
         for (const row of superAdminRows) {
-          const notifId = `notif_${Date.now()}_${row.id}_${Math.random().toString(36).slice(2, 9)}`;
+          const notifId = `notif_${Date.now()}_${row.userId}_${Math.random().toString(36).slice(2, 9)}`;
           await database.insert(notificationsTable).values({
             id: notifId,
-            userId: row.id,
+            userId: row.userId,
             type: 'system',
             title,
             message,

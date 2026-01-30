@@ -1,5 +1,5 @@
 import { Hono } from 'hono';
-import { eq, or, and } from 'drizzle-orm';
+import { eq, or, and, inArray } from 'drizzle-orm';
 import { requireAuth } from '../middleware/auth';
 import { requireRole } from '../middleware/authorization';
 import { validateData, createUserSchema, updateUserSchema } from '../utils/validation';
@@ -70,6 +70,62 @@ usersRoutes.get('/', requireRole('super_admin', 'admin', 'clinic_admin'), async 
     return c.json({ success: true, users: rows.map(mapDbUser) });
   } catch (error) {
     console.error('Error obteniendo usuarios:', error);
+    return c.json({ error: 'Error interno', message: 'Error al obtener usuarios' }, 500);
+  }
+});
+
+/**
+ * GET /api/users/visible
+ * Lista de usuarios que el usuario actual puede ver (todos los roles).
+ * - super_admin/admin: todos
+ * - clinic_admin: solo su clínica
+ * - receptionist: solo sus podólogos asignados
+ * - podiatrist: usuarios de su clínica (para dropdowns en calendario/pacientes)
+ */
+usersRoutes.get('/visible', async (c) => {
+  try {
+    const requester = c.get('user');
+    const roleFilter = c.req.query('role');
+
+    if (requester.role === 'super_admin' || requester.role === 'admin') {
+      let rows = await database.select().from(createdUsers);
+      if (roleFilter) rows = rows.filter((u) => u.role === roleFilter);
+      return c.json({ success: true, users: rows.map(mapDbUser) });
+    }
+
+    if (requester.role === 'clinic_admin') {
+      if (!requester.clinicId) return c.json({ success: true, users: [] });
+      let rows = await database.select().from(createdUsers).where(eq(createdUsers.clinicId, requester.clinicId));
+      if (roleFilter) rows = rows.filter((u) => u.role === roleFilter);
+      return c.json({ success: true, users: rows.map(mapDbUser) });
+    }
+
+    if (requester.role === 'receptionist') {
+      let ids: string[] = [];
+      // JWT userId = createdUsers.userId; usar userId para coincidir con login/verify
+      const me = await database.select().from(createdUsers).where(eq(createdUsers.userId, requester.userId)).limit(1);
+      if (me[0]?.assignedPodiatristIds) {
+        try {
+          ids = JSON.parse(me[0].assignedPodiatristIds) as string[];
+        } catch {
+          ids = [];
+        }
+      }
+      if (ids.length === 0) return c.json({ success: true, users: [] });
+      // assignedPodiatristIds almacena userId (p. ej. al crear recepcionista desde podólogo); buscar por userId
+      const rows = await database.select().from(createdUsers).where(inArray(createdUsers.userId, ids));
+      return c.json({ success: true, users: rows.map(mapDbUser) });
+    }
+
+    if (requester.role === 'podiatrist' && requester.clinicId) {
+      let rows = await database.select().from(createdUsers).where(eq(createdUsers.clinicId, requester.clinicId));
+      if (roleFilter) rows = rows.filter((u) => u.role === roleFilter);
+      return c.json({ success: true, users: rows.map(mapDbUser) });
+    }
+
+    return c.json({ success: true, users: [] });
+  } catch (error) {
+    console.error('Error obteniendo usuarios visibles:', error);
     return c.json({ error: 'Error interno', message: 'Error al obtener usuarios' }, 500);
   }
 });

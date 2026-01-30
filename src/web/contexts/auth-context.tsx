@@ -45,7 +45,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     if (!user) return;
     try {
       const { api } = await import("../lib/api-client");
-      const r = await api.get<{ success?: boolean; users?: User[] }>("/users");
+      // /users/visible devuelve la lista según rol: admins/clinic todos o clínica; receptionist solo asignados; podiatrist su clínica
+      const r = await api.get<{ success?: boolean; users?: User[] }>("/users/visible");
       if (r.success && Array.isArray(r.data?.users)) setUsers(r.data.users);
       else setUsers([]);
     } catch {

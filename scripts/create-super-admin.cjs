@@ -3,13 +3,16 @@
  *
  * Uso:
  *   node scripts/create-super-admin.cjs
- *   node scripts/create-super-admin.cjs tu@email.com TuPasswordSegura
+ *   node scripts/create-super-admin.cjs "tu@email.com" "TuPasswordSegura" "Tu Nombre"
+ *
+ * IMPORTANTE: Pon la contraseña entre comillas si tiene caracteres especiales (*, $, !, etc.).
  *
  * Por defecto: admin@podoadmin.com / admin123 (solo para desarrollo).
  *
- * Luego aplicar:
- *   Local:  wrangler d1 execute DB --local --file=scripts/super-admin.sql
- *   Remoto: wrangler d1 execute DB --remote --file=scripts/super-admin.sql
+ * DESPUÉS de generar, DEBES aplicar el SQL a la base de datos:
+ *   Local:  bunx wrangler d1 execute DB --local --file=scripts/super-admin.sql
+ *   Remoto: bunx wrangler d1 execute DB --remote --file=scripts/super-admin.sql
+ * Sin este paso no tendrás acceso (el script solo crea el archivo).
  */
 
 const bcrypt = require('bcryptjs');
@@ -49,8 +52,9 @@ async function main() {
   console.log('Generado:', outPath);
   console.log('Usuario:', emailLower, '| Rol: super_admin');
   console.log('');
-  console.log('Aplicar en local:  bunx wrangler d1 execute DB --local --file=scripts/super-admin.sql');
-  console.log('Aplicar en remoto: bunx wrangler d1 execute DB --remote --file=scripts/super-admin.sql');
+  console.log('>>> DEBES APLICAR EL SQL A LA BASE DE DATOS (sin esto no tendrás acceso):');
+  console.log('    Local:  bunx wrangler d1 execute DB --local --file=scripts/super-admin.sql');
+  console.log('    Remoto: bunx wrangler d1 execute DB --remote --file=scripts/super-admin.sql');
 }
 
 main().catch((err) => {

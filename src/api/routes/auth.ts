@@ -184,6 +184,7 @@ authRoutes.post('/login', async (c) => {
             name: dbUser.name,
             role: dbUser.role as any,
             clinicId: dbUser.clinicId || undefined,
+            assignedPodiatristIds: dbUser.assignedPodiatristIds ?? undefined,
             isBlocked: dbUser.isBlocked,
             isEnabled: dbUser.isEnabled,
             isBanned: dbUser.isBanned,
@@ -421,6 +422,7 @@ authRoutes.post('/login', async (c) => {
         name: matchedUser.user.name,
         role: matchedUser.user.role,
         clinicId: matchedUser.user.clinicId,
+        assignedPodiatristIds: matchedUser.user.assignedPodiatristIds,
       },
     });
   } catch (error) {
@@ -519,6 +521,7 @@ authRoutes.get('/verify', requireAuth, async (c) => {
       name: dbUser.name,
       role: dbUser.role,
       clinicId: dbUser.clinicId || undefined,
+      assignedPodiatristIds: dbUser.assignedPodiatristIds ?? undefined,
     },
   });
 });

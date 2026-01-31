@@ -105,6 +105,8 @@ export const clinics = sqliteTable('clinics', {
   postalCode: text('postal_code'),
   licenseNumber: text('license_number'),
   website: text('website'),
+  consentText: text('consent_text'), // Términos y condiciones / consentimiento informado (texto editable por clinic_admin)
+  consentTextVersion: integer('consent_text_version').notNull().default(0),
   createdAt: text('created_at').notNull(),
 });
 
@@ -233,6 +235,16 @@ export const emailVerificationTokens = sqliteTable('email_verification_tokens', 
   createdAt: text('created_at').notNull(),
 });
 
+// Tabla de tokens de recuperación de contraseña
+export const passwordResetTokens = sqliteTable('password_reset_tokens', {
+  id: text('id').primaryKey(),
+  userId: text('user_id').notNull().references(() => createdUsers.id),
+  token: text('token').notNull().unique(),
+  expiresAt: integer('expires_at').notNull(), // Timestamp en milisegundos
+  used: integer('used', { mode: 'boolean' }).notNull().default(false),
+  createdAt: text('created_at').notNull(),
+});
+
 // Información profesional (podólogos independientes)
 export const professionalInfo = sqliteTable('professional_info', {
   userId: text('user_id').primaryKey(),
@@ -244,6 +256,8 @@ export const professionalInfo = sqliteTable('professional_info', {
   postalCode: text('postal_code').notNull().default(''),
   licenseNumber: text('license_number').notNull().default(''),
   professionalLicense: text('professional_license').notNull().default(''),
+  consentText: text('consent_text'), // Términos y condiciones / consentimiento informado (texto editable por podólogo)
+  consentTextVersion: integer('consent_text_version').notNull().default(0),
 });
 
 // Licencia profesional (todos los podólogos)

@@ -50,6 +50,8 @@ export interface Translations {
     loggingIn: string;
     invalidCredentials: string;
     loginError: string;
+    tooManyAttempts: string;
+    accountTemporarilyBlocked: string;
     testCredentials: string;
     superAdmin: string;
     podiatrist: string;
@@ -94,6 +96,40 @@ export interface Translations {
     orContinueWith: string;
     loginWithGoogle: string;
     loginWithApple: string;
+    // Forgot / Reset password
+    forgotPassword: string;
+    forgotPasswordTitle: string;
+    forgotPasswordSubtitle: string;
+    forgotPasswordButton: string;
+    forgotPasswordSuccess: string;
+    resetPasswordTitle: string;
+    resetPasswordSubtitle: string;
+    newPasswordLabel: string;
+    resetPasswordButton: string;
+    resetPasswordSuccess: string;
+    backToLogin: string;
+    // Forgot/Reset password errors (fallbacks for API/network)
+    forgotPasswordErrorRequest: string;
+    forgotPasswordErrorConnection: string;
+    resetPasswordInvalidLink: string;
+    resetPasswordPasswordsMismatch: string;
+    resetPasswordMissingToken: string;
+    resetPasswordErrorReset: string;
+    resetPasswordErrorConnection: string;
+    resetPasswordRedirecting: string;
+    resetPasswordRepeatPassword: string;
+    resetPasswordHint: string;
+    requestNewLink: string;
+    // Login security notices (anti-phishing)
+    securityLabel: string;
+    loginOnlyOnOfficialDomainWithDomain: string;
+    loginOnlyOnOfficialDomainGeneric: string;
+    notOnOfficialDomain: string;
+    notOnOfficialDomainNoDomain: string;
+    failedAttempts: string;
+    blockedUntil: string;
+    retryIn: string;
+    emailNotificationSent: string;
   };
   
   // Terms and Conditions
@@ -224,6 +260,8 @@ export interface Translations {
     consent: string;
     consentGiven: string;
     consentDate: string;
+    consentDocumentLink: string;
+    consentLegalNotice: string;
     clinicalHistory: string;
     viewHistory: string;
     lastVisit: string;
@@ -255,6 +293,84 @@ export interface Translations {
     startSession: string;
     creditReserved: string;
     sessionSaved: string;
+  };
+
+  // Calendar
+  calendar: {
+    title: string;
+    today: string;
+    month: string;
+    week: string;
+    day: string;
+    newAppointment: string;
+    addAppointment: string;
+    allPodiatrists: string;
+    dayMon: string;
+    dayTue: string;
+    dayWed: string;
+    dayThu: string;
+    dayFri: string;
+    daySat: string;
+    daySun: string;
+    unknown: string;
+    pendingPatient: string;
+    pendingShort: string;
+    appointment: string;
+    scheduled: string;
+    completed: string;
+    draft: string;
+    noDiagnosis: string;
+    noNotes: string;
+    edit: string;
+    cancel: string;
+    more: string;
+    events: string;
+    noEventsForDay: string;
+    podiatristLabel: string;
+    minutes: string;
+    tel: string;
+    confirmDeleteAppointment: string;
+    upcomingAppointments: string;
+    upcomingSessions: string;
+    noUpcomingSessions: string;
+    legend: string;
+    legendAppointment: string;
+    legendSessionCompleted: string;
+    legendSessionDraft: string;
+    legendCancelled: string;
+    formTitleNew: string;
+    formTitleEdit: string;
+    patientLabel: string;
+    patientPendingOption: string;
+    pendingPatientInfo: string;
+    nameRequired: string;
+    phoneRequired: string;
+    namePlaceholder: string;
+    phonePlaceholder: string;
+    podiatristRequired: string;
+    selectPodiatrist: string;
+    dateRequired: string;
+    timeRequired: string;
+    durationMinutes: string;
+    duration15: string;
+    duration30: string;
+    duration45: string;
+    duration60: string;
+    duration90: string;
+    notesPlaceholder: string;
+    cancelAppointmentButton: string;
+    confirmCancelAppointment: string;
+    close: string;
+    saveChanges: string;
+    createAppointment: string;
+    creating: string;
+    saving: string;
+    errorPendingPatientRequired: string;
+    errorOverlap: string;
+    errorUpdateFailed: string;
+    errorCreateFailed: string;
+    errorSaveFailed: string;
+    errorDeleteFailed: string;
   };
   
   // Credits
@@ -493,6 +609,37 @@ export const translations: Record<Language, Translations> = {
       orContinueWith: "O continúa con",
       loginWithGoogle: "Google",
       loginWithApple: "Apple",
+      forgotPassword: "¿Olvidaste tu contraseña?",
+      forgotPasswordTitle: "Recuperar contraseña",
+      forgotPasswordSubtitle: "Ingresa tu correo y te enviaremos un enlace para restablecer tu contraseña.",
+      forgotPasswordButton: "Enviar enlace",
+      forgotPasswordSuccess: "Si el correo está registrado, recibirás un enlace para restablecer tu contraseña.",
+      resetPasswordTitle: "Nueva contraseña",
+      resetPasswordSubtitle: "Elige una contraseña segura. El enlace expira en 1 hora.",
+      newPasswordLabel: "Nueva contraseña",
+      resetPasswordButton: "Restablecer contraseña",
+      resetPasswordSuccess: "Contraseña restablecida. Ya puedes iniciar sesión.",
+      backToLogin: "Volver al inicio de sesión",
+      forgotPasswordErrorRequest: "Ocurrió un error al procesar la solicitud. Por favor, intenta más tarde.",
+      forgotPasswordErrorConnection: "Error de conexión. Intenta de nuevo.",
+      resetPasswordInvalidLink: "Enlace inválido. Solicita uno nuevo desde la pantalla de recuperación.",
+      resetPasswordPasswordsMismatch: "Las contraseñas no coinciden.",
+      resetPasswordMissingToken: "Falta el token. Usa el enlace que recibiste por correo.",
+      resetPasswordErrorReset: "Error al restablecer la contraseña",
+      resetPasswordErrorConnection: "Error de conexión. Intenta de nuevo.",
+      resetPasswordRedirecting: "Redirigiendo al login...",
+      resetPasswordRepeatPassword: "Repetir contraseña",
+      resetPasswordHint: "Mínimo 12 caracteres, mayúscula, minúscula, número y carácter especial.",
+      requestNewLink: "Solicitar nuevo enlace",
+      securityLabel: "Seguridad:",
+      loginOnlyOnOfficialDomainWithDomain: "Solo inicia sesión en {domain}. No uses esta contraseña en otros sitios.",
+      loginOnlyOnOfficialDomainGeneric: "Solo inicia sesión en el dominio oficial. No uses esta contraseña en otros sitios.",
+      notOnOfficialDomain: "No estás en el dominio oficial. La URL actual no coincide con {domain}. No introduzcas tu contraseña aquí.",
+      notOnOfficialDomainNoDomain: "No estás en el dominio oficial. No introduzcas tu contraseña aquí.",
+      failedAttempts: "Intentos fallidos:",
+      blockedUntil: "Bloqueado hasta:",
+      retryIn: "Puedes intentar nuevamente en:",
+      emailNotificationSent: "Se ha enviado una notificación por email sobre estos intentos.",
     },
     nav: {
       dashboard: "Panel principal",
@@ -544,6 +691,8 @@ export const translations: Record<Language, Translations> = {
       consent: "Consentimiento",
       consentGiven: "Consentimiento otorgado",
       consentDate: "Fecha de consentimiento",
+      consentDocumentLink: "Ver documento de consentimiento informado",
+      consentLegalNotice: "Las firmas digitales aquí no tienen validez legal. Es necesario que el paciente firme el documento impreso para su validez jurídica.",
       clinicalHistory: "Historial clínico",
       viewHistory: "Ver historial",
       lastVisit: "Última visita",
@@ -573,6 +722,82 @@ export const translations: Record<Language, Translations> = {
       startSession: "Iniciar sesión",
       creditReserved: "Crédito reservado",
       sessionSaved: "Sesión guardada",
+    },
+    calendar: {
+      title: "Calendario",
+      today: "Hoy",
+      month: "Mes",
+      week: "Semana",
+      day: "Día",
+      newAppointment: "Nueva Cita",
+      addAppointment: "Añadir Cita",
+      allPodiatrists: "Todos los podólogos",
+      dayMon: "Lun",
+      dayTue: "Mar",
+      dayWed: "Mié",
+      dayThu: "Jue",
+      dayFri: "Vie",
+      daySat: "Sáb",
+      daySun: "Dom",
+      unknown: "Desconocido",
+      pendingPatient: "Paciente pendiente",
+      pendingShort: "Pendiente",
+      appointment: "Cita",
+      scheduled: "Cita programada",
+      completed: "Completada",
+      draft: "Borrador",
+      noDiagnosis: "Sin diagnóstico",
+      noNotes: "Sin notas",
+      edit: "Editar",
+      cancel: "Cancelar",
+      more: "más",
+      events: "eventos",
+      noEventsForDay: "No hay eventos para este día",
+      podiatristLabel: "Podólogo:",
+      minutes: "min",
+      tel: "Tel:",
+      confirmDeleteAppointment: "¿Eliminar esta cita del registro? Se borrará definitivamente.",
+      upcomingAppointments: "Próximas citas",
+      upcomingSessions: "Sesiones próximas (7 días)",
+      noUpcomingSessions: "No hay sesiones próximas",
+      legend: "Leyenda",
+      legendAppointment: "Cita programada",
+      legendSessionCompleted: "Sesión completada",
+      legendSessionDraft: "Sesión borrador",
+      legendCancelled: "Cancelada",
+      formTitleNew: "Nueva Cita",
+      formTitleEdit: "Editar Cita",
+      patientLabel: "Paciente",
+      patientPendingOption: "Paciente pendiente de registrar",
+      pendingPatientInfo: "Información del paciente pendiente:",
+      nameRequired: "Nombre *",
+      phoneRequired: "Teléfono *",
+      namePlaceholder: "Nombre completo del paciente",
+      phonePlaceholder: "Teléfono de contacto",
+      podiatristRequired: "Podólogo *",
+      selectPodiatrist: "Seleccionar podólogo",
+      dateRequired: "Fecha *",
+      timeRequired: "Hora *",
+      durationMinutes: "Duración (minutos)",
+      duration15: "15 minutos",
+      duration30: "30 minutos",
+      duration45: "45 minutos",
+      duration60: "1 hora",
+      duration90: "1 hora 30 minutos",
+      notesPlaceholder: "Motivo de la cita, comentarios adicionales...",
+      cancelAppointmentButton: "Cancelar Cita",
+      confirmCancelAppointment: "¿Cancelar esta cita?",
+      close: "Cerrar",
+      saveChanges: "Guardar Cambios",
+      createAppointment: "Crear Cita",
+      creating: "Creando…",
+      saving: "Guardando…",
+      errorPendingPatientRequired: "Por favor, complete el nombre y teléfono del paciente pendiente.",
+      errorOverlap: "El horario se solapa con otra cita de ese podólogo. Elige otro día, otra hora u otro podólogo (si eres clínica).",
+      errorUpdateFailed: "No se pudo actualizar la cita.",
+      errorCreateFailed: "No se pudo crear la cita.",
+      errorSaveFailed: "Error al guardar la cita.",
+      errorDeleteFailed: "No se pudo eliminar la cita.",
     },
     credits: {
       title: "Créditos",
@@ -821,6 +1046,8 @@ export const translations: Record<Language, Translations> = {
       loggingIn: "Logging in...",
       invalidCredentials: "Invalid credentials",
       loginError: "Login error",
+      tooManyAttempts: "Too many attempts",
+      accountTemporarilyBlocked: "Account temporarily blocked",
       testCredentials: "Test credentials",
       superAdmin: "Super Admin",
       podiatrist: "Podiatrist",
@@ -865,6 +1092,37 @@ export const translations: Record<Language, Translations> = {
       orContinueWith: "Or continue with",
       loginWithGoogle: "Google",
       loginWithApple: "Apple",
+      forgotPassword: "Forgot your password?",
+      forgotPasswordTitle: "Recover password",
+      forgotPasswordSubtitle: "Enter your email and we'll send you a link to reset your password.",
+      forgotPasswordButton: "Send link",
+      forgotPasswordSuccess: "If the email is registered, you'll receive a link to reset your password.",
+      resetPasswordTitle: "New password",
+      resetPasswordSubtitle: "Choose a secure password. The link expires in 1 hour.",
+      newPasswordLabel: "New password",
+      resetPasswordButton: "Reset password",
+      resetPasswordSuccess: "Password reset. You can now sign in.",
+      backToLogin: "Back to sign in",
+      forgotPasswordErrorRequest: "An error occurred processing your request. Please try again later.",
+      forgotPasswordErrorConnection: "Connection error. Please try again.",
+      resetPasswordInvalidLink: "Invalid link. Request a new one from the recovery screen.",
+      resetPasswordPasswordsMismatch: "Passwords do not match.",
+      resetPasswordMissingToken: "Missing token. Use the link you received by email.",
+      resetPasswordErrorReset: "Error resetting password",
+      resetPasswordErrorConnection: "Connection error. Please try again.",
+      resetPasswordRedirecting: "Redirecting to login...",
+      resetPasswordRepeatPassword: "Repeat password",
+      resetPasswordHint: "Minimum 12 characters, uppercase, lowercase, number and special character.",
+      requestNewLink: "Request new link",
+      securityLabel: "Security:",
+      loginOnlyOnOfficialDomainWithDomain: "Only sign in at {domain}. Do not use this password on other sites.",
+      loginOnlyOnOfficialDomainGeneric: "Only sign in on the official domain. Do not use this password on other sites.",
+      notOnOfficialDomain: "You are not on the official domain. The current URL does not match {domain}. Do not enter your password here.",
+      notOnOfficialDomainNoDomain: "You are not on the official domain. Do not enter your password here.",
+      failedAttempts: "Failed attempts:",
+      blockedUntil: "Blocked until:",
+      retryIn: "You can try again in:",
+      emailNotificationSent: "An email notification has been sent about these attempts.",
     },
     nav: {
       dashboard: "Dashboard",
@@ -916,6 +1174,8 @@ export const translations: Record<Language, Translations> = {
       consent: "Consent",
       consentGiven: "Consent given",
       consentDate: "Consent date",
+      consentDocumentLink: "View informed consent document",
+      consentLegalNotice: "Digital signatures here are not legally valid. The patient must sign the printed document for legal validity.",
       clinicalHistory: "Clinical History",
       viewHistory: "View History",
       lastVisit: "Last Visit",
@@ -945,6 +1205,82 @@ export const translations: Record<Language, Translations> = {
       startSession: "Start Session",
       creditReserved: "Credit reserved",
       sessionSaved: "Session saved",
+    },
+    calendar: {
+      title: "Calendar",
+      today: "Today",
+      month: "Month",
+      week: "Week",
+      day: "Day",
+      newAppointment: "New Appointment",
+      addAppointment: "Add Appointment",
+      allPodiatrists: "All podiatrists",
+      dayMon: "Mon",
+      dayTue: "Tue",
+      dayWed: "Wed",
+      dayThu: "Thu",
+      dayFri: "Fri",
+      daySat: "Sat",
+      daySun: "Sun",
+      unknown: "Unknown",
+      pendingPatient: "Pending patient",
+      pendingShort: "Pending",
+      appointment: "Appointment",
+      scheduled: "Scheduled appointment",
+      completed: "Completed",
+      draft: "Draft",
+      noDiagnosis: "No diagnosis",
+      noNotes: "No notes",
+      edit: "Edit",
+      cancel: "Cancel",
+      more: "more",
+      events: "events",
+      noEventsForDay: "No events for this day",
+      podiatristLabel: "Podiatrist:",
+      minutes: "min",
+      tel: "Tel:",
+      confirmDeleteAppointment: "Remove this appointment from the record? It will be permanently deleted.",
+      upcomingAppointments: "Upcoming appointments",
+      upcomingSessions: "Upcoming sessions (7 days)",
+      noUpcomingSessions: "No upcoming sessions",
+      legend: "Legend",
+      legendAppointment: "Scheduled appointment",
+      legendSessionCompleted: "Session completed",
+      legendSessionDraft: "Session draft",
+      legendCancelled: "Cancelled",
+      formTitleNew: "New Appointment",
+      formTitleEdit: "Edit Appointment",
+      patientLabel: "Patient",
+      patientPendingOption: "Patient to be registered",
+      pendingPatientInfo: "Pending patient information:",
+      nameRequired: "Name *",
+      phoneRequired: "Phone *",
+      namePlaceholder: "Full name of patient",
+      phonePlaceholder: "Contact phone",
+      podiatristRequired: "Podiatrist *",
+      selectPodiatrist: "Select podiatrist",
+      dateRequired: "Date *",
+      timeRequired: "Time *",
+      durationMinutes: "Duration (minutes)",
+      duration15: "15 minutes",
+      duration30: "30 minutes",
+      duration45: "45 minutes",
+      duration60: "1 hour",
+      duration90: "1 hour 30 minutes",
+      notesPlaceholder: "Reason for visit, additional comments...",
+      cancelAppointmentButton: "Cancel Appointment",
+      confirmCancelAppointment: "Cancel this appointment?",
+      close: "Close",
+      saveChanges: "Save Changes",
+      createAppointment: "Create Appointment",
+      creating: "Creating…",
+      saving: "Saving…",
+      errorPendingPatientRequired: "Please enter the pending patient's name and phone.",
+      errorOverlap: "This time slot overlaps with another appointment for the same podiatrist. Please choose another day, time, or podiatrist (if you manage a clinic).",
+      errorUpdateFailed: "Could not update the appointment.",
+      errorCreateFailed: "Could not create the appointment.",
+      errorSaveFailed: "Error saving the appointment.",
+      errorDeleteFailed: "Could not delete the appointment.",
     },
     credits: {
       title: "Credits",
@@ -1193,6 +1529,8 @@ export const translations: Record<Language, Translations> = {
       loggingIn: "Entrando...",
       invalidCredentials: "Credenciais inválidas",
       loginError: "Erro ao entrar",
+      tooManyAttempts: "Muitas tentativas",
+      accountTemporarilyBlocked: "Conta temporariamente bloqueada",
       testCredentials: "Credenciais de teste",
       superAdmin: "Super Administrador",
       podiatrist: "Podólogo",
@@ -1237,6 +1575,37 @@ export const translations: Record<Language, Translations> = {
       orContinueWith: "Ou continue com",
       loginWithGoogle: "Google",
       loginWithApple: "Apple",
+      forgotPassword: "Esqueceu sua senha?",
+      forgotPasswordTitle: "Recuperar senha",
+      forgotPasswordSubtitle: "Digite seu e-mail e enviaremos um link para redefinir sua senha.",
+      forgotPasswordButton: "Enviar link",
+      forgotPasswordSuccess: "Se o e-mail estiver registrado, você receberá um link para redefinir sua senha.",
+      resetPasswordTitle: "Nova senha",
+      resetPasswordSubtitle: "Escolha uma senha segura. O link expira em 1 hora.",
+      newPasswordLabel: "Nova senha",
+      resetPasswordButton: "Redefinir senha",
+      resetPasswordSuccess: "Senha redefinida. Agora você pode entrar.",
+      backToLogin: "Voltar ao login",
+      forgotPasswordErrorRequest: "Ocorreu um erro ao processar sua solicitação. Por favor, tente novamente mais tarde.",
+      forgotPasswordErrorConnection: "Erro de conexão. Tente novamente.",
+      resetPasswordInvalidLink: "Link inválido. Solicite um novo na tela de recuperação.",
+      resetPasswordPasswordsMismatch: "As senhas não coincidem.",
+      resetPasswordMissingToken: "Token ausente. Use o link que você recebeu por e-mail.",
+      resetPasswordErrorReset: "Erro ao redefinir a senha",
+      resetPasswordErrorConnection: "Erro de conexão. Tente novamente.",
+      resetPasswordRedirecting: "Redirecionando para o login...",
+      resetPasswordRepeatPassword: "Repetir senha",
+      resetPasswordHint: "Mínimo 12 caracteres, maiúscula, minúscula, número e caractere especial.",
+      requestNewLink: "Solicitar novo link",
+      securityLabel: "Segurança:",
+      loginOnlyOnOfficialDomainWithDomain: "Inicie sessão apenas em {domain}. Não use esta senha em outros sites.",
+      loginOnlyOnOfficialDomainGeneric: "Inicie sessão apenas no domínio oficial. Não use esta senha em outros sites.",
+      notOnOfficialDomain: "Você não está no domínio oficial. O URL atual não corresponde a {domain}. Não introduza sua senha aqui.",
+      notOnOfficialDomainNoDomain: "Você não está no domínio oficial. Não introduza sua senha aqui.",
+      failedAttempts: "Tentativas falhadas:",
+      blockedUntil: "Bloqueado até:",
+      retryIn: "Pode tentar novamente em:",
+      emailNotificationSent: "Foi enviada uma notificação por e-mail sobre estas tentativas.",
     },
     nav: {
       dashboard: "Painel",
@@ -1317,6 +1686,82 @@ export const translations: Record<Language, Translations> = {
       startSession: "Iniciar Sessão",
       creditReserved: "Crédito reservado",
       sessionSaved: "Sessão salva",
+    },
+    calendar: {
+      title: "Calendário",
+      today: "Hoje",
+      month: "Mês",
+      week: "Semana",
+      day: "Dia",
+      newAppointment: "Nova Consulta",
+      addAppointment: "Adicionar Consulta",
+      allPodiatrists: "Todos os podologistas",
+      dayMon: "Seg",
+      dayTue: "Ter",
+      dayWed: "Qua",
+      dayThu: "Qui",
+      dayFri: "Sex",
+      daySat: "Sáb",
+      daySun: "Dom",
+      unknown: "Desconhecido",
+      pendingPatient: "Paciente pendente",
+      pendingShort: "Pendente",
+      appointment: "Consulta",
+      scheduled: "Consulta agendada",
+      completed: "Concluída",
+      draft: "Rascunho",
+      noDiagnosis: "Sem diagnóstico",
+      noNotes: "Sem notas",
+      edit: "Editar",
+      cancel: "Cancelar",
+      more: "mais",
+      events: "eventos",
+      noEventsForDay: "Não há eventos para este dia",
+      podiatristLabel: "Podologista:",
+      minutes: "min",
+      tel: "Tel:",
+      confirmDeleteAppointment: "Remover esta consulta do registo? Será eliminada permanentemente.",
+      upcomingAppointments: "Próximas consultas",
+      upcomingSessions: "Próximas sessões (7 dias)",
+      noUpcomingSessions: "Não há sessões próximas",
+      legend: "Legenda",
+      legendAppointment: "Consulta agendada",
+      legendSessionCompleted: "Sessão concluída",
+      legendSessionDraft: "Sessão rascunho",
+      legendCancelled: "Cancelada",
+      formTitleNew: "Nova Consulta",
+      formTitleEdit: "Editar Consulta",
+      patientLabel: "Paciente",
+      patientPendingOption: "Paciente a registar",
+      pendingPatientInfo: "Informação do paciente pendente:",
+      nameRequired: "Nome *",
+      phoneRequired: "Telefone *",
+      namePlaceholder: "Nome completo do paciente",
+      phonePlaceholder: "Telefone de contacto",
+      podiatristRequired: "Podologista *",
+      selectPodiatrist: "Selecionar podologista",
+      dateRequired: "Data *",
+      timeRequired: "Hora *",
+      durationMinutes: "Duração (minutos)",
+      duration15: "15 minutos",
+      duration30: "30 minutos",
+      duration45: "45 minutos",
+      duration60: "1 hora",
+      duration90: "1 hora 30 minutos",
+      notesPlaceholder: "Motivo da consulta, comentários adicionais...",
+      cancelAppointmentButton: "Cancelar Consulta",
+      confirmCancelAppointment: "Cancelar esta consulta?",
+      close: "Fechar",
+      saveChanges: "Guardar Alterações",
+      createAppointment: "Criar Consulta",
+      creating: "A criar…",
+      saving: "A guardar…",
+      errorPendingPatientRequired: "Por favor, preencha o nome e telefone do paciente pendente.",
+      errorOverlap: "Este horário sobrepõe-se a outra consulta desse podologista. Escolha outro dia, outra hora ou outro podologista (se for clínica).",
+      errorUpdateFailed: "Não foi possível atualizar a consulta.",
+      errorCreateFailed: "Não foi possível criar a consulta.",
+      errorSaveFailed: "Erro ao guardar a consulta.",
+      errorDeleteFailed: "Não foi possível eliminar a consulta.",
     },
     credits: {
       title: "Créditos",
@@ -1565,6 +2010,8 @@ export const translations: Record<Language, Translations> = {
       loggingIn: "Connexion en cours...",
       invalidCredentials: "Identifiants invalides",
       loginError: "Erreur de connexion",
+      tooManyAttempts: "Trop de tentatives",
+      accountTemporarilyBlocked: "Compte temporairement bloqué",
       testCredentials: "Identifiants de test",
       superAdmin: "Super Administrateur",
       podiatrist: "Podologue",
@@ -1609,6 +2056,37 @@ export const translations: Record<Language, Translations> = {
       orContinueWith: "Ou continuer avec",
       loginWithGoogle: "Google",
       loginWithApple: "Apple",
+      forgotPassword: "Mot de passe oublié?",
+      forgotPasswordTitle: "Récupérer le mot de passe",
+      forgotPasswordSubtitle: "Entrez votre e-mail et nous vous enverrons un lien pour réinitialiser votre mot de passe.",
+      forgotPasswordButton: "Envoyer le lien",
+      forgotPasswordSuccess: "Si l'e-mail est enregistré, vous recevrez un lien pour réinitialiser votre mot de passe.",
+      resetPasswordTitle: "Nouveau mot de passe",
+      resetPasswordSubtitle: "Choisissez un mot de passe sécurisé. Le lien expire dans 1 heure.",
+      newPasswordLabel: "Nouveau mot de passe",
+      resetPasswordButton: "Réinitialiser le mot de passe",
+      resetPasswordSuccess: "Mot de passe réinitialisé. Vous pouvez maintenant vous connecter.",
+      backToLogin: "Retour à la connexion",
+      forgotPasswordErrorRequest: "Une erreur s'est produite lors du traitement de votre demande. Veuillez réessayer plus tard.",
+      forgotPasswordErrorConnection: "Erreur de connexion. Veuillez réessayer.",
+      resetPasswordInvalidLink: "Lien invalide. Demandez-en un nouveau depuis l'écran de récupération.",
+      resetPasswordPasswordsMismatch: "Les mots de passe ne correspondent pas.",
+      resetPasswordMissingToken: "Jeton manquant. Utilisez le lien reçu par e-mail.",
+      resetPasswordErrorReset: "Erreur lors de la réinitialisation du mot de passe",
+      resetPasswordErrorConnection: "Erreur de connexion. Veuillez réessayer.",
+      resetPasswordRedirecting: "Redirection vers la connexion...",
+      resetPasswordRepeatPassword: "Répéter le mot de passe",
+      resetPasswordHint: "Minimum 12 caractères, majuscule, minuscule, chiffre et caractère spécial.",
+      requestNewLink: "Demander un nouveau lien",
+      securityLabel: "Sécurité :",
+      loginOnlyOnOfficialDomainWithDomain: "Connectez-vous uniquement sur {domain}. N'utilisez pas ce mot de passe sur d'autres sites.",
+      loginOnlyOnOfficialDomainGeneric: "Connectez-vous uniquement sur le domaine officiel. N'utilisez pas ce mot de passe sur d'autres sites.",
+      notOnOfficialDomain: "Vous n'êtes pas sur le domaine officiel. L'URL actuelle ne correspond pas à {domain}. N'entrez pas votre mot de passe ici.",
+      notOnOfficialDomainNoDomain: "Vous n'êtes pas sur le domaine officiel. N'entrez pas votre mot de passe ici.",
+      failedAttempts: "Tentatives échouées :",
+      blockedUntil: "Bloqué jusqu'à :",
+      retryIn: "Vous pouvez réessayer dans :",
+      emailNotificationSent: "Une notification par e-mail a été envoyée concernant ces tentatives.",
     },
     nav: {
       dashboard: "Tableau de bord",
@@ -1660,6 +2138,8 @@ export const translations: Record<Language, Translations> = {
       consent: "Consentement",
       consentGiven: "Consentement donné",
       consentDate: "Date du consentement",
+      consentDocumentLink: "Voir le document de consentement éclairé",
+      consentLegalNotice: "Les signatures numériques ici n'ont pas de validité légale. Le patient doit signer le document imprimé pour sa validité juridique.",
       clinicalHistory: "Historique Clinique",
       viewHistory: "Voir l'Historique",
       lastVisit: "Dernière Visite",
@@ -1689,6 +2169,82 @@ export const translations: Record<Language, Translations> = {
       startSession: "Démarrer la Séance",
       creditReserved: "Crédit réservé",
       sessionSaved: "Séance enregistrée",
+    },
+    calendar: {
+      title: "Calendrier",
+      today: "Aujourd'hui",
+      month: "Mois",
+      week: "Semaine",
+      day: "Jour",
+      newAppointment: "Nouveau rendez-vous",
+      addAppointment: "Ajouter un rendez-vous",
+      allPodiatrists: "Tous les podologues",
+      dayMon: "Lun",
+      dayTue: "Mar",
+      dayWed: "Mer",
+      dayThu: "Jeu",
+      dayFri: "Ven",
+      daySat: "Sam",
+      daySun: "Dim",
+      unknown: "Inconnu",
+      pendingPatient: "Patient en attente",
+      pendingShort: "En attente",
+      appointment: "Rendez-vous",
+      scheduled: "Rendez-vous programmé",
+      completed: "Terminée",
+      draft: "Brouillon",
+      noDiagnosis: "Sans diagnostic",
+      noNotes: "Sans notes",
+      edit: "Modifier",
+      cancel: "Annuler",
+      more: "de plus",
+      events: "événements",
+      noEventsForDay: "Aucun événement pour ce jour",
+      podiatristLabel: "Podologue :",
+      minutes: "min",
+      tel: "Tél :",
+      confirmDeleteAppointment: "Supprimer ce rendez-vous du registre ? Il sera définitivement effacé.",
+      upcomingAppointments: "Prochains rendez-vous",
+      upcomingSessions: "Prochaines séances (7 jours)",
+      noUpcomingSessions: "Aucune séance à venir",
+      legend: "Légende",
+      legendAppointment: "Rendez-vous programmé",
+      legendSessionCompleted: "Séance terminée",
+      legendSessionDraft: "Séance brouillon",
+      legendCancelled: "Annulée",
+      formTitleNew: "Nouveau rendez-vous",
+      formTitleEdit: "Modifier le rendez-vous",
+      patientLabel: "Patient",
+      patientPendingOption: "Patient à enregistrer",
+      pendingPatientInfo: "Informations du patient en attente :",
+      nameRequired: "Nom *",
+      phoneRequired: "Téléphone *",
+      namePlaceholder: "Nom complet du patient",
+      phonePlaceholder: "Téléphone de contact",
+      podiatristRequired: "Podologue *",
+      selectPodiatrist: "Sélectionner un podologue",
+      dateRequired: "Date *",
+      timeRequired: "Heure *",
+      durationMinutes: "Durée (minutes)",
+      duration15: "15 minutes",
+      duration30: "30 minutes",
+      duration45: "45 minutes",
+      duration60: "1 heure",
+      duration90: "1 heure 30",
+      notesPlaceholder: "Motif de la visite, commentaires...",
+      cancelAppointmentButton: "Annuler le rendez-vous",
+      confirmCancelAppointment: "Annuler ce rendez-vous ?",
+      close: "Fermer",
+      saveChanges: "Enregistrer les modifications",
+      createAppointment: "Créer le rendez-vous",
+      creating: "Création…",
+      saving: "Enregistrement…",
+      errorPendingPatientRequired: "Veuillez renseigner le nom et le téléphone du patient en attente.",
+      errorOverlap: "Ce créneau chevauche un autre rendez-vous de ce podologue. Choisissez un autre jour, une autre heure ou un autre podologue (si vous gérez une clinique).",
+      errorUpdateFailed: "Impossible de mettre à jour le rendez-vous.",
+      errorCreateFailed: "Impossible de créer le rendez-vous.",
+      errorSaveFailed: "Erreur lors de l'enregistrement du rendez-vous.",
+      errorDeleteFailed: "Impossible de supprimer le rendez-vous.",
     },
     credits: {
       title: "Crédits",

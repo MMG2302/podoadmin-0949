@@ -1,7 +1,7 @@
 import { Hono } from 'hono';
 import { eq } from 'drizzle-orm';
 import { requireAuth } from '../middleware/auth';
-import { requireRole } from '../middleware/authorization';
+import { requireRole, requirePermission } from '../middleware/authorization';
 import {
   getAuditLogsByUser,
   getAuditLogsByAction,
@@ -10,6 +10,7 @@ import {
   getRecentPrintViolationCount,
 } from '../utils/audit-log';
 import { getClientIP } from '../utils/ip-tracking';
+import { getSafeUserAgent } from '../utils/request-headers';
 import { database } from '../database';
 import { createdUsers, notifications as notificationsTable } from '../database/schema';
 
@@ -76,7 +77,7 @@ auditLogRoutes.post('/', async (c) => {
       resourceId,
       details: body.details ?? undefined,
       ipAddress: getClientIP(c.req.raw.headers),
-      userAgent: c.req.header('User-Agent') || undefined,
+      userAgent: getSafeUserAgent(c),
       clinicId: body.clinicId ?? user.clinicId ?? undefined,
     });
 
@@ -218,6 +219,55 @@ auditLogRoutes.get('/all', requireRole('super_admin'), async (c) => {
   } catch (error) {
     console.error('Error obteniendo todos los logs:', error);
     return c.json({ error: 'Error interno' }, 500);
+  }
+});
+
+/**
+ * GET /api/audit-logs/export
+ * Exportación de auditoría para evidencias / compliance (CSV o JSON).
+ * Requiere permiso view_audit_log. Parámetros: format=csv|json, from, to, userId, clinicId, action, limit.
+ */
+auditLogRoutes.get('/export', requirePermission('view_audit_log'), async (c) => {
+  try {
+    const format = (c.req.query('format') || 'json').toLowerCase() as 'csv' | 'json';
+    const from = c.req.query('from') || undefined;
+    const to = c.req.query('to') || undefined;
+    const userId = c.req.query('userId') || undefined;
+    const clinicId = c.req.query('clinicId') || undefined;
+    const action = c.req.query('action') || undefined;
+    const limit = Math.min(parseInt(c.req.query('limit') || '1000', 10) || 1000, 5000);
+
+    const logs = await getAuditLogsForExport({ from, to, userId, clinicId, action, limit });
+
+    const filename = `auditoria-${Date.now()}.${format === 'csv' ? 'csv' : 'json'}`;
+
+    if (format === 'csv') {
+      const header = 'id,userId,action,resourceType,resourceId,details,ipAddress,userAgent,clinicId,createdAt';
+      const escapeCsv = (v: unknown): string => {
+        if (v == null) return '';
+        const s = typeof v === 'object' ? JSON.stringify(v) : String(v);
+        return s.includes(',') || s.includes('"') || s.includes('\n') ? `"${s.replace(/"/g, '""')}"` : s;
+      };
+      const rows = logs.map(
+        (l) =>
+          [l.id, l.userId, l.action, l.resourceType, l.resourceId ?? '', escapeCsv(l.details), l.ipAddress ?? '', l.userAgent ?? '', l.clinicId ?? '', l.createdAt].join(',')
+      );
+      const csv = [header, ...rows].join('\n');
+      c.header('Content-Type', 'text/csv; charset=utf-8');
+      c.header('Content-Disposition', `attachment; filename="${filename}"`);
+      return c.body(csv, 200, {
+        'Content-Type': 'text/csv; charset=utf-8',
+        'Content-Disposition': `attachment; filename="${filename}"`,
+      });
+    }
+
+    c.header('Content-Disposition', `attachment; filename="${filename}"`);
+    return c.json({ exportedAt: new Date().toISOString(), count: logs.length, logs }, 200, {
+      'Content-Disposition': `attachment; filename="${filename}"`,
+    });
+  } catch (error) {
+    console.error('Error exportando auditoría:', error);
+    return c.json({ error: 'Error interno', message: 'Error al exportar auditoría' }, 500);
   }
 });
 

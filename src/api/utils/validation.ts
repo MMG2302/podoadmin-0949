@@ -123,7 +123,10 @@ export const createPatientSchema = z.object({
   consent: z.object({
     given: z.boolean(),
     date: z.string().nullable().optional(),
+    consentedToVersion: z.number().optional(),
   }).optional(),
+  /** Solo para recepcionistas: id del podólogo al que se asigna el paciente */
+  createdBy: z.string().max(128).optional(),
 });
 
 /**
@@ -180,6 +183,45 @@ export const verifyEmailSchema = z.object({
     .max(255, 'Token inválido')
     .refine((val) => !containsXssPayload(val), {
       message: 'Token contiene caracteres no permitidos',
+    }),
+});
+
+/**
+ * Schema para solicitar recuperación de contraseña (forgot password)
+ */
+export const forgotPasswordSchema = z.object({
+  email: z
+    .string()
+    .min(1, 'Email es requerido')
+    .email('Email inválido')
+    .max(255, 'Email demasiado largo')
+    .refine((val) => !containsXssPayload(val), {
+      message: 'Email contiene caracteres no permitidos',
+    })
+    .transform((val) => sanitizeEmail(val) || val),
+});
+
+/**
+ * Schema para restablecer contraseña con token
+ */
+export const resetPasswordSchema = z.object({
+  token: z
+    .string()
+    .min(1, 'Token es requerido')
+    .max(255, 'Token inválido')
+    .refine((val) => !containsXssPayload(val), {
+      message: 'Token contiene caracteres no permitidos',
+    }),
+  newPassword: z
+    .string()
+    .min(12, 'La contraseña debe tener al menos 12 caracteres')
+    .max(128, 'La contraseña no puede tener más de 128 caracteres')
+    .regex(/[A-Z]/, 'Debe contener al menos una letra mayúscula')
+    .regex(/[a-z]/, 'Debe contener al menos una letra minúscula')
+    .regex(/[0-9]/, 'Debe contener al menos un número')
+    .regex(/[^A-Za-z0-9]/, 'Debe contener al menos un carácter especial')
+    .refine((val) => !containsXssPayload(val), {
+      message: 'Contraseña contiene caracteres no permitidos',
     }),
 });
 

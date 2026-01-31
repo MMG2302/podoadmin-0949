@@ -39,6 +39,7 @@ function mapDbPatient(row: DbPatient) {
       consent = {
         given: parsed.given ?? false,
         date: parsed.date ?? null,
+        consentedToVersion: parsed.consentedToVersion ?? null,
       };
     }
   } catch {
@@ -64,6 +65,22 @@ function mapDbPatient(row: DbPatient) {
     updatedAt: row.updatedAt,
     createdBy: row.createdBy,
   };
+}
+
+/** Obtiene los IDs de podólogos asignados a una recepcionista (desde DB). */
+async function getAssignedPodiatristIds(userId: string): Promise<string[]> {
+  const rows = await database
+    .select({ assignedPodiatristIds: createdUsersTable.assignedPodiatristIds })
+    .from(createdUsersTable)
+    .where(eq(createdUsersTable.id, userId))
+    .limit(1);
+  if (!rows[0]?.assignedPodiatristIds) return [];
+  try {
+    const parsed = JSON.parse(rows[0].assignedPodiatristIds) as unknown;
+    return Array.isArray(parsed) ? parsed.filter((id): id is string => typeof id === 'string') : [];
+  } catch {
+    return [];
+  }
 }
 
 // Genera folio simple basado en clinicId (o IND) y año
@@ -167,7 +184,7 @@ patientsRoutes.post(
           toUserId: newPodiatristId,
         },
         ipAddress: getClientIP(c.req.raw.headers),
-        userAgent: c.req.header('User-Agent') ?? undefined,
+        userAgent: getSafeUserAgent(c),
         clinicId: user.clinicId ?? undefined,
       });
 
@@ -204,8 +221,19 @@ patientsRoutes.get(
       // Reglas de visibilidad en backend:
       // - super_admin: todos
       // - podiatrist: solo sus pacientes (createdBy === user.userId)
+      // - receptionist: solo pacientes de los podólogos asignados (createdBy in assignedPodiatristIds)
+      // - clinic_admin: solo pacientes de su clínica (clinicId === user.clinicId)
       if (user?.role === 'podiatrist') {
         rows = rows.filter((p) => p.createdBy === user.userId);
+      } else if (user?.role === 'receptionist') {
+        const assignedIds = await getAssignedPodiatristIds(user.userId);
+        if (assignedIds.length === 0) {
+          rows = [];
+        } else {
+          rows = rows.filter((p) => assignedIds.includes(p.createdBy));
+        }
+      } else if (user?.role === 'clinic_admin' && user.clinicId) {
+        rows = rows.filter((p) => p.clinicId === user.clinicId);
       }
 
       const patients = rows.map(mapDbPatient);
@@ -248,12 +276,28 @@ patientsRoutes.get(
       // Reglas de acceso adicionales:
       // - super_admin: acceso total
       // - podiatrist: solo pacientes que él mismo ha creado
+      // - receptionist: solo pacientes de podólogos asignados
       if (user?.role === 'podiatrist' && row.createdBy !== user.userId) {
         return c.json(
           {
             error: 'Acceso denegado',
             message: 'No tienes permiso para ver este paciente',
           },
+          403
+        );
+      }
+      if (user?.role === 'receptionist') {
+        const assignedIds = await getAssignedPodiatristIds(user.userId);
+        if (!assignedIds.includes(row.createdBy)) {
+          return c.json(
+            { error: 'Acceso denegado', message: 'No tienes permiso para ver este paciente' },
+            403
+          );
+        }
+      }
+      if (user?.role === 'clinic_admin' && user.clinicId && row.clinicId !== user.clinicId) {
+        return c.json(
+          { error: 'Acceso denegado', message: 'No tienes permiso para ver este paciente' },
           403
         );
       }
@@ -299,9 +343,38 @@ patientsRoutes.post(
 
       const body = validation.data;
 
+      let createdBy = user!.userId;
+      let clinicIdForPatient: string | null = user?.clinicId || null;
+
+      // Recepcionista: debe enviar createdBy (podólogo asignado) y debe estar en sus asignados
+      if (user?.role === 'receptionist') {
+        const podiatristId = (body as { createdBy?: string }).createdBy?.trim();
+        if (!podiatristId) {
+          return c.json(
+            { error: 'createdBy requerido', message: 'Debes seleccionar un podólogo para asignar el paciente' },
+            400
+          );
+        }
+        const assignedIds = await getAssignedPodiatristIds(user.userId);
+        if (!assignedIds.includes(podiatristId)) {
+          return c.json(
+            { error: 'Acceso denegado', message: 'No puedes asignar pacientes a ese podólogo' },
+            403
+          );
+        }
+        createdBy = podiatristId;
+        // Obtener clinicId del podólogo para el folio/clínica del paciente
+        const podRows = await database
+          .select({ clinicId: createdUsersTable.clinicId })
+          .from(createdUsersTable)
+          .where(eq(createdUsersTable.id, podiatristId))
+          .limit(1);
+        if (podRows[0]?.clinicId) clinicIdForPatient = podRows[0].clinicId;
+      }
+
       const now = new Date().toISOString();
       const id = generateId();
-      const folio = await generateFolio(user?.clinicId ?? null);
+      const folio = await generateFolio(clinicIdForPatient);
 
       const medicalHistory = JSON.stringify(
         body.medicalHistory || { allergies: [], medications: [], conditions: [] }
@@ -327,8 +400,8 @@ patientsRoutes.post(
         consent,
         createdAt: now,
         updatedAt: now,
-        createdBy: user!.userId,
-        clinicId: user?.clinicId || null,
+        createdBy,
+        clinicId: clinicIdForPatient,
       });
 
       const [row] = await database
@@ -378,12 +451,29 @@ patientsRoutes.put(
       // Reglas de modificación:
       // - super_admin: puede actualizar cualquier paciente
       // - podiatrist: solo puede actualizar pacientes que él mismo creó
+      // - receptionist: solo pacientes de podólogos asignados
+      // - clinic_admin: solo pacientes de su clínica
       if (user?.role === 'podiatrist' && existing.createdBy !== user.userId) {
         return c.json(
           {
             error: 'Acceso denegado',
             message: 'No tienes permiso para modificar este paciente',
           },
+          403
+        );
+      }
+      if (user?.role === 'receptionist') {
+        const assignedIds = await getAssignedPodiatristIds(user.userId);
+        if (!assignedIds.includes(existing.createdBy)) {
+          return c.json(
+            { error: 'Acceso denegado', message: 'No tienes permiso para modificar este paciente' },
+            403
+          );
+        }
+      }
+      if (user?.role === 'clinic_admin' && user.clinicId && existing.clinicId !== user.clinicId) {
+        return c.json(
+          { error: 'Acceso denegado', message: 'No tienes permiso para modificar este paciente' },
           403
         );
       }
@@ -478,14 +568,28 @@ patientsRoutes.delete(
       const existing = existingRows[0];
 
       // Reglas de borrado:
+      // - receptionist: no puede eliminar pacientes
       // - super_admin: puede borrar cualquier paciente
       // - podiatrist: solo puede borrar pacientes que él mismo creó
+      // - clinic_admin: solo pacientes de su clínica
+      if (user?.role === 'receptionist') {
+        return c.json(
+          { error: 'Acceso denegado', message: 'No tienes permiso para eliminar pacientes' },
+          403
+        );
+      }
       if (user?.role === 'podiatrist' && existing.createdBy !== user.userId) {
         return c.json(
           {
             error: 'Acceso denegado',
             message: 'No tienes permiso para eliminar este paciente',
           },
+          403
+        );
+      }
+      if (user?.role === 'clinic_admin' && user.clinicId && existing.clinicId !== user.clinicId) {
+        return c.json(
+          { error: 'Acceso denegado', message: 'No tienes permiso para eliminar este paciente' },
           403
         );
       }

@@ -6,6 +6,8 @@ import { LanguageProvider } from "./contexts/language-context";
 import Login from "./pages/login";
 import Register from "./pages/register";
 import VerifyEmail from "./pages/verify-email";
+import ForgotPassword from "./pages/forgot-password";
+import ResetPassword from "./pages/reset-password";
 import Terms from "./pages/terms";
 import Dashboard from "./pages/dashboard";
 
@@ -64,6 +66,12 @@ function AppRoutes() {
       </Route>
       <Route path="/verify-email">
         <PublicRoute component={VerifyEmail} />
+      </Route>
+      <Route path="/forgot-password">
+        <PublicRoute component={ForgotPassword} />
+      </Route>
+      <Route path="/reset-password">
+        <PublicRoute component={ResetPassword} />
       </Route>
       <Route path="/terms">
         <PublicRoute component={Terms} />

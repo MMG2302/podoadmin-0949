@@ -1,6 +1,6 @@
 import { database } from '../database';
 import { auditLog } from '../database/schema';
-import { eq, desc, and, gte } from 'drizzle-orm';
+import { eq, desc, and, gte, lte } from 'drizzle-orm';
 
 /**
  * Utilidades para logging de auditoría en el servidor
@@ -112,6 +112,49 @@ export async function getAllAuditLogs(limit: number = 500): Promise<any[]> {
     }));
   } catch (error) {
     console.error('Error obteniendo todos los logs:', error);
+    return [];
+  }
+}
+
+export interface AuditLogExportFilters {
+  from?: string; // ISO date
+  to?: string; // ISO date
+  userId?: string;
+  clinicId?: string;
+  action?: string;
+  limit?: number;
+}
+
+/**
+ * Obtiene logs de auditoría con filtros para exportación (evidencias / compliance).
+ */
+export async function getAuditLogsForExport(filters: AuditLogExportFilters = {}): Promise<any[]> {
+  const { from, to, userId, clinicId, action, limit = 1000 } = filters;
+  const maxLimit = Math.min(limit, 5000);
+  const conditions: any[] = [];
+  if (from) conditions.push(gte(auditLog.createdAt, from));
+  if (to) conditions.push(lte(auditLog.createdAt, to));
+  if (userId) conditions.push(eq(auditLog.userId, userId));
+  if (clinicId) conditions.push(eq(auditLog.clinicId, clinicId));
+  if (action) conditions.push(eq(auditLog.action, action));
+
+  try {
+    const logs =
+      conditions.length > 0
+        ? await database
+            .select()
+            .from(auditLog)
+            .where(and(...conditions))
+            .orderBy(desc(auditLog.createdAt))
+            .limit(maxLimit)
+        : await database.select().from(auditLog).orderBy(desc(auditLog.createdAt)).limit(maxLimit);
+
+    return logs.map((log) => ({
+      ...log,
+      details: log.details ? JSON.parse(log.details) : null,
+    }));
+  } catch (error) {
+    console.error('Error obteniendo logs para export:', error);
     return [];
   }
 }

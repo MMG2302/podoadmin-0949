@@ -10,8 +10,6 @@ const canCreatePrescriptions = (role: string | undefined): boolean => {
   return role === "podiatrist";
 };
 import {
-  getPatients,
-  getPatientById,
   getUserCredits,
   reserveCredit,
   consumeCredit,
@@ -33,6 +31,7 @@ import {
   Prescription,
 } from "../lib/storage";
 import { api } from "../lib/api-client";
+import { compressImageForSession } from "../lib/image-compress";
 
 interface SessionFormData {
   patientId: string;
@@ -116,7 +115,28 @@ const SessionsPage = () => {
   }
   
   const [sessions, setSessions] = useState<ClinicalSession[]>([]);
-  const [patients] = useState<Patient[]>(() => getPatients());
+  const [patients, setPatients] = useState<Patient[]>([]);
+
+  // Cargar pacientes desde la API (filtrados por podólogo actual, no toda la base de datos)
+  useEffect(() => {
+    const loadPatients = async () => {
+      try {
+        const response = await api.get<{ success: boolean; patients: Patient[] }>("/patients");
+        if (response.success && response.data?.success) {
+          setPatients(response.data.patients);
+        }
+      } catch (error) {
+        console.error("Error cargando pacientes:", error);
+      }
+    };
+    loadPatients();
+  }, [user?.id]);
+
+  const getPatientById = (id: string) => patients.find((p) => p.id === id);
+
+  const isPatientCompleteForSessions = (p: Patient | undefined) =>
+    !!p?.firstName?.trim() && !!p?.lastName?.trim() && !!p?.dateOfBirth?.trim() &&
+    !!p?.gender?.trim() && !!p?.idNumber?.trim();
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | "draft" | "completed">("all");
   const [showForm, setShowForm] = useState(false);
@@ -317,22 +337,35 @@ const SessionsPage = () => {
     return filtered.sort((a, b) => new Date(b.sessionDate).getTime() - new Date(a.sessionDate).getTime());
   }, [sessions, searchQuery, statusFilter, filterPatientId]);
 
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const [imageUploadError, setImageUploadError] = useState<string | null>(null);
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || formData.images.length >= 2) return;
-    
-    Array.from(files).slice(0, 2 - formData.images.length).forEach((file) => {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        // Mock conversion to webp (in real app, would actually convert)
-        const base64 = reader.result as string;
-        setFormData((prev) => ({
-          ...prev,
-          images: [...prev.images, base64],
-        }));
-      };
-      reader.readAsDataURL(file);
-    });
+    e.target.value = "";
+
+    setImageUploadError(null);
+    const toAdd = Math.min(2 - formData.images.length, files.length);
+    const slice = Array.from(files).slice(0, toAdd);
+    const processed: string[] = [];
+
+    for (const file of slice) {
+      if (!file.type.startsWith("image/")) {
+        setImageUploadError("Solo se permiten imágenes (JPEG, PNG, WebP).");
+        continue;
+      }
+      try {
+        const dataUrl = await compressImageForSession(file);
+        processed.push(dataUrl);
+      } catch (err) {
+        setImageUploadError(err instanceof Error ? err.message : "Error al procesar la imagen.");
+        break;
+      }
+    }
+
+    if (processed.length > 0) {
+      setFormData((prev) => ({ ...prev, images: [...prev.images, ...processed] }));
+    }
   };
 
   const removeImage = (index: number) => {
@@ -346,6 +379,12 @@ const SessionsPage = () => {
     e.preventDefault();
     
     if (!formData.patientId) return;
+
+    const patient = getPatientById(formData.patientId);
+    if (!patient || !isPatientCompleteForSessions(patient)) {
+      alert("Faltan datos obligatorios del paciente (nombre, apellido, fecha de nacimiento, género, DNI). Para menores use el DNI del padre o tutor. Edite la ficha del paciente antes de guardar la sesión.");
+      return;
+    }
 
     const sessionData = {
       patientId: formData.patientId,
@@ -1279,12 +1318,22 @@ const SessionsPage = () => {
                     disabled={!!editingSession}
                   >
                     <option value="">Seleccionar...</option>
-                    {patients.map((p) => (
-                      <option key={p.id} value={p.id}>
-                        {p.firstName} {p.lastName}
-                      </option>
-                    ))}
+                    {patients
+                      .filter((p) => isPatientCompleteForSessions(p) || (editingSession && p.id === editingSession.patientId))
+                      .map((p) => (
+                        <option key={p.id} value={p.id}>
+                          {p.firstName} {p.lastName}{!isPatientCompleteForSessions(p) ? " (datos incompletos)" : ""}
+                        </option>
+                      ))}
                   </select>
+                  {formData.patientId && (() => {
+                    const p = patients.find((x) => x.id === formData.patientId);
+                    return p && !isPatientCompleteForSessions(p);
+                  })() && (
+                    <p className="text-xs text-amber-700 mt-1">
+                      Faltan datos obligatorios (nombre, apellido, fecha nacimiento, género, DNI). Para menores use el DNI del padre/tutor. Edite la ficha del paciente antes de guardar.
+                    </p>
+                  )}
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-[#1a1a1a] mb-1">
@@ -1407,6 +1456,9 @@ const SessionsPage = () => {
                     />
                   </label>
                 )}
+                {imageUploadError && (
+                  <p className="text-xs text-red-600 mt-2">{imageUploadError}</p>
+                )}
                 <p className="text-xs text-gray-500 mt-2">{t.sessions.maxImages}</p>
               </div>
 
@@ -1475,14 +1527,16 @@ const SessionsPage = () => {
                 <button
                   type="button"
                   onClick={(e) => handleSubmit(e, true)}
-                  className="flex-1 py-3 bg-gray-100 text-[#1a1a1a] rounded-lg hover:bg-gray-200 transition-colors font-medium"
+                  disabled={!!formData.patientId && (() => { const p = patients.find((x) => x.id === formData.patientId); return !p || !isPatientCompleteForSessions(p); })()}
+                  className="flex-1 py-3 bg-gray-100 text-[#1a1a1a] rounded-lg hover:bg-gray-200 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {t.sessions.saveDraft}
                 </button>
                 <button
                   type="button"
                   onClick={(e) => handleSubmit(e, false)}
-                  className="flex-1 py-3 bg-[#1a1a1a] text-white rounded-lg hover:bg-[#2a2a2a] transition-colors font-medium"
+                  disabled={!!formData.patientId && (() => { const p = patients.find((x) => x.id === formData.patientId); return !p || !isPatientCompleteForSessions(p); })()}
+                  className="flex-1 py-3 bg-[#1a1a1a] text-white rounded-lg hover:bg-[#2a2a2a] transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {t.sessions.complete}
                 </button>

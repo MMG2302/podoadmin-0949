@@ -1,32 +1,41 @@
 import { createMiddleware } from 'hono/factory';
 import { escapeHtmlObject, sanitizeInput } from '../utils/sanitization';
+import { parseAndSanitizeHeaders } from '../utils/request-headers';
 
 /**
- * Middleware de sanitización
- * Escapa HTML en todos los inputs para prevenir XSS
+ * Pipeline único de entradas:
+ * 1. Query + body → normalizar (trim, longitud) + escapar HTML (sanitizeInput)
+ * 2. Headers seleccionados → parse y sanitizar (sin control chars, longitud)
+ * Los path params se validan en cada ruta (el middleware no tiene acceso al match).
  */
+const BODY_METHODS = ['POST', 'PUT', 'PATCH'];
+
 export const sanitizationMiddleware = createMiddleware(async (c, next) => {
-  // Sanitizar query parameters
+  // 1. Query: mismo pipeline (normalize + escape en sanitizeInput)
   const query = c.req.query();
   if (Object.keys(query).length > 0) {
     const sanitizedQuery = sanitizeInput(query);
-    // Reemplazar query params sanitizados
     for (const [key, value] of Object.entries(sanitizedQuery)) {
       c.req.query(key, value as string);
     }
   }
 
-  // Sanitizar body si existe
-  try {
-    const body = await c.req.json().catch(() => null);
-    if (body && typeof body === 'object') {
-      const sanitizedBody = sanitizeInput(body);
-      // Reemplazar body sanitizado
-      c.req.json = () => Promise.resolve(sanitizedBody);
+  // 2. Body: solo para métodos que envían body (evita colgar en GET/OPTIONS al leer stream vacío)
+  if (BODY_METHODS.includes(c.req.method)) {
+    try {
+      const body = await c.req.json().catch(() => null);
+      if (body && typeof body === 'object') {
+        const sanitizedBody = sanitizeInput(body);
+        c.req.json = () => Promise.resolve(sanitizedBody);
+      }
+    } catch {
+      // Sin body o no JSON
     }
-  } catch {
-    // Si no hay body o no es JSON, continuar
   }
+
+  // 3. Headers: parsing robusto (Referer, User-Agent, Origin, etc.) para logs/respuestas
+  const safeHeaders = parseAndSanitizeHeaders(c.req.raw.headers);
+  c.set('safeHeaders', safeHeaders);
 
   return next();
 });

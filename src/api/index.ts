@@ -1,5 +1,8 @@
 import { Hono } from 'hono';
 import { cors } from "hono/cors";
+
+/** Variables que el middleware inyecta en el contexto (p. ej. safeHeaders) */
+export type AppVariables = { safeHeaders: Record<string, string> };
 import { authMiddleware } from './middleware/auth';
 import { csrfProtection } from './middleware/csrf';
 import { cspMiddleware } from './middleware/csp';
@@ -19,11 +22,12 @@ import clinicsRoutes from './routes/clinics';
 import professionalsRoutes from './routes/professionals';
 import receptionistsRoutes from './routes/receptionists';
 import clinicCreditsRoutes from './routes/clinic-credits';
+import consentDocumentRoutes from './routes/consent-document';
 import appointmentsRoutes from './routes/appointments';
 import notificationsRoutes from './routes/notifications';
 import messagesRoutes from './routes/messages';
 
-const app = new Hono()
+const app = new Hono<{ Variables: AppVariables }>()
   .basePath('api');
 
 // CORS configuration
@@ -82,6 +86,12 @@ app.use('*', authMiddleware);
 // Rutas públicas (no requieren autenticación)
 app.get('/ping', (c) => c.json({ message: `Pong! ${Date.now()}` }));
 
+// Configuración pública para anti-phishing: dominio oficial (frontend puede mostrar "Solo accede desde [este dominio]")
+app.get('/public/config', (c) => {
+  const officialDomain = process.env.OFFICIAL_APP_DOMAIN || process.env.ALLOWED_ORIGINS?.split(',')[0]?.trim() || '';
+  return c.json({ officialDomain: officialDomain || null });
+});
+
 // Ruta para obtener token CSRF (debe estar antes de la protección CSRF)
 app.route('/csrf', csrfRoutes);
 
@@ -139,6 +149,7 @@ app.route('/clinics', clinicsRoutes);
 app.route('/professionals', professionalsRoutes);
 app.route('/receptionists', receptionistsRoutes);
 app.route('/clinic-credits', clinicCreditsRoutes);
+app.route('/consent-document', consentDocumentRoutes);
 app.route('/appointments', appointmentsRoutes);
 app.route('/notifications', notificationsRoutes);
 app.route('/messages', messagesRoutes);

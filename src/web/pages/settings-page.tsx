@@ -13,6 +13,7 @@ interface ClinicInfoForm {
   postalCode: string;
   licenseNumber: string;
   website: string;
+  consentText: string;
 }
 
 // Nombre de clínica desde datos cargados o fallback
@@ -71,6 +72,7 @@ const SettingsPage = () => {
           postalCode: (c.postalCode as string) ?? "",
           licenseNumber: (c.licenseNumber as string) ?? "",
           website: (c.website as string) ?? "",
+          consentText: (c.consentText as string) ?? "",
         } as Clinic);
       }
     }).catch(() => setUserClinic(null));
@@ -100,11 +102,12 @@ const SettingsPage = () => {
     postalCode: "",
     licenseNumber: "",
     website: "",
+    consentText: "",
   });
   const [clinicInfoSaved, setClinicInfoSaved] = useState(false);
   
   // Professional Info state (for independent podiatrists)
-  const [professionalInfoForm, setProfessionalInfoForm] = useState<ProfessionalInfo>({
+  const [professionalInfoForm, setProfessionalInfoForm] = useState<ProfessionalInfo & { consentDocumentUrl?: string }>({
     name: user?.name || "",
     phone: "",
     email: user?.email || "",
@@ -113,6 +116,7 @@ const SettingsPage = () => {
     postalCode: "",
     licenseNumber: "",
     professionalLicense: "",
+    consentDocumentUrl: "",
   });
   const [professionalInfoSaved, setProfessionalInfoSaved] = useState(false);
   
@@ -146,6 +150,7 @@ const SettingsPage = () => {
         postalCode: userClinic.postalCode || "",
         licenseNumber: userClinic.licenseNumber || "",
         website: userClinic.website || "",
+        consentText: userClinic.consentText || "",
       });
     }
   }, [userClinic]);
@@ -166,6 +171,7 @@ const SettingsPage = () => {
             postalCode: "",
             licenseNumber: "",
             professionalLicense: "",
+            consentText: "",
           });
         }
       });
@@ -232,6 +238,7 @@ const SettingsPage = () => {
         postalCode: clinicInfoForm.postalCode,
         licenseNumber: clinicInfoForm.licenseNumber,
         website: clinicInfoForm.website,
+        consentDocumentUrl: clinicInfoForm.consentDocumentUrl || null,
       });
       if (res.success && res.data?.clinic) {
         setUserClinic(res.data.clinic as Clinic);
@@ -328,10 +335,10 @@ const SettingsPage = () => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Validate file type
-    const validTypes = ["image/png", "image/jpeg", "image/jpg", "image/svg+xml"];
+    // Validate file type (solo JPEG/PNG/WebP; sin SVG por seguridad)
+    const validTypes = ["image/png", "image/jpeg", "image/jpg", "image/webp"];
     if (!validTypes.includes(file.type)) {
-      setLogoError("Formato no válido. Use PNG, JPG o SVG.");
+      setLogoError("Formato no válido. Use PNG, JPG o WebP (máx. 2MB).");
       return;
     }
 
@@ -382,10 +389,10 @@ const SettingsPage = () => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Validate file type
-    const validTypes = ["image/png", "image/jpeg", "image/jpg", "image/svg+xml"];
+    // Validate file type (solo JPEG/PNG/WebP; sin SVG por seguridad)
+    const validTypes = ["image/png", "image/jpeg", "image/jpg", "image/webp"];
     if (!validTypes.includes(file.type)) {
-      setLogoError("Formato no válido. Use PNG, JPG o SVG.");
+      setLogoError("Formato no válido. Use PNG, JPG o WebP (máx. 2MB).");
       return;
     }
 
@@ -656,7 +663,7 @@ const SettingsPage = () => {
                       <input
                         ref={fileInputRef}
                         type="file"
-                        accept="image/png,image/jpeg,image/jpg,image/svg+xml"
+                        accept="image/png,image/jpeg,image/jpg,image/webp"
                         onChange={handleLogoUpload}
                         className="hidden"
                         id="logo-upload"
@@ -757,7 +764,7 @@ const SettingsPage = () => {
                   <input
                     ref={fileInputRef}
                     type="file"
-                    accept="image/png,image/jpeg,image/jpg,image/svg+xml"
+                    accept="image/png,image/jpeg,image/jpg,image/webp"
                     onChange={handleProfessionalLogoUpload}
                     className="hidden"
                     id="professional-logo-upload"
@@ -998,6 +1005,20 @@ const SettingsPage = () => {
                       />
                     </div>
                   </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Términos y condiciones / Consentimiento informado</label>
+                    <textarea
+                      value={clinicInfoForm.consentText}
+                      onChange={(e) => handleClinicInfoChange("consentText", e.target.value)}
+                      placeholder="Redacta aquí los términos y condiciones que el paciente debe aceptar. Este texto se mostrará al crear la ficha del paciente. Una vez que acepte, queda acreditado durante la existencia del paciente, salvo que edites este texto (en ese caso deberá volver a aceptar)."
+                      rows={6}
+                      className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#1a1a1a] focus:border-transparent transition-all resize-y"
+                    />
+                    <p className="text-xs text-gray-500 mt-1">
+                      Texto que el paciente leerá y aceptará con un check. Si editas este texto, los pacientes existentes deberán volver a aceptar los nuevos términos.
+                    </p>
+                  </div>
                   
                   <div className="flex items-center gap-4 pt-4 border-t border-gray-100">
                     <button
@@ -1061,6 +1082,19 @@ const SettingsPage = () => {
                     <div className="flex">
                       <span className="w-32 text-gray-500">Licencia:</span>
                       <span className="font-medium text-[#1a1a1a]">{userClinic.licenseNumber}</span>
+                    </div>
+                  )}
+                  {userClinic.consentDocumentUrl && (
+                    <div className="flex">
+                      <span className="w-32 text-gray-500">Consentimiento:</span>
+                      <a
+                        href={userClinic.consentDocumentUrl.startsWith('http') ? userClinic.consentDocumentUrl : `https://${userClinic.consentDocumentUrl}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="font-medium text-blue-600 hover:underline"
+                      >
+                        Ver documento
+                      </a>
                     </div>
                   )}
                   {userClinic.website && (
@@ -1197,6 +1231,20 @@ const SettingsPage = () => {
                       placeholder="12345678"
                       className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#1a1a1a] focus:border-transparent transition-all"
                     />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Términos y condiciones / Consentimiento informado</label>
+                    <textarea
+                      value={professionalInfoForm.consentText || ""}
+                      onChange={(e) => handleProfessionalInfoChange("consentText", e.target.value)}
+                      placeholder="Redacta aquí los términos y condiciones que el paciente debe aceptar. Este texto se mostrará al crear la ficha del paciente. Una vez que acepte, queda acreditado durante la existencia del paciente, salvo que edites este texto (en ese caso deberá volver a aceptar)."
+                      rows={6}
+                      className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#1a1a1a] focus:border-transparent transition-all resize-y"
+                    />
+                    <p className="text-xs text-gray-500 mt-1">
+                      Texto que el paciente leerá y aceptará con un check. Si editas este texto, los pacientes existentes deberán volver a aceptar los nuevos términos.
+                    </p>
                   </div>
                 </div>
                 

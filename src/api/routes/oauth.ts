@@ -298,7 +298,7 @@ oauthRoutes.get('/google/callback', async (c) => {
       resourceType: 'user',
       resourceId: user.id,
       ipAddress: clientIP,
-      userAgent: c.req.header('User-Agent') || undefined,
+      userAgent: getSafeUserAgent(c),
       details: { provider: 'google' },
     });
 
@@ -475,7 +475,7 @@ oauthRoutes.post('/apple/callback', async (c) => {
       resourceType: 'user',
       resourceId: user.id,
       ipAddress: clientIP,
-      userAgent: c.req.header('User-Agent') || undefined,
+      userAgent: getSafeUserAgent(c),
       details: { provider: 'apple' },
     });
 

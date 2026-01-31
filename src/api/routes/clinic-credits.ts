@@ -11,6 +11,7 @@ import {
 } from '../database/schema';
 import { logAuditEvent } from '../utils/audit-log';
 import { getClientIP } from '../utils/ip-tracking';
+import { getSafeUserAgent } from '../utils/request-headers';
 
 const clinicCreditsRoutes = new Hono();
 
@@ -108,7 +109,7 @@ clinicCreditsRoutes.put('/:clinicId', requireRole('super_admin', 'clinic_admin')
     resourceId: clinicId,
     details: { clinicId, amount: add, initialTotal: initial, newTotal },
     ipAddress: getClientIP(c.req.raw.headers),
-    userAgent: c.req.header('User-Agent') ?? undefined,
+    userAgent: getSafeUserAgent(c),
     clinicId,
   });
   const updated = await getOrCreateClinicCredits(clinicId);
@@ -215,7 +216,7 @@ clinicCreditsRoutes.post('/:clinicId/distribute', requireRole('clinic_admin'), a
     resourceId: distId,
     details: { clinicId, toPodiatrist: toUserId, amount, reason },
     ipAddress: getClientIP(c.req.raw.headers),
-    userAgent: c.req.header('User-Agent') ?? undefined,
+    userAgent: getSafeUserAgent(c),
     clinicId,
   });
 
@@ -286,7 +287,7 @@ clinicCreditsRoutes.post('/:clinicId/subtract', requireRole('clinic_admin'), asy
     resourceId: distId,
     details: { clinicId, fromPodiatrist: fromUserId, amount, reason },
     ipAddress: getClientIP(c.req.raw.headers),
-    userAgent: c.req.header('User-Agent') ?? undefined,
+    userAgent: getSafeUserAgent(c),
     clinicId,
   });
 

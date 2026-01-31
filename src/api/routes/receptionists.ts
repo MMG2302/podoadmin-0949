@@ -5,6 +5,7 @@ import { database } from '../database';
 import { createdUsers, userCredits } from '../database/schema';
 import { logAuditEvent } from '../utils/audit-log';
 import { getClientIP } from '../utils/ip-tracking';
+import { getSafeUserAgent } from '../utils/request-headers';
 import { hashPassword } from '../utils/password';
 
 const receptionistsRoutes = new Hono();
@@ -110,7 +111,7 @@ receptionistsRoutes.post('/', async (c) => {
     resourceId: id,
     details: { action: 'receptionist_create_by_podiatrist', receptionistEmail: email, podiatristId: user.userId },
     ipAddress: getClientIP(c.req.raw.headers),
-    userAgent: c.req.header('User-Agent') ?? undefined,
+    userAgent: getSafeUserAgent(c),
     clinicId: user.clinicId ?? undefined,
   });
   const inserted = (await database.select().from(createdUsers).where(eq(createdUsers.id, id)).limit(1))[0];
@@ -176,7 +177,7 @@ receptionistsRoutes.patch('/:receptionistId/assigned-podiatrists', async (c) => 
     resourceId: receptionistId,
     details: { action: 'receptionist_edit_assigned_podiatrists', assignedPodiatristIds: ids },
     ipAddress: getClientIP(c.req.raw.headers),
-    userAgent: c.req.header('User-Agent') ?? undefined,
+    userAgent: getSafeUserAgent(c),
     clinicId: user.clinicId ?? undefined,
   });
   return c.json({ success: true });

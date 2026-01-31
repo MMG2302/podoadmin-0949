@@ -13,6 +13,7 @@ import {
 import { logAuditEvent } from '../utils/audit-log';
 import { recordSecurityMetric } from '../utils/security-metrics';
 import { getClientIP } from '../utils/ip-tracking';
+import { getSafeUserAgent } from '../utils/request-headers';
 import { getUserByIdFromDB } from '../utils/user-db';
 
 const twoFactorRoutes = new Hono();
@@ -81,7 +82,7 @@ twoFactorRoutes.post('/setup', async (c) => {
       action: '2FA_SETUP_INITIATED',
       resourceType: '2fa',
       ipAddress: getClientIP(c.req.raw.headers),
-      userAgent: c.req.header('User-Agent') || undefined,
+      userAgent: getSafeUserAgent(c),
     });
 
     return c.json({
@@ -139,7 +140,7 @@ twoFactorRoutes.post('/enable', async (c) => {
       action: '2FA_ENABLED',
       resourceType: '2fa',
       ipAddress: getClientIP(c.req.raw.headers),
-      userAgent: c.req.header('User-Agent') || undefined,
+      userAgent: getSafeUserAgent(c),
     });
 
     await recordSecurityMetric({
@@ -198,7 +199,7 @@ twoFactorRoutes.post('/disable', async (c) => {
       action: '2FA_DISABLED',
       resourceType: '2fa',
       ipAddress: getClientIP(c.req.raw.headers),
-      userAgent: c.req.header('User-Agent') || undefined,
+      userAgent: getSafeUserAgent(c),
     });
 
     await recordSecurityMetric({

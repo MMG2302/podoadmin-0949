@@ -47,8 +47,11 @@ const emptyAppointmentForm: AppointmentFormData = {
   pendingPatientPhone: "",
 };
 
+const CALENDAR_LOCALE: Record<string, string> = { es: "es-ES", en: "en-US", pt: "pt-BR", fr: "fr-FR" };
+
 const CalendarPage = () => {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
+  const locale = CALENDAR_LOCALE[language] ?? "es-ES";
   const { user, getAllUsers } = useAuth();
   const { isClinicAdmin, isPodiatrist, isReceptionist } = usePermissions();
   const credits = getUserCredits(user?.id || "");
@@ -73,6 +76,8 @@ const CalendarPage = () => {
   const [showAppointmentForm, setShowAppointmentForm] = useState(false);
   const [appointmentForm, setAppointmentForm] = useState<AppointmentFormData>(emptyAppointmentForm);
   const [editingAppointment, setEditingAppointment] = useState<Appointment | null>(null);
+  const [isSubmittingAppointment, setIsSubmittingAppointment] = useState(false);
+  const [appointmentSubmitError, setAppointmentSubmitError] = useState("");
 
   // Cargar sesiones, pacientes y citas desde API
   useEffect(() => {
@@ -122,7 +127,7 @@ const CalendarPage = () => {
     return appointments.map(a => ({
       ...a,
       patient: a.patientId ? allPatients.find(p => p.id === a.patientId) : undefined,
-      podiatristName: clinicPodiatrists.find(p => p.id === a.podiatristId)?.name || "Desconocido",
+      podiatristName: clinicPodiatrists.find(p => p.id === a.podiatristId)?.name || t.calendar.unknown,
       pendingPatientName: a.pendingPatientName,
       pendingPatientPhone: a.pendingPatientPhone,
     }));
@@ -226,21 +231,21 @@ const CalendarPage = () => {
   };
 
   const formatMonthYear = () => {
-    return currentDate.toLocaleDateString("es-ES", { month: "long", year: "numeric" });
+    return currentDate.toLocaleDateString(locale, { month: "long", year: "numeric" });
   };
 
   const formatWeekRange = () => {
     const weekDays = getWeekGrid();
     const start = weekDays[0];
     const end = weekDays[6];
-    return `${start.getDate()} - ${end.getDate()} ${end.toLocaleDateString("es-ES", { month: "long", year: "numeric" })}`;
+    return `${start.getDate()} - ${end.getDate()} ${end.toLocaleDateString(locale, { month: "long", year: "numeric" })}`;
   };
 
   const formatDayDate = () => {
-    return currentDate.toLocaleDateString("es-ES", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
+    return currentDate.toLocaleDateString(locale, { weekday: "long", day: "numeric", month: "long", year: "numeric" });
   };
 
-  const dayNames = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"];
+  const dayNames = [t.calendar.dayMon, t.calendar.dayTue, t.calendar.dayWed, t.calendar.dayThu, t.calendar.dayFri, t.calendar.daySat, t.calendar.daySun];
 
   // Get status color
   const getStatusColor = (status: string) => {
@@ -308,19 +313,19 @@ const CalendarPage = () => {
 
   const getPodiatristName = (podiatristId: string) => {
     const pod = clinicPodiatrists.find(p => p.id === podiatristId);
-    return pod?.name || "Desconocido";
+    return pod?.name || t.calendar.unknown;
   };
 
   const getPatientDisplayName = (appointment: AppointmentWithDetails) => {
     if (!appointment.patientId || !appointment.patient) {
-      return appointment.pendingPatientName || "Paciente pendiente";
+      return appointment.pendingPatientName || t.calendar.pendingPatient;
     }
     return `${appointment.patient.firstName} ${appointment.patient.lastName}`;
   };
 
   const getPatientDisplayNameShort = (appointment: AppointmentWithDetails) => {
     if (!appointment.patientId || !appointment.patient) {
-      return appointment.pendingPatientName || "Pendiente";
+      return appointment.pendingPatientName || t.calendar.pendingShort;
     }
     return `${appointment.patient.firstName} ${appointment.patient.lastName?.charAt(0)}.`;
   };
@@ -356,21 +361,32 @@ const CalendarPage = () => {
 
   const getPatientById = (id: string) => allPatients.find((p) => p.id === id) ?? null;
 
+  /** Detecta si el error de la API es por solapamiento de horarios (por código o por texto del mensaje). */
+  const isOverlapError = (res: { data?: { code?: string; message?: string }; message?: string }) => {
+    if ((res.data as { code?: string })?.code === "APPOINTMENT_OVERLAP") return true;
+    const msg = (res.data as { message?: string })?.message || res.message || "";
+    return /solapa|overlap|horario no disponible|chevauche|sobrepõe/i.test(msg);
+  };
+
   const handleAppointmentSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+    setAppointmentSubmitError("");
+
     if (!appointmentForm.podiatristId || !appointmentForm.date) {
       return;
     }
 
     const patientId = appointmentForm.patientId === "" ? null : appointmentForm.patientId;
-    
+
     if (patientId === null) {
       if (!appointmentForm.pendingPatientName || !appointmentForm.pendingPatientPhone) {
-        alert("Por favor, complete el nombre y teléfono del paciente pendiente.");
+        setAppointmentSubmitError(t.calendar.errorPendingPatientRequired);
         return;
       }
     }
+
+    const selectedPodiatrist = clinicPodiatrists.find((p) => p.id === appointmentForm.podiatristId);
+    const clinicIdForAppointment = user?.clinicId || selectedPodiatrist?.clinicId || undefined;
 
     const body = {
       patientId,
@@ -379,33 +395,91 @@ const CalendarPage = () => {
       time: appointmentForm.time,
       duration: appointmentForm.duration,
       notes: appointmentForm.notes,
-      clinicId: user?.clinicId || undefined,
+      clinicId: clinicIdForAppointment,
       pendingPatientName: patientId === null ? appointmentForm.pendingPatientName : undefined,
       pendingPatientPhone: patientId === null ? appointmentForm.pendingPatientPhone : undefined,
     };
 
-    if (editingAppointment) {
-      const previousPodiatristId = editingAppointment.podiatristId;
-      const newPodiatristId = appointmentForm.podiatristId;
-      
-      const res = await api.put<{ success?: boolean; appointment?: Appointment }>(`/appointments/${editingAppointment.id}`, body);
-      if (!res.success) return;
-      
-      if (previousPodiatristId !== newPodiatristId) {
-        const assignedPodiatrist = allUsers.find(u => u.id === newPodiatristId);
+    setIsSubmittingAppointment(true);
+    try {
+      if (editingAppointment) {
+        const previousPodiatristId = editingAppointment.podiatristId;
+        const newPodiatristId = appointmentForm.podiatristId;
+
+        const res = await api.put<{ success?: boolean; appointment?: Appointment; message?: string; code?: string }>(`/appointments/${editingAppointment.id}`, body);
+        if (!res.success) {
+          const errMsg = isOverlapError(res)
+            ? t.calendar.errorOverlap
+            : (res.message || res.error || (res.data as { message?: string })?.message || t.calendar.errorUpdateFailed);
+          setAppointmentSubmitError(errMsg);
+          return;
+        }
+        const updatedAppointment = res.data?.appointment;
+        if (updatedAppointment) {
+          setAllAppointments((prev) => prev.map((a) => (a.id === updatedAppointment.id ? updatedAppointment : a)));
+        }
+        setShowAppointmentForm(false);
+        setAppointmentForm(emptyAppointmentForm);
+        setEditingAppointment(null);
+        setRefreshTrigger((prev) => prev + 1);
+        if (previousPodiatristId !== newPodiatristId && newPodiatristId) {
+          const assignedPodiatrist = allUsers.find((u) => u.id === newPodiatristId);
+          const patient = patientId ? getPatientById(patientId) : null;
+          const formattedDate = new Date(`${appointmentForm.date}T${appointmentForm.time}`).toLocaleDateString(locale, {
+            weekday: "long", day: "numeric", month: "long", year: "numeric",
+          });
+          const formattedTime = appointmentForm.time;
+          if (assignedPodiatrist) {
+            api.post("/notifications", {
+              userId: assignedPodiatrist.id,
+              type: "appointment",
+              title: t.calendar.formTitleEdit,
+              message: patientId && patient
+                ? `Se te ha reasignado una cita con ${patient.firstName} ${patient.lastName} el ${formattedDate} a las ${formattedTime}`
+                : `Se te ha reasignado una cita programada el ${formattedDate} a las ${formattedTime}${appointmentForm.notes ? ` - ${appointmentForm.notes}` : ""}`,
+              metadata: {
+                appointmentDate: appointmentForm.date,
+                reason: appointmentForm.notes || undefined,
+                fromUserId: user?.id,
+                fromUserName: user?.name,
+                patientId: patientId || undefined,
+                patientName: patient ? `${patient.firstName} ${patient.lastName}` : undefined,
+              },
+            }).catch(() => {});
+          }
+        }
+      } else {
+        const res = await api.post<{ success?: boolean; appointment?: Appointment; message?: string; code?: string }>("/appointments", body);
+        if (!res.success) {
+          const errMsg = isOverlapError(res)
+            ? t.calendar.errorOverlap
+            : (res.message || res.error || (res.data as { message?: string })?.message || t.calendar.errorCreateFailed);
+          setAppointmentSubmitError(errMsg);
+          return;
+        }
+        const newAppointment = res.data?.appointment;
+        if (newAppointment) {
+          setAllAppointments((prev) => [newAppointment, ...prev]);
+        }
+        setShowAppointmentForm(false);
+        setAppointmentForm(emptyAppointmentForm);
+        setEditingAppointment(null);
+        setRefreshTrigger((prev) => prev + 1);
+
+        const assignedPodiatrist = allUsers.find((u) => u.id === appointmentForm.podiatristId);
         const patient = patientId ? getPatientById(patientId) : null;
-        const formattedDate = new Date(`${appointmentForm.date}T${appointmentForm.time}`).toLocaleDateString("es-ES", {
+        const formattedDate = new Date(`${appointmentForm.date}T${appointmentForm.time}`).toLocaleDateString(locale, {
           weekday: "long", day: "numeric", month: "long", year: "numeric",
         });
         const formattedTime = appointmentForm.time;
         if (assignedPodiatrist) {
-          await api.post("/notifications", {
+          api.post("/notifications", {
             userId: assignedPodiatrist.id,
             type: "appointment",
-            title: "Cita reasignada",
+            title: t.calendar.formTitleNew,
             message: patientId && patient
-              ? `Se te ha reasignado una cita con ${patient.firstName} ${patient.lastName} el ${formattedDate} a las ${formattedTime}`
-              : `Se te ha reasignado una cita programada el ${formattedDate} a las ${formattedTime}${appointmentForm.notes ? ` - ${appointmentForm.notes}` : ""}`,
+              ? `Tienes una nueva cita con ${patient.firstName} ${patient.lastName} el ${formattedDate} a las ${formattedTime}`
+              : `Tienes una nueva cita programada el ${formattedDate} a las ${formattedTime}${appointmentForm.notes ? ` - ${appointmentForm.notes}` : ""}`,
             metadata: {
               appointmentDate: appointmentForm.date,
               reason: appointmentForm.notes || undefined,
@@ -414,50 +488,25 @@ const CalendarPage = () => {
               patientId: patientId || undefined,
               patientName: patient ? `${patient.firstName} ${patient.lastName}` : undefined,
             },
-          });
+          }).catch(() => {});
         }
       }
-    } else {
-      const res = await api.post<{ success?: boolean; appointment?: Appointment }>("/appointments", body);
-      if (!res.success) return;
-      const newAppointment = res.data?.appointment!;
-      
-      const assignedPodiatrist = allUsers.find(u => u.id === appointmentForm.podiatristId);
-      const patient = patientId ? getPatientById(patientId) : null;
-      const formattedDate = new Date(`${appointmentForm.date}T${appointmentForm.time}`).toLocaleDateString("es-ES", {
-        weekday: "long", day: "numeric", month: "long", year: "numeric",
-      });
-      const formattedTime = appointmentForm.time;
-      if (assignedPodiatrist) {
-        await api.post("/notifications", {
-          userId: assignedPodiatrist.id,
-          type: "appointment",
-          title: "Nueva cita asignada",
-          message: patientId && patient
-            ? `Tienes una nueva cita con ${patient.firstName} ${patient.lastName} el ${formattedDate} a las ${formattedTime}`
-            : `Tienes una nueva cita programada el ${formattedDate} a las ${formattedTime}${appointmentForm.notes ? ` - ${appointmentForm.notes}` : ""}`,
-          metadata: {
-            appointmentDate: appointmentForm.date,
-            reason: appointmentForm.notes || undefined,
-            fromUserId: user?.id,
-            fromUserName: user?.name,
-            patientId: patientId || undefined,
-            patientName: patient ? `${patient.firstName} ${patient.lastName}` : undefined,
-          },
-        });
-      }
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : t.calendar.errorSaveFailed;
+      setAppointmentSubmitError(msg);
+    } finally {
+      setIsSubmittingAppointment(false);
     }
-    
-    setShowAppointmentForm(false);
-    setAppointmentForm(emptyAppointmentForm);
-    setEditingAppointment(null);
-    setRefreshTrigger((prev) => prev + 1);
   };
 
   const handleCancelAppointment = async (appointment: Appointment) => {
-    if (!confirm("¿Cancelar esta cita?")) return;
-    const res = await api.delete<{ success?: boolean }>(`/appointments/${appointment.id}`);
-    if (!res.success) return;
+    if (!confirm(t.calendar.confirmDeleteAppointment)) return;
+    const res = await api.delete<{ success?: boolean; message?: string }>(`/appointments/${appointment.id}`);
+    if (!res.success) {
+      alert(res.data?.message || res.error || t.calendar.errorDeleteFailed);
+      return;
+    }
+    setAllAppointments((prev) => prev.filter((a) => a.id !== appointment.id));
     setRefreshTrigger((prev) => prev + 1);
   };
 
@@ -471,7 +520,7 @@ const CalendarPage = () => {
   }, [allPatients, isClinicAdmin, isReceptionist, clinicPodiatrists, user]);
 
   return (
-    <MainLayout title="Calendario" credits={credits}>
+    <MainLayout title={t.calendar.title} credits={credits}>
       <div className="flex flex-col lg:flex-row gap-6">
         {/* Main Calendar Area */}
         <div className="flex-1">
@@ -509,7 +558,7 @@ const CalendarPage = () => {
                   onClick={goToToday}
                   className="px-3 py-1.5 text-sm font-medium text-[#1a1a1a] bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
                 >
-                  Hoy
+                  {t.calendar.today}
                 </button>
               </div>
 
@@ -524,7 +573,7 @@ const CalendarPage = () => {
                     <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
                     </svg>
-                    Nueva Cita
+                    {t.calendar.newAppointment}
                   </button>
                 )}
 
@@ -535,7 +584,7 @@ const CalendarPage = () => {
                     onChange={(e) => setPodiatristFilter(e.target.value)}
                     className="px-3 py-2 text-sm border border-gray-200 rounded-lg focus:border-[#1a1a1a] focus:ring-1 focus:ring-[#1a1a1a] outline-none"
                   >
-                    <option value="all">Todos los podólogos</option>
+                    <option value="all">{t.calendar.allPodiatrists}</option>
                     {clinicPodiatrists.map(p => (
                       <option key={p.id} value={p.id}>{p.name}</option>
                     ))}
@@ -554,7 +603,7 @@ const CalendarPage = () => {
                           : "text-gray-600 hover:text-[#1a1a1a]"
                       }`}
                     >
-                      {mode === "month" ? "Mes" : mode === "week" ? "Semana" : "Día"}
+                      {mode === "month" ? t.calendar.month : mode === "week" ? t.calendar.week : t.calendar.day}
                     </button>
                   ))}
                 </div>
@@ -628,7 +677,7 @@ const CalendarPage = () => {
                           ))}
                           {allItems.length > 3 && (
                             <div className="text-xs text-gray-500 px-1.5">
-                              +{allItems.length - 3} más
+                              +{allItems.length - 3} {t.calendar.more}
                             </div>
                           )}
                         </div>
@@ -708,7 +757,7 @@ const CalendarPage = () => {
                                   {session.patient?.firstName} {session.patient?.lastName}
                                 </p>
                                 <p className="text-[10px] mt-0.5 opacity-70">
-                                  {session.status === "completed" ? "Completada" : "Borrador"}
+                                  {session.status === "completed" ? t.calendar.completed : t.calendar.draft}
                                 </p>
                               </div>
                             </Link>
@@ -733,10 +782,10 @@ const CalendarPage = () => {
                   </div>
                   <div>
                     <h3 className="text-xl font-semibold text-[#1a1a1a]">
-                      {getSessionsForDate(currentDate).length + getAppointmentsForDate(currentDate).length} eventos
+                      {getSessionsForDate(currentDate).length + getAppointmentsForDate(currentDate).length} {t.calendar.events}
                     </h3>
                     <p className="text-sm text-gray-500">
-                      {currentDate.toLocaleDateString("es-ES", { weekday: "long", day: "numeric", month: "long" })}
+                      {currentDate.toLocaleDateString(locale, { weekday: "long", day: "numeric", month: "long" })}
                     </p>
                   </div>
                   {(isClinicAdmin || isPodiatrist || isReceptionist) && (
@@ -747,7 +796,7 @@ const CalendarPage = () => {
                       <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
                       </svg>
-                      Añadir Cita
+                      {t.calendar.addAppointment}
                     </button>
                   )}
                 </div>
@@ -758,7 +807,7 @@ const CalendarPage = () => {
                       <svg className="w-12 h-12 mx-auto text-gray-300 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                       </svg>
-                      <p>No hay eventos para este día</p>
+                      <p>{t.calendar.noEventsForDay}</p>
                     </div>
                   ) : (
                     <>
@@ -772,9 +821,9 @@ const CalendarPage = () => {
                           <div className="flex-1">
                             <div className="flex items-center gap-2">
                               <span className="text-sm font-semibold text-blue-700">{appt.time}</span>
-                              <span className="text-xs text-blue-600 bg-blue-100 px-2 py-0.5 rounded">Cita programada</span>
+                              <span className="text-xs text-blue-600 bg-blue-100 px-2 py-0.5 rounded">{t.calendar.scheduled}</span>
                               {!appt.patientId && (
-                                <span className="text-xs text-orange-600 bg-orange-100 px-2 py-0.5 rounded">Paciente pendiente</span>
+                                <span className="text-xs text-orange-600 bg-orange-100 px-2 py-0.5 rounded">{t.calendar.pendingPatient}</span>
                               )}
                             </div>
                             <p className="font-medium text-[#1a1a1a]">
@@ -797,7 +846,7 @@ const CalendarPage = () => {
                               <button
                                 onClick={() => openEditAppointmentForm(appt)}
                                 className="p-2 hover:bg-blue-100 rounded-lg transition-colors"
-                                title="Editar"
+                                title={t.calendar.edit}
                               >
                                 <svg className="w-5 h-5 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
@@ -826,13 +875,13 @@ const CalendarPage = () => {
                                 {session.patient?.firstName} {session.patient?.lastName}
                               </p>
                               <p className="text-sm text-gray-500">
-                                {session.diagnosis || "Sin diagnóstico"}
+                                {session.diagnosis || t.calendar.noDiagnosis}
                               </p>
                             </div>
                             <span className={`px-3 py-1 rounded-full text-xs font-medium ${
                               session.status === "completed" ? "bg-green-100 text-green-700" : "bg-yellow-100 text-yellow-700"
                             }`}>
-                              {session.status === "completed" ? "Completada" : "Borrador"}
+                              {session.status === "completed" ? t.calendar.completed : t.calendar.draft}
                             </span>
                           </div>
                         </Link>
@@ -872,13 +921,13 @@ const CalendarPage = () => {
                   <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
                   </svg>
-                  Añadir cita
+                  {t.calendar.addAppointment}
                 </button>
               )}
 
               {selectedDateAppointments.length === 0 && selectedDateSessions.length === 0 ? (
                 <p className="text-sm text-gray-500 text-center py-4">
-                  No hay eventos para este día
+                  {t.calendar.noEventsForDay}
                 </p>
               ) : (
                 <div className="space-y-3">
@@ -926,7 +975,7 @@ const CalendarPage = () => {
                           </span>
                         </div>
                         <p className="text-xs text-gray-500 line-clamp-2">
-                          {session.clinicalNotes || session.diagnosis || "Sin notas"}
+                          {session.clinicalNotes || session.diagnosis || t.calendar.noNotes}
                         </p>
                         {(isClinicAdmin || isReceptionist) && (
                           <p className="text-[10px] text-gray-400 mt-1">
@@ -972,7 +1021,7 @@ const CalendarPage = () => {
                           {getPatientDisplayName(appt)}
                         </p>
                         {!appt.patientId && (
-                          <span className="text-[10px] text-orange-600 bg-orange-100 px-1.5 py-0.5 rounded">Pendiente</span>
+                          <span className="text-[10px] text-orange-600 bg-orange-100 px-1.5 py-0.5 rounded">{t.calendar.pendingShort}</span>
                         )}
                       </div>
                       <p className="text-xs text-gray-500">
@@ -990,12 +1039,12 @@ const CalendarPage = () => {
           {/* Upcoming Sessions */}
           <div className="bg-white rounded-xl border border-gray-100 p-4">
             <h3 className="font-semibold text-[#1a1a1a] mb-4">
-              Sesiones próximas (7 días)
+              {t.calendar.upcomingSessions}
             </h3>
             
             {upcomingSessions.length === 0 ? (
               <p className="text-sm text-gray-500 text-center py-4">
-                No hay sesiones próximas
+                {t.calendar.noUpcomingSessions}
               </p>
             ) : (
               <div className="space-y-3">
@@ -1014,7 +1063,7 @@ const CalendarPage = () => {
                             {new Date(session.sessionDate).getDate()}
                           </span>
                           <span className="text-[8px] text-gray-500 uppercase">
-                            {new Date(session.sessionDate).toLocaleDateString("es-ES", { month: "short" })}
+                            {new Date(session.sessionDate).toLocaleDateString(locale, { month: "short" })}
                           </span>
                         </div>
                         <div className="flex-1 min-w-0">
@@ -1022,7 +1071,7 @@ const CalendarPage = () => {
                             {session.patient?.firstName} {session.patient?.lastName}
                           </p>
                           <p className="text-xs text-gray-500">
-                            {session.status === "completed" ? "Completada" : "Borrador"}
+                            {session.status === "completed" ? t.calendar.completed : t.calendar.draft}
                           </p>
                         </div>
                         <div className={`w-2 h-2 rounded-full ${getStatusColor(session.status)}`} />
@@ -1041,23 +1090,23 @@ const CalendarPage = () => {
 
           {/* Legend */}
           <div className="bg-white rounded-xl border border-gray-100 p-4">
-            <h3 className="font-semibold text-[#1a1a1a] mb-3">Leyenda</h3>
+            <h3 className="font-semibold text-[#1a1a1a] mb-3">{t.calendar.legend}</h3>
             <div className="space-y-2">
               <div className="flex items-center gap-2">
                 <div className="w-3 h-3 rounded-full bg-blue-500" />
-                <span className="text-sm text-gray-600">Cita programada</span>
+                <span className="text-sm text-gray-600">{t.calendar.legendAppointment}</span>
               </div>
               <div className="flex items-center gap-2">
                 <div className="w-3 h-3 rounded-full bg-green-500" />
-                <span className="text-sm text-gray-600">Sesión completada</span>
+                <span className="text-sm text-gray-600">{t.calendar.legendSessionCompleted}</span>
               </div>
               <div className="flex items-center gap-2">
                 <div className="w-3 h-3 rounded-full bg-yellow-500" />
-                <span className="text-sm text-gray-600">Sesión borrador</span>
+                <span className="text-sm text-gray-600">{t.calendar.legendSessionDraft}</span>
               </div>
               <div className="flex items-center gap-2">
                 <div className="w-3 h-3 rounded-full bg-gray-400" />
-                <span className="text-sm text-gray-600">Cancelada</span>
+                <span className="text-sm text-gray-600">{t.calendar.legendCancelled}</span>
               </div>
             </div>
           </div>
@@ -1071,13 +1120,15 @@ const CalendarPage = () => {
             <div className="sticky top-0 bg-white border-b border-gray-100 p-6 z-10">
               <div className="flex items-center justify-between">
                 <h3 className="text-xl font-semibold text-[#1a1a1a]">
-                  {editingAppointment ? "Editar Cita" : "Nueva Cita"}
+                  {editingAppointment ? t.calendar.formTitleEdit : t.calendar.formTitleNew}
                 </h3>
                 <button
+                  type="button"
                   onClick={() => {
                     setShowAppointmentForm(false);
                     setEditingAppointment(null);
                     setAppointmentForm(emptyAppointmentForm);
+                    setAppointmentSubmitError("");
                   }}
                   className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
                 >
@@ -1092,20 +1143,19 @@ const CalendarPage = () => {
               {/* Patient Selection */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Paciente
+                  {t.calendar.patientLabel}
                 </label>
                 <select
                   value={appointmentForm.patientId || ""}
                   onChange={(e) => setAppointmentForm(prev => ({ 
                     ...prev, 
                     patientId: e.target.value || null,
-                    // Limpiar campos de paciente pendiente si se selecciona un paciente existente
                     pendingPatientName: e.target.value ? "" : prev.pendingPatientName,
                     pendingPatientPhone: e.target.value ? "" : prev.pendingPatientPhone,
                   }))}
                   className="w-full px-3 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:border-[#1a1a1a] focus:ring-1 focus:ring-[#1a1a1a]"
                 >
-                  <option value="">Paciente pendiente de registrar</option>
+                  <option value="">{t.calendar.patientPendingOption}</option>
                   {clinicPatients.map(patient => (
                     <option key={patient.id} value={patient.id}>
                       {patient.firstName} {patient.lastName} - {patient.email}
@@ -1115,32 +1165,40 @@ const CalendarPage = () => {
                 {(appointmentForm.patientId === "" || appointmentForm.patientId === null) && (
                   <div className="mt-3 space-y-3 p-3 bg-gray-50 rounded-lg border border-gray-200">
                     <p className="text-xs font-medium text-gray-700 mb-2">
-                      Información del paciente pendiente:
+                      {t.calendar.pendingPatientInfo}
                     </p>
                     <div>
                       <label className="block text-xs font-medium text-gray-600 mb-1">
-                        Nombre *
+                        {t.calendar.nameRequired}
                       </label>
                       <input
                         type="text"
                         value={appointmentForm.pendingPatientName}
                         onChange={(e) => setAppointmentForm(prev => ({ ...prev, pendingPatientName: e.target.value }))}
-                        placeholder="Nombre completo del paciente"
+                        placeholder={t.calendar.namePlaceholder}
                         className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-[#1a1a1a] focus:ring-1 focus:ring-[#1a1a1a]"
                         required={appointmentForm.patientId === "" || appointmentForm.patientId === null}
                       />
                     </div>
                     <div>
                       <label className="block text-xs font-medium text-gray-600 mb-1">
-                        Teléfono *
+                        {t.calendar.phoneRequired}
                       </label>
                       <input
                         type="tel"
+                        inputMode="tel"
+                        autoComplete="tel"
                         value={appointmentForm.pendingPatientPhone}
-                        onChange={(e) => setAppointmentForm(prev => ({ ...prev, pendingPatientPhone: e.target.value }))}
-                        placeholder="Teléfono de contacto"
+                        onChange={(e) => {
+                          const v = e.target.value.replace(/[^\d+\s\-()]/g, "");
+                          setAppointmentForm(prev => ({ ...prev, pendingPatientPhone: v }));
+                        }}
+                        placeholder={t.calendar.phonePlaceholder}
                         className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-[#1a1a1a] focus:ring-1 focus:ring-[#1a1a1a]"
                         required={appointmentForm.patientId === "" || appointmentForm.patientId === null}
+                        maxLength={20}
+                        pattern="[\d+\s\-()]*"
+                        title={t.calendar.phonePlaceholder}
                       />
                     </div>
                   </div>
@@ -1150,7 +1208,7 @@ const CalendarPage = () => {
               {/* Podiatrist Selection */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Podólogo *
+                  {t.calendar.podiatristRequired}
                 </label>
                 {isPodiatrist && !isClinicAdmin ? (
                   <input
@@ -1166,7 +1224,7 @@ const CalendarPage = () => {
                     className="w-full px-3 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:border-[#1a1a1a] focus:ring-1 focus:ring-[#1a1a1a]"
                     required
                   >
-                    <option value="">Seleccionar podólogo</option>
+                    <option value="">{t.calendar.selectPodiatrist}</option>
                     {clinicPodiatrists.map(pod => (
                       <option key={pod.id} value={pod.id}>
                         {pod.name}
@@ -1179,7 +1237,7 @@ const CalendarPage = () => {
               {/* Date */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Fecha *
+                  {t.calendar.dateRequired}
                 </label>
                 <input
                   type="date"
@@ -1193,7 +1251,7 @@ const CalendarPage = () => {
               {/* Time */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Hora *
+                  {t.calendar.timeRequired}
                 </label>
                 <input
                   type="time"
@@ -1207,34 +1265,40 @@ const CalendarPage = () => {
               {/* Duration */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Duración (minutos)
+                  {t.calendar.durationMinutes}
                 </label>
                 <select
                   value={appointmentForm.duration}
                   onChange={(e) => setAppointmentForm(prev => ({ ...prev, duration: parseInt(e.target.value) }))}
                   className="w-full px-3 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:border-[#1a1a1a] focus:ring-1 focus:ring-[#1a1a1a]"
                 >
-                  <option value={15}>15 minutos</option>
-                  <option value={30}>30 minutos</option>
-                  <option value={45}>45 minutos</option>
-                  <option value={60}>1 hora</option>
-                  <option value={90}>1 hora 30 minutos</option>
+                  <option value={15}>{t.calendar.duration15}</option>
+                  <option value={30}>{t.calendar.duration30}</option>
+                  <option value={45}>{t.calendar.duration45}</option>
+                  <option value={60}>{t.calendar.duration60}</option>
+                  <option value={90}>{t.calendar.duration90}</option>
                 </select>
               </div>
 
               {/* Notes */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Notas
+                  {t.common.notes}
                 </label>
                 <textarea
                   value={appointmentForm.notes}
                   onChange={(e) => setAppointmentForm(prev => ({ ...prev, notes: e.target.value }))}
                   rows={3}
                   className="w-full px-3 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:border-[#1a1a1a] focus:ring-1 focus:ring-[#1a1a1a] resize-none"
-                  placeholder="Motivo de la cita, comentarios adicionales..."
+                  placeholder={t.calendar.notesPlaceholder}
                 />
               </div>
+
+              {appointmentSubmitError && (
+                <div className="p-3 rounded-lg bg-red-50 border border-red-200 text-red-800 text-sm">
+                  {appointmentSubmitError}
+                </div>
+              )}
 
               {/* Actions */}
               <div className="flex gap-3 pt-4">
@@ -1242,7 +1306,7 @@ const CalendarPage = () => {
                   <button
                     type="button"
                     onClick={() => {
-                      if (confirm("¿Cancelar esta cita?")) {
+                      if (confirm(t.calendar.confirmCancelAppointment)) {
                         handleCancelAppointment(editingAppointment);
                         setShowAppointmentForm(false);
                         setEditingAppointment(null);
@@ -1251,7 +1315,7 @@ const CalendarPage = () => {
                     }}
                     className="px-4 py-2.5 border border-red-200 text-red-700 rounded-lg hover:bg-red-50 transition-colors font-medium"
                   >
-                    Cancelar Cita
+                    {t.calendar.cancelAppointmentButton}
                   </button>
                 )}
                 <button
@@ -1260,17 +1324,20 @@ const CalendarPage = () => {
                     setShowAppointmentForm(false);
                     setEditingAppointment(null);
                     setAppointmentForm(emptyAppointmentForm);
+                    setAppointmentSubmitError("");
                   }}
-                  className={`px-4 py-2.5 border border-gray-200 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-medium ${editingAppointment && editingAppointment.status !== "cancelled" ? "flex-1" : ""}`}
+                  disabled={isSubmittingAppointment}
+                  className={`px-4 py-2.5 border border-gray-200 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed ${editingAppointment && editingAppointment.status !== "cancelled" ? "flex-1" : ""}`}
                 >
-                  {editingAppointment ? "Cerrar" : "Cancelar"}
+                  {editingAppointment ? t.calendar.close : t.common.cancel}
                 </button>
                 {(!editingAppointment || editingAppointment.status !== "cancelled") && (
                   <button
                     type="submit"
-                    className="flex-1 px-4 py-2.5 bg-[#1a1a1a] text-white rounded-lg hover:bg-[#2a2a2a] transition-colors font-medium"
+                    disabled={isSubmittingAppointment}
+                    className="flex-1 px-4 py-2.5 bg-[#1a1a1a] text-white rounded-lg hover:bg-[#2a2a2a] transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    {editingAppointment ? "Guardar Cambios" : "Crear Cita"}
+                    {isSubmittingAppointment ? (editingAppointment ? t.calendar.saving : t.calendar.creating) : (editingAppointment ? t.calendar.saveChanges : t.calendar.createAppointment)}
                   </button>
                 )}
               </div>

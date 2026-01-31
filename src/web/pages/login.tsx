@@ -18,6 +18,30 @@ const Login = () => {
   }>({});
   const [isLoading, setIsLoading] = useState(false);
   const [countdown, setCountdown] = useState<number | null>(null);
+  const [officialDomain, setOfficialDomain] = useState<string | null>(null);
+  const [originMismatch, setOriginMismatch] = useState(false);
+
+  // Obtener dominio oficial y verificar que el usuario está en el origen correcto (anti-phishing)
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/public/config", { credentials: "include" })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data: { officialDomain?: string | null } | null) => {
+        if (cancelled) return;
+        const domain = data?.officialDomain;
+        if (domain) {
+          setOfficialDomain(domain);
+          try {
+            const officialOrigin = new URL(domain).origin;
+            setOriginMismatch(window.location.origin !== officialOrigin);
+          } catch {
+            setOriginMismatch(false);
+          }
+        }
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, []);
 
   // Countdown timer para rate limiting
   useEffect(() => {
@@ -38,6 +62,15 @@ const Login = () => {
     return `${seconds}s`;
   };
 
+  const getLoginErrorDisplay = (apiError: string | undefined): string => {
+    if (!apiError) return t.auth.invalidCredentials;
+    const lower = apiError.toLowerCase();
+    if (lower.includes("demasiados intentos") || lower.includes("too many attempts") || lower.includes("muitas tentativas") || lower.includes("trop de tentatives")) return t.auth.tooManyAttempts;
+    if (lower.includes("cuenta temporalmente bloqueada") || lower.includes("account temporarily blocked") || lower.includes("conta temporariamente bloqueada") || lower.includes("compte temporairement bloqué")) return t.auth.accountTemporarilyBlocked;
+    if (lower.includes("credenciales") || lower.includes("invalid credentials") || lower.includes("credenciais") || lower.includes("identifiants")) return t.auth.invalidCredentials;
+    return apiError;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
@@ -49,7 +82,7 @@ const Login = () => {
     if (result.success) {
       setLocation("/");
     } else {
-      setError(result.error || t.auth.invalidCredentials);
+      setError(getLoginErrorDisplay(result.error) || t.auth.invalidCredentials);
       setErrorDetails({
         retryAfter: result.retryAfter,
         blockedUntil: result.blockedUntil,
@@ -140,28 +173,55 @@ const Login = () => {
               </p>
             </div>
 
+            {/* Alerta crítica: el usuario no está en el dominio oficial (posible phishing) */}
+            {originMismatch && (
+              <div className="mb-6 rounded-lg border-2 border-red-400 bg-red-50 px-4 py-3 text-sm text-red-900 font-medium">
+                {officialDomain ? (
+                  (() => {
+                    const [before, after] = t.auth.notOnOfficialDomain.split("{domain}");
+                    return <>{before}<strong className="break-all">{officialDomain}</strong>{after}</>;
+                  })()
+                ) : (
+                  t.auth.notOnOfficialDomainNoDomain
+                )}
+              </div>
+            )}
+
+            {/* Aviso anti-phishing: solo iniciar sesión en el dominio oficial */}
+            <div className="mb-6 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+              <span className="font-medium">{t.auth.securityLabel} </span>
+              {officialDomain ? (
+                (() => {
+                  const [before, after] = t.auth.loginOnlyOnOfficialDomainWithDomain.split("{domain}");
+                  return <>{before}<strong className="break-all">{officialDomain}</strong>{after}</>;
+                })()
+              ) : (
+                t.auth.loginOnlyOnOfficialDomainGeneric
+              )}
+            </div>
+
             <form onSubmit={handleSubmit} className="space-y-6">
               {error && (
                 <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm animate-in fade-in slide-in-from-top-2 duration-300">
                   <div className="font-semibold mb-1">{error}</div>
                   {errorDetails.attemptCount && errorDetails.attemptCount > 0 && (
                     <div className="text-xs text-red-600 mt-1">
-                      Intentos fallidos: {errorDetails.attemptCount}
+                      {t.auth.failedAttempts} {errorDetails.attemptCount}
                     </div>
                   )}
                   {errorDetails.blockedUntil && (
                     <div className="text-xs text-red-600 mt-1">
-                      Bloqueado hasta: {new Date(errorDetails.blockedUntil).toLocaleTimeString()}
+                      {t.auth.blockedUntil} {new Date(errorDetails.blockedUntil).toLocaleTimeString()}
                     </div>
                   )}
                   {errorDetails.retryAfter && countdown !== null && countdown > 0 && (
                     <div className="text-xs text-red-600 mt-1 font-medium">
-                      Puedes intentar nuevamente en: {formatTime(countdown)}
+                      {t.auth.retryIn} {formatTime(countdown)}
                     </div>
                   )}
                   {errorDetails.attemptCount && errorDetails.attemptCount >= 3 && (
                     <div className="text-xs text-red-600 mt-2 pt-2 border-t border-red-200">
-                      Se ha enviado una notificación por email sobre estos intentos.
+                      {t.auth.emailNotificationSent}
                     </div>
                   )}
                 </div>
@@ -195,11 +255,20 @@ const Login = () => {
                   required
                   autoComplete="current-password"
                 />
+                <div className="mt-2 text-right">
+                  <button
+                    type="button"
+                    onClick={() => setLocation("/forgot-password")}
+                    className="text-sm text-[#1a1a1a] hover:underline font-medium"
+                  >
+                    {t.auth.forgotPassword}
+                  </button>
+                </div>
               </div>
 
               <button
                 type="submit"
-                disabled={isLoading || (countdown !== null && countdown > 0)}
+                disabled={isLoading || originMismatch || (countdown !== null && countdown > 0)}
                 className="w-full py-3.5 bg-[#1a1a1a] text-white font-medium rounded-lg hover:bg-[#2a2a2a] focus:outline-none focus:ring-2 focus:ring-[#1a1a1a] focus:ring-offset-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed relative overflow-hidden group"
               >
                 <span className={isLoading ? "opacity-0" : ""}>

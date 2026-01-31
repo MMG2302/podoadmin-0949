@@ -81,6 +81,30 @@ const PatientsPage = () => {
     : [];
   const [receptionistPodiatristId, setReceptionistPodiatristId] = useState<string>("");
 
+  // Términos y condiciones / consentimiento informado (configurado por clinic_admin o podólogo)
+  const [consentText, setConsentText] = useState<string | null>(null);
+  const [consentTextVersion, setConsentTextVersion] = useState<number>(0);
+
+  useEffect(() => {
+    if (!showForm || !canCreatePatient) return;
+    const podiatristId = isReceptionist ? receptionistPodiatristId : user?.id;
+    if (isReceptionist && !podiatristId) {
+      setConsentText(null);
+      setConsentTextVersion(0);
+      return;
+    }
+    const url = isReceptionist && podiatristId
+      ? `/consent-document?podiatristId=${encodeURIComponent(podiatristId)}`
+      : "/consent-document";
+    api.get<{ success?: boolean; consentText?: string | null; consentTextVersion?: number }>(url).then((res) => {
+      setConsentText(res.success && res.data?.consentText ? res.data.consentText : null);
+      setConsentTextVersion(res.data?.consentTextVersion ?? 0);
+    }).catch(() => {
+      setConsentText(null);
+      setConsentTextVersion(0);
+    });
+  }, [showForm, canCreatePatient, isReceptionist, receptionistPodiatristId, user?.id]);
+
   // Leer id de paciente desde la URL para poder abrir directamente la ficha (/patients?id=...)
   const searchParams =
     typeof window !== "undefined"
@@ -88,22 +112,10 @@ const PatientsPage = () => {
       : new URLSearchParams();
   const patientIdFromUrl: string | null = searchParams.get("id");
 
-  // Cargar pacientes desde la API (backend aplica reglas de visibilidad por rol)
+  // Cargar pacientes desde la API (backend aplica reglas de visibilidad por rol: podólogo, recepcionista, clinic_admin)
   useEffect(() => {
     const loadPatients = async () => {
       try {
-        // Para recepcionistas (que hoy pueden ser solo locales), mantenemos el fallback en localStorage
-        if (isReceptionist) {
-          const { getPatients } = await import("../lib/storage");
-          const all = getPatients() as Patient[];
-          if (user?.assignedPodiatristIds?.length) {
-            setPatients(all.filter((p) => user.assignedPodiatristIds!.includes(p.createdBy)));
-          } else {
-            setPatients([]);
-          }
-          return;
-        }
-
         const response = await api.get<{ success: boolean; patients: Patient[] }>("/patients");
         if (response.success && response.data?.success) {
           setPatients(response.data.patients);
@@ -116,7 +128,7 @@ const PatientsPage = () => {
     };
 
     loadPatients();
-  }, [isReceptionist, user?.id, user?.assignedPodiatristIds]);
+  }, [user?.id]);
 
   const filteredPatients = useMemo(() => {
     if (!searchQuery) return patients;
@@ -168,13 +180,14 @@ const PatientsPage = () => {
       consent: {
         given: formData.consentGiven,
         date: formData.consentGiven ? new Date().toISOString() : null,
+        consentedToVersion: formData.consentGiven ? consentTextVersion : undefined,
       },
     };
 
     try {
       if (editingPatient) {
         // Only update mutable fields - protect immutable fields from being changed
-        const mutableUpdates = {
+        const mutableUpdates: Record<string, unknown> = {
           phone: formData.phone,
           email: formData.email,
           address: formData.address,
@@ -183,6 +196,9 @@ const PatientsPage = () => {
           medicalHistory: patientData.medicalHistory,
           consent: patientData.consent,
         };
+        if (!editingPatient.idNumber?.trim()) {
+          mutableUpdates.idNumber = formData.idNumber;
+        }
 
         // Backend aplica permisos y lógica de negocio
         const response = await api.put<{ success: boolean; patient: Patient }>(
@@ -211,10 +227,14 @@ const PatientsPage = () => {
           alert(response.error || response.data?.message || "No se pudo actualizar el paciente.");
         }
       } else {
-        // Crear nuevo paciente vía API (backend genera folio y createdBy)
+        // Crear nuevo paciente vía API. Recepcionista debe enviar createdBy (podólogo asignado).
+        const payload =
+          isReceptionist && receptionistPodiatristId
+            ? { ...patientData, createdBy: receptionistPodiatristId }
+            : patientData;
         const response = await api.post<{ success: boolean; patient: Patient }>(
           "/patients",
-          patientData
+          payload
         );
 
         if (response.success && response.data?.success) {
@@ -625,21 +645,28 @@ const PatientsPage = () => {
                 <div>
                   <label className="block text-sm font-medium text-[#1a1a1a] mb-1 flex items-center gap-1">
                     {t.patients.idNumber} *
-                    {editingPatient && <span title="Este campo no puede ser modificado">🔒</span>}
+                    {editingPatient && editingPatient.idNumber?.trim() && <span title="Este campo no puede ser modificado">🔒</span>}
                   </label>
                   <input
                     type="text"
                     required
                     value={formData.idNumber}
-                    onChange={(e) => !editingPatient && setFormData({ ...formData, idNumber: e.target.value })}
-                    disabled={!!editingPatient}
+                    onChange={(e) => {
+                      const canEditIdNumber = !editingPatient || !editingPatient.idNumber?.trim();
+                      if (canEditIdNumber) setFormData({ ...formData, idNumber: e.target.value });
+                    }}
+                    disabled={!!editingPatient && !!editingPatient.idNumber?.trim()}
+                    placeholder="Para menores, DNI del padre o tutor"
                     className={`w-full px-3 py-2 border rounded-lg focus:outline-none ${
-                      editingPatient 
-                        ? "bg-gray-100 border-gray-200 text-gray-500 cursor-not-allowed" 
+                      editingPatient && editingPatient.idNumber?.trim()
+                        ? "bg-gray-100 border-gray-200 text-gray-500 cursor-not-allowed"
                         : "border-gray-200 focus:border-[#1a1a1a] focus:ring-1 focus:ring-[#1a1a1a]"
                     }`}
-                    title={editingPatient ? "Este campo no puede ser modificado después de la creación del paciente" : ""}
+                    title={editingPatient && editingPatient.idNumber?.trim() ? "Este campo no puede ser modificado" : "Obligatorio. Para menores de edad, indicar el DNI del padre o tutor legal."}
                   />
+                  <p className="text-xs text-gray-500 mt-1">
+                    Obligatorio para crear sesiones. Si el paciente es menor de edad, indicar el DNI del padre o tutor.
+                  </p>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-[#1a1a1a] mb-1">
@@ -647,9 +674,14 @@ const PatientsPage = () => {
                   </label>
                   <input
                     type="tel"
+                    inputMode="tel"
                     required
                     value={formData.phone}
-                    onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                    onChange={(e) => {
+                      const v = e.target.value.replace(/[^\d+\-\s()]/g, "");
+                      setFormData({ ...formData, phone: v });
+                    }}
+                    placeholder="+34 612 345 678"
                     className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:border-[#1a1a1a] focus:ring-1 focus:ring-[#1a1a1a]"
                   />
                 </div>
@@ -659,8 +691,13 @@ const PatientsPage = () => {
                   </label>
                   <input
                     type="email"
+                    inputMode="email"
                     value={formData.email}
-                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                    onChange={(e) => {
+                      const v = e.target.value.replace(/[^\w@.\-+]/g, "");
+                      setFormData({ ...formData, email: v });
+                    }}
+                    placeholder="paciente@ejemplo.com"
                     className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:border-[#1a1a1a] focus:ring-1 focus:ring-[#1a1a1a]"
                   />
                 </div>
@@ -740,24 +777,71 @@ const PatientsPage = () => {
                 </div>
               </div>
 
-              {/* Consent */}
-              <div>
-                <label className={`flex items-center gap-3 ${editingPatient ? "cursor-not-allowed" : "cursor-pointer"}`}>
-                  <input
-                    type="checkbox"
-                    checked={formData.consentGiven}
-                    onChange={(e) => !editingPatient && setFormData({ ...formData, consentGiven: e.target.checked })}
-                    disabled={!!editingPatient}
-                    className={`w-5 h-5 rounded border-gray-300 focus:ring-[#1a1a1a] ${
-                      editingPatient ? "text-gray-400 cursor-not-allowed" : "text-[#1a1a1a]"
-                    }`}
-                    title={editingPatient ? "Este campo no puede ser modificado después de la creación del paciente" : ""}
-                  />
-                  <span className="text-sm font-medium text-[#1a1a1a] flex items-center gap-1">
-                    {t.patients.consentGiven}
-                    {editingPatient && <span title="Este campo no puede ser modificado">🔒</span>}
-                  </span>
-                </label>
+              {/* Consent - Términos y condiciones */}
+              <div className="space-y-3">
+                {(() => {
+                  const patientForConsent = editingPatient ?? selectedPatient;
+                  const hadOldConsent = (patientForConsent?.consent?.consentedToVersion ?? null) != null && (patientForConsent.consent.consentedToVersion ?? 0) !== consentTextVersion;
+                  const dataCleared = !patientForConsent?.idNumber?.trim();
+                  const needsReconsent = !!editingPatient && (dataCleared || hadOldConsent);
+                  const consentLocked = !!editingPatient && !needsReconsent;
+                  return (
+                  <>
+                    {consentText ? (
+                      <div className="rounded-lg border border-gray-200 bg-gray-50 p-4 max-h-40 overflow-y-auto">
+                        <p className="text-sm text-[#1a1a1a] whitespace-pre-wrap">{consentText}</p>
+                      </div>
+                    ) : (
+                      <div className="rounded-lg border border-amber-200 bg-amber-50 p-3">
+                        <p className="text-sm text-amber-800">
+                          No hay términos configurados. Configúralos en <strong>Configuración</strong> para que el paciente pueda aceptarlos.
+                        </p>
+                      </div>
+                    )}
+                    <div
+                      role="button"
+                      tabIndex={consentLocked ? -1 : 0}
+                      onKeyDown={(e) => {
+                        if (!consentLocked && (e.key === " " || e.key === "Enter")) {
+                          e.preventDefault();
+                          setFormData((prev) => ({ ...prev, consentGiven: !prev.consentGiven }));
+                        }
+                      }}
+                      onClick={() => !consentLocked && setFormData((prev) => ({ ...prev, consentGiven: !prev.consentGiven }))}
+                      className={`flex items-center gap-3 select-none ${
+                        consentLocked ? "cursor-not-allowed opacity-70" : "cursor-pointer hover:opacity-80"
+                      }`}
+                    >
+                      <div
+                        className={`w-5 h-5 rounded border-2 flex items-center justify-center flex-shrink-0 transition-colors ${
+                          formData.consentGiven
+                            ? "bg-[#1a1a1a] border-[#1a1a1a]"
+                            : "border-gray-300 bg-white"
+                        }`}
+                      >
+                        {formData.consentGiven && (
+                          <svg className="w-3.5 h-3.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                          </svg>
+                        )}
+                      </div>
+                      <span className="text-sm font-medium text-[#1a1a1a]">
+                        {t.patients.consentGiven}
+                        {consentLocked && " 🔒"}
+                        {needsReconsent && " (modificado – acepte de nuevo)"}
+                      </span>
+                    </div>
+                    {needsReconsent && (
+                      <p className="text-xs text-amber-700 bg-amber-50 border border-amber-100 rounded-lg px-3 py-2 flex items-start gap-2">
+                        <svg className="w-4 h-4 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                        </svg>
+                        El consentimiento informado fue modificado. Es necesario que el paciente (o tutor) vuelva a aceptarlo. Marque la casilla para registrar la nueva aceptación.
+                      </p>
+                    )}
+                  </>
+                );
+                })()}
               </div>
 
               {/* Actions */}
@@ -808,7 +892,11 @@ const PatientsPage = () => {
           </div>
           {canCreatePatient ? (
             <button
-              onClick={() => setShowForm(true)}
+              onClick={() => {
+                setEditingPatient(null);
+                setFormData(emptyForm);
+                setShowForm(true);
+              }}
               className="px-4 py-2.5 bg-[#1a1a1a] text-white rounded-lg hover:bg-[#2a2a2a] transition-colors font-medium flex items-center gap-2"
             >
               <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -850,7 +938,11 @@ const PatientsPage = () => {
             </p>
             {canCreatePatient && (
               <button
-                onClick={() => setShowForm(true)}
+                onClick={() => {
+                  setEditingPatient(null);
+                  setFormData(emptyForm);
+                  setShowForm(true);
+                }}
                 className="px-6 py-2.5 bg-[#1a1a1a] text-white rounded-lg hover:bg-[#2a2a2a] transition-colors font-medium"
               >
                 {t.patients.addPatient}

@@ -1,7 +1,15 @@
 /**
  * Servicio de email unificado
  * Soporta múltiples proveedores: Resend, SendGrid, AWS SES
+ *
+ * IMPORTANTE (XSS en emails): Si en el futuro se incluye contenido de usuario
+ * (p. ej. asunto o cuerpo de mensaje) en el HTML del email, debe escaparse antes
+ * de interpolar (p. ej. con escapeHtml de sanitization.ts). No confiar en que
+ * el contenido ya esté sanitizado para render en navegador; en emails se interpreta
+ * como HTML y puede ejecutar scripts en el cliente del destinatario.
  */
+
+import { escapeHtml } from './sanitization';
 
 interface EmailOptions {
   to: string;
@@ -251,6 +259,62 @@ export async function sendFailedLoginNotificationEmail(
             <li>No compartas tus credenciales</li>
             <li>Si no reconoces estos intentos, contacta al soporte</li>
           </ul>
+        </div>
+        <div class="footer">
+          <p>Este es un email automático, por favor no respondas.</p>
+          <p>&copy; ${new Date().getFullYear()} PodoAdmin. Todos los derechos reservados.</p>
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
+
+  return sendEmail({
+    to: email,
+    subject,
+    html,
+  });
+}
+
+/**
+ * Envía email con enlace para restablecer contraseña
+ */
+export async function sendPasswordResetEmail(
+  email: string,
+  name: string,
+  resetUrl: string
+): Promise<boolean> {
+  const subject = 'Restablece tu contraseña de PodoAdmin';
+
+  const html = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8">
+      <style>
+        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        .header { background-color: #1a1a1a; color: white; padding: 20px; text-align: center; }
+        .content { padding: 20px; background-color: #f9fafb; }
+        .button { display: inline-block; padding: 12px 24px; background-color: #1a1a1a; color: white; text-decoration: none; border-radius: 6px; margin: 20px 0; }
+        .footer { text-align: center; padding: 20px; color: #6b7280; font-size: 12px; }
+        .warning { color: #b45309; margin-top: 16px; }
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <div class="header">
+          <h1>Recuperación de contraseña</h1>
+        </div>
+        <div class="content">
+          <p>Hola ${escapeHtml(name)},</p>
+          <p>Has solicitado restablecer la contraseña de tu cuenta en PodoAdmin. Haz clic en el siguiente botón para elegir una nueva contraseña:</p>
+          <p style="text-align: center;">
+            <a href="${resetUrl}" class="button">Restablecer contraseña</a>
+          </p>
+          <p>O copia y pega este enlace en tu navegador:</p>
+          <p style="word-break: break-all; color: #6b7280;">${resetUrl}</p>
+          <p class="warning"><strong>Este enlace expirará en 1 hora.</strong> Si no solicitaste este cambio, puedes ignorar este email; tu contraseña no se modificará.</p>
         </div>
         <div class="footer">
           <p>Este es un email automático, por favor no respondas.</p>

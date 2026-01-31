@@ -2,9 +2,33 @@ import { Hono } from 'hono';
 import { requireAuth } from '../middleware/auth';
 import { requirePermission } from '../middleware/authorization';
 import { database } from '../database';
-import { clinicalSessions as sessionsTable } from '../database/schema';
+import { clinicalSessions as sessionsTable, patients as patientsTable } from '../database/schema';
 import { eq } from 'drizzle-orm';
+import { validateImageDataUri, MAX_SESSION_IMAGE_BYTES } from '../utils/logo-upload';
+import { checkSessionCreateRateLimit } from '../utils/action-rate-limit';
 import type { ClinicalSession } from '../../web/lib/storage';
+
+const DEFAULT_MAX_SESSION_IMAGES = 10;
+/** Máximo de imágenes por sesión. Configurable con SESSION_IMAGE_MAX_COUNT (modo ligero). */
+const MAX_SESSION_IMAGES =
+  typeof process !== 'undefined' && process.env?.SESSION_IMAGE_MAX_COUNT
+    ? Math.min(Math.max(parseInt(process.env.SESSION_IMAGE_MAX_COUNT, 10) || DEFAULT_MAX_SESSION_IMAGES, 1), DEFAULT_MAX_SESSION_IMAGES)
+    : DEFAULT_MAX_SESSION_IMAGES;
+
+/** Valida un array de imágenes (data URI); devuelve array sanitizado o primer error. */
+function validateSessionImages(images: unknown): { ok: true; sanitized: string[] } | { ok: false; error: string; message: string } {
+  if (!Array.isArray(images)) return { ok: true, sanitized: [] };
+  if (images.length > MAX_SESSION_IMAGES) {
+    return { ok: false, error: 'images_limit', message: `Máximo ${MAX_SESSION_IMAGES} imágenes por sesión.` };
+  }
+  const sanitized: string[] = [];
+  for (let i = 0; i < images.length; i++) {
+    const v = validateImageDataUri(typeof images[i] === 'string' ? images[i] : null, MAX_SESSION_IMAGE_BYTES);
+    if (!v.valid) return { ok: false, error: v.error, message: v.message };
+    sanitized.push(v.sanitized);
+  }
+  return { ok: true, sanitized };
+}
 
 const sessionsRoutes = new Hono();
 
@@ -205,11 +229,48 @@ sessionsRoutes.post(
         );
       }
 
-      const now = new Date().toISOString();
-      const id = generateId();
+      const patientRows = await database.select().from(patientsTable).where(eq(patientsTable.id, body.patientId)).limit(1);
+      const patient = patientRows[0];
+      if (!patient) {
+        return c.json({ error: 'Paciente no encontrado' }, 404);
+      }
+      const missing = [];
+      if (!patient.firstName?.trim()) missing.push('nombre');
+      if (!patient.lastName?.trim()) missing.push('apellido');
+      if (!patient.dateOfBirth?.trim()) missing.push('fecha de nacimiento');
+      if (!patient.gender?.trim()) missing.push('género');
+      if (!patient.idNumber?.trim()) missing.push('DNI (o DNI del padre/tutor si es menor)');
+      if (missing.length > 0) {
+        return c.json(
+          { error: 'paciente_incompleto', message: `Faltan datos obligatorios del paciente: ${missing.join(', ')}. Edite la ficha del paciente antes de crear sesiones.` },
+          400
+        );
+      }
+
+      const sessionRateLimit = await checkSessionCreateRateLimit(user.userId);
+      if (!sessionRateLimit.allowed) {
+        c.header('Retry-After', String(sessionRateLimit.retryAfterSeconds ?? 60));
+        return c.json(
+          { error: 'rate_limit', message: 'Demasiadas sesiones creadas. Espera un momento.' },
+          429
+        );
+      }
 
       const status: ClinicalSession['status'] =
         body.status === 'completed' ? 'completed' : 'draft';
+
+      // Solo almacenar imágenes en sesiones en progreso (draft). Completadas no guardan imágenes (respaldo más ligero).
+      let sessionImages: string[] = [];
+      if (status === 'draft') {
+        const imagesValidation = validateSessionImages(body.images);
+        if (!imagesValidation.ok) {
+          return c.json({ error: imagesValidation.error, message: imagesValidation.message }, 400);
+        }
+        sessionImages = imagesValidation.sanitized;
+      }
+
+      const now = new Date().toISOString();
+      const id = generateId();
 
       const session: ClinicalSession = {
         id,
@@ -221,7 +282,7 @@ sessionsRoutes.post(
         physicalExamination: String(body.physicalExamination || ''),
         diagnosis: String(body.diagnosis || ''),
         treatmentPlan: String(body.treatmentPlan || ''),
-        images: Array.isArray(body.images) ? body.images : [],
+        images: sessionImages,
         createdAt: now,
         updatedAt: now,
         completedAt:
@@ -300,6 +361,24 @@ sessionsRoutes.put(
         );
       }
 
+      const patientRows = await database.select().from(patientsTable).where(eq(patientsTable.id, existingRow.patientId)).limit(1);
+      const patient = patientRows[0];
+      if (!patient) {
+        return c.json({ error: 'Paciente no encontrado' }, 404);
+      }
+      const missing = [];
+      if (!patient.firstName?.trim()) missing.push('nombre');
+      if (!patient.lastName?.trim()) missing.push('apellido');
+      if (!patient.dateOfBirth?.trim()) missing.push('fecha de nacimiento');
+      if (!patient.gender?.trim()) missing.push('género');
+      if (!patient.idNumber?.trim()) missing.push('DNI (o DNI del padre/tutor si es menor)');
+      if (missing.length > 0) {
+        return c.json(
+          { error: 'paciente_incompleto', message: `Faltan datos obligatorios del paciente: ${missing.join(', ')}. Edite la ficha del paciente antes de editar sesiones.` },
+          400
+        );
+      }
+
       // No permitir cambiar de completed a draft
       const body = await c.req.json().catch(() => ({}));
 
@@ -322,12 +401,26 @@ sessionsRoutes.put(
       }
 
       const now = new Date().toISOString();
+      const finalStatus: ClinicalSession['status'] =
+        requestedStatus ?? existingSession.status;
+
+      // Solo almacenar imágenes en sesiones en progreso (draft). Al completar, vaciar.
+      let updatedImages: string[] = existingSession.images;
+      if (finalStatus === 'completed') {
+        updatedImages = [];
+      } else if (body.images !== undefined) {
+        const imagesValidation = validateSessionImages(body.images);
+        if (!imagesValidation.ok) {
+          return c.json({ error: imagesValidation.error, message: imagesValidation.message }, 400);
+        }
+        updatedImages = imagesValidation.sanitized;
+      }
 
       const updatedSession: ClinicalSession = {
         ...existingSession,
         patientId: body.patientId || existingSession.patientId,
         sessionDate: body.sessionDate || existingSession.sessionDate,
-        status: requestedStatus || existingSession.status,
+        status: finalStatus,
         clinicalNotes:
           body.clinicalNotes !== undefined
             ? String(body.clinicalNotes)
@@ -348,14 +441,11 @@ sessionsRoutes.put(
           body.treatmentPlan !== undefined
             ? String(body.treatmentPlan)
             : existingSession.treatmentPlan,
-        images:
-          body.images !== undefined && Array.isArray(body.images)
-            ? body.images
-            : existingSession.images,
+        images: updatedImages,
         createdAt: existingSession.createdAt,
         updatedAt: now,
         completedAt:
-          (requestedStatus || existingSession.status) === 'completed'
+          finalStatus === 'completed'
             ? body.completedAt || existingSession.completedAt || now
             : null,
         createdBy: existingSession.createdBy,

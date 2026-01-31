@@ -168,6 +168,34 @@ MIGTAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBHkwdwIBAQQg...
 
 **Nota**: Para Apple, la clave privada debe estar en formato PEM completo con los headers `-----BEGIN PRIVATE KEY-----` y `-----END PRIVATE KEY-----`. Puedes usar saltos de línea `\n` en la variable de entorno o mantener el formato multilínea.
 
+### Reputación de URLs (Anti-phishing en mensajes) - Opcional
+
+Si se define, los mensajes del super_admin (asunto y cuerpo) se comprueban contra Google Safe Browsing. Cualquier URL marcada como phishing o malware bloquea el envío con un mensaje claro.
+
+```env
+# API Key de Google Safe Browsing v4 (threatMatches:find)
+# Obtener en: https://console.cloud.google.com/apis/credentials
+# Sin esta variable, no se aplica la capa de reputación (solo ofuscación y otras reglas)
+GOOGLE_SAFE_BROWSING_API_KEY=tu-api-key
+```
+
+**Nota**: La API Safe Browsing v4 es para uso no comercial. Para uso comercial, considera [Web Risk API](https://cloud.google.com/web-risk).
+
+### Modo ligero – imágenes de sesión (Opcional)
+
+Si quieres **reducir el tamaño del respaldo** y de la base de datos, puedes bajar los límites de imágenes por sesión. Ver `docs/ALIGERAR_SISTEMA.md`.
+
+```env
+# Máximo de imágenes por sesión clínica (1–10). Por defecto: 10
+SESSION_IMAGE_MAX_COUNT=5
+
+# Máximo tamaño por imagen en bytes (100 KB – 2 MB). Por defecto: 2097152 (2 MB)
+# Ejemplo 500 KB: 524288
+SESSION_IMAGE_MAX_BYTES=524288
+```
+
+Sin estas variables se usan los valores por defecto (10 imágenes, 2 MB cada una). Si las defines, el sistema acepta **como máximo** esos valores (no se puede subir el límite por encima del default por seguridad).
+
 ### Restricción de Dominios de Email (Opcional)
 
 ```env

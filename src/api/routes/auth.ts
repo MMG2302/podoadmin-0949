@@ -4,9 +4,10 @@ import { requireAuth } from '../middleware/auth';
 import { formatCookie, getAccessTokenCookieOptions, getRefreshTokenCookieOptions, createDeleteCookie, isProduction } from '../utils/cookies';
 import { checkRateLimitD1, recordFailedAttemptD1, clearFailedAttemptsD1, getFailedAttemptCountD1 } from '../utils/rate-limit-d1';
 import { sendFailedLoginNotification, shouldSendNotification } from '../utils/email-notifications';
-import { validateData, loginSchema, registerSchema, verifyEmailSchema } from '../utils/validation';
+import { validateData, loginSchema, registerSchema, verifyEmailSchema, forgotPasswordSchema, resetPasswordSchema } from '../utils/validation';
 import { escapeHtml, sanitizeEmail } from '../utils/sanitization';
 import { getClientIP, createRateLimitIdentifier, isIPWhitelisted, getIPWhitelist } from '../utils/ip-tracking';
+import { getSafeUserAgent } from '../utils/request-headers';
 import type { User } from '../../web/contexts/auth-context';
 import { getUserByIdFromDB } from '../utils/user-db';
 
@@ -218,7 +219,7 @@ authRoutes.post('/login', async (c) => {
         action: 'LOGIN_FAILED',
         resourceType: 'authentication',
         ipAddress: clientIP,
-        userAgent: c.req.header('User-Agent') || undefined,
+        userAgent: getSafeUserAgent(c),
         details: { email: emailLower, attemptCount },
       });
 
@@ -406,7 +407,7 @@ authRoutes.post('/login', async (c) => {
       action: 'LOGIN_SUCCESS',
       resourceType: 'authentication',
       ipAddress: clientIP,
-      userAgent: c.req.header('User-Agent') || undefined,
+      userAgent: getSafeUserAgent(c),
       clinicId: matchedUser.user.clinicId,
       details: { email: emailLower, has2FA },
     });
@@ -472,7 +473,7 @@ authRoutes.post('/logout', requireAuth, async (c) => {
       action: 'LOGOUT',
       resourceType: 'session',
       ipAddress: getClientIP(c.req.raw.headers),
-      userAgent: c.req.header('User-Agent') || undefined,
+      userAgent: getSafeUserAgent(c),
     });
   }
 
@@ -944,7 +945,7 @@ authRoutes.post('/register', async (c) => {
       resourceType: 'user',
       resourceId: userInternalId,
       ipAddress: clientIP,
-      userAgent: c.req.header('User-Agent') || undefined,
+      userAgent: getSafeUserAgent(c),
       details: {
         email: emailLower,
         name: name,
@@ -1005,6 +1006,218 @@ authRoutes.post('/register', async (c) => {
       {
         error: 'Error interno',
         message: 'Ocurrió un error al procesar el registro. Por favor, intenta más tarde.',
+      },
+      500
+    );
+  }
+});
+
+/**
+ * POST /api/auth/forgot-password
+ * Solicita recuperación de contraseña. Envía email con enlace si el usuario existe y tiene contraseña.
+ * Respuesta genérica por seguridad (no revelar si el email existe).
+ */
+authRoutes.post('/forgot-password', async (c) => {
+  try {
+    const rawBody = await c.req.json().catch(() => ({}));
+    const validation = validateData(forgotPasswordSchema, rawBody);
+
+    if (!validation.success) {
+      return c.json(
+        {
+          error: 'Datos inválidos',
+          message: validation.error,
+          issues: validation.issues,
+        },
+        400
+      );
+    }
+
+    const { email } = validation.data;
+    const emailLower = email.toLowerCase().trim();
+    const clientIP = getClientIP(c.req.raw.headers);
+
+    const { checkAndRecordActionRateLimit } = await import('../utils/action-rate-limit');
+    const rateLimit = await checkAndRecordActionRateLimit(
+      'forgot_password',
+      clientIP,
+      5,
+      60 * 60 * 1000
+    ); // 5 por hora por IP
+
+    if (!rateLimit.allowed) {
+      return c.json(
+        {
+          error: 'Demasiadas solicitudes',
+          message: 'Por favor, espera un momento antes de volver a solicitar el restablecimiento de contraseña.',
+          retryAfter: rateLimit.retryAfterSeconds,
+        },
+        429
+      );
+    }
+
+    const { getUserByEmailFromDB } = await import('../utils/user-db');
+    const dbUser = await getUserByEmailFromDB(emailLower);
+
+    if (!dbUser) {
+      return c.json({
+        success: true,
+        message: 'Si el email está registrado, recibirás un correo con instrucciones para restablecer tu contraseña.',
+      });
+    }
+
+    if (!dbUser.password || (dbUser.oauthProvider === 'google' || dbUser.oauthProvider === 'apple')) {
+      return c.json({
+        success: true,
+        message: 'Si el email está registrado, recibirás un correo con instrucciones para restablecer tu contraseña.',
+      });
+    }
+
+    const { createPasswordResetToken } = await import('../utils/password-reset');
+    const token = await createPasswordResetToken(dbUser.id);
+
+    const baseUrl = process.env.VITE_BASE_URL || 'http://localhost:5173';
+    const resetUrl = `${baseUrl}/reset-password?token=${token}`;
+
+    const { sendPasswordResetEmail } = await import('../utils/email-service');
+    await sendPasswordResetEmail(dbUser.email, dbUser.name, resetUrl);
+
+    const { logAuditEvent } = await import('../utils/audit-log');
+    await logAuditEvent({
+      userId: dbUser.userId,
+      action: 'PASSWORD_RESET_REQUESTED',
+      resourceType: 'authentication',
+      ipAddress: clientIP,
+      userAgent: getSafeUserAgent(c),
+      details: { email: emailLower },
+    });
+
+    return c.json({
+      success: true,
+      message: 'Si el email está registrado, recibirás un correo con instrucciones para restablecer tu contraseña.',
+    });
+  } catch (error) {
+    console.error('Error en forgot-password:', error);
+    return c.json(
+      {
+        error: 'Error interno',
+        message: 'Ocurrió un error al procesar la solicitud. Por favor, intenta más tarde.',
+      },
+      500
+    );
+  }
+});
+
+/**
+ * POST /api/auth/reset-password
+ * Restablece la contraseña con el token recibido por email. Tras éxito, se limpian los intentos fallidos de login.
+ */
+authRoutes.post('/reset-password', async (c) => {
+  try {
+    const rawBody = await c.req.json().catch(() => ({}));
+    const validation = validateData(resetPasswordSchema, rawBody);
+
+    if (!validation.success) {
+      return c.json(
+        {
+          error: 'Datos inválidos',
+          message: validation.error,
+          issues: validation.issues,
+        },
+        400
+      );
+    }
+
+    const { token, newPassword } = validation.data;
+
+    const { verifyPasswordResetToken } = await import('../utils/password-reset');
+    const result = await verifyPasswordResetToken(token);
+
+    if (!result.valid || !result.userId) {
+      const { recordSecurityMetric } = await import('../utils/security-metrics');
+      await recordSecurityMetric({
+        metricType: 'password_reset_failed',
+        ipAddress: getClientIP(c.req.raw.headers),
+        details: { reason: result.error || 'invalid_token' },
+      });
+      return c.json(
+        {
+          error: 'Token inválido o expirado',
+          message: result.error || 'El enlace de recuperación no es válido o ha expirado. Solicita uno nuevo.',
+        },
+        400
+      );
+    }
+
+    const { validatePasswordStrength } = await import('../utils/password');
+    const passwordValidation = validatePasswordStrength(newPassword);
+    if (!passwordValidation.valid) {
+      return c.json(
+        {
+          error: 'Contraseña débil',
+          message: passwordValidation.errors[0],
+          errors: passwordValidation.errors,
+        },
+        400
+      );
+    }
+
+    const { database } = await import('../database');
+    const { createdUsers } = await import('../database/schema');
+    const { eq } = await import('drizzle-orm');
+    const { hashPassword } = await import('../utils/password');
+
+    const userRow = await database
+      .select()
+      .from(createdUsers)
+      .where(eq(createdUsers.id, result.userId))
+      .limit(1);
+
+    if (userRow.length === 0) {
+      return c.json({ error: 'Usuario no encontrado' }, 404);
+    }
+
+    const hashedPassword = await hashPassword(newPassword);
+    await database
+      .update(createdUsers)
+      .set({
+        password: hashedPassword,
+        updatedAt: new Date().toISOString(),
+      })
+      .where(eq(createdUsers.id, result.userId));
+
+    const userEmail = userRow[0].email;
+    const { clearFailedAttemptsByEmailD1 } = await import('../utils/rate-limit-d1');
+    await clearFailedAttemptsByEmailD1(userEmail);
+
+    const { logAuditEvent } = await import('../utils/audit-log');
+    await logAuditEvent({
+      userId: userRow[0].userId,
+      action: 'PASSWORD_RESET_COMPLETED',
+      resourceType: 'authentication',
+      ipAddress: getClientIP(c.req.raw.headers),
+      userAgent: getSafeUserAgent(c),
+      details: { email: userEmail },
+    });
+
+    const { recordSecurityMetric } = await import('../utils/security-metrics');
+    await recordSecurityMetric({
+      metricType: 'password_reset_success',
+      userId: userRow[0].userId,
+      ipAddress: getClientIP(c.req.raw.headers),
+      details: { email: userEmail },
+    });
+
+    return c.json({
+      success: true,
+      message: 'Contraseña restablecida correctamente. Ya puedes iniciar sesión.',
+    });
+  } catch (error) {
+    console.error('Error en reset-password:', error);
+    return c.json(
+      {
+        error: 'Error interno',
+        message: 'Ocurrió un error al restablecer la contraseña. Por favor, intenta de nuevo.',
       },
       500
     );
@@ -1094,7 +1307,7 @@ authRoutes.post('/verify-email', async (c) => {
       resourceType: 'user',
       resourceId: userId,
       ipAddress: getClientIP(c.req.raw.headers),
-      userAgent: c.req.header('User-Agent') || undefined,
+      userAgent: getSafeUserAgent(c),
       details: { email: user.email },
     });
 

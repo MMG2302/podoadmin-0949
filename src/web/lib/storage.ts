@@ -80,6 +80,7 @@ export interface Patient {
   consent: {
     given: boolean;
     date: string | null;
+    consentedToVersion?: number | null;
   };
   createdAt: string;
   updatedAt: string;
@@ -797,6 +798,8 @@ export interface Clinic {
   postalCode?: string;
   licenseNumber?: string;
   website?: string;
+  consentText?: string;
+  consentTextVersion?: number;
 }
 
 const CLINICS_KEY = "podoadmin_clinics";
@@ -959,6 +962,8 @@ export interface ProfessionalInfo {
   postalCode: string;
   licenseNumber: string; // Clinic/practice license
   professionalLicense: string; // Cédula profesional / individual license
+  consentText?: string;
+  consentTextVersion?: number;
 }
 
 const PROFESSIONAL_INFO_KEY = "podoadmin_professional_info";

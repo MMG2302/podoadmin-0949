@@ -6,6 +6,8 @@ import { database } from '../database';
 import { sentMessages as sentMessagesTable, notifications as notificationsTable } from '../database/schema';
 import { logAuditEvent } from '../utils/audit-log';
 import { getClientIP } from '../utils/ip-tracking';
+import { getSafeUserAgent } from '../utils/request-headers';
+import { checkMessagesRateLimit } from '../utils/action-rate-limit';
 
 const messagesRoutes = new Hono();
 messagesRoutes.use('*', requireAuth);
@@ -132,6 +134,39 @@ messagesRoutes.post('/', requireRole('super_admin'), async (c) => {
     if (!subject || !messageBody) return c.json({ error: 'subject y body son requeridos' }, 400);
     if (recipientIds.length === 0) return c.json({ error: 'recipientIds no puede estar vacío' }, 400);
 
+    const rateLimit = await checkMessagesRateLimit(user.userId);
+    if (!rateLimit.allowed) {
+      c.header('Retry-After', String(rateLimit.retryAfterSeconds ?? 60));
+      return c.json(
+        { error: 'rate_limit', message: 'Demasiados envíos. Espera un momento antes de enviar otro mensaje.' },
+        429
+      );
+    }
+
+    const { containsObfuscatedOrSuspiciousUrl } = await import('../utils/sanitization');
+    if (containsObfuscatedOrSuspiciousUrl(subject) || containsObfuscatedOrSuspiciousUrl(messageBody)) {
+      return c.json(
+        { error: 'Enlace sospechoso', message: 'El asunto o el contenido no pueden contener enlaces ofuscados (anti-phishing).' },
+        400
+      );
+    }
+
+    // Capa de reputación: Safe Browsing (si GOOGLE_SAFE_BROWSING_API_KEY está definida)
+    const { extractUrlsFromText, checkUrlsWithSafeBrowsing } = await import('../utils/url-reputation');
+    const urls = [...extractUrlsFromText(subject), ...extractUrlsFromText(messageBody)];
+    if (urls.length > 0) {
+      const { unsafe } = await checkUrlsWithSafeBrowsing(urls);
+      if (unsafe.length > 0) {
+        return c.json(
+          {
+            error: 'Enlace no seguro',
+            message: 'Una o más URLs del mensaje están en la lista de sitios no seguros (phishing o malware). No se permite enviar el mensaje.',
+          },
+          400
+        );
+      }
+    }
+
     const id = generateId();
     const now = new Date().toISOString();
 
@@ -173,7 +208,7 @@ messagesRoutes.post('/', requireRole('super_admin'), async (c) => {
       resourceId: id,
       details: { action: 'admin_message_sent', recipientCount: recipientIds.length, recipientType, subject },
       ipAddress: getClientIP(c.req.raw.headers),
-      userAgent: c.req.header('User-Agent') ?? undefined,
+      userAgent: getSafeUserAgent(c),
     });
 
     const [row] = await database.select().from(sentMessagesTable).where(eq(sentMessagesTable.id, id)).limit(1);

@@ -168,7 +168,13 @@ export async function apiRequest<T = any>(
       credentials: 'include', // CRÍTICO: Necesario para enviar cookies HTTP-only
     });
 
-    const data = await response.json();
+    let data: any = {};
+    try {
+      const text = await response.text();
+      if (text) data = JSON.parse(text);
+    } catch {
+      // Body vacío o no JSON: data queda {}
+    }
 
     // Si el access token expiró (401), intentar renovar con refresh token
     if (response.status === 401 && !isLogin && !isRefresh && endpoint !== '/auth/refresh') {
@@ -225,6 +231,7 @@ export async function apiRequest<T = any>(
         success: false,
         error: data.error || 'Error en la solicitud',
         message: data.message,
+        data, // Incluir body completo para que el frontend pueda leer data.message
       };
     }
 

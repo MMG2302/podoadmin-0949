@@ -6,6 +6,7 @@ import { userCredits as userCreditsTable, creditTransactions as creditTransactio
 import { eq, desc } from 'drizzle-orm';
 import { logAuditEvent } from '../utils/audit-log';
 import { getClientIP } from '../utils/ip-tracking';
+import { getSafeUserAgent } from '../utils/request-headers';
 
 const creditsRoutes = new Hono();
 
@@ -352,7 +353,7 @@ creditsRoutes.post(
         resourceId: targetUserId,
         details: { targetUserId, amount, reason },
         ipAddress: getClientIP(c.req.raw.headers),
-        userAgent: c.req.header('User-Agent') ?? undefined,
+        userAgent: getSafeUserAgent(c),
         clinicId: admin.clinicId ?? undefined,
       });
 

@@ -21,9 +21,11 @@ export const cspMiddleware = createMiddleware(async (c, next) => {
     "upgrade-insecure-requests", // Forzar HTTPS
   ];
 
-  // En producción, hacer CSP más estricto
+  // En producción, hacer CSP más estricto y añadir HSTS
   const isProduction = process.env.NODE_ENV === 'production';
-  
+  const forwardedProto = c.req.header('x-forwarded-proto');
+  const isHttps = isProduction && (forwardedProto === 'https' || forwardedProto === undefined);
+
   if (isProduction) {
     // Remover unsafe-inline y unsafe-eval en producción
     cspDirectives[1] = "script-src 'self'";
@@ -36,6 +38,11 @@ export const cspMiddleware = createMiddleware(async (c, next) => {
   c.header('X-Content-Type-Options', 'nosniff'); // Prevenir MIME sniffing
   c.header('X-Frame-Options', 'DENY'); // Prevenir clickjacking
   c.header('X-XSS-Protection', '1; mode=block'); // Protección XSS del navegador
-  c.header('Referrer-Policy', 'strict-origin-when-cross-origin'); // Control de referrer
+  c.header('Referrer-Policy', 'strict-origin-when-cross-origin'); // No enviar referrer completo a sitios externos (anti-phishing)
   c.header('Permissions-Policy', 'geolocation=(), microphone=(), camera=()'); // Deshabilitar APIs sensibles
+
+  // HSTS: forzar HTTPS en producción para evitar downgrade y phishing por HTTP
+  if (isHttps) {
+    c.header('Strict-Transport-Security', 'max-age=31536000; includeSubDomains; preload');
+  }
 });

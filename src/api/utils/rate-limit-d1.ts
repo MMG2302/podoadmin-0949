@@ -1,6 +1,6 @@
 import { database } from '../database';
 import { rateLimitAttempts } from '../database/schema';
-import { eq, lt } from 'drizzle-orm';
+import { eq, lt, like } from 'drizzle-orm';
 
 /**
  * Rate limiting con persistencia en D1
@@ -123,6 +123,22 @@ export async function clearFailedAttemptsD1(identifier: string): Promise<void> {
       .where(eq(rateLimitAttempts.identifier, identifier));
   } catch (error) {
     console.error('Error limpiando intentos fallidos en D1:', error);
+  }
+}
+
+/**
+ * Limpia todos los intentos fallidos asociados a un email (p. ej. tras recuperar contraseña).
+ * El identificador tiene formato "email:ip", así que se borran todos los que empiezan con "email:".
+ */
+export async function clearFailedAttemptsByEmailD1(email: string): Promise<void> {
+  try {
+    const emailLower = email.toLowerCase().trim();
+    const prefix = `${emailLower}:`;
+    await database
+      .delete(rateLimitAttempts)
+      .where(like(rateLimitAttempts.identifier, `${prefix}%`));
+  } catch (error) {
+    console.error('Error limpiando intentos fallidos por email en D1:', error);
   }
 }
 

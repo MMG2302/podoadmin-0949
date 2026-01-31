@@ -1,10 +1,10 @@
 import { Hono } from 'hono';
-import { eq, or, and, inArray } from 'drizzle-orm';
+import { eq, or, and, inArray, desc } from 'drizzle-orm';
 import { requireAuth } from '../middleware/auth';
 import { requireRole } from '../middleware/authorization';
 import { validateData, createUserSchema, updateUserSchema } from '../utils/validation';
 import { database } from '../database';
-import { createdUsers } from '../database/schema';
+import { createdUsers, userCredits as userCreditsTable, creditTransactions as creditTransactionsTable, clinics as clinicsTable } from '../database/schema';
 import { hashPassword } from '../utils/password';
 import { logAuditEvent } from '../utils/audit-log';
 import { getClientIP } from '../utils/ip-tracking';
@@ -131,6 +131,58 @@ usersRoutes.get('/visible', async (c) => {
 });
 
 /**
+ * GET /api/users/me/export
+ * Exportación de datos del usuario autenticado (GDPR / LFPDPPP – derecho de acceso y portabilidad).
+ * Devuelve perfil (sin contraseña), clínica si aplica, créditos, transacciones recientes y últimos logs de auditoría.
+ */
+usersRoutes.get('/me/export', async (c) => {
+  try {
+    const user = c.get('user');
+    const row = await getUserRowByAnyId(user.userId);
+    if (!row) return c.json({ error: 'Usuario no encontrado' }, 404);
+
+    const profile = mapDbUser(row);
+    let clinic: Record<string, unknown> | null = null;
+    if (row.clinicId) {
+      const clinicRow = await database.select().from(clinicsTable).where(eq(clinicsTable.clinicId, row.clinicId)).limit(1);
+      if (clinicRow[0]) {
+        const c0 = clinicRow[0];
+        clinic = { clinicId: c0.clinicId, clinicName: c0.clinicName, clinicCode: c0.clinicCode, city: c0.city ?? null };
+      }
+    }
+
+    const creditsRow = await database.select().from(userCreditsTable).where(eq(userCreditsTable.userId, user.userId)).limit(1);
+    const credits = creditsRow[0] ? { totalCredits: creditsRow[0].totalCredits, usedCredits: creditsRow[0].usedCredits } : null;
+
+    const transactions = await database
+      .select()
+      .from(creditTransactionsTable)
+      .where(eq(creditTransactionsTable.userId, row.id))
+      .orderBy(desc(creditTransactionsTable.createdAt))
+      .limit(50);
+
+    const { getAuditLogsByUser } = await import('../utils/audit-log');
+    const auditLogs = await getAuditLogsByUser(user.userId, 100);
+
+    const exportData = {
+      exportedAt: new Date().toISOString(),
+      profile,
+      clinic,
+      credits,
+      creditTransactions: transactions.map((t) => ({ id: t.id, amount: t.amount, type: t.type, description: t.description, createdAt: t.createdAt })),
+      auditLogs: auditLogs.map((l) => ({ id: l.id, action: l.action, resourceType: l.resourceType, resourceId: l.resourceId, createdAt: l.createdAt })),
+    };
+
+    return c.json(exportData, 200, {
+      'Content-Disposition': `attachment; filename="mis-datos-${user.userId.slice(0, 8)}-${Date.now()}.json"`,
+    });
+  } catch (error) {
+    console.error('Error exportando datos de usuario:', error);
+    return c.json({ error: 'Error interno', message: 'Error al exportar datos' }, 500);
+  }
+});
+
+/**
  * GET /api/users/:userId
  * super_admin/admin, el mismo usuario, o clinic_admin si pertenece a su clínica
  */
@@ -212,7 +264,7 @@ usersRoutes.post('/', requireRole('super_admin'), async (c) => {
       resourceType: 'user',
       resourceId: id,
       ipAddress: getClientIP(c.req.raw.headers),
-      userAgent: c.req.header('User-Agent') || undefined,
+      userAgent: getSafeUserAgent(c),
       details: { email: emailLower, role, clinicId: clinicId || null },
     });
 
@@ -261,7 +313,7 @@ usersRoutes.put('/:userId', requireRole('super_admin'), async (c) => {
       resourceType: 'user',
       resourceId: existing.id,
       ipAddress: getClientIP(c.req.raw.headers),
-      userAgent: c.req.header('User-Agent') || undefined,
+      userAgent: getSafeUserAgent(c),
       details: { userId: existing.id, updates: Object.keys(updateData) },
     });
 
@@ -288,7 +340,7 @@ usersRoutes.delete('/:userId', requireRole('super_admin'), async (c) => {
       resourceType: 'user',
       resourceId: row.id,
       ipAddress: getClientIP(c.req.raw.headers),
-      userAgent: c.req.header('User-Agent') || undefined,
+      userAgent: getSafeUserAgent(c),
     });
     return c.json({ success: true, message: 'Usuario eliminado' });
   } catch (error) {

@@ -3,8 +3,8 @@ import { requireAuth } from '../middleware/auth';
 import { requirePermission } from '../middleware/authorization';
 import { validateData, createPatientSchema, updatePatientSchema } from '../utils/validation';
 import { database } from '../database';
-import { patients as patientsTable, clinicalSessions as sessionsTable, createdUsers as createdUsersTable } from '../database/schema';
-import { eq } from 'drizzle-orm';
+import { patients as patientsTable, clinicalSessions as sessionsTable, appointments as appointmentsTable, creditTransactions as creditTransactionsTable, createdUsers as createdUsersTable } from '../database/schema';
+import { eq, inArray } from 'drizzle-orm';
 import { logAuditEvent } from '../utils/audit-log';
 import { getClientIP } from '../utils/ip-tracking';
 
@@ -592,6 +592,44 @@ patientsRoutes.delete(
           { error: 'Acceso denegado', message: 'No tienes permiso para eliminar este paciente' },
           403
         );
+      }
+
+      // Comprobar si tiene sesiones o citas (restricción FK impediría el borrado)
+      const sessionsOfPatient = await database
+        .select({ id: sessionsTable.id })
+        .from(sessionsTable)
+        .where(eq(sessionsTable.patientId, patientId));
+      const appointmentsOfPatient = await database
+        .select()
+        .from(appointmentsTable)
+        .where(eq(appointmentsTable.patientId, patientId));
+
+      const hasSessions = sessionsOfPatient.length > 0;
+      const hasAppointments = appointmentsOfPatient.length > 0;
+      const cascade = c.req.query('cascade') === 'true';
+
+      // Si tiene sesiones o citas y no se pide cascade, devolver error claro
+      if ((hasSessions || hasAppointments) && !cascade) {
+        const parts: string[] = [];
+        if (hasSessions) parts.push(`${sessionsOfPatient.length} sesión(es) clínica(s)`);
+        if (hasAppointments) parts.push(`${appointmentsOfPatient.length} cita(s)`);
+        return c.json(
+          {
+            error: 'patient_has_records',
+            message: `No se puede eliminar: el paciente tiene ${parts.join(' y ')}. Use "Eliminar todo" para borrar también sesiones y citas.`,
+          },
+          400
+        );
+      }
+
+      // Cascade: eliminar en orden por restricciones FK
+      if (hasSessions) {
+        const sessionIds = sessionsOfPatient.map((s) => s.id);
+        await database.delete(creditTransactionsTable).where(inArray(creditTransactionsTable.sessionId, sessionIds));
+        await database.delete(sessionsTable).where(eq(sessionsTable.patientId, patientId));
+      }
+      if (hasAppointments) {
+        await database.delete(appointmentsTable).where(eq(appointmentsTable.patientId, patientId));
       }
 
       await database

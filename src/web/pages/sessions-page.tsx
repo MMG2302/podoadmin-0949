@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { useLocation } from "wouter";
 import { MainLayout } from "../components/layout/main-layout";
 import { useLanguage } from "../contexts/language-context";
@@ -116,31 +116,44 @@ const SessionsPage = () => {
   
   const [sessions, setSessions] = useState<ClinicalSession[]>([]);
   const [patients, setPatients] = useState<Patient[]>([]);
-
-  // Cargar pacientes desde la API (filtrados por podólogo actual, no toda la base de datos)
-  useEffect(() => {
-    const loadPatients = async () => {
-      try {
-        const response = await api.get<{ success: boolean; patients: Patient[] }>("/patients");
-        if (response.success && response.data?.success) {
-          setPatients(response.data.patients);
-        }
-      } catch (error) {
-        console.error("Error cargando pacientes:", error);
-      }
-    };
-    loadPatients();
-  }, [user?.id]);
-
-  const getPatientById = (id: string) => patients.find((p) => p.id === id);
-
-  const isPatientCompleteForSessions = (p: Patient | undefined) =>
-    !!p?.firstName?.trim() && !!p?.lastName?.trim() && !!p?.dateOfBirth?.trim() &&
-    !!p?.gender?.trim() && !!p?.idNumber?.trim();
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | "draft" | "completed">("all");
   const [showForm, setShowForm] = useState(false);
   const [editingSession, setEditingSession] = useState<ClinicalSession | null>(null);
+
+  const loadPatients = async () => {
+    try {
+      const response = await api.get<{ success: boolean; patients: Patient[] }>("/patients");
+if (response.success && response.data?.success) {
+          setPatients(response.data.patients ?? []);
+        }
+    } catch (error) {
+      console.error("Error cargando pacientes:", error);
+    }
+  };
+
+  // Cargar pacientes al montar y cuando se abre el formulario (para tener datos frescos)
+  useEffect(() => {
+    loadPatients();
+  }, [user?.id]);
+
+  useEffect(() => {
+    if (showForm) loadPatients();
+  }, [showForm]);
+
+  const getPatientById = (id: string) => patients.find((p) => p.id === id);
+
+  const isPatientCompleteForSessions = (p: Patient | undefined) => {
+    if (!p) return false;
+    const fn = (p as any).firstName ?? (p as any).first_name ?? "";
+    const ln = (p as any).lastName ?? (p as any).last_name ?? "";
+    const dob = (p as any).dateOfBirth ?? (p as any).date_of_birth ?? "";
+    const g = (p as any).gender ?? "";
+    const idn = (p as any).idNumber ?? (p as any).id_number ?? "";
+    return !!String(fn).trim() && !!String(ln).trim() && !!String(dob).trim() &&
+      !!String(g).trim() && !!String(idn).trim();
+  };
+
   const [formData, setFormData] = useState<SessionFormData>(
     filterPatientId ? { ...emptyForm, patientId: filterPatientId } : emptyForm
   );
@@ -338,16 +351,29 @@ const SessionsPage = () => {
   }, [sessions, searchQuery, statusFilter, filterPatientId]);
 
   const [imageUploadError, setImageUploadError] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
-    if (!files || formData.images.length >= 2) return;
-    e.target.value = "";
+    if (!files || files.length === 0) return;
+    const input = e.target;
 
     setImageUploadError(null);
-    const toAdd = Math.min(2 - formData.images.length, files.length);
+    const currentCount = formData.images.length;
+    if (currentCount >= 2) return;
+    const toAdd = Math.min(2 - currentCount, files.length);
     const slice = Array.from(files).slice(0, toAdd);
     const processed: string[] = [];
+
+    const toDataUrl = (file: File): Promise<string> =>
+      compressImageForSession(file).catch(() =>
+        new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result as string);
+          reader.onerror = () => reject(new Error("No se pudo leer la imagen"));
+          reader.readAsDataURL(file);
+        })
+      );
 
     for (const file of slice) {
       if (!file.type.startsWith("image/")) {
@@ -355,17 +381,17 @@ const SessionsPage = () => {
         continue;
       }
       try {
-        const dataUrl = await compressImageForSession(file);
+        const dataUrl = await toDataUrl(file);
         processed.push(dataUrl);
       } catch (err) {
         setImageUploadError(err instanceof Error ? err.message : "Error al procesar la imagen.");
-        break;
       }
     }
 
     if (processed.length > 0) {
       setFormData((prev) => ({ ...prev, images: [...prev.images, ...processed] }));
     }
+    input.value = "";
   };
 
   const removeImage = (index: number) => {
@@ -378,11 +404,8 @@ const SessionsPage = () => {
   const handleSubmit = async (e: React.FormEvent, asDraft: boolean) => {
     e.preventDefault();
     
-    if (!formData.patientId) return;
-
-    const patient = getPatientById(formData.patientId);
-    if (!patient || !isPatientCompleteForSessions(patient)) {
-      alert("Faltan datos obligatorios del paciente (nombre, apellido, fecha de nacimiento, género, DNI). Para menores use el DNI del padre o tutor. Edite la ficha del paciente antes de guardar la sesión.");
+    if (!formData.patientId) {
+      alert("Seleccione un paciente.");
       return;
     }
 
@@ -442,20 +465,12 @@ const SessionsPage = () => {
           return;
         }
       } else {
-        // Reserve credit for new session
-        if (asDraft) {
-          const reserved = reserveCredit(user?.id || "", "pending");
-          if (!reserved) {
-            alert(t.credits.insufficientCredits);
-            return;
-          }
-        }
-        
+        // Solo reservar crédito al completar; los borradores no consumen créditos
         const response = await api.post<{ success: boolean; session: ClinicalSession }>(
           "/sessions",
           {
             ...sessionData,
-            creditReservedAt: asDraft ? new Date().toISOString() : null,
+            creditReservedAt: null,
           }
         );
 
@@ -1330,9 +1345,27 @@ const SessionsPage = () => {
                     const p = patients.find((x) => x.id === formData.patientId);
                     return p && !isPatientCompleteForSessions(p);
                   })() && (
-                    <p className="text-xs text-amber-700 mt-1">
-                      Faltan datos obligatorios (nombre, apellido, fecha nacimiento, género, DNI). Para menores use el DNI del padre/tutor. Edite la ficha del paciente antes de guardar.
-                    </p>
+                    <div className="mt-2 p-3 bg-amber-50 border border-amber-200 rounded-lg space-y-2">
+                      <p className="text-sm text-amber-800">
+                        Faltan datos obligatorios del paciente (nombre, apellido, fecha nacimiento, género, DNI). Para menores use el DNI del padre/tutor. <strong>Edite la ficha del paciente</strong> para poder guardar la sesión.
+                      </p>
+                      <div className="flex flex-wrap gap-2">
+                        <button
+                          type="button"
+                          onClick={() => window.open(`/patients?id=${formData.patientId}`, "_blank")}
+                          className="px-4 py-2 bg-amber-600 text-white text-sm font-medium rounded-lg hover:bg-amber-700 transition-colors"
+                        >
+                          Editar paciente →
+                        </button>
+                        <button
+                          type="button"
+                          onClick={loadPatients}
+                          className="px-4 py-2 bg-white border border-amber-300 text-amber-800 text-sm font-medium rounded-lg hover:bg-amber-50 transition-colors"
+                        >
+                          Actualizar datos (si ya editó el paciente)
+                        </button>
+                      </div>
+                    </div>
                   )}
                 </div>
                 <div>
@@ -1441,20 +1474,26 @@ const SessionsPage = () => {
                   ))}
                 </div>
                 
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  onChange={handleImageUpload}
+                  className="sr-only"
+                  aria-label={t.sessions.uploadImages}
+                />
                 {formData.images.length < 2 && (
-                  <label className="inline-flex items-center gap-2 px-4 py-2 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer transition-colors">
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="inline-flex items-center gap-2 px-4 py-2 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer transition-colors"
+                  >
                     <svg className="w-5 h-5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                     </svg>
                     <span className="text-sm text-gray-600">{t.sessions.uploadImages}</span>
-                    <input
-                      type="file"
-                      accept="image/*"
-                      multiple
-                      onChange={handleImageUpload}
-                      className="hidden"
-                    />
-                  </label>
+                  </button>
                 )}
                 {imageUploadError && (
                   <p className="text-xs text-red-600 mt-2">{imageUploadError}</p>
@@ -1512,7 +1551,24 @@ const SessionsPage = () => {
               </div>
 
               {/* Actions */}
-              <div className="flex gap-3 pt-4 border-t border-gray-100">
+              {(() => {
+                const selectedPatient = patients.find((x) => x.id === formData.patientId);
+                const patientComplete = selectedPatient ? isPatientCompleteForSessions(selectedPatient) : false;
+                const canSave = !!formData.patientId && patientComplete;
+                const disableReason = !formData.patientId
+                  ? "Seleccione un paciente"
+                  : !patientComplete
+                    ? "Complete los datos obligatorios del paciente (nombre, apellido, fecha nacimiento, género, DNI)"
+                    : undefined;
+                const showSaveBlockedHint = formData.patientId && !patientComplete;
+                return (
+              <div className="flex flex-col gap-3 pt-4 border-t border-gray-100">
+                {showSaveBlockedHint && (
+                  <p className="text-sm text-amber-700 bg-amber-50 px-4 py-2 rounded-lg border border-amber-200">
+                    Para guardar borrador o completar la sesión, primero complete los datos del paciente y haga clic en &quot;Actualizar datos&quot; arriba.
+                  </p>
+                )}
+              <div className="flex gap-3">
                 <button
                   type="button"
                   onClick={() => {
@@ -1527,7 +1583,8 @@ const SessionsPage = () => {
                 <button
                   type="button"
                   onClick={(e) => handleSubmit(e, true)}
-                  disabled={!!formData.patientId && (() => { const p = patients.find((x) => x.id === formData.patientId); return !p || !isPatientCompleteForSessions(p); })()}
+                  disabled={!canSave}
+                  title={disableReason}
                   className="flex-1 py-3 bg-gray-100 text-[#1a1a1a] rounded-lg hover:bg-gray-200 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {t.sessions.saveDraft}
@@ -1535,12 +1592,16 @@ const SessionsPage = () => {
                 <button
                   type="button"
                   onClick={(e) => handleSubmit(e, false)}
-                  disabled={!!formData.patientId && (() => { const p = patients.find((x) => x.id === formData.patientId); return !p || !isPatientCompleteForSessions(p); })()}
+                  disabled={!canSave}
+                  title={disableReason}
                   className="flex-1 py-3 bg-[#1a1a1a] text-white rounded-lg hover:bg-[#2a2a2a] transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {t.sessions.complete}
                 </button>
               </div>
+              </div>
+                );
+              })()}
             </form>
           </div>
         </div>

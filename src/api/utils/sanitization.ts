@@ -8,6 +8,15 @@
 const DEFAULT_MAX_LENGTH = 10_000;
 const MAX_URL_LENGTH = 2048;
 
+/** Prefijos de data URI para imágenes (usado en sesiones, logos). No aplicar escapeHtml para no corromper base64. */
+const IMAGE_DATA_URI_PREFIX = /^data:image\/(jpeg|jpg|png|webp);base64,/i;
+
+/** Indica si el string es un data URI de imagen válido (será validado en backend). */
+function isImageDataUri(s: string | null | undefined): boolean {
+  if (!s || typeof s !== 'string') return false;
+  return IMAGE_DATA_URI_PREFIX.test(s.trim());
+}
+
 export interface NormalizeOptions {
   maxLength?: number;
   trim?: boolean;
@@ -124,10 +133,11 @@ export function sanitizeInput<T extends Record<string, any>>(input: T): T {
   
   for (const [key, value] of Object.entries(input)) {
     if (typeof value === 'string') {
-      sanitized[key] = escapeHtml(value);
+      // No sanitizar data URIs de imagen: escapeHtml los corrompe (trunca a 10k) y el backend los valida
+      sanitized[key] = isImageDataUri(value) ? value : escapeHtml(value);
     } else if (Array.isArray(value)) {
-      sanitized[key] = value.map(item => 
-        typeof item === 'string' ? escapeHtml(item) : item
+      sanitized[key] = value.map(item =>
+        typeof item === 'string' && isImageDataUri(item) ? item : (typeof item === 'string' ? escapeHtml(item) : item)
       );
     } else if (value && typeof value === 'object') {
       sanitized[key] = sanitizeInput(value);

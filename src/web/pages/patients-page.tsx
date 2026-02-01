@@ -80,6 +80,9 @@ const PatientsPage = () => {
     ? allUsers.filter((u) => user.assignedPodiatristIds!.includes(u.id))
     : [];
   const [receptionistPodiatristId, setReceptionistPodiatristId] = useState<string>("");
+  const [deleteConfirmPatient, setDeleteConfirmPatient] = useState<Patient | null>(null);
+  const [deleteCascadeMode, setDeleteCascadeMode] = useState(false);
+  const [deleteInProgress, setDeleteInProgress] = useState(false);
 
   // Términos y condiciones / consentimiento informado (configurado por clinic_admin o podólogo)
   const [consentText, setConsentText] = useState<string | null>(null);
@@ -288,22 +291,27 @@ const PatientsPage = () => {
     setShowForm(true);
   };
 
-  const handleDelete = async (patient: Patient) => {
-    // Los recepcionistas no pueden eliminar pacientes
+  const openDeleteConfirm = (patient: Patient) => {
     if (isReceptionist) return;
+    setDeleteCascadeMode(false);
+    setDeleteConfirmPatient(patient);
+  };
 
-    if (!confirm(`¿Eliminar esta ficha de paciente?\n\n${patient.firstName} ${patient.lastName}`)) {
-      return;
-    }
+  const closeDeleteConfirm = () => {
+    setDeleteConfirmPatient(null);
+    setDeleteCascadeMode(false);
+  };
 
+  const executeDelete = async (patient: Patient, cascade: boolean) => {
+    setDeleteInProgress(true);
     try {
-      // Recepcionistas nunca deberían llegar aquí por el guard anterior
-      const response = await api.delete<{ success: boolean; message?: string }>(
-        `/patients/${patient.id}`
-      );
+      const url = cascade ? `/patients/${patient.id}?cascade=true` : `/patients/${patient.id}`;
+      const response = await api.delete<{ success: boolean; message?: string }>(url);
 
       if (response.success && response.data?.success) {
         setPatients((prev) => prev.filter((p) => p.id !== patient.id));
+        closeDeleteConfirm();
+        if (selectedPatient?.id === patient.id) setSelectedPatient(null);
         addAuditLog({
           userId: user?.id || "",
           userName: user?.name || "",
@@ -315,14 +323,22 @@ const PatientsPage = () => {
             patientId: patient.id,
             patientName: `${patient.firstName} ${patient.lastName}`,
             folio: patient.folio,
+            cascade,
           }),
         });
       } else {
-        alert(response.error || response.data?.message || "No se pudo eliminar el paciente.");
+        const err = response.data as { error?: string; message?: string } | undefined;
+        if (err?.error === "patient_has_records") {
+          setDeleteCascadeMode(true);
+        } else {
+          alert(err?.message || response.error || "No se pudo eliminar el paciente.");
+        }
       }
     } catch (error) {
       console.error("Error eliminando paciente:", error);
       alert("Ha ocurrido un error al eliminar el paciente.");
+    } finally {
+      setDeleteInProgress(false);
     }
   };
 
@@ -474,28 +490,82 @@ const PatientsPage = () => {
               </div>
 
               {/* Actions */}
-              <div className="flex gap-3 pt-4 border-t border-gray-100">
+              <div className="flex flex-wrap gap-3 pt-4 border-t border-gray-100">
                 <button
                   onClick={() => {
-                    // Al pasar de vista a edición, limpiamos el ?id para que la URL refleje el estado actual
                     setLocation("/patients");
                     setSelectedPatient(null);
                     handleEdit(selectedPatient);
                   }}
-                  className="flex-1 py-2 bg-gray-100 text-[#1a1a1a] rounded-lg hover:bg-gray-200 transition-colors font-medium text-sm"
+                  className="flex-1 min-w-[100px] py-2 bg-gray-100 text-[#1a1a1a] rounded-lg hover:bg-gray-200 transition-colors font-medium text-sm"
                 >
                   {t.common.edit}
                 </button>
-                {/* Ver historial clínico solo para roles con acceso a sesiones, no recepcionistas */}
                 {!isReceptionist && (
                   <Link
                     href={`/sessions?patient=${selectedPatient.id}`}
-                    className="flex-1 py-2 bg-[#1a1a1a] text-white rounded-lg hover:bg-[#2a2a2a] transition-colors font-medium text-sm text-center"
+                    className="flex-1 min-w-[100px] py-2 bg-[#1a1a1a] text-white rounded-lg hover:bg-[#2a2a2a] transition-colors font-medium text-sm text-center"
                   >
                     {t.patients.viewHistory}
                   </Link>
                 )}
+                {!isReceptionist && (
+                  <button
+                    onClick={() => {
+                      setLocation("/patients");
+                      openDeleteConfirm(selectedPatient);
+                      setSelectedPatient(null);
+                    }}
+                    className="py-2 px-4 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition-colors font-medium text-sm"
+                  >
+                    {t.common.delete}
+                  </button>
+                )}
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de confirmación de eliminación */}
+      {deleteConfirmPatient && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[60] p-4">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl">
+            <div className="flex items-start gap-4">
+              <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center flex-shrink-0">
+                <svg className="w-6 h-6 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+              </div>
+              <div className="flex-1 min-w-0">
+                <h3 className="text-lg font-semibold text-[#1a1a1a] mb-2">
+                  {deleteCascadeMode ? "Eliminar paciente y todo su historial" : "¿Eliminar paciente?"}
+                </h3>
+                {deleteCascadeMode ? (
+                  <p className="text-gray-600 text-sm mb-4">
+                    Este paciente tiene sesiones clínicas y/o citas asociadas. Si continúa, se eliminará el paciente, todas sus sesiones y citas. Esta acción no se puede deshacer.
+                  </p>
+                ) : (
+                  <p className="text-gray-600 text-sm mb-4">
+                    Se eliminará el paciente <strong>{deleteConfirmPatient.firstName} {deleteConfirmPatient.lastName}</strong> y no se podrá recuperar. Esta acción es permanente.
+                  </p>
+                )}
+              </div>
+            </div>
+            <div className="flex gap-3 mt-6">
+              <button
+                onClick={closeDeleteConfirm}
+                className="flex-1 py-2.5 bg-gray-100 text-[#1a1a1a] rounded-lg hover:bg-gray-200 transition-colors font-medium"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={() => executeDelete(deleteConfirmPatient, deleteCascadeMode)}
+                disabled={deleteInProgress}
+                className="flex-1 py-2.5 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {deleteInProgress ? "Eliminando…" : (deleteCascadeMode ? "Eliminar todo" : "Eliminar")}
+              </button>
             </div>
           </div>
         </div>
@@ -1000,7 +1070,7 @@ const PatientsPage = () => {
                     </button>
                     {!isReceptionist && (
                       <button
-                        onClick={() => handleDelete(patient)}
+                        onClick={() => openDeleteConfirm(patient)}
                         className="py-2.5 px-4 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 active:bg-red-200 transition-colors min-h-[44px]"
                       >
                         <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -1064,7 +1134,7 @@ const PatientsPage = () => {
                             </button>
                             {!isReceptionist && (
                               <button
-                                onClick={() => handleDelete(patient)}
+                                onClick={() => openDeleteConfirm(patient)}
                                 className="p-2 hover:bg-red-50 rounded-lg transition-colors"
                                 title={t.common.delete}
                               >

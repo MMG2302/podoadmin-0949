@@ -25,6 +25,8 @@ type Permission =
 const rolePermissions: Record<UserRole, Permission[]> = {
   super_admin: [
     'view_dashboard',
+    'view_patients',
+    'manage_patients',
     'view_credits',
     'manage_credits',
     'view_users',

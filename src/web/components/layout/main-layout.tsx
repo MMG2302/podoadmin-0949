@@ -149,7 +149,7 @@ export const MainLayout = ({ children, title, showCredits = true, credits: propC
   const colorClasses = getCreditsColorClasses(monthlyPercentage, totalCredits, isClinicAdmin);
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-dvh min-h-screen bg-gray-50">
       <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
       
       {/* Main content area */}

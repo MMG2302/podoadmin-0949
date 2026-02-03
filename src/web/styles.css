@@ -114,8 +114,28 @@
   * {
     @apply border-border outline-ring/50;
   }
+  html {
+    /* Dynamic viewport: evita saltos al mostrar/ocultar teclado en iOS/Android */
+    min-height: 100dvh;
+    -webkit-text-size-adjust: 100%;
+  }
   body {
     @apply bg-background text-foreground;
+    min-height: 100dvh;
+    /* Safe area cuando viewport-fit=cover (iPhone notch, Android gesture bar) */
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+  }
+  /* iOS: evitar zoom al enfocar inputs (font-size >= 16px) */
+  @media (max-width: 768px) {
+    input, textarea, select {
+      font-size: 16px !important;
+    }
+    input[type="date"],
+    input[type="time"],
+    input[type="datetime-local"] {
+      font-size: 16px !important;
+    }
   }
 }
 
@@ -156,9 +176,11 @@ input, textarea, select, button {
   -webkit-backdrop-filter: var(--tw-backdrop-blur);
 }
 
-/* Touch action Safari compatibility */
-.touch-manipulation {
+/* Touch: quitar highlight nativo y mejorar respuesta en iOS/Android */
+.touch-manipulation,
+button, a, [role="button"], input, select, textarea {
   -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
 }
 
 /* Smooth scrolling Safari compatibility */
@@ -171,7 +193,7 @@ input, textarea, select, button {
   -webkit-overflow-scrolling: touch;
 }
 
-/* Safe area insets for notched devices (iPhone X+, etc.) */
+/* Safe area insets for notched devices (iPhone X+, Android gesture bar) */
 @supports(padding: max(0px)) {
   .safe-area-inset {
     padding-left: max(0px, env(safe-area-inset-left));
@@ -179,17 +201,28 @@ input, textarea, select, button {
   }
   
   .safe-area-top {
-    padding-top: env(safe-area-inset-top);
+    padding-top: max(0px, env(safe-area-inset-top));
   }
   
   .pb-safe {
     padding-bottom: max(16px, env(safe-area-inset-bottom));
   }
+  
+  .pl-safe {
+    padding-left: max(0px, env(safe-area-inset-left));
+  }
+  
+  .pr-safe {
+    padding-right: max(0px, env(safe-area-inset-right));
+  }
 }
 
 /* Mobile-first responsive utilities */
 @layer utilities {
-  /* Ensure minimum touch target size */
+  .min-h-dvh {
+    min-height: 100dvh;
+  }
+  /* Ensure minimum touch target size (Apple HIG / Material ~44px) */
   .touch-target {
     min-width: 44px;
     min-height: 44px;

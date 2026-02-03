@@ -73,6 +73,7 @@ const SettingsPage = () => {
           licenseNumber: (c.licenseNumber as string) ?? "",
           website: (c.website as string) ?? "",
           consentText: (c.consentText as string) ?? "",
+          consentTextVersion: (c.consentTextVersion as number) ?? 0,
         } as Clinic);
       }
     }).catch(() => setUserClinic(null));
@@ -105,6 +106,8 @@ const SettingsPage = () => {
     consentText: "",
   });
   const [clinicInfoSaved, setClinicInfoSaved] = useState(false);
+  const [clinicConsentSaved, setClinicConsentSaved] = useState(false);
+  const [clinicConsentError, setClinicConsentError] = useState<string | null>(null);
   
   // Professional Info state (for independent podiatrists)
   const [professionalInfoForm, setProfessionalInfoForm] = useState<ProfessionalInfo & { consentDocumentUrl?: string }>({
@@ -238,7 +241,7 @@ const SettingsPage = () => {
         postalCode: clinicInfoForm.postalCode,
         licenseNumber: clinicInfoForm.licenseNumber,
         website: clinicInfoForm.website,
-        consentDocumentUrl: clinicInfoForm.consentDocumentUrl || null,
+        consentText: clinicInfoForm.consentText || null,
       });
       if (res.success && res.data?.clinic) {
         setUserClinic(res.data.clinic as Clinic);
@@ -247,6 +250,28 @@ const SettingsPage = () => {
       }
     } catch (err) {
       // Error ya se muestra en consola desde api-client; no marcamos como guardado
+    }
+  };
+
+  const handleSaveClinicConsent = async () => {
+    if (!canUploadLogo || !user?.clinicId) return;
+    setClinicConsentError(null);
+    try {
+      const res = await api.patch<{ success?: boolean; clinic?: Clinic }>(`/clinics/${user.clinicId}`, {
+        consentText: (clinicInfoForm.consentText ?? "").trim() || null,
+      });
+      const clinic = res.data?.clinic ?? (res.data as { clinic?: Clinic } | undefined)?.clinic;
+      if (res.success && clinic) {
+        setUserClinic(clinic as Clinic);
+        setClinicConsentSaved(true);
+        setClinicConsentError(null);
+        setTimeout(() => setClinicConsentSaved(false), 2000);
+      } else {
+        setClinicConsentError(res.message ?? res.error ?? "Error al guardar el consentimiento.");
+      }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Error de conexión al guardar.";
+      setClinicConsentError(message);
     }
   };
   
@@ -822,6 +847,110 @@ const SettingsPage = () => {
                 </div>
               )}
             </div>
+          </div>
+        )}
+
+        {/* Consentimiento informado - Misma lógica que Logo: clinic_admin edita, podólogo clínica solo lectura, independiente edita */}
+        {(canUploadLogo || isPodiatristWithClinic || isPodiatristIndependent) && (
+          <div className="bg-white rounded-xl border border-gray-100 p-6">
+            <h3 className="text-lg font-semibold text-[#1a1a1a] mb-2">Consentimiento informado</h3>
+
+            {/* Clínica: admin edita, podólogo con clínica solo lectura */}
+            {isPodiatristWithClinic && userClinic && (
+              <div className="space-y-4">
+                <div className="bg-blue-50 border border-blue-100 rounded-lg p-4 flex items-start gap-3">
+                  <svg className="w-5 h-5 text-blue-500 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <div>
+                    <p className="text-sm text-blue-700 font-medium">Texto compartido de la clínica</p>
+                    <p className="text-sm text-blue-600 mt-1">
+                      Este consentimiento pertenece a <strong>{clinicName}</strong>. Solo el administrador de la clínica puede modificarlo.
+                    </p>
+                  </div>
+                </div>
+                {(userClinic.consentTextVersion ?? 0) > 0 && (
+                  <p className="text-xs text-gray-500">Versión actual: {userClinic.consentTextVersion}</p>
+                )}
+                <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
+                  <p className="text-sm text-[#1a1a1a] whitespace-pre-wrap">
+                    {userClinic.consentText?.trim() || "Sin texto configurado."}
+                  </p>
+                </div>
+              </div>
+            )}
+            {canUploadLogo && user?.clinicId && (
+              <>
+                <p className="text-sm text-gray-500 mb-4">
+                  Texto que el paciente leerá y aceptará al crear la ficha. Si lo editas, los pacientes con versión anterior deberán volver a aceptar.
+                </p>
+                {(userClinic?.consentTextVersion ?? 0) > 0 && (
+                  <p className="text-xs text-gray-500 mb-2">Versión actual: {userClinic?.consentTextVersion}</p>
+                )}
+                <textarea
+                  value={clinicInfoForm.consentText ?? ""}
+                  onChange={(e) => handleClinicInfoChange("consentText", e.target.value)}
+                  placeholder="Redacta aquí los términos y el consentimiento informado que el paciente debe aceptar."
+                  rows={6}
+                  className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#1a1a1a] focus:border-transparent transition-all resize-y"
+                />
+                {clinicConsentError && (
+                  <p className="text-sm text-red-600 mt-2">{clinicConsentError}</p>
+                )}
+                <div className="flex items-center gap-3 pt-4 border-t border-gray-100">
+                  <button
+                    type="button"
+                    onClick={handleSaveClinicConsent}
+                    className="px-4 py-2.5 bg-[#1a1a1a] text-white rounded-lg text-sm font-medium hover:bg-[#2a2a2a] transition-colors"
+                  >
+                    Guardar consentimiento
+                  </button>
+                  {clinicConsentSaved && (
+                    <span className="flex items-center gap-2 text-green-600 text-sm font-medium">
+                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                      </svg>
+                      Guardado
+                    </span>
+                  )}
+                </div>
+              </>
+            )}
+
+            {/* Podólogo independiente: edita su propio texto */}
+            {isPodiatristIndependent && (
+              <>
+                <p className="text-sm text-gray-500 mb-4">
+                  Texto que el paciente leerá y aceptará al crear la ficha. Si lo editas, los pacientes con versión anterior deberán volver a aceptar.
+                </p>
+                {(professionalInfoForm.consentTextVersion ?? 0) > 0 && (
+                  <p className="text-xs text-gray-500 mb-2">Versión actual: {professionalInfoForm.consentTextVersion}</p>
+                )}
+                <textarea
+                  value={professionalInfoForm.consentText ?? ""}
+                  onChange={(e) => handleProfessionalInfoChange("consentText", e.target.value)}
+                  placeholder="Redacta aquí los términos y el consentimiento informado que el paciente debe aceptar."
+                  rows={6}
+                  className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#1a1a1a] focus:border-transparent transition-all resize-y"
+                />
+                <div className="flex items-center gap-3 pt-4 border-t border-gray-100">
+                  <button
+                    onClick={handleSaveProfessionalInfo}
+                    className="px-4 py-2.5 bg-[#1a1a1a] text-white rounded-lg text-sm font-medium hover:bg-[#2a2a2a] transition-colors"
+                  >
+                    Guardar consentimiento
+                  </button>
+                  {professionalInfoSaved && (
+                    <span className="flex items-center gap-2 text-green-600 text-sm font-medium">
+                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                      </svg>
+                      Guardado
+                    </span>
+                  )}
+                </div>
+              </>
+            )}
           </div>
         )}
 

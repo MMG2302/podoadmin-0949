@@ -58,7 +58,7 @@
     "db:generate": "drizzle-kit generate",
     "db:migrate": "wrangler d1 migrations apply DB --local",
     "db:migrate:remote": "wrangler d1 migrations apply DB --remote",
-    "db:seed:local": "wrangler d1 execute DB --local --file=scripts/seed-mock-users.sql",
+    "db:seed:local": "wrangler d1 execute DB --local --file=scripts/seed-mock-users.sql && wrangler d1 execute DB --local --file=scripts/seed-clinics.sql",
     "db:studio": "drizzle-kit studio",
     "db:seed-mock-users": "node scripts/seed-mock-users.cjs",
     "db:create-super-admin": "node scripts/create-super-admin.cjs",

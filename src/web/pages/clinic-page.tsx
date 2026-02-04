@@ -172,6 +172,7 @@ const ClinicPage = () => {
   const [showCreateReceptionistModal, setShowCreateReceptionistModal] = useState(false);
   const [receptionistForm, setReceptionistForm] = useState({ name: "", email: "", password: "" });
   const [receptionistError, setReceptionistError] = useState<string | null>(null);
+  const [receptionistActionLoadingId, setReceptionistActionLoadingId] = useState<string | null>(null);
 
   // Get podiatrists in this clinic
   const clinicPodiatrists = allUsers.filter(
@@ -360,6 +361,49 @@ const ClinicPage = () => {
   const clinicReceptionists = allUsers.filter(
     (u) => u.role === "receptionist" && u.clinicId === currentUser?.clinicId
   );
+
+  const handleToggleReceptionistBlock = async (rec: User) => {
+    try {
+      setReceptionistActionLoadingId(rec.id);
+      const endpoint = rec.isBlocked ? `/users/${rec.id}/unblock` : `/users/${rec.id}/block`;
+      await api.post(endpoint);
+      await fetchUsers();
+    } catch (err) {
+      console.error("Error cambiando bloqueo de recepcionista:", err);
+    } finally {
+      setReceptionistActionLoadingId(null);
+    }
+  };
+
+  const handleToggleReceptionistEnabled = async (rec: User) => {
+    try {
+      setReceptionistActionLoadingId(rec.id);
+      const isCurrentlyDisabled = rec.isEnabled === false;
+      const endpoint = isCurrentlyDisabled ? `/users/${rec.id}/enable` : `/users/${rec.id}/disable`;
+      await api.post(endpoint);
+      await fetchUsers();
+    } catch (err) {
+      console.error("Error cambiando estado de recepcionista:", err);
+    } finally {
+      setReceptionistActionLoadingId(null);
+    }
+  };
+
+  const handleDeleteReceptionist = async (rec: User) => {
+    const confirmed = window.confirm(
+      `¿Eliminar a la recepcionista ${rec.name} (${rec.email})? Esta acción no se puede deshacer.`
+    );
+    if (!confirmed) return;
+    try {
+      setReceptionistActionLoadingId(rec.id);
+      await api.delete(`/users/${rec.id}`);
+      await fetchUsers();
+    } catch (err) {
+      console.error("Error eliminando recepcionista:", err);
+    } finally {
+      setReceptionistActionLoadingId(null);
+    }
+  };
 
   const handleCreateReceptionist = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -692,6 +736,7 @@ const ClinicPage = () => {
                       <th className="text-left px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Nombre</th>
                       <th className="text-left px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Email</th>
                       <th className="text-left px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Podólogos asignados</th>
+                      <th className="text-right px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Acciones</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-50">
@@ -706,6 +751,34 @@ const ClinicPage = () => {
                             <span className="text-xs text-gray-600">
                               {names.length > 0 ? names.join(", ") : "Sin asignar"}
                             </span>
+                          </td>
+                          <td className="px-6 py-4">
+                            <div className="flex items-center justify-end gap-2">
+                              <button
+                                type="button"
+                                onClick={() => handleToggleReceptionistBlock(rec)}
+                                disabled={receptionistActionLoadingId === rec.id}
+                                className="px-3 py-1.5 text-xs rounded-lg border border-gray-200 text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+                              >
+                                {rec.isBlocked ? "Desbloquear" : "Bloquear"}
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleToggleReceptionistEnabled(rec)}
+                                disabled={receptionistActionLoadingId === rec.id}
+                                className="px-3 py-1.5 text-xs rounded-lg border border-gray-200 text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+                              >
+                                {rec.isEnabled === false ? "Habilitar" : "Deshabilitar"}
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteReceptionist(rec)}
+                                disabled={receptionistActionLoadingId === rec.id}
+                                className="px-3 py-1.5 text-xs rounded-lg border border-red-200 text-red-600 hover:bg-red-50 disabled:opacity-50"
+                              >
+                                Eliminar
+                              </button>
+                            </div>
                           </td>
                         </tr>
                       );

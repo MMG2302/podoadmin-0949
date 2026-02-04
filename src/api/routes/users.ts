@@ -326,13 +326,29 @@ usersRoutes.put('/:userId', requireRole('super_admin'), async (c) => {
 });
 
 /**
- * DELETE /api/users/:userId (super_admin)
+ * DELETE /api/users/:userId
+ * - super_admin: puede eliminar cualquier usuario
+ * - clinic_admin: solo puede eliminar recepcionistas de su propia clínica
  */
-usersRoutes.delete('/:userId', requireRole('super_admin'), async (c) => {
+usersRoutes.delete('/:userId', requireRole('super_admin', 'clinic_admin'), async (c) => {
   try {
     const userId = c.req.param('userId');
+    const requester = c.get('user');
     const row = await getUserRowByAnyId(userId);
     if (!row) return c.json({ error: 'Usuario no encontrado' }, 404);
+
+    if (requester.role === 'clinic_admin') {
+      if (!requester.clinicId || row.clinicId !== requester.clinicId || row.role !== 'receptionist') {
+        return c.json(
+          {
+            error: 'Acceso denegado',
+            message: 'Solo puedes eliminar recepcionistas de tu clínica',
+          },
+          403
+        );
+      }
+    }
+
     await database.delete(createdUsers).where(eq(createdUsers.id, row.id));
     await logAuditEvent({
       userId: c.get('user').userId,
@@ -353,18 +369,35 @@ async function setUserFlag(id: string, updates: Partial<typeof createdUsers.$inf
   await database.update(createdUsers).set({ ...updates, updatedAt: new Date().toISOString() } as any).where(eq(createdUsers.id, id));
 }
 
-usersRoutes.post('/:userId/block', requireRole('super_admin'), async (c) => {
+// Bloqueo / desbloqueo:
+// - super_admin: cualquier usuario
+// - clinic_admin: solo recepcionistas de su clínica
+usersRoutes.post('/:userId/block', requireRole('super_admin', 'clinic_admin'), async (c) => {
+  const requester = c.get('user');
   const row = await getUserRowByAnyId(c.req.param('userId'));
   if (!row) return c.json({ error: 'Usuario no encontrado' }, 404);
+  if (requester.role === 'clinic_admin') {
+    if (!requester.clinicId || row.clinicId !== requester.clinicId || row.role !== 'receptionist') {
+      return c.json({ error: 'Acceso denegado' }, 403);
+    }
+  }
   await setUserFlag(row.id, { isBlocked: true } as any);
   return c.json({ success: true });
 });
-usersRoutes.post('/:userId/unblock', requireRole('super_admin'), async (c) => {
+usersRoutes.post('/:userId/unblock', requireRole('super_admin', 'clinic_admin'), async (c) => {
+  const requester = c.get('user');
   const row = await getUserRowByAnyId(c.req.param('userId'));
   if (!row) return c.json({ error: 'Usuario no encontrado' }, 404);
+  if (requester.role === 'clinic_admin') {
+    if (!requester.clinicId || row.clinicId !== requester.clinicId || row.role !== 'receptionist') {
+      return c.json({ error: 'Acceso denegado' }, 403);
+    }
+  }
   await setUserFlag(row.id, { isBlocked: false } as any);
   return c.json({ success: true });
 });
+
+// Ban / unban: solo super_admin (acción más extrema)
 usersRoutes.post('/:userId/ban', requireRole('super_admin'), async (c) => {
   const row = await getUserRowByAnyId(c.req.param('userId'));
   if (!row) return c.json({ error: 'Usuario no encontrado' }, 404);
@@ -377,15 +410,31 @@ usersRoutes.post('/:userId/unban', requireRole('super_admin'), async (c) => {
   await setUserFlag(row.id, { isBanned: false } as any);
   return c.json({ success: true });
 });
-usersRoutes.post('/:userId/enable', requireRole('super_admin'), async (c) => {
+
+// Habilitar / deshabilitar:
+// - super_admin: cualquier usuario
+// - clinic_admin: solo recepcionistas de su clínica
+usersRoutes.post('/:userId/enable', requireRole('super_admin', 'clinic_admin'), async (c) => {
+  const requester = c.get('user');
   const row = await getUserRowByAnyId(c.req.param('userId'));
   if (!row) return c.json({ error: 'Usuario no encontrado' }, 404);
+  if (requester.role === 'clinic_admin') {
+    if (!requester.clinicId || row.clinicId !== requester.clinicId || row.role !== 'receptionist') {
+      return c.json({ error: 'Acceso denegado' }, 403);
+    }
+  }
   await setUserFlag(row.id, { isEnabled: true } as any);
   return c.json({ success: true });
 });
-usersRoutes.post('/:userId/disable', requireRole('super_admin'), async (c) => {
+usersRoutes.post('/:userId/disable', requireRole('super_admin', 'clinic_admin'), async (c) => {
+  const requester = c.get('user');
   const row = await getUserRowByAnyId(c.req.param('userId'));
   if (!row) return c.json({ error: 'Usuario no encontrado' }, 404);
+  if (requester.role === 'clinic_admin') {
+    if (!requester.clinicId || row.clinicId !== requester.clinicId || row.role !== 'receptionist') {
+      return c.json({ error: 'Acceso denegado' }, 403);
+    }
+  }
   await setUserFlag(row.id, { isEnabled: false } as any);
   return c.json({ success: true });
 });

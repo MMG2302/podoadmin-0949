@@ -1135,20 +1135,6 @@ const SettingsPage = () => {
                     </div>
                   </div>
 
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Términos y condiciones / Consentimiento informado</label>
-                    <textarea
-                      value={clinicInfoForm.consentText}
-                      onChange={(e) => handleClinicInfoChange("consentText", e.target.value)}
-                      placeholder="Redacta aquí los términos y condiciones que el paciente debe aceptar. Este texto se mostrará al crear la ficha del paciente. Una vez que acepte, queda acreditado durante la existencia del paciente, salvo que edites este texto (en ese caso deberá volver a aceptar)."
-                      rows={6}
-                      className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#1a1a1a] focus:border-transparent transition-all resize-y"
-                    />
-                    <p className="text-xs text-gray-500 mt-1">
-                      Texto que el paciente leerá y aceptará con un check. Si editas este texto, los pacientes existentes deberán volver a aceptar los nuevos términos.
-                    </p>
-                  </div>
-                  
                   <div className="flex items-center gap-4 pt-4 border-t border-gray-100">
                     <button
                       onClick={handleSaveClinicInfo}

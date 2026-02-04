@@ -5,9 +5,10 @@ import { useLanguage } from "../contexts/language-context";
 import { useAuth } from "../contexts/auth-context";
 import { usePermissions } from "../hooks/use-permissions";
 
-// Helper to check if user is a podiatrist (can create prescriptions)
+// Helper to check if user puede crear recetas
+// Por defecto: podólogo. Opcionalmente permitimos también clinic_admin para gestión clínica avanzada.
 const canCreatePrescriptions = (role: string | undefined): boolean => {
-  return role === "podiatrist";
+  return role === "podiatrist" || role === "clinic_admin";
 };
 import {
   getUserCredits,
@@ -611,20 +612,40 @@ if (response.success && response.data?.success) {
     });
   };
 
-  const handlePrint = (session: ClinicalSession) => {
+  // Carga el logo para el usuario actual, priorizando backend (DB) y usando storage como respaldo
+  const loadLogoForCurrentUser = async (): Promise<string | undefined> => {
+    if (user?.clinicId) {
+      try {
+        const res = await api.get<{ success?: boolean; logo?: string | null }>(
+          `/clinics/${user.clinicId}/logo`
+        );
+        if (res.success && res.data?.logo) return res.data.logo;
+      } catch {
+        // si falla backend, intentamos storage local
+      }
+      return getClinicLogo(user.clinicId);
+    }
+    if (user?.id) {
+      try {
+        const res = await api.get<{ success?: boolean; logo?: string | null }>(
+          `/professionals/logo/${user.id}`
+        );
+        if (res.success && res.data?.logo) return res.data.logo;
+      } catch {
+        // fallback a storage local
+      }
+      return getProfessionalLogo(user.id);
+    }
+    return undefined;
+  };
+
+  const handlePrint = async (session: ClinicalSession) => {
     const patient = getPatientById(session.patientId);
     if (!patient) return;
     
     // Get clinic logo and full info based on user's clinic membership
-    let clinicLogo: string | undefined = undefined;
+    const clinicLogo = await loadLogoForCurrentUser();
     const clinic = user?.clinicId ? getClinicById(user.clinicId) : null;
-    if (user?.clinicId) {
-      // Get logo from separate storage key (not clinic.logo)
-      clinicLogo = getClinicLogo(user.clinicId);
-    } else if (user?.id) {
-      // For independent doctors, get their professional logo
-      clinicLogo = getProfessionalLogo(user.id);
-    }
     
     // Get professional license
     let podiatristLicense: string | null = null;
@@ -868,15 +889,10 @@ if (response.success && response.data?.success) {
   };
   
   // Print prescription
-  const handlePrintPrescription = (prescription: Prescription) => {
+  const handlePrintPrescription = async (prescription: Prescription) => {
     // Get clinic/professional info
-    let clinicLogo: string | undefined = undefined;
+    const clinicLogo = await loadLogoForCurrentUser();
     const clinic = user?.clinicId ? getClinicById(user.clinicId) : null;
-    if (user?.clinicId) {
-      clinicLogo = getClinicLogo(user.clinicId);
-    } else if (user?.id) {
-      clinicLogo = getProfessionalLogo(user.id);
-    }
     
     const isIndependent = !clinic;
     const profInfo = isIndependent && user?.id ? getProfessionalInfo(user.id) : null;

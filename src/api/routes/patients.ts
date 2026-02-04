@@ -7,6 +7,7 @@ import { patients as patientsTable, clinicalSessions as sessionsTable, appointme
 import { eq, inArray } from 'drizzle-orm';
 import { logAuditEvent } from '../utils/audit-log';
 import { getClientIP } from '../utils/ip-tracking';
+import { getSafeUserAgent } from '../utils/request-headers';
 
 const patientsRoutes = new Hono();
 

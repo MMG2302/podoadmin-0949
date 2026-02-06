@@ -197,6 +197,8 @@ export async function getFailedAttemptsD1(identifier: string): Promise<FailedAtt
 
 /**
  * Verifica si el usuario puede intentar login (usando D1)
+ * - Bloqueo (10 intentos): no permite hasta blockedUntil
+ * - Retardo (3 o 5 intentos): permite si ha pasado el tiempo desde lastAttempt
  */
 export async function checkRateLimitD1(identifier: string): Promise<{
   allowed: boolean;
@@ -211,7 +213,7 @@ export async function checkRateLimitD1(identifier: string): Promise<{
 
   const now = Date.now();
 
-  // Si está bloqueado
+  // Bloqueo duro (10 intentos): no permitir hasta que expire blockedUntil
   if (attempt.blockedUntil && now < attempt.blockedUntil) {
     return {
       allowed: false,
@@ -220,39 +222,30 @@ export async function checkRateLimitD1(identifier: string): Promise<{
     };
   }
 
-  // Calcular delay requerido
-  const delay = calculateDelay(attempt);
-
-  if (delay > 0) {
+  // Retardo (3 o 5 intentos): permitir si ha pasado el tiempo desde el último intento
+  const requiredDelayMs = getRequiredDelayMs(attempt);
+  if (requiredDelayMs > 0) {
+    const elapsedSinceLastAttempt = now - attempt.lastAttempt;
+    if (elapsedSinceLastAttempt >= requiredDelayMs) {
+      // Ya esperó lo suficiente, permitir intento
+      return { allowed: true };
+    }
+    const remainingMs = requiredDelayMs - elapsedSinceLastAttempt;
     return {
       allowed: false,
-      delay,
+      delay: remainingMs,
     };
   }
 
   return { allowed: true };
 }
 
-/**
- * Calcula el delay requerido basado en el número de intentos fallidos
- */
-function calculateDelay(attempt: FailedAttempt): number {
-  const now = Date.now();
-
-  // Si está bloqueado, calcular tiempo restante
-  if (attempt.blockedUntil && now < attempt.blockedUntil) {
-    return attempt.blockedUntil - now;
-  }
-
-  // Calcular delay basado en número de intentos
-  if (attempt.count >= LIMITS.BLOCK_10_ATTEMPTS) {
-    return LIMITS.BLOCK_15_MINUTES;
-  } else if (attempt.count >= LIMITS.DELAY_5_ATTEMPTS) {
-    return LIMITS.DELAY_30_SECONDS;
-  } else if (attempt.count >= LIMITS.DELAY_3_ATTEMPTS) {
-    return LIMITS.DELAY_5_SECONDS;
-  }
-
+/** Obtiene el delay requerido en ms según el número de intentos (sin bloqueo) */
+function getRequiredDelayMs(attempt: FailedAttempt): number {
+  if (attempt.blockedUntil) return 0; // Ya manejado arriba
+  if (attempt.count >= LIMITS.BLOCK_10_ATTEMPTS) return LIMITS.BLOCK_15_MINUTES;
+  if (attempt.count >= LIMITS.DELAY_5_ATTEMPTS) return LIMITS.DELAY_30_SECONDS;
+  if (attempt.count >= LIMITS.DELAY_3_ATTEMPTS) return LIMITS.DELAY_5_SECONDS;
   return 0;
 }
 

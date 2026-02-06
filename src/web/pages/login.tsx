@@ -15,6 +15,8 @@ const Login = () => {
     retryAfter?: number;
     blockedUntil?: number;
     attemptCount?: number;
+    isBlocked?: boolean;
+    blockDurationMinutes?: number;
   }>({});
   const [isLoading, setIsLoading] = useState(false);
   const [countdown, setCountdown] = useState<number | null>(null);
@@ -87,6 +89,8 @@ const Login = () => {
         retryAfter: result.retryAfter,
         blockedUntil: result.blockedUntil,
         attemptCount: result.attemptCount,
+        isBlocked: result.isBlocked,
+        blockDurationMinutes: result.blockDurationMinutes,
       });
 
       // Iniciar countdown si hay retryAfter
@@ -201,7 +205,29 @@ const Login = () => {
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-6">
-              {error && (
+              {/* Zona de bloqueo: aviso prominente cuando la cuenta está bloqueada por el backend */}
+              {errorDetails.isBlocked && (
+                <div className="bg-red-100 border-2 border-red-400 text-red-900 px-5 py-4 rounded-lg animate-in fade-in slide-in-from-top-2 duration-300" role="alert">
+                  <div className="flex items-start gap-3">
+                    <span className="flex-shrink-0 text-2xl" aria-hidden>🔒</span>
+                    <div>
+                      <div className="font-bold text-base">{t.auth.accountTemporarilyBlocked}</div>
+                      {errorDetails.blockedUntil && (
+                        <div className="text-sm mt-1">
+                          {t.auth.blockedUntil} {new Date(errorDetails.blockedUntil).toLocaleTimeString()}
+                          {errorDetails.blockDurationMinutes && ` (${errorDetails.blockDurationMinutes} min)`}
+                        </div>
+                      )}
+                      {errorDetails.retryAfter !== undefined && countdown !== null && countdown > 0 && (
+                        <div className="text-sm font-semibold mt-2">
+                          {t.auth.retryIn} {formatTime(countdown)}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
+              {error && !errorDetails.isBlocked && (
                 <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm animate-in fade-in slide-in-from-top-2 duration-300">
                   <div className="font-semibold mb-1">{error}</div>
                   {errorDetails.attemptCount && errorDetails.attemptCount > 0 && (

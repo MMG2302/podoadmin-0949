@@ -17,6 +17,8 @@ export interface ApiResponse<T = any> {
   retryAfter?: number;
   blockedUntil?: number;
   attemptCount?: number;
+  isBlocked?: boolean;
+  blockDurationMinutes?: number;
 }
 
 // Variable para evitar múltiples renovaciones simultáneas
@@ -232,6 +234,12 @@ export async function apiRequest<T = any>(
         error: data.error || 'Error en la solicitud',
         message: data.message,
         data, // Incluir body completo para que el frontend pueda leer data.message
+        // Pasar campos de rate limiting para login
+        retryAfter: data.retryAfter,
+        blockedUntil: data.blockedUntil,
+        attemptCount: data.attemptCount,
+        isBlocked: data.isBlocked,
+        blockDurationMinutes: data.blockDurationMinutes,
       };
     }
 

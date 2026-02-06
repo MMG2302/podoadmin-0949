@@ -125,17 +125,21 @@ authRoutes.post('/login', async (c) => {
             message: `Demasiados intentos fallidos. Tu cuenta está bloqueada hasta ${blockedUntilDate.toLocaleTimeString()}. Por favor, intenta más tarde.`,
             retryAfter: delaySeconds,
             blockedUntil: rateLimitCheck.blockedUntil,
+            attemptCount,
+            isBlocked: true,
+            blockDurationMinutes: 15,
           },
           429 // Too Many Requests
         );
       }
 
-      // Si hay delay requerido
+      // Si hay delay requerido (5s o 30s)
       return c.json(
         {
           error: 'Demasiados intentos',
           message: `Demasiados intentos fallidos. Por favor, espera ${delayMinutes > 1 ? `${delayMinutes} minutos` : `${delaySeconds} segundos`} antes de intentar nuevamente.`,
           retryAfter: delaySeconds,
+          attemptCount,
         },
         429 // Too Many Requests
       );

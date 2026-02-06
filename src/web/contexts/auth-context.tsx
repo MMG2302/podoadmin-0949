@@ -24,6 +24,8 @@ interface AuthContextType {
     retryAfter?: number;
     blockedUntil?: number;
     attemptCount?: number;
+    isBlocked?: boolean;
+    blockDurationMinutes?: number;
   }>;
   logout: () => void;
   /** Lista de usuarios (desde API). Solo disponible para super_admin, admin, clinic_admin. */
@@ -131,12 +133,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       const retryAfter = response.retryAfter;
       const blockedUntil = response.blockedUntil;
       const attemptCount = response.attemptCount;
+      const isBlocked = response.isBlocked;
+      const blockDurationMinutes = response.blockDurationMinutes;
       return {
         success: false,
         error: response.error || response.message || "Credenciales incorrectas",
         retryAfter,
         blockedUntil,
         attemptCount,
+        isBlocked,
+        blockDurationMinutes,
       };
     } catch (error) {
       console.error("Error en login:", error);

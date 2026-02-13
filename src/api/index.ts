@@ -3,6 +3,7 @@ import { cors } from "hono/cors";
 
 /** Variables que el middleware inyecta en el contexto (p. ej. safeHeaders) */
 export type AppVariables = { safeHeaders: Record<string, string> };
+import { blockSensitivePaths } from './middleware/block-sensitive-paths';
 import { authMiddleware } from './middleware/auth';
 import { csrfProtection } from './middleware/csrf';
 import { cspMiddleware } from './middleware/csp';
@@ -63,6 +64,9 @@ const originValidator = (origin: string | null): boolean => {
   const allowedOrigins = getAllowedOrigins();
   return allowedOrigins.includes(origin);
 };
+
+// Bloquear acceso por URL a archivos/carpetas sensibles (node_modules, .sql, migraciones, etc.)
+app.use('*', blockSensitivePaths);
 
 app.use(cors({
   origin: originValidator,

@@ -12,7 +12,8 @@ import { checkMessagesRateLimit } from '../utils/action-rate-limit';
 const messagesRoutes = new Hono();
 messagesRoutes.use('*', requireAuth);
 
-const generateId = () => `msg_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
+// UUID criptográfico: evita acceso por rutas predecibles
+const generateId = () => `msg_${crypto.randomUUID().replace(/-/g, '')}`;
 
 function mapSentMessage(row: typeof sentMessagesTable.$inferSelect) {
   let recipientIds: string[] = [];
@@ -182,7 +183,7 @@ messagesRoutes.post('/', requireRole('super_admin'), async (c) => {
     });
 
     for (const recipientId of recipientIds) {
-      const notifId = `notif_${Date.now()}_${Math.random().toString(36).slice(2, 9)}_${recipientId.slice(0, 8)}`;
+      const notifId = `notif_${crypto.randomUUID().replace(/-/g, '')}_${recipientId.slice(0, 8)}`;
       await database.insert(notificationsTable).values({
         id: notifId,
         userId: recipientId,

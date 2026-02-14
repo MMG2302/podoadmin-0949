@@ -102,7 +102,7 @@ auditLogRoutes.post('/', async (c) => {
           reason: 'multiple_print_violations_alert',
         });
         for (const row of superAdminRows) {
-          const notifId = `notif_${Date.now()}_${row.userId}_${Math.random().toString(36).slice(2, 9)}`;
+          const notifId = `notif_${crypto.randomUUID().replace(/-/g, '')}`;
           await database.insert(notificationsTable).values({
             id: notifId,
             userId: row.userId,

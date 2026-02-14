@@ -7,7 +7,8 @@ import { notifications as notificationsTable } from '../database/schema';
 const notificationsRoutes = new Hono();
 notificationsRoutes.use('*', requireAuth);
 
-const generateId = () => `notif_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
+// UUID criptográfico: evita acceso por rutas predecibles
+const generateId = () => `notif_${crypto.randomUUID().replace(/-/g, '')}`;
 
 type NotificationType = 'reassignment' | 'appointment' | 'credit' | 'system' | 'admin_message';
 

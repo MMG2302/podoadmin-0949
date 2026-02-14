@@ -2,6 +2,7 @@ import { Hono } from 'hono';
 import { eq, and, ne } from 'drizzle-orm';
 import { requireAuth } from '../middleware/auth';
 import { requirePermission } from '../middleware/authorization';
+import { sanitizePathParam } from '../utils/sanitization';
 import { database } from '../database';
 import { appointments as appointmentsTable, createdUsers as createdUsersTable } from '../database/schema';
 import { logAuditEvent } from '../utils/audit-log';
@@ -37,7 +38,8 @@ async function getClinicIdForUser(userId: string): Promise<string | null> {
 }
 appointmentsRoutes.use('*', requireAuth);
 
-const generateId = () => `apt_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
+// UUID criptográfico: evita acceso por rutas predecibles
+const generateId = () => `apt_${crypto.randomUUID().replace(/-/g, '')}`;
 
 type DbAppointment = typeof appointmentsTable.$inferSelect;
 
@@ -176,7 +178,8 @@ appointmentsRoutes.get('/', requirePermission('view_patients'), async (c) => {
 appointmentsRoutes.get('/:id', requirePermission('view_patients'), async (c) => {
   try {
     const user = c.get('user');
-    const id = c.req.param('id');
+    const id = sanitizePathParam(c.req.param('id'), 64);
+    if (!id) return c.json({ error: 'ID de cita inválido' }, 400);
     const rows = await database.select().from(appointmentsTable).where(eq(appointmentsTable.id, id)).limit(1);
     if (!rows.length) return c.json({ error: 'Cita no encontrada' }, 404);
     const row = rows[0];
@@ -289,7 +292,8 @@ appointmentsRoutes.post('/', requirePermission('manage_appointments'), async (c)
 appointmentsRoutes.put('/:id', requirePermission('manage_appointments'), async (c) => {
   try {
     const user = c.get('user');
-    const id = c.req.param('id');
+    const id = sanitizePathParam(c.req.param('id'), 64);
+    if (!id) return c.json({ error: 'ID de cita inválido' }, 400);
     const body = (await c.req.json().catch(() => ({}))) as {
       patientId?: string | null;
       podiatristId?: string;
@@ -376,7 +380,8 @@ appointmentsRoutes.put('/:id', requirePermission('manage_appointments'), async (
 appointmentsRoutes.delete('/:id', requirePermission('manage_appointments'), async (c) => {
   try {
     const user = c.get('user');
-    const id = c.req.param('id');
+    const id = sanitizePathParam(c.req.param('id'), 64);
+    if (!id) return c.json({ error: 'ID de cita inválido' }, 400);
 
     const rows = await database.select().from(appointmentsTable).where(eq(appointmentsTable.id, id)).limit(1);
     if (!rows.length) return c.json({ error: 'Cita no encontrada' }, 404);

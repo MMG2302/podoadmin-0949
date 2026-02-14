@@ -1,8 +1,9 @@
 import { Hono } from 'hono';
 import { requireAuth } from '../middleware/auth';
 import { requirePermission } from '../middleware/authorization';
+import { sanitizePathParam } from '../utils/sanitization';
 import { database } from '../database';
-import { clinicalSessions as sessionsTable, patients as patientsTable } from '../database/schema';
+import { clinicalSessions as sessionsTable, patients as patientsTable, createdUsers as createdUsersTable } from '../database/schema';
 import { eq } from 'drizzle-orm';
 import { validateImageDataUri, MAX_SESSION_IMAGE_BYTES } from '../utils/logo-upload';
 import { checkSessionCreateRateLimit } from '../utils/action-rate-limit';
@@ -32,9 +33,24 @@ function validateSessionImages(images: unknown): { ok: true; sanitized: string[]
 
 const sessionsRoutes = new Hono();
 
-// Helper local para generar IDs (evitamos depender de web/lib/storage en el backend)
-const generateId = () =>
-  `${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
+// UUID criptográfico: imposible de adivinar por fuerza bruta, evita acceso por rutas predecibles
+const generateId = () => crypto.randomUUID();
+
+/** Obtiene los IDs de podólogos asignados a una recepcionista (desde DB). */
+async function getAssignedPodiatristIds(userId: string): Promise<string[]> {
+  const rows = await database
+    .select({ assignedPodiatristIds: createdUsersTable.assignedPodiatristIds })
+    .from(createdUsersTable)
+    .where(eq(createdUsersTable.id, userId))
+    .limit(1);
+  if (!rows[0]?.assignedPodiatristIds) return [];
+  try {
+    const parsed = JSON.parse(rows[0].assignedPodiatristIds) as unknown;
+    return Array.isArray(parsed) ? parsed.filter((id): id is string => typeof id === 'string') : [];
+  } catch {
+    return [];
+  }
+}
 
 type DbSession = typeof sessionsTable.$inferSelect;
 
@@ -136,8 +152,19 @@ sessionsRoutes.get(
       // Reglas de visibilidad:
       // - super_admin: todas
       // - podiatrist: solo sus propias sesiones (createdBy === user.userId)
+      // - clinic_admin: solo sesiones de su clínica (clinicId === user.clinicId)
+      // - receptionist: solo sesiones de podólogos asignados
       if (user?.role === 'podiatrist') {
         rows = rows.filter((s) => s.createdBy === user.userId);
+      } else if (user?.role === 'clinic_admin' && user.clinicId) {
+        rows = rows.filter((s) => s.clinicId === user.clinicId);
+      } else if (user?.role === 'receptionist') {
+        const assignedIds = await getAssignedPodiatristIds(user.userId);
+        if (assignedIds.length === 0) {
+          rows = [];
+        } else {
+          rows = rows.filter((s) => assignedIds.includes(s.createdBy));
+        }
       }
 
       if (patientFilter) {
@@ -166,7 +193,10 @@ sessionsRoutes.get(
   requirePermission('view_sessions'),
   async (c) => {
     try {
-      const sessionId = c.req.param('sessionId');
+      const sessionId = sanitizePathParam(c.req.param('sessionId'), 64);
+      if (!sessionId) {
+        return c.json({ error: 'ID de sesión inválido' }, 400);
+      }
       const user = c.get('user');
 
       const rows = await database
@@ -184,6 +214,8 @@ sessionsRoutes.get(
       // Reglas de acceso adicionales:
       // - super_admin: acceso total
       // - podiatrist: solo sesiones que él mismo ha creado
+      // - clinic_admin: solo sesiones de su clínica
+      // - receptionist: solo sesiones de podólogos asignados
       if (user?.role === 'podiatrist' && row.createdBy !== user.userId) {
         return c.json(
           {
@@ -192,6 +224,21 @@ sessionsRoutes.get(
           },
           403
         );
+      }
+      if (user?.role === 'clinic_admin' && user.clinicId && row.clinicId !== user.clinicId) {
+        return c.json(
+          { error: 'Acceso denegado', message: 'No tienes permiso para ver esta sesión' },
+          403
+        );
+      }
+      if (user?.role === 'receptionist') {
+        const assignedIds = await getAssignedPodiatristIds(user.userId);
+        if (!assignedIds.includes(row.createdBy)) {
+          return c.json(
+            { error: 'Acceso denegado', message: 'No tienes permiso para ver esta sesión' },
+            403
+          );
+        }
       }
 
       const session = mapDbSession(row);
@@ -332,7 +379,10 @@ sessionsRoutes.put(
   requirePermission('manage_sessions'),
   async (c) => {
     try {
-      const sessionId = c.req.param('sessionId');
+      const sessionId = sanitizePathParam(c.req.param('sessionId'), 64);
+      if (!sessionId) {
+        return c.json({ error: 'ID de sesión inválido' }, 400);
+      }
       const user = c.get('user');
 
       const existingRows = await database
@@ -501,7 +551,10 @@ sessionsRoutes.delete(
   requirePermission('manage_sessions'),
   async (c) => {
     try {
-      const sessionId = c.req.param('sessionId');
+      const sessionId = sanitizePathParam(c.req.param('sessionId'), 64);
+      if (!sessionId) {
+        return c.json({ error: 'ID de sesión inválido' }, 400);
+      }
       const user = c.get('user');
 
       const existingRows = await database

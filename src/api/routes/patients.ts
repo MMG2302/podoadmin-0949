@@ -1,6 +1,7 @@
 import { Hono } from 'hono';
 import { requireAuth } from '../middleware/auth';
 import { requirePermission } from '../middleware/authorization';
+import { sanitizePathParam } from '../utils/sanitization';
 import { validateData, createPatientSchema, updatePatientSchema } from '../utils/validation';
 import { database } from '../database';
 import { patients as patientsTable, clinicalSessions as sessionsTable, appointments as appointmentsTable, creditTransactions as creditTransactionsTable, createdUsers as createdUsersTable } from '../database/schema';
@@ -11,8 +12,8 @@ import { getSafeUserAgent } from '../utils/request-headers';
 
 const patientsRoutes = new Hono();
 
-// Helper local para generar IDs (evitamos depender de web/lib/storage en el backend)
-const generateId = () => `${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
+// UUID criptográfico: imposible de adivinar por fuerza bruta, evita acceso por rutas predecibles
+const generateId = () => crypto.randomUUID();
 
 type DbPatient = typeof patientsTable.$inferSelect;
 
@@ -118,7 +119,10 @@ patientsRoutes.post(
   async (c) => {
     try {
       const user = c.get('user');
-      const patientId = c.req.param('patientId');
+      const patientId = sanitizePathParam(c.req.param('patientId'), 64);
+      if (!patientId) {
+        return c.json({ error: 'ID de paciente inválido' }, 400);
+      }
       const body = (await c.req.json().catch(() => ({}))) as { newPodiatristId?: string };
       const newPodiatristId = String(body.newPodiatristId ?? '').trim();
 
@@ -259,7 +263,10 @@ patientsRoutes.get(
   requirePermission('view_patients'),
   async (c) => {
     try {
-      const patientId = c.req.param('patientId');
+      const patientId = sanitizePathParam(c.req.param('patientId'), 64);
+      if (!patientId) {
+        return c.json({ error: 'ID de paciente inválido' }, 400);
+      }
       const user = c.get('user');
 
       const rows = await database
@@ -433,7 +440,10 @@ patientsRoutes.put(
   requirePermission('manage_patients'),
   async (c) => {
     try {
-      const patientId = c.req.param('patientId');
+      const patientId = sanitizePathParam(c.req.param('patientId'), 64);
+      if (!patientId) {
+        return c.json({ error: 'ID de paciente inválido' }, 400);
+      }
       const user = c.get('user');
 
       // Verificar existencia
@@ -553,7 +563,10 @@ patientsRoutes.delete(
   requirePermission('manage_patients'),
   async (c) => {
     try {
-      const patientId = c.req.param('patientId');
+      const patientId = sanitizePathParam(c.req.param('patientId'), 64);
+      if (!patientId) {
+        return c.json({ error: 'ID de paciente inválido' }, 400);
+      }
       const user = c.get('user');
 
       const existingRows = await database

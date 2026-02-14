@@ -69,6 +69,16 @@
 4. ✅ Refresh tokens largos (7 días)
 5. ✅ Renovación automática
 
+### IDs no predecibles (anti-enumeración)
+1. ✅ **UUIDs criptográficos**: Pacientes, sesiones, citas, mensajes y notificaciones usan `crypto.randomUUID()`
+2. ✅ **Imposible adivinar por fuerza bruta**: 122 bits de aleatoriedad vs. IDs basados en timestamp
+3. ✅ **Rutas no enumerables**: `/api/sessions/:id` y `/api/patients/:id` no pueden explorarse con IDs secuenciales
+
+### Protección IDOR (Insecure Direct Object Reference)
+1. ✅ **Autorización por recurso**: Cada GET/PUT/DELETE verifica ownership (podiatrist, clinic_admin, receptionist)
+2. ✅ **Sesiones**: clinic_admin solo ve sesiones de su clínica; receptionist solo de podólogos asignados
+3. ✅ **sanitizePathParam**: Validación de IDs en path (patients, sessions, appointments) rechaza caracteres peligrosos
+
 ## 📋 Checklist de Seguridad
 
 Ver `src/api/SECURITY_CHECKLIST.md` para checklist completo.

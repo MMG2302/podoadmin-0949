@@ -12,8 +12,9 @@ const receptionistsRoutes = new Hono();
 
 receptionistsRoutes.use('*', requireAuth);
 
+// UUID criptográfico: evita acceso por rutas predecibles
 function generateId() {
-  return `user_created_${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
+  return `user_created_${crypto.randomUUID().replace(/-/g, '')}`;
 }
 
 function toCreatedUser(row: typeof createdUsers.$inferSelect) {

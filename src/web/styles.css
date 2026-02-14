@@ -137,6 +137,11 @@
       font-size: 16px !important;
     }
   }
+  /* Asegurar que inputs/textarea sean editables (evitar herencia de select-none) */
+  input, textarea {
+    -webkit-user-select: text;
+    user-select: text;
+  }
 }
 
 /* Safari compatibility prefixes */
@@ -191,6 +196,13 @@ button, a, [role="button"], input, select, textarea {
 .overflow-x-auto,
 .overflow-x-scroll {
   -webkit-overflow-scrolling: touch;
+}
+
+/* Fix iOS Safari: inputs inside -webkit-overflow-scrolling:touch containers
+   may not receive focus. Use form-modal-scroll on modal/scroll containers
+   that contain form inputs (textarea, input). */
+.form-modal-scroll {
+  -webkit-overflow-scrolling: auto !important;
 }
 
 /* Safe area insets for notched devices (iPhone X+, Android gesture bar) */

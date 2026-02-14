@@ -11,6 +11,7 @@ import { getClientIP, createRateLimitIdentifier, isIPWhitelisted, getIPWhitelist
 import { getSafeUserAgent } from '../utils/request-headers';
 import type { User } from '../../web/contexts/auth-context';
 import { getUserByIdFromDB } from '../utils/user-db';
+import { canUserAccess } from '../utils/user-retention';
 
 const authRoutes = new Hono();
 
@@ -298,13 +299,16 @@ authRoutes.post('/login', async (c) => {
       );
     }
     if (matchedUser.user.isEnabled === false) {
-      return c.json(
-        {
-          error: 'Cuenta deshabilitada',
-          message: 'Tu cuenta está deshabilitada. Contacta al administrador.',
-        },
-        403
-      );
+      const disabledAt = dbUser?.disabledAt ?? null;
+      if (!canUserAccess(disabledAt)) {
+        return c.json(
+          {
+            error: 'Cuenta deshabilitada',
+            message: 'Tu cuenta está deshabilitada. El período de gracia ha finalizado. Contacta al administrador.',
+          },
+          403
+        );
+      }
     }
 
     // Verificar 2FA si está habilitado
@@ -496,12 +500,15 @@ authRoutes.get('/verify', requireAuth, async (c) => {
     return c.json({ error: 'Usuario no encontrado' }, 404);
   }
 
-  if (dbUser.isBanned || dbUser.isBlocked || dbUser.isEnabled === false) {
+  if (dbUser.isBanned || dbUser.isBlocked) {
     return c.json(
-      {
-        error: 'Cuenta no disponible',
-        message: 'Tu cuenta no está disponible',
-      },
+      { error: 'Cuenta no disponible', message: 'Tu cuenta no está disponible' },
+      403
+    );
+  }
+  if (dbUser.isEnabled === false && !canUserAccess(dbUser.disabledAt)) {
+    return c.json(
+      { error: 'Cuenta no disponible', message: 'Tu cuenta no está disponible' },
       403
     );
   }
@@ -550,12 +557,15 @@ authRoutes.post('/refresh', async (c) => {
 
     // Verificar estados de cuenta desde DB
     const dbUser = await getUserByIdFromDB(payload.userId);
-    if (!dbUser || dbUser.isBanned || dbUser.isBlocked || dbUser.isEnabled === false) {
+    if (!dbUser || dbUser.isBanned || dbUser.isBlocked) {
       return c.json(
-        {
-          error: 'Cuenta no disponible',
-          message: 'Tu cuenta no está disponible',
-        },
+        { error: 'Cuenta no disponible', message: 'Tu cuenta no está disponible' },
+        403
+      );
+    }
+    if (dbUser.isEnabled === false && !canUserAccess(dbUser.disabledAt)) {
+      return c.json(
+        { error: 'Cuenta no disponible', message: 'Tu cuenta no está disponible' },
         403
       );
     }

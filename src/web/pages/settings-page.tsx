@@ -684,7 +684,7 @@ const SettingsPage = () => {
                   ← {t.common.back}
                 </button>
                 <h4 className="font-medium text-[#1a1a1a] mb-4">{selectedSupportConv.subject}</h4>
-                <div className="space-y-3 mb-4 max-h-64 overflow-y-auto">
+                <div className="space-y-3 mb-4 max-h-64 overflow-y-auto form-modal-scroll">
                   {selectedSupportConv.messages.map((m) => (
                     <div
                       key={m.id}

@@ -9,12 +9,17 @@ La gestión de cuentas está disponible en la página de **Usuarios** (`/users`)
 ### 1. Deshabilitar/Habilitar Cuentas
 
 **¿Qué hace?**
-- **Deshabilitar**: Impide que el usuario inicie sesión. La cuenta permanece en el sistema pero no puede acceder.
-- **Habilitar**: Restaura el acceso del usuario a la plataforma.
+- **Deshabilitar**: Inicia el ciclo de cancelación. El usuario tiene **1 mes de período de gracia** (puede seguir accediendo para exportar datos). Después se bloquea el acceso. Tras **7 meses más** (8 meses en total), se borran permanentemente todos sus datos.
+- **Habilitar**: Restaura el acceso y cancela el ciclo (se borra `disabled_at`).
+
+**Ciclo automático:**
+1. **0–30 días**: Período de gracia (puede acceder)
+2. **30–240 días**: Bloqueado (no puede acceder)
+3. **240+ días**: Borrado permanente (ejecutado por cron diario a las 6:00 UTC)
 
 **Cuándo usar:**
-- Deshabilitar: Cuando necesitas suspender temporalmente el acceso de un usuario sin eliminar su cuenta
-- Habilitar: Para restaurar el acceso después de una suspensión temporal
+- Deshabilitar: Cuando necesitas suspender el acceso; el usuario tiene 1 mes para exportar sus datos
+- Habilitar: Para restaurar el acceso antes de que termine el período de gracia o el borrado
 
 **Cómo usar:**
 1. Ve a la página de Usuarios
@@ -58,8 +63,9 @@ La gestión de cuentas está disponible en la página de **Usuarios** (`/users`)
 En la tabla de usuarios, verás badges de estado:
 
 - **✅ Activo**: Cuenta habilitada y funcionando normalmente
-- **⚠️ Deshabilitado**: Cuenta deshabilitada, no puede iniciar sesión
-- **🔒 Bloqueado**: Cuenta bloqueada temporalmente
+- **🟡 Período de gracia**: Cuenta deshabilitada pero aún puede acceder (primeros 30 días)
+- **⚠️ Deshabilitado**: Cuenta deshabilitada, bloqueada (tras el período de gracia)
+- **🔒 Bloqueado**: Cuenta bloqueada temporalmente (acción manual)
 - **🚫 Baneado**: Cuenta baneada permanentemente
 
 ### Botones de Acción

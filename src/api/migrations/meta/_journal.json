@@ -57,6 +57,13 @@
       "when": 1770076468916,
       "tag": "0007_old_major_mapleleaf",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "6",
+      "when": 1771070506381,
+      "tag": "0008_add_disabled_at",
+      "breakpoints": true
     }
   ]
 }

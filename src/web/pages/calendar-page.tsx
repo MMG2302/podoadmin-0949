@@ -609,13 +609,13 @@ const CalendarPage = () => {
             </div>
           </div>
 
-          {/* Calendar Grid */}
-          <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
+          {/* Calendar Grid - overflow-x-auto en móvil para grid de 7 columnas */}
+          <div className="bg-white rounded-xl border border-gray-100 overflow-x-auto overscroll-contain">
             {/* Month View */}
             {viewMode === "month" && (
               <>
-                {/* Day headers */}
-                <div className="grid grid-cols-7 border-b border-gray-100">
+                {/* Day headers - min-w para scroll horizontal en móvil */}
+                <div className="grid grid-cols-7 min-w-[400px] border-b border-gray-100">
                   {dayNames.map((day) => (
                     <div key={day} className="py-3 text-center text-sm font-medium text-gray-500">
                       {day}
@@ -624,7 +624,7 @@ const CalendarPage = () => {
                 </div>
 
                 {/* Calendar days */}
-                <div className="grid grid-cols-7">
+                <div className="grid grid-cols-7 min-w-[400px]">
                   {getMonthGrid().map((date, index) => {
                     const sessions = getSessionsForDate(date);
                     const appointments = getAppointmentsForDate(date);
@@ -689,8 +689,8 @@ const CalendarPage = () => {
             {/* Week View */}
             {viewMode === "week" && (
               <>
-                {/* Day headers */}
-                <div className="grid grid-cols-7 border-b border-gray-100">
+                {/* Day headers - min-w para scroll horizontal en móvil */}
+                <div className="grid grid-cols-7 min-w-[400px] border-b border-gray-100">
                   {getWeekGrid().map((date, index) => (
                     <div
                       key={index}
@@ -712,7 +712,7 @@ const CalendarPage = () => {
                 </div>
 
                 {/* Sessions/appointments grid */}
-                <div className="grid grid-cols-7 min-h-[400px]">
+                <div className="grid grid-cols-7 min-w-[400px] min-h-[400px]">
                   {getWeekGrid().map((date, index) => {
                     const sessions = getSessionsForDate(date);
                     const appointments = getAppointmentsForDate(date);
@@ -1113,8 +1113,8 @@ const CalendarPage = () => {
 
       {/* Appointment Form Modal */}
       {showAppointmentForm && (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4 overflow-y-auto form-modal-scroll">
+          <div className="bg-white rounded-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto form-modal-scroll">
             <div className="sticky top-0 bg-white border-b border-gray-100 p-6 z-10">
               <div className="flex items-center justify-between">
                 <h3 className="text-xl font-semibold text-[#1a1a1a]">

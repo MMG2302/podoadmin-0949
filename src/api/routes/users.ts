@@ -8,6 +8,7 @@ import { createdUsers, userCredits as userCreditsTable, creditTransactions as cr
 import { hashPassword } from '../utils/password';
 import { logAuditEvent } from '../utils/audit-log';
 import { getClientIP } from '../utils/ip-tracking';
+import { deleteUserCascade } from '../utils/delete-user-cascade';
 
 const usersRoutes = new Hono();
 usersRoutes.use('*', requireAuth);
@@ -33,6 +34,7 @@ function mapDbUser(row: typeof createdUsers.$inferSelect) {
     isBlocked: !!row.isBlocked,
     isBanned: !!row.isBanned,
     isEnabled: row.isEnabled !== undefined ? !!row.isEnabled : true,
+    disabledAt: row.disabledAt ?? undefined,
     emailVerified: !!row.emailVerified,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
@@ -349,7 +351,10 @@ usersRoutes.delete('/:userId', requireRole('super_admin', 'clinic_admin'), async
       }
     }
 
-    await database.delete(createdUsers).where(eq(createdUsers.id, row.id));
+    const result = await deleteUserCascade(row.userId, row.id);
+    if (!result.deleted) {
+      return c.json({ error: 'Error al eliminar', message: result.error || 'No se pudo eliminar el usuario' }, 500);
+    }
     await logAuditEvent({
       userId: c.get('user').userId,
       action: 'DELETE_USER',
@@ -423,7 +428,7 @@ usersRoutes.post('/:userId/enable', requireRole('super_admin', 'clinic_admin'), 
       return c.json({ error: 'Acceso denegado' }, 403);
     }
   }
-  await setUserFlag(row.id, { isEnabled: true } as any);
+  await setUserFlag(row.id, { isEnabled: true, disabledAt: null } as any);
   return c.json({ success: true });
 });
 usersRoutes.post('/:userId/disable', requireRole('super_admin', 'clinic_admin'), async (c) => {
@@ -435,7 +440,7 @@ usersRoutes.post('/:userId/disable', requireRole('super_admin', 'clinic_admin'),
       return c.json({ error: 'Acceso denegado' }, 403);
     }
   }
-  await setUserFlag(row.id, { isEnabled: false } as any);
+  await setUserFlag(row.id, { isEnabled: false, disabledAt: Date.now() } as any);
   return c.json({ success: true });
 });
 

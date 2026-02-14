@@ -1,3 +1,4 @@
+import { useState, useRef, useEffect } from "react";
 import { useLanguage } from "../contexts/language-context";
 import { Language } from "../i18n/translations";
 
@@ -15,6 +16,19 @@ const flagEmojis: Record<Language, string> = {
 
 export const LanguageSwitcher = ({ variant = "dropdown", className = "" }: LanguageSwitcherProps) => {
   const { language, setLanguage, languageNames, availableLanguages } = useLanguage();
+  const [isOpen, setIsOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // Cerrar al hacer clic fuera (funciona en touch y desktop)
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setIsOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   if (variant === "inline") {
     return (
@@ -38,14 +52,17 @@ export const LanguageSwitcher = ({ variant = "dropdown", className = "" }: Langu
   }
 
   return (
-    <div className={`relative group ${className}`}>
+    <div ref={dropdownRef} className={`relative ${className}`}>
       <button
-        className="flex items-center gap-2 px-3 py-2 text-sm rounded-lg hover:bg-gray-100 transition-all"
+        onClick={() => setIsOpen((o) => !o)}
+        className="flex items-center gap-2 px-3 py-2 text-sm rounded-lg hover:bg-gray-100 active:bg-gray-200 transition-all min-w-[44px] min-h-[44px] items-center justify-center"
+        aria-expanded={isOpen}
+        aria-haspopup="listbox"
       >
         <span>{flagEmojis[language]}</span>
-        <span className="text-gray-700">{languageNames[language]}</span>
+        <span className="hidden sm:inline text-gray-700">{languageNames[language]}</span>
         <svg
-          className="w-4 h-4 text-gray-400 transition-transform group-hover:rotate-180"
+          className={`w-4 h-4 text-gray-400 transition-transform ${isOpen ? "rotate-180" : ""}`}
           fill="none"
           viewBox="0 0 24 24"
           stroke="currentColor"
@@ -54,12 +71,20 @@ export const LanguageSwitcher = ({ variant = "dropdown", className = "" }: Langu
         </svg>
       </button>
       
-      <div className="absolute right-0 top-full mt-1 bg-white rounded-lg shadow-lg border border-gray-100 py-1 min-w-[160px] opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50">
+      <div
+        className={`absolute right-0 top-full mt-1 bg-white rounded-lg shadow-lg border border-gray-100 py-1 min-w-[160px] transition-all z-50 ${
+          isOpen ? "opacity-100 visible" : "opacity-0 invisible pointer-events-none"
+        }`}
+        role="listbox"
+      >
         {availableLanguages.map((lang) => (
           <button
             key={lang}
-            onClick={() => setLanguage(lang)}
-            className={`w-full flex items-center gap-3 px-4 py-2 text-sm text-left hover:bg-gray-50 transition-all ${
+            onClick={() => {
+              setLanguage(lang);
+              setIsOpen(false);
+            }}
+            className={`w-full flex items-center gap-3 px-4 py-2 text-sm text-left hover:bg-gray-50 active:bg-gray-100 transition-all min-h-[44px] ${
               language === lang ? "bg-gray-50 font-medium" : ""
             }`}
           >

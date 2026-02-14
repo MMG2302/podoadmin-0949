@@ -68,6 +68,8 @@ export const createdUsers = sqliteTable('created_users', {
   oauthProvider: text('oauth_provider'), // 'google' | 'apple' | null
   avatarUrl: text('avatar_url'), // URL del avatar (desde OAuth)
   assignedPodiatristIds: text('assigned_podiatrist_ids'), // JSON array para receptionists
+  // Ciclo cancelación: 1 mes grace → bloqueo → 7 meses después borrado permanente
+  disabledAt: integer('disabled_at'), // Timestamp (ms) cuando se deshabilitó; null = nunca deshabilitado
 });
 
 // Tabla de créditos de usuario

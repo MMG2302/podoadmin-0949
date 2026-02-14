@@ -1194,8 +1194,8 @@ if (response.success && response.data?.success) {
       
       {/* Prescription Form Modal - Only accessible for podiatrists */}
       {showPrescriptionForm && selectedSession && canCreatePrescriptions(user?.role) && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[60] p-4">
-          <div className="bg-white rounded-2xl max-w-xl w-full">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[60] p-4 overflow-y-auto form-modal-scroll">
+          <div className="bg-white rounded-2xl max-w-xl w-full max-h-[90vh] overflow-y-auto form-modal-scroll">
             <div className="p-6 border-b border-gray-100">
               <div className="flex items-center justify-between">
                 <h3 className="text-lg font-semibold text-[#1a1a1a]">Nueva Receta</h3>
@@ -1293,8 +1293,8 @@ if (response.success && response.data?.success) {
 
       {/* Session Form Modal */}
       {showForm && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 overflow-y-auto">
-          <div className="bg-white rounded-2xl max-w-3xl w-full max-h-[90vh] overflow-y-auto" data-session-form>
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 overflow-y-auto form-modal-scroll">
+          <div className="bg-white rounded-2xl max-w-3xl w-full max-h-[90vh] overflow-y-auto form-modal-scroll" data-session-form>
             <div className="sticky top-0 bg-white border-b border-gray-100 p-6 flex items-center justify-between">
               <h3 className="text-xl font-semibold text-[#1a1a1a]">
                 {editingSession ? t.sessions.editSession : t.sessions.newSession}

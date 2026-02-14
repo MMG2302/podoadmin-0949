@@ -178,7 +178,7 @@ const SupportPage = () => {
                     )}
                   </div>
                 </div>
-                <div className="p-4 max-h-[300px] overflow-y-auto space-y-3">
+                <div className="p-4 max-h-[300px] overflow-y-auto form-modal-scroll space-y-3">
                   {selected.messages.map((m) => (
                     <div
                       key={m.id}

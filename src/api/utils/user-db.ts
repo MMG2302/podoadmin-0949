@@ -31,6 +31,7 @@ export async function getUserByEmailFromDB(email: string): Promise<{
   isEnabled: boolean;
   isBlocked: boolean;
   isBanned: boolean;
+  disabledAt?: number | null;
   registrationSource?: string | null;
   oauthProvider?: string | null;
   assignedPodiatristIds?: string[] | null;
@@ -61,6 +62,7 @@ export async function getUserByEmailFromDB(email: string): Promise<{
       isEnabled: user.isEnabled || false,
       isBlocked: user.isBlocked || false,
       isBanned: user.isBanned || false,
+      disabledAt: user.disabledAt ?? null,
       registrationSource: user.registrationSource || null,
       oauthProvider: user.oauthProvider || null,
       assignedPodiatristIds: user.assignedPodiatristIds ? safeJsonParseArray(user.assignedPodiatristIds) : undefined,
@@ -86,6 +88,7 @@ export async function getUserByIdFromDB(userId: string): Promise<{
   isEnabled: boolean;
   isBlocked: boolean;
   isBanned: boolean;
+  disabledAt?: number | null;
   registrationSource?: string | null;
   assignedPodiatristIds?: string[] | null;
 } | null> {
@@ -113,6 +116,7 @@ export async function getUserByIdFromDB(userId: string): Promise<{
       isEnabled: user.isEnabled || false,
       isBlocked: user.isBlocked || false,
       isBanned: user.isBanned || false,
+      disabledAt: user.disabledAt ?? null,
       registrationSource: user.registrationSource || null,
       assignedPodiatristIds: user.assignedPodiatristIds ? safeJsonParseArray(user.assignedPodiatristIds) : undefined,
     };

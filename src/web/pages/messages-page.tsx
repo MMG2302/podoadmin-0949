@@ -241,7 +241,7 @@ const MessagesPage = () => {
                 {recipientMode === "specific" && (
                   <div className="border-t border-gray-100 pt-4 mt-4">
                     <p className="text-sm text-gray-600 mb-3">{t.messaging.selectRecipients}:</p>
-                    <div className="max-h-48 overflow-y-auto space-y-1">
+                    <div className="max-h-48 overflow-y-auto form-modal-scroll space-y-1">
                       {allUsers.map(u => (
                         <label
                           key={u.id}

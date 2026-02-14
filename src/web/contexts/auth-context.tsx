@@ -12,6 +12,7 @@ export interface User {
   isBlocked?: boolean; // Cuenta bloqueada temporalmente
   isEnabled?: boolean; // Cuenta habilitada (por defecto true)
   isBanned?: boolean; // Cuenta baneada permanentemente
+  disabledAt?: number; // Timestamp cuando se deshabilitó (ciclo: 1 mes grace → bloqueo → 7 meses borrado)
 }
 
 interface AuthContextType {

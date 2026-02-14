@@ -347,8 +347,8 @@ const PatientsPage = () => {
     <MainLayout title={t.patients.title} >
       {/* Patient Detail View - Mobile Optimized */}
       {selectedPatient && (
-        <div className="fixed inset-0 bg-black/60 flex items-end sm:items-center justify-center z-50 overflow-y-auto">
-          <div className="bg-white rounded-t-2xl sm:rounded-2xl w-full sm:max-w-2xl max-h-[95vh] sm:max-h-[90vh] sm:m-4 overflow-y-auto overscroll-contain">
+        <div className="fixed inset-0 bg-black/60 flex items-end sm:items-center justify-center z-50 overflow-y-auto form-modal-scroll">
+          <div className="bg-white rounded-t-2xl sm:rounded-2xl w-full sm:max-w-2xl max-h-[95vh] sm:max-h-[90vh] sm:m-4 overflow-y-auto overscroll-contain form-modal-scroll">
             <div className="sticky top-0 bg-white border-b border-gray-100 p-4 sm:p-6 z-10">
               <div className="flex items-center justify-between mb-2">
                 <h3 className="text-lg sm:text-xl font-semibold text-[#1a1a1a]">{t.patients.patientDetails}</h3>
@@ -570,8 +570,8 @@ const PatientsPage = () => {
 
       {/* Patient Form Modal - Mobile Optimized */}
       {showForm && (
-        <div className="fixed inset-0 bg-black/60 flex items-end sm:items-center justify-center z-50 overflow-y-auto">
-          <div className="bg-white rounded-t-2xl sm:rounded-2xl w-full sm:max-w-2xl max-h-[95vh] sm:max-h-[90vh] sm:m-4 overflow-y-auto overscroll-contain">
+        <div className="fixed inset-0 bg-black/60 flex items-end sm:items-center justify-center z-50 overflow-y-auto form-modal-scroll">
+          <div className="bg-white rounded-t-2xl sm:rounded-2xl w-full sm:max-w-2xl max-h-[95vh] sm:max-h-[90vh] sm:m-4 overflow-y-auto overscroll-contain form-modal-scroll">
             <div className="sticky top-0 bg-white border-b border-gray-100 p-4 sm:p-6 flex items-center justify-between z-10">
               <h3 className="text-lg sm:text-xl font-semibold text-[#1a1a1a]">
                 {editingPatient ? t.patients.editPatient : t.patients.addPatient}

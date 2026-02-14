@@ -453,7 +453,7 @@ const UserProfileModal = ({
   }[user.role] ?? user.role;
 
   return (
-    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 overflow-y-auto">
+    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 overflow-y-auto form-modal-scroll">
       <div className="bg-white rounded-2xl w-full max-w-2xl shadow-xl my-8">
         <div className="p-6 border-b border-gray-100 flex items-center justify-between">
           <div className="flex items-center gap-4">
@@ -493,7 +493,7 @@ const UserProfileModal = ({
           {patients.length > 0 && (
             <div>
               <h4 className="text-sm font-semibold text-[#1a1a1a] mb-3">Pacientes ({patients.length})</h4>
-              <div className="bg-gray-50 rounded-lg divide-y divide-gray-100 max-h-48 overflow-y-auto">
+              <div className="bg-gray-50 rounded-lg divide-y divide-gray-100 max-h-48 overflow-y-auto form-modal-scroll">
                 {patients.slice(0, 10).map((patient) => (
                   <div key={patient.id} className="p-3 flex items-center justify-between">
                     <span className="text-sm text-[#1a1a1a]">{patient.firstName} {patient.lastName}</span>
@@ -636,12 +636,15 @@ const UsersPage = () => {
       );
     }
     if (user.isEnabled === false) {
+      const disabledAt = user.disabledAt ?? 0;
+      const daysSinceDisabled = disabledAt ? (Date.now() - disabledAt) / (24 * 60 * 60 * 1000) : 0;
+      const isGracePeriod = daysSinceDisabled < 30;
       return (
-        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-700">
+        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${isGracePeriod ? "bg-amber-100 text-amber-700" : "bg-yellow-100 text-yellow-700"}`}>
           <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
-          Deshabilitado
+          {isGracePeriod ? "Período de gracia" : "Deshabilitado"}
         </span>
       );
     }
@@ -915,7 +918,7 @@ const UsersPage = () => {
       if (response.success && response.data?.success) {
         setAllUsers((prev) =>
           prev.map((u) =>
-            u.id === user.id ? { ...u, isEnabled: true, isBlocked: false } : u
+            u.id === user.id ? { ...u, isEnabled: true, isBlocked: false, disabledAt: undefined } : u
           )
         );
 
@@ -952,7 +955,7 @@ const UsersPage = () => {
       if (response.success && response.data?.success) {
         setAllUsers((prev) =>
           prev.map((u) =>
-            u.id === user.id ? { ...u, isEnabled: false } : u
+            u.id === user.id ? { ...u, isEnabled: false, disabledAt: Date.now() } : u
           )
         );
 

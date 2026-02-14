@@ -815,7 +815,8 @@ const UserProfileModal = ({
     clinic_admin: t.roles.clinicAdmin,
     admin: t.roles.admin,
     podiatrist: t.roles.podiatrist,
-  }[user.role];
+    receptionist: t.roles.receptionist,
+  }[user.role] ?? user.role;
 
   return (
     <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 overflow-y-auto">
@@ -834,6 +835,7 @@ const UserProfileModal = ({
             user.role === "super_admin" ? "bg-[#1a1a1a] text-white" :
             user.role === "clinic_admin" ? "bg-blue-100 text-blue-700" :
             user.role === "admin" ? "bg-orange-100 text-orange-700" :
+            user.role === "receptionist" ? "bg-teal-100 text-teal-700" :
             "bg-gray-100 text-gray-700"
           }`}>
             {roleLabel}
@@ -986,6 +988,7 @@ const UsersPage = () => {
     clinic_admin: t.roles.clinicAdmin,
     admin: t.roles.admin,
     podiatrist: t.roles.podiatrist,
+    receptionist: t.roles.receptionist,
   };
 
   // Función auxiliar para obtener el estado visual de un usuario
@@ -1606,6 +1609,7 @@ const UsersPage = () => {
               <option value="clinic_admin">{t.roles.clinicAdmin}</option>
               <option value="admin">{t.roles.admin}</option>
               <option value="podiatrist">{t.roles.podiatrist}</option>
+              <option value="receptionist">{t.roles.receptionist}</option>
             </select>
           </div>
         </div>
@@ -1633,9 +1637,10 @@ const UsersPage = () => {
                   u.role === "super_admin" ? "bg-[#1a1a1a] text-white" :
                   u.role === "clinic_admin" ? "bg-blue-100 text-blue-700" :
                   u.role === "admin" ? "bg-orange-100 text-orange-700" :
+                  u.role === "receptionist" ? "bg-teal-100 text-teal-700" :
                   "bg-gray-100 text-gray-700"
                 }`}>
-                  {roleLabels[u.role]}
+                  {roleLabels[u.role] ?? u.role}
                 </span>
               </div>
               
@@ -1793,9 +1798,10 @@ const UsersPage = () => {
                         u.role === "super_admin" ? "bg-[#1a1a1a] text-white" :
                         u.role === "clinic_admin" ? "bg-blue-100 text-blue-700" :
                         u.role === "admin" ? "bg-orange-100 text-orange-700" :
+                        u.role === "receptionist" ? "bg-teal-100 text-teal-700" :
                         "bg-gray-100 text-gray-700"
                       }`}>
-                        {roleLabels[u.role]}
+                        {roleLabels[u.role] ?? u.role}
                       </span>
                     </td>
                     <td className="px-6 py-4">

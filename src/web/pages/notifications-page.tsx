@@ -3,7 +3,7 @@ import { MainLayout } from "../components/layout/main-layout";
 import { useLanguage } from "../contexts/language-context";
 import { useAuth } from "../contexts/auth-context";
 import { api } from "../lib/api-client";
-import { getUserCredits, Notification, NotificationType } from "../lib/storage";
+import { Notification, NotificationType } from "../lib/storage";
 
 type FilterTab = "all" | "unread" | "read";
 type TypeFilter = "all" | NotificationType;
@@ -75,8 +75,6 @@ const formatFullDate = (dateStr: string): string => {
 const NotificationsPage = () => {
   const { t } = useLanguage();
   const { user } = useAuth();
-  const credits = getUserCredits(user?.id || "");
-  
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [filterTab, setFilterTab] = useState<FilterTab>("all");
   const [typeFilter, setTypeFilter] = useState<TypeFilter>("all");
@@ -185,7 +183,7 @@ const NotificationsPage = () => {
   };
 
   return (
-    <MainLayout title={t.notifications.title} credits={credits}>
+    <MainLayout title={t.notifications.title} >
       <div className="space-y-6">
         {/* Header with actions */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">

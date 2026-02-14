@@ -6,7 +6,6 @@ import { useAuth } from "../contexts/auth-context";
 import { usePermissions } from "../hooks/use-permissions";
 import { api } from "../lib/api-client";
 import { 
-  getUserCredits, 
   ClinicalSession, 
   Patient,
   Appointment,
@@ -54,7 +53,6 @@ const CalendarPage = () => {
   const locale = CALENDAR_LOCALE[language] ?? "es-ES";
   const { user, getAllUsers } = useAuth();
   const { isClinicAdmin, isPodiatrist, isReceptionist } = usePermissions();
-  const credits = getUserCredits(user?.id || "");
   
   const allUsers = getAllUsers();
   const clinicPodiatrists = isReceptionist && user?.assignedPodiatristIds?.length
@@ -520,7 +518,7 @@ const CalendarPage = () => {
   }, [allPatients, isClinicAdmin, isReceptionist, clinicPodiatrists, user]);
 
   return (
-    <MainLayout title={t.calendar.title} credits={credits}>
+    <MainLayout title={t.calendar.title} >
       <div className="flex flex-col lg:flex-row gap-6">
         {/* Main Calendar Area */}
         <div className="flex-1">

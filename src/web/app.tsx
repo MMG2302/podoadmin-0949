@@ -4,7 +4,6 @@ import { ErrorBoundary } from "./components/error-boundary";
 import { AuthProvider, useAuth } from "./contexts/auth-context";
 import { LanguageProvider } from "./contexts/language-context";
 import Login from "./pages/login";
-import Register from "./pages/register";
 import VerifyEmail from "./pages/verify-email";
 import ForgotPassword from "./pages/forgot-password";
 import ResetPassword from "./pages/reset-password";
@@ -60,9 +59,6 @@ function AppRoutes() {
     <Switch>
       <Route path="/login">
         <PublicRoute component={Login} />
-      </Route>
-      <Route path="/register">
-        <PublicRoute component={Register} />
       </Route>
       <Route path="/verify-email">
         <PublicRoute component={VerifyEmail} />

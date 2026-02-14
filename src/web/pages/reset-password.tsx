@@ -4,6 +4,14 @@ import { useLanguage } from "../contexts/language-context";
 import { LanguageSwitcher } from "../components/language-switcher";
 import { api } from "../lib/api-client";
 
+const PASSWORD_REQUIREMENTS = [
+  { key: "length", test: (p: string) => p.length >= 12, labelKey: "passwordMinLength" as const },
+  { key: "uppercase", test: (p: string) => /[A-Z]/.test(p), labelKey: "passwordUppercase" as const },
+  { key: "lowercase", test: (p: string) => /[a-z]/.test(p), labelKey: "passwordLowercase" as const },
+  { key: "number", test: (p: string) => /[0-9]/.test(p), labelKey: "passwordNumber" as const },
+  { key: "special", test: (p: string) => /[^A-Za-z0-9]/.test(p), labelKey: "passwordSpecial" as const },
+];
+
 const ResetPassword = () => {
   const { t } = useLanguage();
   const [, setLocation] = useLocation();
@@ -165,9 +173,27 @@ const ResetPassword = () => {
                       minLength={12}
                       autoComplete="new-password"
                     />
-                    <p className="mt-1 text-xs text-gray-500">
-                      {t.auth.resetPasswordHint}
-                    </p>
+                    <div className="mt-2 space-y-1.5">
+                      {PASSWORD_REQUIREMENTS.map((req) => {
+                        const ok = req.test(newPassword);
+                        return (
+                          <div key={req.key} className="flex items-center gap-2 text-sm">
+                            <span className={`flex-shrink-0 w-5 h-5 rounded-full flex items-center justify-center ${ok ? "bg-green-100 text-green-600" : "bg-gray-100 text-gray-400"}`}>
+                              {ok ? (
+                                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                                </svg>
+                              ) : (
+                                <span className="text-xs">—</span>
+                              )}
+                            </span>
+                            <span className={ok ? "text-green-700" : "text-gray-500"}>
+                              {t.auth[req.labelKey]}
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-[#1a1a1a] mb-2">

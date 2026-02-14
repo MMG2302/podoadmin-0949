@@ -12,7 +12,7 @@ const REFRESH_TOKEN_SECRET = new TextEncoder().encode(
 export interface JWTPayload {
   userId: string;
   email: string;
-  role: 'super_admin' | 'clinic_admin' | 'admin' | 'podiatrist';
+  role: 'super_admin' | 'clinic_admin' | 'admin' | 'podiatrist' | 'receptionist';
   clinicId?: string;
   iat?: number;
   exp?: number;

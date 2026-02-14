@@ -279,6 +279,40 @@ export const professionalLogos = sqliteTable('professional_logos', {
   logo: text('logo').notNull(), // base64
 });
 
+// Solicitudes de recuperación de contraseña (requieren revisión por admin/soporte)
+export const passwordResetRequests = sqliteTable('password_reset_requests', {
+  id: text('id').primaryKey(),
+  userId: text('user_id').notNull().references(() => createdUsers.id),
+  email: text('email').notNull(),
+  status: text('status').notNull().default('pending'), // pending | approved | rejected
+  requestedAt: text('requested_at').notNull(),
+  ipAddress: text('ip_address'),
+  userAgent: text('user_agent'),
+  reviewedBy: text('reviewed_by'),
+  reviewedAt: text('reviewed_at'),
+  rejectionReason: text('rejection_reason'),
+});
+
+// Conversaciones de soporte (usuario -> PodoAdmin)
+export const supportConversations = sqliteTable('support_conversations', {
+  id: text('id').primaryKey(),
+  userId: text('user_id').notNull().references(() => createdUsers.id),
+  subject: text('subject').notNull(),
+  status: text('status').notNull().default('open'), // open | closed
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+});
+
+// Mensajes dentro de cada conversación de soporte
+export const supportMessages = sqliteTable('support_messages', {
+  id: text('id').primaryKey(),
+  conversationId: text('conversation_id').notNull().references(() => supportConversations.id, { onDelete: 'cascade' }),
+  senderId: text('sender_id').notNull(),
+  body: text('body').notNull(),
+  createdAt: text('created_at').notNull(),
+  readAt: text('read_at'),
+});
+
 // Tabla de rate limiting para registro
 export const registrationRateLimit = sqliteTable('registration_rate_limit', {
   identifier: text('identifier').primaryKey(), // IP address

@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import { MainLayout } from "../components/layout/main-layout";
 import { useLanguage } from "../contexts/language-context";
 import { useAuth } from "../contexts/auth-context";
-import { getUserCredits, ProfessionalInfo, type Clinic } from "../lib/storage";
+import { ProfessionalInfo, type Clinic } from "../lib/storage";
 import { api } from "../lib/api-client";
 
 interface ClinicInfoForm {
@@ -34,8 +34,6 @@ export async function getLogoForUser(userId: string, clinicId?: string): Promise
 const SettingsPage = () => {
   const { t, language, setLanguage, languageNames, availableLanguages } = useLanguage();
   const { user, getAllUsers } = useAuth();
-  
-  const credits = getUserCredits(user?.id || "");
   
   // Determine logo ownership based on role
   const canUploadLogo = user?.role === "clinic_admin";
@@ -141,6 +139,21 @@ const SettingsPage = () => {
   // Recepcionista: edición de podólogos asignados (solo si es de clínica)
   const [assignedPodiatristIds, setAssignedPodiatristIds] = useState<string[]>([]);
   const [assignedPodiatristsSaved, setAssignedPodiatristsSaved] = useState(false);
+
+  // Contact PodoAdmin - mensajería bidireccional con soporte
+  const [supportConversations, setSupportConversations] = useState<Array<{
+    id: string; subject: string; status: string; createdAt: string; updatedAt: string;
+    userName?: string | null; userEmail?: string | null;
+  }>>([]);
+  const [selectedSupportConv, setSelectedSupportConv] = useState<{
+    id: string; subject: string; status: string; messages: Array<{
+      id: string; senderId: string; body: string; createdAt: string; readAt: string | null; isFromSupport: boolean;
+    }>;
+  } | null>(null);
+  const [supportSubject, setSupportSubject] = useState("");
+  const [supportMessage, setSupportMessage] = useState("");
+  const [supportReply, setSupportReply] = useState("");
+  const [supportSending, setSupportSending] = useState(false);
   
   // Initialize clinic info form from existing clinic data
   useEffect(() => {
@@ -455,8 +468,76 @@ const SettingsPage = () => {
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
+  // Cargar conversaciones de soporte (usuarios que no son admin/super_admin)
+  const loadSupportConversations = async () => {
+    if (isAdminRole) return;
+    const r = await api.get<{ success?: boolean; conversations?: typeof supportConversations }>("/support/conversations");
+    if (r.success && Array.isArray(r.data?.conversations)) setSupportConversations(r.data.conversations);
+  };
+  useEffect(() => { loadSupportConversations(); }, [isAdminRole]);
+
+  const handleCreateSupportConversation = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const subj = supportSubject.trim();
+    const msg = supportMessage.trim();
+    if (!subj || !msg) return;
+    setSupportSending(true);
+    const r = await api.post<{ success?: boolean; conversation?: { id: string } }>("/support/conversations", {
+      subject: subj,
+      message: msg,
+    });
+    setSupportSending(false);
+    if (r.success) {
+      setSupportSubject("");
+      setSupportMessage("");
+      loadSupportConversations();
+      const convId = r.data?.conversation?.id;
+      if (convId) {
+        const detail = await api.get<{ success?: boolean; conversation?: unknown; messages?: unknown[] }>(`/support/conversations/${convId}`);
+        if (detail.success && detail.data?.conversation) {
+          setSelectedSupportConv({
+            id: convId,
+            subject: subj,
+            status: "open",
+            messages: (detail.data.messages || []).map((m: { id: string; senderId: string; body: string; createdAt: string; readAt: string | null; isFromSupport: boolean }) => ({
+              id: m.id, senderId: m.senderId, body: m.body, createdAt: m.createdAt, readAt: m.readAt, isFromSupport: m.isFromSupport,
+            })),
+          });
+        }
+      }
+    }
+  };
+
+  const handleOpenSupportConversation = async (convId: string) => {
+    const r = await api.get<{ success?: boolean; conversation?: { id: string; subject: string; status: string }; messages?: Array<{ id: string; senderId: string; body: string; createdAt: string; readAt: string | null; isFromSupport: boolean }> }>(`/support/conversations/${convId}`);
+    if (r.success && r.data?.conversation) {
+      setSelectedSupportConv({
+        id: r.data.conversation.id,
+        subject: r.data.conversation.subject,
+        status: r.data.conversation.status,
+        messages: r.data.messages || [],
+      });
+      await api.patch(`/support/conversations/${convId}`, { markRead: true });
+    }
+  };
+
+  const handleSendSupportReply = async () => {
+    if (!selectedSupportConv || !supportReply.trim()) return;
+    setSupportSending(true);
+    const r = await api.post<{ success?: boolean; message?: { id: string; body: string; createdAt: string; isFromSupport: boolean } }>(`/support/conversations/${selectedSupportConv.id}/messages`, { body: supportReply.trim() });
+    setSupportSending(false);
+    if (r.success && r.data?.message) {
+      setSupportReply("");
+      setSelectedSupportConv((prev) => prev ? {
+        ...prev,
+        messages: [...prev.messages, { ...r.data!.message!, readAt: null, senderId: user?.id || "" }],
+      } : null);
+      loadSupportConversations();
+    }
+  };
+
   return (
-    <MainLayout title={t.settings.title} credits={credits}>
+    <MainLayout title={t.settings.title} >
       <div className="max-w-2xl space-y-8">
         {/* Language Settings */}
         <div className="bg-white rounded-xl border border-gray-100 p-6">
@@ -523,6 +604,119 @@ const SettingsPage = () => {
             </div>
           </div>
         </div>
+
+        {/* Contactar PodoAdmin - mensajería bidireccional con soporte (no admin/super_admin) */}
+        {!isAdminRole && (
+          <div className="bg-white rounded-xl border border-gray-100 p-6">
+            <h3 className="text-lg font-semibold text-[#1a1a1a] mb-2 flex items-center gap-2">
+              <svg className="w-5 h-5 text-[#1a1a1a]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+              </svg>
+              {t.support.contactPodoAdmin}
+            </h3>
+            <p className="text-sm text-gray-500 mb-4">{t.support.contactSubtitle}</p>
+
+            {!selectedSupportConv ? (
+              <>
+                <form onSubmit={handleCreateSupportConversation} className="space-y-4 mb-6">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">{t.support.subject}</label>
+                    <input
+                      type="text"
+                      value={supportSubject}
+                      onChange={(e) => setSupportSubject(e.target.value)}
+                      placeholder={t.support.subjectPlaceholder}
+                      className="w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#1a1a1a] focus:border-transparent"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">{t.support.message}</label>
+                    <textarea
+                      value={supportMessage}
+                      onChange={(e) => setSupportMessage(e.target.value)}
+                      placeholder={t.support.messagePlaceholder}
+                      rows={4}
+                      className="w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#1a1a1a] focus:border-transparent resize-none"
+                      required
+                    />
+                  </div>
+                  <button
+                    type="submit"
+                    disabled={supportSending}
+                    className="px-4 py-2.5 bg-[#1a1a1a] text-white rounded-lg font-medium hover:bg-[#2a2a2a] disabled:opacity-50"
+                  >
+                    {supportSending ? "..." : t.support.send}
+                  </button>
+                </form>
+
+                <div className="border-t border-gray-100 pt-4">
+                  <h4 className="text-sm font-medium text-[#1a1a1a] mb-3">{t.support.myConversations}</h4>
+                  {supportConversations.length === 0 ? (
+                    <p className="text-sm text-gray-500">{t.support.noConversations}</p>
+                  ) : (
+                    <div className="space-y-2">
+                      {supportConversations.map((c) => (
+                        <button
+                          key={c.id}
+                          onClick={() => handleOpenSupportConversation(c.id)}
+                          className="w-full text-left p-3 rounded-lg border border-gray-100 hover:bg-gray-50 transition-colors"
+                        >
+                          <div className="flex justify-between items-start">
+                            <span className="font-medium text-[#1a1a1a]">{c.subject}</span>
+                            <span className={`text-xs px-2 py-0.5 rounded-full ${c.status === "open" ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-600"}`}>
+                              {c.status === "open" ? t.support.open : t.support.closed}
+                            </span>
+                          </div>
+                          <p className="text-xs text-gray-500 mt-1">{new Date(c.updatedAt).toLocaleString()}</p>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </>
+            ) : (
+              <div>
+                <button
+                  onClick={() => setSelectedSupportConv(null)}
+                  className="text-sm text-gray-500 hover:text-[#1a1a1a] mb-4 flex items-center gap-1"
+                >
+                  ← {t.common.back}
+                </button>
+                <h4 className="font-medium text-[#1a1a1a] mb-4">{selectedSupportConv.subject}</h4>
+                <div className="space-y-3 mb-4 max-h-64 overflow-y-auto">
+                  {selectedSupportConv.messages.map((m) => (
+                    <div
+                      key={m.id}
+                      className={`p-3 rounded-lg ${m.isFromSupport ? "bg-blue-50 ml-4" : "bg-gray-50 mr-4"}`}
+                    >
+                      <p className="text-xs text-gray-500 mb-1">{m.isFromSupport ? "PodoAdmin" : user?.name} · {new Date(m.createdAt).toLocaleString()}</p>
+                      <p className="text-sm text-[#1a1a1a] whitespace-pre-wrap">{m.body}</p>
+                    </div>
+                  ))}
+                </div>
+                {selectedSupportConv.status === "open" && (
+                  <div className="flex gap-2">
+                    <textarea
+                      value={supportReply}
+                      onChange={(e) => setSupportReply(e.target.value)}
+                      placeholder={t.support.replyPlaceholder}
+                      rows={2}
+                      className="flex-1 px-4 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#1a1a1a] resize-none"
+                    />
+                    <button
+                      onClick={handleSendSupportReply}
+                      disabled={supportSending || !supportReply.trim()}
+                      className="px-4 py-2.5 bg-[#1a1a1a] text-white rounded-lg font-medium hover:bg-[#2a2a2a] disabled:opacity-50 self-end"
+                    >
+                      {supportSending ? "..." : t.support.reply}
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Podólogos asignados - Solo recepcionista: ver y editar quiénes la asignaron */}
         {isReceptionist && user?.id && (() => {

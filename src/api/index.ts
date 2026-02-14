@@ -9,11 +9,9 @@ import { csrfProtection } from './middleware/csrf';
 import { cspMiddleware } from './middleware/csp';
 import { sanitizationMiddleware } from './middleware/sanitization';
 import authRoutes from './routes/auth';
-import oauthRoutes from './routes/oauth';
 import usersRoutes from './routes/users';
 import patientsRoutes from './routes/patients';
 import sessionsRoutes from './routes/sessions';
-import creditsRoutes from './routes/credits';
 import csrfRoutes from './routes/csrf';
 import testXssRoutes from './routes/test-xss';
 import twoFactorRoutes from './routes/two-factor-auth';
@@ -22,11 +20,11 @@ import auditLogRoutes from './routes/audit-logs';
 import clinicsRoutes from './routes/clinics';
 import professionalsRoutes from './routes/professionals';
 import receptionistsRoutes from './routes/receptionists';
-import clinicCreditsRoutes from './routes/clinic-credits';
 import consentDocumentRoutes from './routes/consent-document';
 import appointmentsRoutes from './routes/appointments';
 import notificationsRoutes from './routes/notifications';
 import messagesRoutes from './routes/messages';
+import supportRoutes from './routes/support';
 
 const app = new Hono<{ Variables: AppVariables }>()
   .basePath('api');
@@ -109,31 +107,15 @@ if (process.env.NODE_ENV !== 'production') {
 // Logout requiere autenticación pero puede requerir CSRF
 app.route('/auth', authRoutes);
 
-// Rutas OAuth (públicas, no requieren CSRF)
-app.route('/auth/oauth', oauthRoutes);
-
 // Aplicar protección CSRF a todas las rutas que modifican estado
-// EXCEPCIONES: /auth/login, /auth/refresh y rutas OAuth no requieren CSRF
+// EXCEPCIONES: /auth/login, /auth/refresh no requieren CSRF
 app.use('*', async (c, next) => {
   const path = c.req.path;
   const method = c.req.method;
   
-  // Excluir login y refresh de protección CSRF
   if (
     (path === '/api/auth/login' && method === 'POST') ||
     (path === '/api/auth/refresh' && method === 'POST')
-  ) {
-    return next();
-  }
-  
-  // Excluir rutas OAuth de protección CSRF (son callbacks externos)
-  // Google OAuth: GET /api/auth/oauth/google y GET /api/auth/oauth/google/callback
-  // Apple OAuth: GET /api/auth/oauth/apple y POST /api/auth/oauth/apple/callback
-  if (
-    (path === '/api/auth/oauth/google' && method === 'GET') ||
-    (path === '/api/auth/oauth/google/callback' && method === 'GET') ||
-    (path === '/api/auth/oauth/apple' && method === 'GET') ||
-    (path === '/api/auth/oauth/apple/callback' && method === 'POST')
   ) {
     return next();
   }
@@ -145,18 +127,17 @@ app.use('*', async (c, next) => {
 app.route('/users', usersRoutes);
 app.route('/patients', patientsRoutes);
 app.route('/sessions', sessionsRoutes);
-app.route('/credits', creditsRoutes);
 app.route('/2fa', twoFactorRoutes);
 app.route('/security-metrics', metricsRoutes);
 app.route('/audit-logs', auditLogRoutes);
 app.route('/clinics', clinicsRoutes);
 app.route('/professionals', professionalsRoutes);
 app.route('/receptionists', receptionistsRoutes);
-app.route('/clinic-credits', clinicCreditsRoutes);
 app.route('/consent-document', consentDocumentRoutes);
 app.route('/appointments', appointmentsRoutes);
 app.route('/notifications', notificationsRoutes);
 app.route('/messages', messagesRoutes);
+app.route('/support', supportRoutes);
 
 // IMPORTANTE: Todas las rutas que manejen datos sensibles DEBEN usar:
 // 1. requireAuth() - para verificar que el usuario está autenticado

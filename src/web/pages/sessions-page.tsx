@@ -11,10 +11,6 @@ const canCreatePrescriptions = (role: string | undefined): boolean => {
   return role === "podiatrist" || role === "clinic_admin";
 };
 import {
-  getUserCredits,
-  reserveCredit,
-  consumeCredit,
-  releaseCredit,
   exportPatientData,
   addAuditLog,
   getClinicLogo,
@@ -94,8 +90,6 @@ const SessionsPage = () => {
       </MainLayout>
     );
   }
-  
-  const credits = getUserCredits(user?.id || "");
 
   // Leer siempre la query y el path reales del navegador (wouter no incluye la query en location)
   const searchParams =
@@ -430,11 +424,6 @@ if (response.success && response.data?.success) {
 
     try {
       if (editingSession) {
-        // Liberar/consumir crédito al completar
-        if (editingSession.creditReservedAt && !asDraft) {
-          consumeCredit(user?.id || "", editingSession.id);
-        }
-
         const response = await api.put<{ success: boolean; session: ClinicalSession }>(
           `/sessions/${editingSession.id}`,
           {
@@ -477,11 +466,6 @@ if (response.success && response.data?.success) {
 
         if (response.success && response.data?.success) {
           const newSession = response.data.session;
-
-          if (!asDraft) {
-            consumeCredit(user?.id || "", newSession.id);
-          }
-
           setSessions((prev) => [newSession, ...prev]);
 
           const patient = getPatientById(newSession.patientId);
@@ -547,10 +531,6 @@ if (response.success && response.data?.success) {
 
       if (response.success && response.data?.success) {
         const patient = getPatientById(session.patientId);
-        if (session.creditReservedAt) {
-          releaseCredit(user?.id || "", session.id);
-        }
-
         setSessions((prev) => prev.filter((s) => s.id !== session.id));
         
         addAuditLog({
@@ -1048,7 +1028,7 @@ if (response.success && response.data?.success) {
   };
 
   return (
-    <MainLayout title={t.sessions.title} credits={credits}>
+    <MainLayout title={t.sessions.title}>
       {/* Session Detail Modal */}
       {selectedSession && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 overflow-y-auto">
@@ -1200,14 +1180,12 @@ if (response.success && response.data?.success) {
                     {t.common.export} JSON
                   </button>
                 )}
-                {selectedSession.status === "completed" && (
-                  <button
-                    onClick={() => handlePrint(selectedSession)}
-                    className="flex-1 py-2 bg-[#1a1a1a] text-white rounded-lg hover:bg-[#2a2a2a] transition-colors font-medium text-sm"
-                  >
-                    {t.common.print}
-                  </button>
-                )}
+                <button
+                  onClick={() => handlePrint(selectedSession)}
+                  className="flex-1 py-2 bg-[#1a1a1a] text-white rounded-lg hover:bg-[#2a2a2a] transition-colors font-medium text-sm"
+                >
+                  {t.common.print}
+                </button>
               </div>
             </div>
           </div>
@@ -1885,17 +1863,15 @@ if (response.success && response.data?.success) {
                         </svg>
                       </button>
                     )}
-                    {session.status === "completed" && (
-                      <button
-                        onClick={() => handlePrint(session)}
-                        className="p-2.5 sm:p-2 hover:bg-gray-100 active:bg-gray-200 rounded-lg transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center"
-                        title={t.common.print}
-                      >
-                        <svg className="w-4 h-4 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
-                        </svg>
-                      </button>
-                    )}
+                    <button
+                      onClick={() => handlePrint(session)}
+                      className="p-2.5 sm:p-2 hover:bg-gray-100 active:bg-gray-200 rounded-lg transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center"
+                      title={t.common.print}
+                    >
+                      <svg className="w-4 h-4 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                      </svg>
+                    </button>
                   </div>
                 </div>
               </div>

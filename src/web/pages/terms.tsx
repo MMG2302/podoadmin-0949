@@ -65,13 +65,13 @@ const Terms = () => {
             {/* Header */}
             <div className="mb-8">
               <button
-                onClick={() => setLocation("/register")}
+                onClick={() => setLocation("/login")}
                 className="text-[#1a1a1a] hover:underline mb-4 inline-flex items-center text-sm"
               >
                 <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
                 </svg>
-                {t.terms.backToRegister}
+                {t.auth.backToLogin}
               </button>
               <h1 className="text-3xl font-semibold text-[#1a1a1a] mb-2">
                 {t.terms.title}
@@ -194,13 +194,13 @@ const Terms = () => {
             <div className="mt-12 pt-8 border-t border-gray-200">
               <div className="flex gap-4">
                 <button
-                  onClick={() => setLocation("/register")}
+                  onClick={() => setLocation("/login")}
                   className="flex-1 py-3 bg-[#1a1a1a] text-white font-medium rounded-lg hover:bg-[#2a2a2a] transition-colors"
                 >
                   {t.terms.acceptAndContinue}
                 </button>
                 <button
-                  onClick={() => setLocation("/register")}
+                  onClick={() => setLocation("/login")}
                   className="flex-1 py-3 bg-gray-100 text-[#1a1a1a] font-medium rounded-lg hover:bg-gray-200 transition-colors"
                 >
                   {t.terms.back}

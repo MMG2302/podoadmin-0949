@@ -180,12 +180,6 @@ const VerifyEmail = () => {
                   >
                     {t.auth.goToLogin}
                   </button>
-                  <button
-                    onClick={() => setLocation("/register")}
-                    className="w-full py-3 bg-gray-100 text-[#1a1a1a] font-medium rounded-lg hover:bg-gray-200 transition-colors"
-                  >
-                    {t.auth.register}
-                  </button>
                 </div>
               </div>
             )}

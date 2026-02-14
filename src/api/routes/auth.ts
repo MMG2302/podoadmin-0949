@@ -1,10 +1,11 @@
 import { Hono } from 'hono';
 import { generateTokenPair, verifyRefreshToken } from '../utils/jwt';
 import { requireAuth } from '../middleware/auth';
+import { requireRole } from '../middleware/authorization';
 import { formatCookie, getAccessTokenCookieOptions, getRefreshTokenCookieOptions, createDeleteCookie, isProduction } from '../utils/cookies';
 import { checkRateLimitD1, recordFailedAttemptD1, clearFailedAttemptsD1, getFailedAttemptCountD1 } from '../utils/rate-limit-d1';
 import { sendFailedLoginNotification, shouldSendNotification } from '../utils/email-notifications';
-import { validateData, loginSchema, registerSchema, verifyEmailSchema, forgotPasswordSchema, resetPasswordSchema } from '../utils/validation';
+import { validateData, loginSchema, verifyEmailSchema, forgotPasswordSchema, resetPasswordSchema } from '../utils/validation';
 import { escapeHtml, sanitizeEmail } from '../utils/sanitization';
 import { getClientIP, createRateLimitIdentifier, isIPWhitelisted, getIPWhitelist } from '../utils/ip-tracking';
 import { getSafeUserAgent } from '../utils/request-headers';
@@ -152,19 +153,6 @@ authRoutes.post('/login', async (c) => {
     let passwordValid = false;
 
     if (dbUser) {
-      // Verificar si es un usuario OAuth (sin contraseña)
-      if (!dbUser.password && (dbUser.oauthProvider === 'google' || dbUser.oauthProvider === 'apple')) {
-        return c.json(
-          {
-            error: 'Cuenta OAuth',
-            message: `Esta cuenta está vinculada con ${dbUser.oauthProvider === 'google' ? 'Google' : 'Apple'}. Por favor, inicia sesión usando el botón de ${dbUser.oauthProvider === 'google' ? 'Google' : 'Apple'}.`,
-            requiresOAuth: true,
-            oauthProvider: dbUser.oauthProvider,
-          },
-          400
-        );
-      }
-
       // Usuario de base de datos - verificar contraseña hasheada
       if (!dbUser.password) {
         return c.json(
@@ -611,412 +599,6 @@ authRoutes.post('/refresh', async (c) => {
 });
 
 /**
- * POST /api/auth/register
- * Registro público con todas las medidas de seguridad
- */
-authRoutes.post('/register', async (c) => {
-  try {
-    const rawBody = await c.req.json().catch(() => ({}));
-    const validation = validateData(registerSchema, rawBody);
-
-    if (!validation.success) {
-      // Extraer mensajes de error más específicos
-      const errorMessages = validation.issues.map(issue => {
-        const path = issue.path.join('.');
-        return issue.message;
-      });
-      
-      // No contar errores de validación como intentos fallidos reales
-      // Estos son errores del usuario, no intentos maliciosos
-      
-      return c.json(
-        {
-          error: 'Datos inválidos',
-          message: errorMessages[0] || validation.error || 'Por favor, verifica los datos ingresados',
-          errors: errorMessages,
-          issues: validation.issues,
-        },
-        400
-      );
-    }
-
-    const { email, password, name, termsAccepted, captchaToken, clinicCode } = validation.data;
-
-    if (!termsAccepted) {
-      // No contar como intento fallido real (es un error de validación del usuario)
-      return c.json(
-        {
-          error: 'Términos no aceptados',
-          message: 'Debes aceptar los términos y condiciones para registrarte',
-        },
-        400
-      );
-    }
-
-    const clientIP = getClientIP(c.req.raw.headers);
-
-    // Verificar rate limiting de registro
-    const {
-      checkRegistrationRateLimit,
-      recordFailedRegistration,
-      recordSuccessfulRegistration,
-    } = await import('../utils/registration-rate-limit');
-    const rateLimitCheck = await checkRegistrationRateLimit(clientIP);
-
-    if (!rateLimitCheck.allowed) {
-      if (rateLimitCheck.blockedUntil) {
-        const blockedUntilDate = new Date(rateLimitCheck.blockedUntil);
-        return c.json(
-          {
-            error: 'IP bloqueada',
-            message: `Tu IP está bloqueada hasta ${blockedUntilDate.toLocaleString()}. Por favor, intenta más tarde.`,
-            blockedUntil: rateLimitCheck.blockedUntil,
-          },
-          429
-        );
-      }
-
-      const delayMinutes = Math.ceil((rateLimitCheck.delay || 0) / 60000);
-      const delaySeconds = Math.ceil((rateLimitCheck.delay || 0) / 1000);
-      
-      // Mensaje personalizado basado en la razón del rate limit
-      const errorMessage = rateLimitCheck.reason || `Has alcanzado el límite de registros. Por favor, espera ${delayMinutes} minutos.`;
-      
-      return c.json(
-        {
-          error: 'Demasiados registros',
-          message: errorMessage,
-          retryAfter: delaySeconds,
-        },
-        429
-      );
-    }
-
-    // Verificar CAPTCHA (solo si está configurado)
-    const { getCaptchaConfig, verifyCaptcha } = await import('../utils/captcha');
-    const captchaConfig = getCaptchaConfig();
-
-    if (captchaConfig) {
-      // CAPTCHA está configurado, es obligatorio
-      if (!captchaToken || captchaToken.trim().length === 0) {
-        // CAPTCHA faltante SÍ cuenta como intento fallido (es un error de seguridad)
-        await recordFailedRegistration(clientIP, true);
-        // Registrar métrica de registro fallido
-        const { recordSecurityMetric } = await import('../utils/security-metrics');
-        await recordSecurityMetric({
-          metricType: 'registration_failed',
-          ipAddress: clientIP,
-          details: { email: email.toLowerCase(), reason: 'captcha_missing' },
-        });
-        return c.json(
-          {
-            error: 'CAPTCHA requerido',
-            message: 'Por favor, completa el CAPTCHA para continuar. Si no ves el widget de CAPTCHA, verifica la configuración.',
-            requiresCaptcha: true,
-          },
-          400
-        );
-      }
-
-      const captchaResult = await verifyCaptcha(captchaToken, captchaConfig);
-      if (!captchaResult.success) {
-        // CAPTCHA inválido SÍ cuenta como intento fallido (es un error de seguridad)
-        await recordFailedRegistration(clientIP, true);
-        const { recordSecurityMetric } = await import('../utils/security-metrics');
-        await recordSecurityMetric({
-          metricType: 'captcha_failed',
-          ipAddress: clientIP,
-          details: { email: email.toLowerCase(), source: 'registration' },
-        });
-
-        return c.json(
-          {
-            error: 'CAPTCHA inválido',
-            message: 'El CAPTCHA no se pudo verificar. Por favor, intenta nuevamente.',
-            requiresCaptcha: true,
-          },
-          400
-        );
-      }
-
-      const { recordSecurityMetric } = await import('../utils/security-metrics');
-      await recordSecurityMetric({
-        metricType: 'captcha_passed',
-        ipAddress: clientIP,
-        details: { email: email.toLowerCase(), source: 'registration' },
-      });
-    } else {
-      // CAPTCHA no está configurado, permitir registro sin CAPTCHA
-      // Esto es útil para desarrollo o cuando no se ha configurado aún
-      console.log('CAPTCHA no configurado, permitiendo registro sin CAPTCHA');
-    }
-
-    // Validar dominio de email
-    const { validateEmailDomain } = await import('../utils/email-domains');
-    const emailValidation = validateEmailDomain(email);
-    if (!emailValidation.valid) {
-      // No contar como intento fallido real (es un error de validación del usuario)
-      // Registrar métrica de registro fallido
-      const { recordSecurityMetric } = await import('../utils/security-metrics');
-      await recordSecurityMetric({
-        metricType: 'registration_failed',
-        ipAddress: clientIP,
-        details: { email: email.toLowerCase(), reason: 'invalid_email_domain', error: emailValidation.error },
-      });
-      return c.json(
-        {
-          error: 'Email inválido',
-          message: emailValidation.error,
-        },
-        400
-      );
-    }
-
-    const emailLower = email.toLowerCase().trim();
-
-    // Verificar que el email no exista en DB (sin revelar si existe)
-    const { emailExistsInDB } = await import('../utils/user-db');
-    const emailExists = await emailExistsInDB(emailLower);
-
-    if (emailExists) {
-      // No contar como intento fallido real (es un caso normal, no malicioso)
-      // Registrar métrica de registro fallido
-      const { recordSecurityMetric } = await import('../utils/security-metrics');
-      await recordSecurityMetric({
-        metricType: 'registration_failed',
-        ipAddress: clientIP,
-        details: { email: emailLower, reason: 'email_already_exists' },
-      });
-      // No revelar que el email existe (seguridad)
-      return c.json(
-        {
-          success: true,
-          message: 'Si el email existe, recibirás un correo de verificación',
-        },
-        200
-      );
-    }
-
-    // Validar que la contraseña no esté vacía
-    if (!password || password.trim().length === 0) {
-      // No contar como intento fallido real (es un error de validación del usuario)
-      const { recordSecurityMetric } = await import('../utils/security-metrics');
-      await recordSecurityMetric({
-        metricType: 'registration_failed',
-        ipAddress: clientIP,
-        details: { email: emailLower, reason: 'password_empty' },
-      });
-      return c.json(
-        {
-          error: 'Contraseña requerida',
-          message: 'La contraseña es obligatoria',
-        },
-        400
-      );
-    }
-
-    // Validar fortaleza de contraseña
-    const { validatePasswordStrength } = await import('../utils/password');
-    const passwordValidation = validatePasswordStrength(password);
-    if (!passwordValidation.valid) {
-      // No contar como intento fallido real (es un error de validación del usuario)
-      // Registrar métrica de registro fallido
-      const { recordSecurityMetric } = await import('../utils/security-metrics');
-      await recordSecurityMetric({
-        metricType: 'registration_failed',
-        ipAddress: clientIP,
-        details: { email: emailLower, reason: 'weak_password', errors: passwordValidation.errors },
-      });
-      return c.json(
-        {
-          error: 'Contraseña débil',
-          message: passwordValidation.errors[0],
-          errors: passwordValidation.errors,
-        },
-        400
-      );
-    }
-
-    // Hash de contraseña
-    const { hashPassword } = await import('../utils/password');
-    let hashedPassword: string;
-    try {
-      hashedPassword = await hashPassword(password);
-    } catch (hashError: any) {
-      console.error('Error hasheando contraseña:', hashError);
-      await recordFailedRegistration(clientIP);
-      const { recordSecurityMetric } = await import('../utils/security-metrics');
-      await recordSecurityMetric({
-        metricType: 'registration_failed',
-        ipAddress: clientIP,
-        details: { email: emailLower, reason: 'password_hash_error', error: hashError.message },
-      });
-      return c.json(
-        {
-          error: 'Error procesando contraseña',
-          message: 'No se pudo procesar la contraseña. Por favor, intenta nuevamente.',
-        },
-        500
-      );
-    }
-
-    // Generar IDs
-    const userId = `user_public_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-    const userInternalId = `user_created_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-    const now = new Date().toISOString();
-
-    // Crear usuario en base de datos
-    const { database } = await import('../database');
-    const { createdUsers } = await import('../database/schema');
-
-    await database.insert(createdUsers).values({
-      id: userInternalId,
-      userId: userId,
-      email: emailLower,
-      name: name,
-      role: 'podiatrist',
-      clinicId: clinicCode || null,
-      password: hashedPassword,
-      createdAt: now,
-      updatedAt: now,
-      createdBy: 'public_registration',
-      isBlocked: false,
-      isBanned: false,
-      isEnabled: false, // Deshabilitado hasta verificar email
-      emailVerified: false,
-      termsAccepted: true,
-      termsAcceptedAt: now,
-      registrationSource: 'public',
-    });
-
-    // Generar token de verificación
-    const { createVerificationToken } = await import('../utils/email-verification');
-    const verificationToken = await createVerificationToken(userInternalId);
-
-    // Enviar email de verificación
-    const { sendEmail } = await import('../utils/email-service');
-    const baseUrl = process.env.VITE_BASE_URL || 'http://localhost:5173';
-    const verificationUrl = `${baseUrl}/verify-email?token=${verificationToken}`;
-
-    const emailSent = await sendEmail({
-      to: emailLower,
-      subject: 'Verifica tu cuenta de PodoAdmin',
-      html: `
-        <!DOCTYPE html>
-        <html>
-        <head>
-          <meta charset="utf-8">
-          <style>
-            body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
-            .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-            .header { background-color: #1a1a1a; color: white; padding: 20px; text-align: center; }
-            .content { padding: 20px; background-color: #f9fafb; }
-            .button { display: inline-block; padding: 12px 24px; background-color: #1a1a1a; color: white; text-decoration: none; border-radius: 6px; margin: 20px 0; }
-            .footer { text-align: center; padding: 20px; color: #6b7280; font-size: 12px; }
-          </style>
-        </head>
-        <body>
-          <div class="container">
-            <div class="header">
-              <h1>Bienvenido a PodoAdmin</h1>
-            </div>
-            <div class="content">
-              <p>Hola ${name},</p>
-              <p>Gracias por registrarte en PodoAdmin. Para activar tu cuenta, por favor verifica tu dirección de email haciendo clic en el siguiente botón:</p>
-              <p style="text-align: center;">
-                <a href="${verificationUrl}" class="button">Verificar Email</a>
-              </p>
-              <p>O copia y pega este enlace en tu navegador:</p>
-              <p style="word-break: break-all; color: #6b7280;">${verificationUrl}</p>
-              <p><strong>Este enlace expirará en 24 horas.</strong></p>
-              <p>Si no creaste esta cuenta, puedes ignorar este email.</p>
-            </div>
-            <div class="footer">
-              <p>Este es un email automático, por favor no respondas.</p>
-              <p>&copy; ${new Date().getFullYear()} PodoAdmin. Todos los derechos reservados.</p>
-            </div>
-          </div>
-        </body>
-        </html>
-      `,
-    });
-
-    // Registrar evento de auditoría
-    const { logAuditEvent } = await import('../utils/audit-log');
-    await logAuditEvent({
-      userId: userId,
-      action: 'REGISTER_ATTEMPT',
-      resourceType: 'user',
-      resourceId: userInternalId,
-      ipAddress: clientIP,
-      userAgent: getSafeUserAgent(c),
-      details: {
-        email: emailLower,
-        name: name,
-        emailSent,
-        clinicCode: clinicCode || null,
-      },
-    });
-
-    // Registrar métrica
-    const { recordSecurityMetric } = await import('../utils/security-metrics');
-    await recordSecurityMetric({
-      metricType: 'registration_success',
-      userId: userId,
-      ipAddress: clientIP,
-      details: { email: emailLower, name: name, clinicCode: clinicCode || null },
-    });
-
-    await recordSuccessfulRegistration(clientIP);
-
-    return c.json({
-      success: true,
-      message: 'Si el email no está registrado, recibirás un correo de verificación. Por favor, revisa tu bandeja de entrada.',
-    });
-  } catch (error: any) {
-    console.error('Error en registro:', error);
-    console.error('Stack trace:', error.stack);
-
-    const { getClientIP } = await import('../utils/ip-tracking');
-    const clientIP = getClientIP(c.req.raw.headers);
-    const { recordFailedRegistration } = await import('../utils/registration-rate-limit');
-    // Error interno SÍ cuenta como intento fallido (es un error del sistema)
-    await recordFailedRegistration(clientIP, true);
-
-    // Registrar métrica de registro fallido
-    const { recordSecurityMetric } = await import('../utils/security-metrics');
-    await recordSecurityMetric({
-      metricType: 'registration_failed',
-      ipAddress: clientIP,
-      details: { 
-        reason: 'internal_error', 
-        error: error.message || 'Unknown error',
-        stack: error.stack || undefined,
-      },
-    });
-
-    // Si es un error de validación que no se capturó, devolver mensaje más específico
-    if (error.message && (error.message.includes('password') || error.message.includes('contraseña'))) {
-      return c.json(
-        {
-          error: 'Error de validación',
-          message: error.message || 'Error al validar los datos. Por favor, verifica que todos los campos estén completos.',
-        },
-        400
-      );
-    }
-
-    return c.json(
-      {
-        error: 'Error interno',
-        message: 'Ocurrió un error al procesar el registro. Por favor, intenta más tarde.',
-      },
-      500
-    );
-  }
-});
-
-/**
  * POST /api/auth/forgot-password
  * Solicita recuperación de contraseña. Envía email con enlace si el usuario existe y tiene contraseña.
  * Respuesta genérica por seguridad (no revelar si el email existe).
@@ -1070,21 +652,27 @@ authRoutes.post('/forgot-password', async (c) => {
       });
     }
 
-    if (!dbUser.password || (dbUser.oauthProvider === 'google' || dbUser.oauthProvider === 'apple')) {
+    if (!dbUser.password) {
       return c.json({
         success: true,
-        message: 'Si el email está registrado, recibirás un correo con instrucciones para restablecer tu contraseña.',
+        message: 'Si el email está registrado, tu solicitud será revisada por un administrador o soporte.',
       });
     }
 
-    const { createPasswordResetToken } = await import('../utils/password-reset');
-    const token = await createPasswordResetToken(dbUser.id);
+    // Crear solicitud pendiente de revisión (no se envía email automáticamente)
+    const { database } = await import('../database');
+    const { passwordResetRequests } = await import('../database/schema');
+    const requestId = crypto.randomUUID();
 
-    const baseUrl = process.env.VITE_BASE_URL || 'http://localhost:5173';
-    const resetUrl = `${baseUrl}/reset-password?token=${token}`;
-
-    const { sendPasswordResetEmail } = await import('../utils/email-service');
-    await sendPasswordResetEmail(dbUser.email, dbUser.name, resetUrl);
+    await database.insert(passwordResetRequests).values({
+      id: requestId,
+      userId: dbUser.id,
+      email: emailLower,
+      status: 'pending',
+      requestedAt: new Date().toISOString(),
+      ipAddress: clientIP,
+      userAgent: getSafeUserAgent(c),
+    });
 
     const { logAuditEvent } = await import('../utils/audit-log');
     await logAuditEvent({
@@ -1093,12 +681,12 @@ authRoutes.post('/forgot-password', async (c) => {
       resourceType: 'authentication',
       ipAddress: clientIP,
       userAgent: getSafeUserAgent(c),
-      details: { email: emailLower },
+      details: { email: emailLower, requestId },
     });
 
     return c.json({
       success: true,
-      message: 'Si el email está registrado, recibirás un correo con instrucciones para restablecer tu contraseña.',
+      message: 'Si el email está registrado, tu solicitud será revisada por un administrador o soporte. Te contactaremos cuando esté disponible.',
     });
   } catch (error) {
     console.error('Error en forgot-password:', error);
@@ -1225,6 +813,183 @@ authRoutes.post('/reset-password', async (c) => {
       },
       500
     );
+  }
+});
+
+/**
+ * GET /api/auth/password-reset-requests
+ * Lista solicitudes pendientes de recuperación de contraseña (solo super_admin, admin)
+ */
+authRoutes.get('/password-reset-requests', requireAuth, requireRole('super_admin', 'admin'), async (c) => {
+  try {
+    const { database } = await import('../database');
+    const { passwordResetRequests, createdUsers } = await import('../database/schema');
+    const { eq, desc } = await import('drizzle-orm');
+
+    const rows = await database
+      .select({
+        id: passwordResetRequests.id,
+        userId: passwordResetRequests.userId,
+        email: passwordResetRequests.email,
+        status: passwordResetRequests.status,
+        requestedAt: passwordResetRequests.requestedAt,
+        ipAddress: passwordResetRequests.ipAddress,
+        reviewedBy: passwordResetRequests.reviewedBy,
+        reviewedAt: passwordResetRequests.reviewedAt,
+        rejectionReason: passwordResetRequests.rejectionReason,
+        userName: createdUsers.name,
+      })
+      .from(passwordResetRequests)
+      .leftJoin(createdUsers, eq(passwordResetRequests.userId, createdUsers.id))
+      .orderBy(desc(passwordResetRequests.requestedAt))
+      .limit(100);
+
+    const requests = rows.map((r) => ({
+      id: r.id,
+      userId: r.userId,
+      email: r.email,
+      userName: r.userName,
+      status: r.status,
+      requestedAt: r.requestedAt,
+      ipAddress: r.ipAddress,
+      reviewedBy: r.reviewedBy,
+      reviewedAt: r.reviewedAt,
+      rejectionReason: r.rejectionReason,
+    }));
+
+    return c.json({ success: true, requests });
+  } catch (error) {
+    console.error('Error listando solicitudes de recuperación:', error);
+    return c.json({ error: 'Error interno', message: 'Error al obtener solicitudes' }, 500);
+  }
+});
+
+/**
+ * POST /api/auth/password-reset-requests/:id/approve
+ * Aprueba una solicitud y envía el email con enlace de recuperación
+ */
+authRoutes.post('/password-reset-requests/:id/approve', requireAuth, requireRole('super_admin', 'admin'), async (c) => {
+  try {
+    const requestId = c.req.param('id');
+    const reviewer = c.get('user');
+
+    const { database } = await import('../database');
+    const { passwordResetRequests, createdUsers } = await import('../database/schema');
+    const { eq } = await import('drizzle-orm');
+
+    const [reqRow] = await database
+      .select()
+      .from(passwordResetRequests)
+      .where(eq(passwordResetRequests.id, requestId))
+      .limit(1);
+
+    if (!reqRow || reqRow.status !== 'pending') {
+      return c.json({ error: 'Solicitud no encontrada o ya procesada' }, 404);
+    }
+
+    const [userRow] = await database
+      .select()
+      .from(createdUsers)
+      .where(eq(createdUsers.id, reqRow.userId))
+      .limit(1);
+
+    if (!userRow) {
+      return c.json({ error: 'Usuario no encontrado' }, 404);
+    }
+
+    const { createPasswordResetToken } = await import('../utils/password-reset');
+    const token = await createPasswordResetToken(reqRow.userId);
+
+    const baseUrl = process.env.VITE_BASE_URL || process.env.ALLOWED_ORIGINS?.split(',')[0]?.trim() || 'http://localhost:5173';
+    const resetUrl = baseUrl.startsWith('http') ? `${baseUrl}/reset-password?token=${token}` : `https://${baseUrl}/reset-password?token=${token}`;
+
+    const { sendPasswordResetEmail } = await import('../utils/email-service');
+    await sendPasswordResetEmail(userRow.email, userRow.name, resetUrl);
+
+    await database
+      .update(passwordResetRequests)
+      .set({
+        status: 'approved',
+        reviewedBy: reviewer.userId,
+        reviewedAt: new Date().toISOString(),
+      })
+      .where(eq(passwordResetRequests.id, requestId));
+
+    const { logAuditEvent } = await import('../utils/audit-log');
+    await logAuditEvent({
+      userId: reviewer.userId,
+      action: 'PASSWORD_RESET_APPROVED',
+      resourceType: 'authentication',
+      ipAddress: getClientIP(c.req.raw.headers),
+      userAgent: getSafeUserAgent(c),
+      details: { requestId, targetEmail: userRow.email },
+    });
+
+    return c.json({
+      success: true,
+      message: 'Solicitud aprobada. Se ha enviado el enlace al correo del usuario. También puedes copiarlo y enviarlo manualmente.',
+      resetUrl,
+    });
+  } catch (error) {
+    console.error('Error aprobando solicitud:', error);
+    return c.json({ error: 'Error interno', message: 'Error al aprobar la solicitud' }, 500);
+  }
+});
+
+/**
+ * POST /api/auth/password-reset-requests/:id/reject
+ * Rechaza una solicitud de recuperación
+ */
+authRoutes.post('/password-reset-requests/:id/reject', requireAuth, requireRole('super_admin', 'admin'), async (c) => {
+  try {
+    const requestId = c.req.param('id');
+    const reviewer = c.get('user');
+    const rawBody = await c.req.json().catch(() => ({}));
+    const reason = (rawBody as { reason?: string }).reason || '';
+
+    const { database } = await import('../database');
+    const { passwordResetRequests, createdUsers } = await import('../database/schema');
+    const { eq } = await import('drizzle-orm');
+
+    const [reqRow] = await database
+      .select()
+      .from(passwordResetRequests)
+      .where(eq(passwordResetRequests.id, requestId))
+      .limit(1);
+
+    if (!reqRow || reqRow.status !== 'pending') {
+      return c.json({ error: 'Solicitud no encontrada o ya procesada' }, 404);
+    }
+
+    const [userRow] = await database.select().from(createdUsers).where(eq(createdUsers.id, reqRow.userId)).limit(1);
+
+    await database
+      .update(passwordResetRequests)
+      .set({
+        status: 'rejected',
+        reviewedBy: reviewer.userId,
+        reviewedAt: new Date().toISOString(),
+        rejectionReason: reason || null,
+      })
+      .where(eq(passwordResetRequests.id, requestId));
+
+    const { logAuditEvent } = await import('../utils/audit-log');
+    await logAuditEvent({
+      userId: reviewer.userId,
+      action: 'PASSWORD_RESET_REJECTED',
+      resourceType: 'authentication',
+      ipAddress: getClientIP(c.req.raw.headers),
+      userAgent: getSafeUserAgent(c),
+      details: { requestId, targetEmail: reqRow.email, reason },
+    });
+
+    return c.json({
+      success: true,
+      message: 'Solicitud rechazada.',
+    });
+  } catch (error) {
+    console.error('Error rechazando solicitud:', error);
+    return c.json({ error: 'Error interno', message: 'Error al rechazar la solicitud' }, 500);
   }
 });
 

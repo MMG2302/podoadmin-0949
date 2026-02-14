@@ -7,42 +7,25 @@ import { usePermissions } from "../hooks/use-permissions";
 import { api } from "../lib/api-client";
 import PatientsPage from "./patients-page";
 import SessionsPage from "./sessions-page";
-import CreditsPage from "./credits-page";
 import SettingsPage from "./settings-page";
 import AuditLogPage from "./audit-log-page";
 import UsersManagementPage from "./users-page";
 import ClinicManagementPage from "./clinic-page";
-import AdminCreditsPage from "./admin-credits-page";
 import NotificationsPage from "./notifications-page";
 import CalendarPage from "./calendar-page";
 import MessagesPage from "./messages-page";
-import DistributeCreditsPage from "./distribute-credits-page";
+import SupportPage from "./support-page";
 
-// Créditos por defecto para MainLayout hasta que cargue la API
-const defaultCredits = { userId: "", monthlyCredits: 0, extraCredits: 0, reservedCredits: 0, lastMonthlyReset: "", monthlyRenewalAmount: 0 };
-
-// Super Admin Dashboard - focused on Users, Credits, Settings
+// Super Admin Dashboard - focused on Users, Settings
 const SuperAdminDashboard = () => {
   const { t } = useLanguage();
   const { user } = useAuth();
-  const [credits, setCredits] = useState(defaultCredits);
   const [allUsers, setAllUsers] = useState<{ id: string; name: string; email: string; role: string }[]>([]);
-  const [totalCreditsInSystem, setTotalCreditsInSystem] = useState(0);
-  const [creditsByUser, setCreditsByUser] = useState<Record<string, number>>({});
 
   useEffect(() => {
     if (!user?.id) return;
-    api.get<{ success?: boolean; credits?: typeof defaultCredits }>("/credits/me").then((r) => {
-      if (r.success && r.data?.credits) setCredits(r.data.credits as typeof defaultCredits);
-    });
     api.get<{ success?: boolean; users?: { id: string; name: string; email: string; role: string }[] }>("/users").then((r) => {
       if (r.success && Array.isArray(r.data?.users)) setAllUsers(r.data.users);
-    });
-    api.get<{ success?: boolean; totalCreditsInSystem?: number; byUser?: Record<string, number> }>("/credits/summary").then((r) => {
-      if (r.success) {
-        if (typeof r.data?.totalCreditsInSystem === "number") setTotalCreditsInSystem(r.data.totalCreditsInSystem);
-        if (r.data?.byUser && typeof r.data.byUser === "object") setCreditsByUser(r.data.byUser);
-      }
     });
   }, [user?.id]);
 
@@ -52,11 +35,10 @@ const SuperAdminDashboard = () => {
   const stats = [
     { label: t.nav.users, value: allUsers.length.toString(), path: "/users" },
     { label: "Podólogos", value: podiatrists.length.toString(), path: "/users" },
-    { label: "Créditos en Sistema", value: totalCreditsInSystem.toString(), path: "/credits" },
   ];
 
   return (
-    <MainLayout title={t.dashboard.title} credits={credits}>
+    <MainLayout title={t.dashboard.title}>
       <div className="space-y-8">
         {/* Welcome */}
         <div className="bg-[#1a1a1a] rounded-2xl p-8 text-white relative overflow-hidden">
@@ -111,18 +93,6 @@ const SuperAdminDashboard = () => {
             </div>
           </Link>
           
-          <Link href="/credits">
-            <div className="bg-white rounded-xl p-5 border border-gray-100 hover:border-[#1a1a1a] transition-colors cursor-pointer group">
-              <div className="w-10 h-10 bg-gray-100 group-hover:bg-[#1a1a1a] rounded-lg flex items-center justify-center mb-3 transition-colors">
-                <svg className="w-5 h-5 text-gray-600 group-hover:text-white transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-              </div>
-              <p className="font-medium text-[#1a1a1a]">{t.credits.title}</p>
-              <p className="text-sm text-gray-500 mt-1">Gestión de créditos y Whop.io</p>
-            </div>
-          </Link>
-          
           <Link href="/settings">
             <div className="bg-white rounded-xl p-5 border border-gray-100 hover:border-[#1a1a1a] transition-colors cursor-pointer group">
               <div className="w-10 h-10 bg-gray-100 group-hover:bg-[#1a1a1a] rounded-lg flex items-center justify-center mb-3 transition-colors">
@@ -147,7 +117,6 @@ const SuperAdminDashboard = () => {
           </div>
           <div className="bg-white rounded-xl border border-gray-100 divide-y divide-gray-50">
             {allUsers.slice(0, 5).map((u) => {
-              const userCreditsDisplay = creditsByUser[u.id] ?? 0;
               const roleLabel = {
                 super_admin: t.roles.superAdmin,
                 clinic_admin: t.roles.clinicAdmin,
@@ -174,11 +143,6 @@ const SuperAdminDashboard = () => {
                   }`}>
                     {roleLabel}
                   </span>
-                  {u.role === "podiatrist" && (
-                    <span className="text-sm text-gray-500">
-                      {userCreditsDisplay} créditos
-                    </span>
-                  )}
                 </div>
               );
             })}
@@ -197,15 +161,11 @@ type SessionRow = { id: string; patientId: string; sessionDate: string; status: 
 const PodiatristDashboard = () => {
   const { t } = useLanguage();
   const { user } = useAuth();
-  const [credits, setCredits] = useState(defaultCredits);
   const [patients, setPatients] = useState<PatientRow[]>([]);
   const [sessions, setSessions] = useState<SessionRow[]>([]);
 
   useEffect(() => {
     if (!user?.id) return;
-    api.get<{ success?: boolean; credits?: typeof defaultCredits }>("/credits/me").then((r) => {
-      if (r.success && r.data?.credits) setCredits(r.data.credits as typeof defaultCredits);
-    });
     api.get<{ success?: boolean; patients?: PatientRow[] }>("/patients").then((r) => {
       if (r.success && Array.isArray(r.data?.patients)) setPatients(r.data.patients.filter((p: PatientRow) => p.createdBy === user?.id));
     });
@@ -220,11 +180,9 @@ const PodiatristDashboard = () => {
     return sessionDate.getMonth() === now.getMonth() && sessionDate.getFullYear() === now.getFullYear();
   });
 
-  const creditsRemaining = credits.monthlyCredits + credits.extraCredits - credits.reservedCredits;
   const stats = [
     { label: t.dashboard.totalPatients, value: patients.length.toString(), path: "/patients" },
     { label: t.dashboard.sessionsThisMonth, value: sessionsThisMonth.length.toString(), path: "/sessions" },
-    { label: t.dashboard.creditsRemaining, value: `${creditsRemaining}`, path: "/credits" },
   ];
 
   const recentSessions = sessions
@@ -250,7 +208,7 @@ const PodiatristDashboard = () => {
   };
 
   return (
-    <MainLayout title={t.dashboard.title} credits={credits}>
+    <MainLayout title={t.dashboard.title}>
       <div className="space-y-8">
         {/* Welcome */}
         <div className="bg-[#1a1a1a] rounded-2xl p-8 text-white relative overflow-hidden">
@@ -363,18 +321,6 @@ const PodiatristDashboard = () => {
             </div>
           </Link>
           
-          <Link href="/credits">
-            <div className="bg-white rounded-xl p-5 border border-gray-100 hover:border-[#1a1a1a] transition-colors cursor-pointer group">
-              <div className="w-10 h-10 bg-gray-100 group-hover:bg-[#1a1a1a] rounded-lg flex items-center justify-center mb-3 transition-colors">
-                <svg className="w-5 h-5 text-gray-600 group-hover:text-white transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-              </div>
-              <p className="font-medium text-[#1a1a1a]">{t.credits.title}</p>
-              <p className="text-sm text-gray-500 mt-1">Ver saldo y comprar</p>
-            </div>
-          </Link>
-          
           <Link href="/settings">
             <div className="bg-white rounded-xl p-5 border border-gray-100 hover:border-[#1a1a1a] transition-colors cursor-pointer group">
               <div className="w-10 h-10 bg-gray-100 group-hover:bg-[#1a1a1a] rounded-lg flex items-center justify-center mb-3 transition-colors">
@@ -393,21 +339,13 @@ const PodiatristDashboard = () => {
   );
 };
 
-// Admin (Support) Dashboard - créditos desde API
+// Admin (Support) Dashboard
 const AdminDashboard = () => {
   const { t } = useLanguage();
   const { user } = useAuth();
-  const [credits, setCredits] = useState(defaultCredits);
-
-  useEffect(() => {
-    if (!user?.id) return;
-    api.get<{ success?: boolean; credits?: typeof defaultCredits }>("/credits/me").then((r) => {
-      if (r.success && r.data?.credits) setCredits(r.data.credits as typeof defaultCredits);
-    });
-  }, [user?.id]);
 
   return (
-    <MainLayout title={t.dashboard.title} credits={credits}>
+    <MainLayout title={t.dashboard.title}>
       <div className="space-y-8">
         {/* Welcome */}
         <div className="bg-[#1a1a1a] rounded-2xl p-8 text-white relative overflow-hidden">
@@ -445,18 +383,6 @@ const AdminDashboard = () => {
             </div>
           </Link>
           
-          <Link href="/credits">
-            <div className="bg-white rounded-xl p-5 border border-gray-100 hover:border-[#1a1a1a] transition-colors cursor-pointer group">
-              <div className="w-10 h-10 bg-gray-100 group-hover:bg-[#1a1a1a] rounded-lg flex items-center justify-center mb-3 transition-colors">
-                <svg className="w-5 h-5 text-gray-600 group-hover:text-white transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-              </div>
-              <p className="font-medium text-[#1a1a1a]">Ajustar Créditos</p>
-              <p className="text-sm text-gray-500 mt-1">Compensar errores del sistema</p>
-            </div>
-          </Link>
-          
           <Link href="/settings">
             <div className="bg-white rounded-xl p-5 border border-gray-100 hover:border-[#1a1a1a] transition-colors cursor-pointer group">
               <div className="w-10 h-10 bg-gray-100 group-hover:bg-[#1a1a1a] rounded-lg flex items-center justify-center mb-3 transition-colors">
@@ -475,21 +401,13 @@ const AdminDashboard = () => {
   );
 };
 
-// Clinic Admin Dashboard - créditos desde API
+// Clinic Admin Dashboard
 const ClinicAdminDashboard = () => {
   const { t } = useLanguage();
   const { user } = useAuth();
-  const [credits, setCredits] = useState(defaultCredits);
-
-  useEffect(() => {
-    if (!user?.id) return;
-    api.get<{ success?: boolean; credits?: typeof defaultCredits }>("/credits/me").then((r) => {
-      if (r.success && r.data?.credits) setCredits(r.data.credits as typeof defaultCredits);
-    });
-  }, [user?.id]);
 
   return (
-    <MainLayout title={t.dashboard.title} credits={credits}>
+    <MainLayout title={t.dashboard.title}>
       <div className="space-y-8">
         {/* Welcome */}
         <div className="bg-[#1a1a1a] rounded-2xl p-8 text-white relative overflow-hidden">
@@ -573,7 +491,6 @@ const ClinicAdminDashboard = () => {
 const ReceptionistDashboard = () => {
   const { t } = useLanguage();
   const { user } = useAuth();
-  const [credits, setCredits] = useState(defaultCredits);
   const [allPatients, setAllPatients] = useState<{ createdBy: string }[]>([]);
   const [clinic, setClinic] = useState<{ clinicName: string } | null>(null);
   const [assignedPodiatrists, setAssignedPodiatrists] = useState<{ id: string; name: string }[]>([]);
@@ -583,9 +500,6 @@ const ReceptionistDashboard = () => {
 
   useEffect(() => {
     if (!user?.id) return;
-    api.get<{ success?: boolean; credits?: typeof defaultCredits }>("/credits/me").then((r) => {
-      if (r.success && r.data?.credits) setCredits(r.data.credits as typeof defaultCredits);
-    });
     api.get<{ success?: boolean; patients?: { createdBy: string }[] }>("/patients").then((r) => {
       if (r.success && Array.isArray(r.data?.patients)) setAllPatients(r.data.patients);
     });
@@ -610,7 +524,7 @@ const ReceptionistDashboard = () => {
   ];
 
   return (
-    <MainLayout title={t.dashboard.title} credits={credits} showCredits={false}>
+    <MainLayout title={t.dashboard.title}>
       <div className="space-y-8">
         <div className="bg-[#1a1a1a] rounded-2xl p-8 text-white relative overflow-hidden">
           <div className="relative z-10">
@@ -709,15 +623,14 @@ const Dashboard = () => {
       {/* Super Admin routes */}
       {isSuperAdmin && <Route path="/users" component={UsersManagementPage} />}
       {isSuperAdmin && <Route path="/messages" component={MessagesPage} />}
+      {isSuperAdmin && <Route path="/support" component={SupportPage} />}
       {isSuperAdmin && <Route path="/audit-log" component={AuditLogPage} />}
       
       {/* Admin routes */}
       {isAdmin && <Route path="/users" component={UsersManagementPage} />}
-      {isAdmin && <Route path="/credits" component={AdminCreditsPage} />}
-      
+      {isAdmin && <Route path="/support" component={SupportPage} />}
       {/* Clinic Admin routes */}
       {isClinicAdmin && <Route path="/clinic" component={ClinicManagementPage} />}
-      {isClinicAdmin && <Route path="/distribute-credits" component={DistributeCreditsPage} />}
       {isClinicAdmin && <Route path="/patients" component={PatientsPage} />}
       {isClinicAdmin && <Route path="/patients/:id" component={PatientsPage} />}
       {isClinicAdmin && <Route path="/sessions" component={SessionsPage} />}
@@ -737,7 +650,6 @@ const Dashboard = () => {
       {isPodiatrist && <Route path="/calendar" component={CalendarPage} />}
       
       {/* Common routes */}
-      <Route path="/credits" component={CreditsPage} />
       <Route path="/settings" component={SettingsPage} />
       <Route path="/notifications" component={NotificationsPage} />
       

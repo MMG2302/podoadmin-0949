@@ -77,6 +77,7 @@ export interface Translations {
     alreadyHaveAccount: string;
     goToLogin: string;
     dontHaveAccount: string;
+    contactAdminForAccount: string;
     registrationSuccess: string;
     registrationSuccessMessage: string;
     checkEmail: string;
@@ -411,6 +412,30 @@ export interface Translations {
     notifications: string;
     security: string;
   };
+
+  // Contact PodoAdmin / Support (2-way messaging)
+  support: {
+    title: string;
+    contactPodoAdmin: string;
+    contactSubtitle: string;
+    newConversation: string;
+    subject: string;
+    subjectPlaceholder: string;
+    message: string;
+    messagePlaceholder: string;
+    send: string;
+    myConversations: string;
+    noConversations: string;
+    reply: string;
+    replyPlaceholder: string;
+    open: string;
+    closed: string;
+    markAsRead: string;
+    closeConversation: string;
+    reopenConversation: string;
+    from: string;
+    sent: string;
+  };
   
   // Roles
   roles: {
@@ -590,6 +615,7 @@ export const translations: Record<Language, Translations> = {
       alreadyHaveAccount: "¿Ya tienes una cuenta?",
       goToLogin: "Iniciar sesión",
       dontHaveAccount: "¿No tienes una cuenta?",
+      contactAdminForAccount: "Contacta al administrador para crear una cuenta.",
       registrationSuccess: "¡Registro exitoso!",
       registrationSuccessMessage: "Hemos enviado un email de verificación. Por favor, revisa tu bandeja de entrada.",
       checkEmail: "Revisa tu correo electrónico",
@@ -611,9 +637,9 @@ export const translations: Record<Language, Translations> = {
       loginWithApple: "Apple",
       forgotPassword: "¿Olvidaste tu contraseña?",
       forgotPasswordTitle: "Recuperar contraseña",
-      forgotPasswordSubtitle: "Ingresa tu correo y te enviaremos un enlace para restablecer tu contraseña.",
-      forgotPasswordButton: "Enviar enlace",
-      forgotPasswordSuccess: "Si el correo está registrado, recibirás un enlace para restablecer tu contraseña.",
+      forgotPasswordSubtitle: "Ingresa tu correo. Un administrador o soporte revisará tu solicitud y te contactará.",
+      forgotPasswordButton: "Enviar solicitud",
+      forgotPasswordSuccess: "Tu solicitud ha sido recibida. Un administrador o soporte la revisará y te contactará cuando esté disponible el enlace de recuperación.",
       resetPasswordTitle: "Nueva contraseña",
       resetPasswordSubtitle: "Elige una contraseña segura. El enlace expira en 1 hora.",
       newPasswordLabel: "Nueva contraseña",
@@ -833,6 +859,28 @@ export const translations: Record<Language, Translations> = {
       appearance: "Apariencia",
       notifications: "Notificaciones",
       security: "Seguridad",
+    },
+    support: {
+      title: "Contactar PodoAdmin",
+      contactPodoAdmin: "Contactar PodoAdmin",
+      contactSubtitle: "Envía un mensaje directo a soporte. Te responderemos lo antes posible.",
+      newConversation: "Nuevo mensaje",
+      subject: "Asunto",
+      subjectPlaceholder: "Ej: Problema con la facturación",
+      message: "Mensaje",
+      messagePlaceholder: "Describe tu consulta o problema...",
+      send: "Enviar",
+      myConversations: "Mis conversaciones",
+      noConversations: "No tienes conversaciones aún.",
+      reply: "Responder",
+      replyPlaceholder: "Escribe tu respuesta...",
+      open: "Abierta",
+      closed: "Cerrada",
+      markAsRead: "Marcar como leído",
+      closeConversation: "Cerrar conversación",
+      reopenConversation: "Reabrir conversación",
+      from: "De",
+      sent: "Enviado",
     },
     roles: {
       superAdmin: "Super Administrador",
@@ -1073,6 +1121,7 @@ export const translations: Record<Language, Translations> = {
       alreadyHaveAccount: "Already have an account?",
       goToLogin: "Log in",
       dontHaveAccount: "Don't have an account?",
+      contactAdminForAccount: "Contact the administrator to create an account.",
       registrationSuccess: "Registration successful!",
       registrationSuccessMessage: "We've sent a verification email. Please check your inbox.",
       checkEmail: "Check your email",
@@ -1094,9 +1143,9 @@ export const translations: Record<Language, Translations> = {
       loginWithApple: "Apple",
       forgotPassword: "Forgot your password?",
       forgotPasswordTitle: "Recover password",
-      forgotPasswordSubtitle: "Enter your email and we'll send you a link to reset your password.",
-      forgotPasswordButton: "Send link",
-      forgotPasswordSuccess: "If the email is registered, you'll receive a link to reset your password.",
+      forgotPasswordSubtitle: "Enter your email. An administrator or support will review your request and contact you.",
+      forgotPasswordButton: "Submit request",
+      forgotPasswordSuccess: "Your request has been received. An administrator or support will review it and contact you when the recovery link is available.",
       resetPasswordTitle: "New password",
       resetPasswordSubtitle: "Choose a secure password. The link expires in 1 hour.",
       newPasswordLabel: "New password",
@@ -1316,6 +1365,28 @@ export const translations: Record<Language, Translations> = {
       appearance: "Appearance",
       notifications: "Notifications",
       security: "Security",
+    },
+    support: {
+      title: "Contact PodoAdmin",
+      contactPodoAdmin: "Contact PodoAdmin",
+      contactSubtitle: "Send a direct message to support. We will respond as soon as possible.",
+      newConversation: "New message",
+      subject: "Subject",
+      subjectPlaceholder: "E.g.: Billing issue",
+      message: "Message",
+      messagePlaceholder: "Describe your query or issue...",
+      send: "Send",
+      myConversations: "My conversations",
+      noConversations: "You have no conversations yet.",
+      reply: "Reply",
+      replyPlaceholder: "Write your reply...",
+      open: "Open",
+      closed: "Closed",
+      markAsRead: "Mark as read",
+      closeConversation: "Close conversation",
+      reopenConversation: "Reopen conversation",
+      from: "From",
+      sent: "Sent",
     },
     roles: {
       superAdmin: "Super Admin",
@@ -1556,6 +1627,7 @@ export const translations: Record<Language, Translations> = {
       alreadyHaveAccount: "Já tem uma conta?",
       goToLogin: "Entrar",
       dontHaveAccount: "Não tem uma conta?",
+      contactAdminForAccount: "Contacte o administrador para criar uma conta.",
       registrationSuccess: "Registro bem-sucedido!",
       registrationSuccessMessage: "Enviamos um email de verificação. Por favor, verifique sua caixa de entrada.",
       checkEmail: "Verifique seu e-mail",
@@ -1577,9 +1649,9 @@ export const translations: Record<Language, Translations> = {
       loginWithApple: "Apple",
       forgotPassword: "Esqueceu sua senha?",
       forgotPasswordTitle: "Recuperar senha",
-      forgotPasswordSubtitle: "Digite seu e-mail e enviaremos um link para redefinir sua senha.",
-      forgotPasswordButton: "Enviar link",
-      forgotPasswordSuccess: "Se o e-mail estiver registrado, você receberá um link para redefinir sua senha.",
+      forgotPasswordSubtitle: "Digite seu e-mail. Um administrador ou suporte revisará sua solicitação e entrará em contato.",
+      forgotPasswordButton: "Enviar solicitação",
+      forgotPasswordSuccess: "Sua solicitação foi recebida. Um administrador ou suporte a revisará e entrará em contato quando o link de recuperação estiver disponível.",
       resetPasswordTitle: "Nova senha",
       resetPasswordSubtitle: "Escolha uma senha segura. O link expira em 1 hora.",
       newPasswordLabel: "Nova senha",
@@ -1797,6 +1869,28 @@ export const translations: Record<Language, Translations> = {
       appearance: "Aparência",
       notifications: "Notificações",
       security: "Segurança",
+    },
+    support: {
+      title: "Contactar PodoAdmin",
+      contactPodoAdmin: "Contactar PodoAdmin",
+      contactSubtitle: "Envie uma mensagem direta ao suporte. Responderemos o mais rápido possível.",
+      newConversation: "Nova mensagem",
+      subject: "Assunto",
+      subjectPlaceholder: "Ex: Problema com faturamento",
+      message: "Mensagem",
+      messagePlaceholder: "Descreva sua consulta ou problema...",
+      send: "Enviar",
+      myConversations: "Minhas conversas",
+      noConversations: "Você ainda não tem conversas.",
+      reply: "Responder",
+      replyPlaceholder: "Escreva sua resposta...",
+      open: "Aberta",
+      closed: "Fechada",
+      markAsRead: "Marcar como lido",
+      closeConversation: "Fechar conversa",
+      reopenConversation: "Reabrir conversa",
+      from: "De",
+      sent: "Enviado",
     },
     roles: {
       superAdmin: "Super Administrador",
@@ -2037,6 +2131,7 @@ export const translations: Record<Language, Translations> = {
       alreadyHaveAccount: "Vous avez déjà un compte?",
       goToLogin: "Se connecter",
       dontHaveAccount: "Vous n'avez pas de compte?",
+      contactAdminForAccount: "Contactez l'administrateur pour créer un compte.",
       registrationSuccess: "Inscription réussie!",
       registrationSuccessMessage: "Nous avons envoyé un email de vérification. Veuillez vérifier votre boîte de réception.",
       checkEmail: "Vérifiez votre e-mail",
@@ -2058,9 +2153,9 @@ export const translations: Record<Language, Translations> = {
       loginWithApple: "Apple",
       forgotPassword: "Mot de passe oublié?",
       forgotPasswordTitle: "Récupérer le mot de passe",
-      forgotPasswordSubtitle: "Entrez votre e-mail et nous vous enverrons un lien pour réinitialiser votre mot de passe.",
-      forgotPasswordButton: "Envoyer le lien",
-      forgotPasswordSuccess: "Si l'e-mail est enregistré, vous recevrez un lien pour réinitialiser votre mot de passe.",
+      forgotPasswordSubtitle: "Entrez votre e-mail. Un administrateur ou le support examinera votre demande et vous contactera.",
+      forgotPasswordButton: "Soumettre la demande",
+      forgotPasswordSuccess: "Votre demande a été reçue. Un administrateur ou le support l'examinera et vous contactera lorsque le lien de récupération sera disponible.",
       resetPasswordTitle: "Nouveau mot de passe",
       resetPasswordSubtitle: "Choisissez un mot de passe sécurisé. Le lien expire dans 1 heure.",
       newPasswordLabel: "Nouveau mot de passe",
@@ -2280,6 +2375,28 @@ export const translations: Record<Language, Translations> = {
       appearance: "Apparence",
       notifications: "Notifications",
       security: "Sécurité",
+    },
+    support: {
+      title: "Contacter PodoAdmin",
+      contactPodoAdmin: "Contacter PodoAdmin",
+      contactSubtitle: "Envoyez un message direct au support. Nous répondrons dès que possible.",
+      newConversation: "Nouveau message",
+      subject: "Sujet",
+      subjectPlaceholder: "Ex : Problème de facturation",
+      message: "Message",
+      messagePlaceholder: "Décrivez votre question ou problème...",
+      send: "Envoyer",
+      myConversations: "Mes conversations",
+      noConversations: "Vous n'avez pas encore de conversations.",
+      reply: "Répondre",
+      replyPlaceholder: "Écrivez votre réponse...",
+      open: "Ouverte",
+      closed: "Fermée",
+      markAsRead: "Marquer comme lu",
+      closeConversation: "Fermer la conversation",
+      reopenConversation: "Rouvrir la conversation",
+      from: "De",
+      sent: "Envoyé",
     },
     roles: {
       superAdmin: "Super Administrateur",

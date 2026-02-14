@@ -14,18 +14,17 @@ const ALLOWED_API_FIRST_SEGMENTS: ReadonlySet<string> = new Set([
   'users',
   'patients',
   'sessions',
-  'credits',
   '2fa',
   'security-metrics',
   'audit-logs',
   'clinics',
   'professionals',
   'receptionists',
-  'clinic-credits',
   'consent-document',
   'appointments',
   'notifications',
   'messages',
+  'support',
 ]);
 
 /** Caracteres permitidos en un segmento de path (evita encoding raro o inyección). */

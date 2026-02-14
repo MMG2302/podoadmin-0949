@@ -3,7 +3,7 @@ import { MainLayout } from "../components/layout/main-layout";
 import { useLanguage } from "../contexts/language-context";
 import { useAuth } from "../contexts/auth-context";
 import { api } from "../lib/api-client";
-import { getUserCredits, SentMessage } from "../lib/storage";
+import { SentMessage } from "../lib/storage";
 
 type RecipientMode = "all" | "specific" | "single";
 type ViewMode = "compose" | "sent";
@@ -11,7 +11,6 @@ type ViewMode = "compose" | "sent";
 const MessagesPage = () => {
   const { t } = useLanguage();
   const { user, getAllUsers } = useAuth();
-  const credits = getUserCredits(user?.id || "");
   const allUsers = getAllUsers().filter(u => u.id !== user?.id); // Exclude current user
 
   const [viewMode, setViewMode] = useState<ViewMode>("compose");
@@ -121,7 +120,7 @@ const MessagesPage = () => {
   };
 
   return (
-    <MainLayout title={t.messaging.title} credits={credits}>
+    <MainLayout title={t.messaging.title} >
       <div className="space-y-6">
         {/* Header with tabs */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">

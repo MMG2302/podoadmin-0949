@@ -6,7 +6,6 @@ import { useAuth } from "../contexts/auth-context";
 import { usePermissions } from "../hooks/use-permissions";
 import {
   getSessionsByPatient,
-  getUserCredits,
   Patient,
   addAuditLog,
 } from "../lib/storage";
@@ -64,8 +63,6 @@ const PatientsPage = () => {
   const receptionistHasAssignedPodiatrists =
     isReceptionist && !!user?.assignedPodiatristIds?.length;
   const canCreatePatient = isPodiatrist || receptionistHasAssignedPodiatrists;
-  
-  const credits = getUserCredits(user?.id || "");
   
   const [patients, setPatients] = useState<Patient[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
@@ -347,7 +344,7 @@ const PatientsPage = () => {
   };
 
   return (
-    <MainLayout title={t.patients.title} credits={credits}>
+    <MainLayout title={t.patients.title} >
       {/* Patient Detail View - Mobile Optimized */}
       {selectedPatient && (
         <div className="fixed inset-0 bg-black/60 flex items-end sm:items-center justify-center z-50 overflow-y-auto">

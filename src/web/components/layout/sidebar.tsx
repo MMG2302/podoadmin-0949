@@ -59,6 +59,17 @@ export const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
       roles: ["super_admin"] as const,
     },
     {
+      path: "/support",
+      label: t.support.contactPodoAdmin,
+      icon: (
+        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M18.364 5.636l-3.536 3.536m0 5.656l3.536 3.536M9.172 9.172L5.636 5.636m3.536 9.192l-3.536 3.536M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-5 0a4 4 0 11-8 0 4 4 0 018 0z" />
+        </svg>
+      ),
+      permission: "view_users" as const,
+      roles: ["super_admin", "admin"] as const,
+    },
+    {
       path: "/clinic",
       label: t.nav.clinicManagement,
       icon: (
@@ -101,28 +112,6 @@ export const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
       ),
       permission: "view_calendar" as const,
       roles: ["clinic_admin", "podiatrist", "receptionist"] as const,
-    },
-    {
-      path: "/credits",
-      label: t.nav.credits,
-      icon: (
-        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-        </svg>
-      ),
-      permission: "view_credits" as const,
-      roles: ["super_admin", "clinic_admin", "admin", "podiatrist"] as const,
-    },
-    {
-      path: "/distribute-credits",
-      label: "Distribuir Créditos",
-      icon: (
-        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
-        </svg>
-      ),
-      permission: "view_clinic_stats" as const,
-      roles: ["clinic_admin"] as const,
     },
     {
       path: "/audit-log",

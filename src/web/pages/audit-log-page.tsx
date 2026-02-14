@@ -2,7 +2,7 @@ import { useState, useMemo, useEffect } from "react";
 import { MainLayout } from "../components/layout/main-layout";
 import { useLanguage } from "../contexts/language-context";
 import { useAuth } from "../contexts/auth-context";
-import { getUserCredits, AuditLog } from "../lib/storage";
+import { AuditLog } from "../lib/storage";
 import { api } from "../lib/api-client";
 
 const ITEMS_PER_PAGE = 20;
@@ -11,7 +11,6 @@ const AuditLogPage = () => {
   const { t } = useLanguage();
   const { user, getAllUsers } = useAuth();
   
-  const credits = getUserCredits(user?.id || "");
   const [logs, setLogs] = useState<AuditLog[]>([]);
   const allUsers = getAllUsers();
   
@@ -300,7 +299,7 @@ const AuditLogPage = () => {
   };
 
   return (
-    <MainLayout title={t.nav.auditLog} credits={credits}>
+    <MainLayout title={t.nav.auditLog} >
       <div className="space-y-6">
         {/* Statistics Summary */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">

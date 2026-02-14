@@ -4,7 +4,6 @@ import { useLanguage } from "../contexts/language-context";
 import { useAuth, User } from "../contexts/auth-context";
 import { api } from "../lib/api-client";
 import { 
-  getUserCredits, 
   addAuditLog,
   getAllProfessionalLicenses,
   Patient,
@@ -17,11 +16,6 @@ interface PodiatristStats {
   sessionCount: number;
   sessionsThisMonth: number;
   license: string | null;
-  credits: {
-    monthly: number;
-    extra: number;
-    total: number;
-  };
 }
 
 interface PatientWithPodiatrist extends Patient {
@@ -158,7 +152,6 @@ type SessionApi = ClinicalSession & { sessionDate: string; createdBy: string };
 const ClinicPage = () => {
   const { t } = useLanguage();
   const { user: currentUser, getAllUsers, fetchUsers, isEmailTaken } = useAuth();
-  const credits = getUserCredits(currentUser?.id || "");
   const allUsers = getAllUsers();
 
   const [allPatients, setAllPatients] = useState<PatientApi[]>([]);
@@ -208,7 +201,6 @@ const ClinicPage = () => {
     const allLicenses = getAllProfessionalLicenses();
 
     return clinicPodiatrists.map(pod => {
-      const podCredits = getUserCredits(pod.id);
       const patients = clinicPatients.filter(p => p.createdBy === pod.id);
       const sessions = clinicSessions.filter(s => s.createdBy === pod.id);
       const sessionsThisMonth = sessions.filter(s => {
@@ -222,11 +214,6 @@ const ClinicPage = () => {
         sessionCount: sessions.length,
         sessionsThisMonth: sessionsThisMonth.length,
         license: allLicenses[pod.id] || null,
-        credits: {
-          monthly: podCredits.monthlyCredits,
-          extra: podCredits.extraCredits,
-          total: podCredits.monthlyCredits + podCredits.extraCredits,
-        },
       };
     });
   }, [clinicPodiatrists, clinicPatients, clinicSessions]);
@@ -270,12 +257,9 @@ const ClinicPage = () => {
       return date.getMonth() === thisMonth && date.getFullYear() === thisYear;
     });
 
-    const totalCredits = podiatristStats.reduce((acc, p) => acc + p.credits.total, 0);
-
     return {
       patients: patientsWithPodiatrist.length,
       sessionsThisMonth: sessionsThisMonth.length,
-      totalCredits,
       podiatrists: clinicPodiatrists.length,
     };
   }, [patientsWithPodiatrist, clinicSessions, clinicPodiatrists, podiatristStats]);
@@ -438,7 +422,7 @@ const ClinicPage = () => {
   };
 
   return (
-    <MainLayout title={t.nav.clinicManagement} credits={credits}>
+    <MainLayout title={t.nav.clinicManagement} >
       <div className="space-y-6">
         {/* Tab Navigation */}
         <div className="flex gap-1 bg-gray-100 p-1 rounded-xl w-fit">
@@ -517,15 +501,6 @@ const ClinicPage = () => {
                 }
                 trend={{ value: 12, isPositive: true }}
               />
-              <StatCard
-                label="Créditos totales"
-                value={totals.totalCredits}
-                icon={
-                  <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                }
-              />
             </div>
 
             {/* Podiatrist Activity */}
@@ -574,7 +549,6 @@ const ClinicPage = () => {
                   <th className="text-left px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Licencia</th>
                   <th className="text-left px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Pacientes</th>
                   <th className="text-left px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Sesiones (mes)</th>
-                  <th className="text-left px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Créditos</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50">
@@ -598,14 +572,6 @@ const ClinicPage = () => {
                     </td>
                     <td className="px-6 py-4 text-sm text-[#1a1a1a] font-medium">{stat.patientCount}</td>
                     <td className="px-6 py-4 text-sm text-[#1a1a1a] font-medium">{stat.sessionsThisMonth}</td>
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm font-medium text-[#1a1a1a]">{stat.credits.total}</span>
-                        <span className="text-xs text-gray-400">
-                          ({stat.credits.monthly}m + {stat.credits.extra}e)
-                        </span>
-                      </div>
-                    </td>
                   </tr>
                 ))}
               </tbody>

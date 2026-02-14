@@ -4,33 +4,16 @@ import { useLanguage } from "../contexts/language-context";
 import { useAuth, User, UserRole } from "../contexts/auth-context";
 import { usePermissions } from "../hooks/use-permissions";
 import { 
-  getUserCredits, 
   getPatients, 
   getSessions, 
-  getCreditTransactions, 
-  updateUserCredits,
-  addCreditTransaction,
   addAuditLog,
   exportPatientData,
-  getClinicCredits,
-  getClinicAvailableCredits,
-  updateClinicCredits,
-  addClinicCredits,
-  initializeClinicCredits,
-  updateMonthlyRenewalAmount,
   Patient,
   ClinicalSession,
-  CreditTransaction,
 } from "../lib/storage";
 import { api } from "../lib/api-client";
 
 interface UserWithData extends User {
-  credits: {
-    monthly: number;
-    extra: number;
-    reserved: number;
-    total: number;
-  };
   patientCount: number;
   sessionCount: number;
 }
@@ -262,353 +245,6 @@ const EditUserModal = ({
   );
 };
 
-// Credit Adjustment Modal
-const CreditAdjustmentModal = ({ 
-  isOpen, 
-  onClose, 
-  user,
-  onSave 
-}: { 
-  isOpen: boolean; 
-  onClose: () => void; 
-  user: User | null;
-  onSave: (userId: string, amount: number, isAdd: boolean, reason: string) => { success: boolean; error?: string };
-}) => {
-  const { t } = useLanguage();
-  const [amount, setAmount] = useState(0);
-  const [isAdd, setIsAdd] = useState(true);
-  const [reason, setReason] = useState("");
-  const [error, setError] = useState<string | null>(null);
-  const currentUser = useAuth().user;
-
-  if (!isOpen || !user) return null;
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!reason.trim()) return;
-    
-    setError(null);
-    const result = onSave(user.id, amount, isAdd, reason);
-    
-    if (result.success) {
-      setAmount(0);
-      setReason("");
-      setError(null);
-      onClose();
-    } else {
-      setError(result.error || "Error al ajustar los créditos");
-    }
-  };
-
-  const userCredits = getUserCredits(user.id);
-  const isClinicAdminUser = user.role === "clinic_admin";
-  const isPodiatristWithClinic = user.role === "podiatrist" && user.clinicId;
-  const isIndependentPodiatrist = user.role === "podiatrist" && !user.clinicId;
-  
-  // Get clinic credits if user is clinic_admin
-  const clinicCredits = isClinicAdminUser && user.clinicId 
-    ? (getClinicCredits(user.clinicId) || initializeClinicCredits(user.clinicId, 500))
-    : null;
-  const clinicAvailableCredits = isClinicAdminUser && user.clinicId
-    ? getClinicAvailableCredits(user.clinicId)
-    : 0;
-
-  return (
-    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl w-full max-w-md shadow-xl">
-        <div className="p-6 border-b border-gray-100">
-          <h3 className="text-lg font-semibold text-[#1a1a1a]">Ajustar créditos</h3>
-          <p className="text-sm text-gray-500 mt-1">{user.name}</p>
-          {/* Show credit type label */}
-          <div className="mt-2">
-            {isClinicAdminUser && (
-              <span className="inline-flex items-center gap-1 px-2 py-1 bg-purple-100 text-purple-700 text-xs rounded-full">
-                <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-                </svg>
-                Pool de Clínica
-              </span>
-            )}
-            {isPodiatristWithClinic && (
-              <span className="inline-flex items-center gap-1 px-2 py-1 bg-blue-100 text-blue-700 text-xs rounded-full">
-                <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                </svg>
-                Créditos Personales (en clínica)
-              </span>
-            )}
-            {isIndependentPodiatrist && (
-              <span className="inline-flex items-center gap-1 px-2 py-1 bg-green-100 text-green-700 text-xs rounded-full">
-                <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                </svg>
-                Créditos Personales (independiente)
-              </span>
-            )}
-          </div>
-        </div>
-        <form onSubmit={handleSubmit} className="p-6 space-y-4">
-          {/* Credit type explanation */}
-          {isClinicAdminUser && (
-            <div className="bg-purple-50 border border-purple-100 rounded-lg p-3">
-              <p className="text-xs text-purple-700">
-                <strong>Pool de Clínica:</strong> Estos créditos serán distribuidos por el administrador de la clínica a sus podólogos.
-              </p>
-            </div>
-          )}
-          {isPodiatristWithClinic && (
-            <div className="bg-blue-50 border border-blue-100 rounded-lg p-3">
-              <p className="text-xs text-blue-700">
-                <strong>Créditos Personales:</strong> Este podólogo pertenece a una clínica. Estos créditos son adicionales a los que recibe de su clínica (para correcciones).
-              </p>
-            </div>
-          )}
-          
-          {/* Current balance */}
-          <div className="bg-gray-50 rounded-lg p-4">
-            <p className="text-sm text-gray-500">Saldo actual</p>
-            {isClinicAdminUser && clinicCredits ? (
-              <div className="flex gap-4 mt-2">
-                <div>
-                  <span className="text-lg font-semibold text-[#1a1a1a]">{clinicCredits.totalCredits}</span>
-                  <span className="text-xs text-gray-500 ml-1">total en pool</span>
-                </div>
-                <div>
-                  <span className="text-lg font-semibold text-[#1a1a1a]">{clinicCredits.distributedToDate}</span>
-                  <span className="text-xs text-gray-500 ml-1">distribuidos</span>
-                </div>
-                <div>
-                  <span className="text-lg font-semibold text-green-600">{clinicAvailableCredits}</span>
-                  <span className="text-xs text-gray-500 ml-1">disponibles</span>
-                </div>
-              </div>
-            ) : (
-              <div className="flex gap-4 mt-2">
-                <div>
-                  <span className="text-lg font-semibold text-[#1a1a1a]">{userCredits.monthlyCredits}</span>
-                  <span className="text-xs text-gray-500 ml-1">mensuales</span>
-                </div>
-                <div>
-                  <span className="text-lg font-semibold text-[#1a1a1a]">{userCredits.extraCredits}</span>
-                  <span className="text-xs text-gray-500 ml-1">extra</span>
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* Add/Subtract toggle */}
-          <div className="flex gap-2">
-            <button
-              type="button"
-              onClick={() => setIsAdd(true)}
-              className={`flex-1 px-4 py-2.5 rounded-lg font-medium transition-colors ${
-                isAdd 
-                  ? "bg-green-100 text-green-700 border-2 border-green-500" 
-                  : "bg-gray-100 text-gray-600 border-2 border-transparent"
-              }`}
-            >
-              + Añadir
-            </button>
-            <button
-              type="button"
-              onClick={() => setIsAdd(false)}
-              className={`flex-1 px-4 py-2.5 rounded-lg font-medium transition-colors ${
-                !isAdd 
-                  ? "bg-red-100 text-red-700 border-2 border-red-500" 
-                  : "bg-gray-100 text-gray-600 border-2 border-transparent"
-              }`}
-            >
-              - Restar
-            </button>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-[#1a1a1a] mb-1">Cantidad</label>
-            <input
-              type="number"
-              min="1"
-              value={amount}
-              onChange={(e) => {
-                setAmount(parseInt(e.target.value) || 0);
-                setError(null); // Clear error when user changes amount
-              }}
-              className="w-full px-4 py-2.5 rounded-lg border border-gray-200 focus:border-[#1a1a1a] focus:ring-1 focus:ring-[#1a1a1a] outline-none transition-colors"
-              required
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-[#1a1a1a] mb-1">
-              Motivo <span className="text-red-500">*</span>
-            </label>
-            <textarea
-              value={reason}
-              onChange={(e) => {
-                setReason(e.target.value);
-                setError(null); // Clear error when user types
-              }}
-              rows={3}
-              className="w-full px-4 py-2.5 rounded-lg border border-gray-200 focus:border-[#1a1a1a] focus:ring-1 focus:ring-[#1a1a1a] outline-none transition-colors resize-none"
-              placeholder="Explica el motivo del ajuste..."
-              required
-            />
-          </div>
-
-          {error && (
-            <div className="bg-red-50 border border-red-200 rounded-lg p-3">
-              <div className="flex items-start gap-2">
-                <svg className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-                <div>
-                  <p className="text-sm font-medium text-red-800">Error</p>
-                  <p className="text-sm text-red-700 mt-1">{error}</p>
-                </div>
-              </div>
-            </div>
-          )}
-
-          <div className="flex gap-3 pt-4">
-            <button
-              type="button"
-              onClick={onClose}
-              className="flex-1 px-4 py-2.5 border border-gray-200 rounded-lg text-[#1a1a1a] font-medium hover:bg-gray-50 transition-colors"
-            >
-              {t.common.cancel}
-            </button>
-            <button
-              type="submit"
-              disabled={!reason.trim() || amount <= 0}
-              className="flex-1 px-4 py-2.5 bg-[#1a1a1a] text-white rounded-lg font-medium hover:bg-[#2a2a2a] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {t.common.confirm}
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
-  );
-};
-
-// Monthly Renewal Amount Modal
-const MonthlyRenewalModal = ({ 
-  isOpen, 
-  onClose, 
-  user,
-  onSave 
-}: { 
-  isOpen: boolean; 
-  onClose: () => void; 
-  user: User | null;
-  onSave: (userId: string, renewalAmount: number) => void;
-}) => {
-  const { t } = useLanguage();
-  const [renewalAmount, setRenewalAmount] = useState(0);
-  const [error, setError] = useState<string | null>(null);
-  const currentUser = useAuth().user;
-
-  useEffect(() => {
-    if (user) {
-      const userCredits = getUserCredits(user.id);
-      setRenewalAmount(userCredits.monthlyRenewalAmount ?? userCredits.monthlyCredits);
-    }
-  }, [user]);
-
-  if (!isOpen || !user) return null;
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (renewalAmount < 0) {
-      setError("La cantidad debe ser mayor o igual a 0");
-      return;
-    }
-    
-    setError(null);
-    onSave(user.id, renewalAmount);
-    onClose();
-  };
-
-  const userCredits = getUserCredits(user.id);
-  const currentRenewalAmount = userCredits.monthlyRenewalAmount ?? userCredits.monthlyCredits;
-
-  return (
-    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl w-full max-w-md shadow-xl">
-        <div className="p-6 border-b border-gray-100">
-          <h3 className="text-lg font-semibold text-[#1a1a1a]">Gestionar Renovación Mensual</h3>
-          <p className="text-sm text-gray-500 mt-1">{user.name}</p>
-        </div>
-        <form onSubmit={handleSubmit} className="p-6 space-y-4">
-          <div className="bg-blue-50 border border-blue-100 rounded-lg p-3">
-            <p className="text-xs text-blue-700">
-              <strong>Renovación Mensual:</strong> Esta es la cantidad de créditos que se renovarán automáticamente cada mes para este usuario.
-            </p>
-          </div>
-          
-          <div className="bg-gray-50 rounded-lg p-4">
-            <p className="text-sm text-gray-500 mb-2">Valor actual de renovación mensual</p>
-            <p className="text-2xl font-semibold text-[#1a1a1a]">{currentRenewalAmount} créditos/mes</p>
-            <p className="text-xs text-gray-500 mt-1">
-              Créditos mensuales actuales: {userCredits.monthlyCredits}
-            </p>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-[#1a1a1a] mb-1">
-              Nueva cantidad de renovación mensual
-            </label>
-            <input
-              type="number"
-              min="0"
-              value={renewalAmount}
-              onChange={(e) => {
-                setRenewalAmount(parseInt(e.target.value) || 0);
-                setError(null);
-              }}
-              className="w-full px-4 py-2.5 rounded-lg border border-gray-200 focus:border-[#1a1a1a] focus:ring-1 focus:ring-[#1a1a1a] outline-none transition-colors"
-              required
-            />
-            <p className="text-xs text-gray-500 mt-1">
-              Establece cuántos créditos se renovarán cada mes para este usuario.
-            </p>
-          </div>
-
-          {error && (
-            <div className="bg-red-50 border border-red-200 rounded-lg p-3">
-              <div className="flex items-start gap-2">
-                <svg className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-                <div>
-                  <p className="text-sm font-medium text-red-800">Error</p>
-                  <p className="text-sm text-red-700 mt-1">{error}</p>
-                </div>
-              </div>
-            </div>
-          )}
-
-          <div className="flex gap-3 pt-4">
-            <button
-              type="button"
-              onClick={onClose}
-              className="flex-1 px-4 py-2.5 border border-gray-200 rounded-lg text-[#1a1a1a] font-medium hover:bg-gray-50 transition-colors"
-            >
-              {t.common.cancel}
-            </button>
-            <button
-              type="submit"
-              className="flex-1 px-4 py-2.5 bg-[#1a1a1a] text-white rounded-lg font-medium hover:bg-[#2a2a2a] transition-colors"
-            >
-              Guardar
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
-  );
-};
-
 // Transfer History Modal
 const TransferHistoryModal = ({ 
   isOpen, 
@@ -805,10 +441,8 @@ const UserProfileModal = ({
   
   if (!isOpen || !user) return null;
   
-  const userCredits = getUserCredits(user.id);
   const patients = getPatients().filter(p => p.createdBy === user.id);
   const sessions = getSessions().filter(s => s.createdBy === user.id);
-  const transactions = getCreditTransactions(user.id);
 
   const roleLabel = {
     super_admin: t.roles.superAdmin,
@@ -844,7 +478,7 @@ const UserProfileModal = ({
         
         <div className="p-6 space-y-6">
           {/* Stats */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 gap-4">
             <div className="bg-gray-50 rounded-lg p-4">
               <p className="text-sm text-gray-500">Pacientes</p>
               <p className="text-2xl font-semibold text-[#1a1a1a]">{patients.length}</p>
@@ -852,14 +486,6 @@ const UserProfileModal = ({
             <div className="bg-gray-50 rounded-lg p-4">
               <p className="text-sm text-gray-500">Sesiones</p>
               <p className="text-2xl font-semibold text-[#1a1a1a]">{sessions.length}</p>
-            </div>
-            <div className="bg-gray-50 rounded-lg p-4">
-              <p className="text-sm text-gray-500">Créditos mensuales</p>
-              <p className="text-2xl font-semibold text-[#1a1a1a]">{userCredits.monthlyCredits}</p>
-            </div>
-            <div className="bg-gray-50 rounded-lg p-4">
-              <p className="text-sm text-gray-500">Créditos extra</p>
-              <p className="text-2xl font-semibold text-[#1a1a1a]">{userCredits.extraCredits}</p>
             </div>
           </div>
 
@@ -883,27 +509,6 @@ const UserProfileModal = ({
             </div>
           )}
 
-          {/* Recent transactions */}
-          {transactions.length > 0 && (
-            <div>
-              <h4 className="text-sm font-semibold text-[#1a1a1a] mb-3">Historial de créditos</h4>
-              <div className="bg-gray-50 rounded-lg divide-y divide-gray-100 max-h-48 overflow-y-auto">
-                {transactions.slice(0, 10).map((tx) => (
-                  <div key={tx.id} className="p-3 flex items-center justify-between">
-                    <div>
-                      <p className="text-sm text-[#1a1a1a]">{tx.description}</p>
-                      <p className="text-xs text-gray-500">{new Date(tx.createdAt).toLocaleDateString()}</p>
-                    </div>
-                    <span className={`text-sm font-medium ${
-                      tx.type === "consumption" || tx.type === "reservation" ? "text-red-600" : "text-green-600"
-                    }`}>
-                      {tx.type === "consumption" || tx.type === "reservation" ? "-" : "+"}{tx.amount}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
         </div>
 
         <div className="p-6 border-t border-gray-100">
@@ -924,18 +529,24 @@ const UsersPage = () => {
   const { t } = useLanguage();
   const { user: currentUser } = useAuth();
   const { isSuperAdmin } = usePermissions();
-  const credits = getUserCredits(currentUser?.id || "");
   const [allUsers, setAllUsers] = useState<User[]>([]);
+  const [passwordResetRequests, setPasswordResetRequests] = useState<Array<{
+    id: string;
+    email: string;
+    userName: string | null;
+    status: string;
+    requestedAt: string;
+    ipAddress?: string;
+  }>>([]);
   
   const [searchTerm, setSearchTerm] = useState("");
   const [roleFilter, setRoleFilter] = useState<UserRole | "all">("all");
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
-  const [showCreditModal, setShowCreditModal] = useState(false);
-  const [showRenewalModal, setShowRenewalModal] = useState(false);
   const [showTransferModal, setShowTransferModal] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
+  const [approvedResetLink, setApprovedResetLink] = useState<string | null>(null);
 
   // Cargar usuarios desde la API (incluye usuarios mock + creados según backend)
   useEffect(() => {
@@ -955,20 +566,31 @@ const UsersPage = () => {
     loadUsers();
   }, []);
 
+  // Cargar solicitudes de recuperación de contraseña (solo super_admin, admin)
+  useEffect(() => {
+    if (!isSuperAdmin && currentUser?.role !== "admin") return;
+    const loadRequests = async () => {
+      try {
+        const r = await api.get<{ success: boolean; requests?: typeof passwordResetRequests }>("/auth/password-reset-requests");
+        if (r.success && Array.isArray(r.data?.requests)) {
+          setPasswordResetRequests(r.data.requests);
+        }
+      } catch {
+        // Silenciar si no tiene permiso
+      }
+    };
+    loadRequests();
+  }, [isSuperAdmin, currentUser?.role]);
+
+  const pendingPasswordResets = passwordResetRequests.filter((r) => r.status === "pending");
+
   // Enhance users with additional data
   const usersWithData: UserWithData[] = allUsers.map(u => {
-    const userCredits = getUserCredits(u.id);
     const patients = getPatients().filter(p => p.createdBy === u.id);
     const sessions = getSessions().filter(s => s.createdBy === u.id);
     
     return {
       ...u,
-      credits: {
-        monthly: userCredits.monthlyCredits,
-        extra: userCredits.extraCredits,
-        reserved: userCredits.reservedCredits,
-        total: userCredits.monthlyCredits + userCredits.extraCredits - userCredits.reservedCredits,
-      },
       patientCount: patients.length,
       sessionCount: sessions.length,
     };
@@ -1110,129 +732,53 @@ const UsersPage = () => {
     });
   };
 
-  const handleMonthlyRenewalUpdate = (userId: string, renewalAmount: number): void => {
-    const targetUser = allUsers.find(u => u.id === userId);
-    
-    // Actualizar la cantidad de renovación mensual
-    updateMonthlyRenewalAmount(userId, renewalAmount);
-    
-    // Agregar log de auditoría
-    addAuditLog({
-      userId: currentUser?.id || "",
-      userName: currentUser?.name || "",
-      action: "UPDATE_MONTHLY_RENEWAL",
-      entityType: "credit",
-      entityId: userId,
-      details: JSON.stringify({
-        action: "update_monthly_renewal_amount",
-        targetUserId: userId,
-        targetUserName: targetUser?.name,
-        newRenewalAmount: renewalAmount,
-      }),
-    });
-    
-    // Forzar actualización de la lista
-    window.dispatchEvent(new Event("creditsUpdated"));
+  const loadPasswordResetRequests = async () => {
+    try {
+      const r = await api.get<{ success: boolean; requests?: typeof passwordResetRequests }>("/auth/password-reset-requests");
+      if (r.success && Array.isArray(r.data?.requests)) {
+        setPasswordResetRequests(r.data.requests);
+      }
+    } catch {
+      // Silenciar
+    }
   };
 
-  const handleCreditAdjustment = (userId: string, amount: number, isAdd: boolean, reason: string): { success: boolean; error?: string } => {
-    const targetUser = allUsers.find(u => u.id === userId);
-    
-    // If user is clinic_admin, adjust clinic pool credits
-    if (targetUser?.role === "clinic_admin" && targetUser.clinicId) {
-      const clinicId = targetUser.clinicId;
-      let clinicCredits = getClinicCredits(clinicId);
-      
-      if (!clinicCredits) {
-        clinicCredits = initializeClinicCredits(clinicId, 500);
-      }
-      
-      if (isAdd) {
-        // Add to total pool
-        addClinicCredits(clinicId, amount);
-      } else {
-        // Subtract from total pool (but can't go below distributed amount)
-        const available = getClinicAvailableCredits(clinicId);
-        if (amount > available) {
-          // Can't subtract more than available
-          return {
-            success: false,
-            error: `No se pueden restar ${amount} créditos. Solo hay ${available} créditos disponibles en el pool.`,
-          };
-        }
-        const newTotal = Math.max(clinicCredits.distributedToDate, clinicCredits.totalCredits - amount);
-        updateClinicCredits(clinicId, newTotal);
-      }
-      
-      addAuditLog({
-        userId: currentUser?.id || "",
-        userName: currentUser?.name || "",
-        action: isAdd ? "ADD_CLINIC_POOL_CREDITS" : "SUBTRACT_CLINIC_POOL_CREDITS",
-        entityType: "clinic_credit",
-        entityId: clinicId,
-        details: JSON.stringify({
-          action: "manual_clinic_pool_adjustment",
-          clinicId: clinicId,
-          clinicAdminUserId: userId,
-          clinicAdminName: targetUser?.name,
-          amount: amount,
-          adjustmentType: isAdd ? "add" : "subtract",
-          reason: reason,
-        }),
-      });
-      
-      return { success: true };
-    } else {
-      // Original logic for podiatrists
-      const userCredits = getUserCredits(userId);
-      
-      if (isAdd) {
-        userCredits.extraCredits += amount;
-      } else {
-        // Subtract from extra first, then monthly
-        const totalAvailable = userCredits.monthlyCredits + userCredits.extraCredits - userCredits.reservedCredits;
-        if (amount > totalAvailable) {
-          return {
-            success: false,
-            error: `No se pueden restar ${amount} créditos. El usuario solo tiene ${totalAvailable} créditos disponibles.`,
-          };
-        }
-        
-        if (userCredits.extraCredits >= amount) {
-          userCredits.extraCredits -= amount;
+  const handleApprovePasswordReset = async (requestId: string) => {
+    try {
+      const r = await api.post<{ success: boolean; message?: string; resetUrl?: string }>(`/auth/password-reset-requests/${requestId}/approve`);
+      if (r.success) {
+        await loadPasswordResetRequests();
+        const resetUrl = r.data?.resetUrl;
+        if (resetUrl) {
+          setApprovedResetLink(resetUrl);
+          try {
+            await navigator.clipboard.writeText(resetUrl);
+          } catch {
+            // Si falla clipboard, el modal mostrará el enlace para copiarlo
+          }
         } else {
-          const remaining = amount - userCredits.extraCredits;
-          userCredits.extraCredits = 0;
-          userCredits.monthlyCredits = Math.max(0, userCredits.monthlyCredits - remaining);
+          alert(r.data?.message || "Solicitud aprobada.");
         }
+      } else {
+        alert(r.error || r.data?.message || "Error al aprobar");
       }
-      
-      updateUserCredits(userCredits);
-      
-      addCreditTransaction({
-        userId,
-        type: isAdd ? "purchase" : "consumption",
-        amount,
-        description: `Ajuste administrativo: ${reason}`,
-      });
-      
-      addAuditLog({
-        userId: currentUser?.id || "",
-        userName: currentUser?.name || "",
-        action: isAdd ? "ADD_CREDITS" : "SUBTRACT_CREDITS",
-        entityType: "credit",
-        entityId: userId,
-        details: JSON.stringify({
-          action: "manual_credit_adjustment",
-          targetUserId: userId,
-          targetUserName: targetUser?.name,
-          amount: amount,
-          adjustmentType: isAdd ? "add" : "subtract",
-          reason: reason,
-        }),
-      });
-      
-      return { success: true };
+    } catch (e) {
+      alert("Error al aprobar la solicitud");
+    }
+  };
+
+  const handleRejectPasswordReset = async (requestId: string) => {
+    const reason = window.prompt("Motivo del rechazo (opcional):");
+    try {
+      const r = await api.post<{ success: boolean; message?: string }>(`/auth/password-reset-requests/${requestId}/reject`, { reason: reason || "" });
+      if (r.success) {
+        await loadPasswordResetRequests();
+        alert(r.data?.message || "Solicitud rechazada.");
+      } else {
+        alert(r.error || r.data?.message || "Error al rechazar");
+      }
+    } catch (e) {
+      alert("Error al rechazar la solicitud");
     }
   };
 
@@ -1561,7 +1107,7 @@ const UsersPage = () => {
   }, []);
 
   return (
-    <MainLayout title={t.nav.users} credits={credits}>
+    <MainLayout title={t.nav.users}>
       <div className="space-y-6">
         {/* Header Actions */}
         <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
@@ -1614,6 +1160,97 @@ const UsersPage = () => {
           </div>
         </div>
 
+        {/* Solicitudes de recuperación de contraseña (solo super_admin, admin) */}
+        {(isSuperAdmin || currentUser?.role === "admin") && pendingPasswordResets.length > 0 && (
+          <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-6">
+            <h3 className="text-sm font-semibold text-amber-800 mb-3 flex items-center gap-2">
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+              </svg>
+              Solicitudes de recuperación de contraseña pendientes
+            </h3>
+            <div className="space-y-2">
+              {pendingPasswordResets.map((req) => (
+                <div key={req.id} className="flex flex-wrap items-center justify-between gap-2 bg-white rounded-lg p-3 border border-amber-100">
+                  <div>
+                    <span className="font-medium text-[#1a1a1a]">{req.userName || "—"}</span>
+                    <span className="text-gray-500 text-sm ml-2">({req.email})</span>
+                    <span className="text-xs text-gray-400 ml-2">
+                      {new Date(req.requestedAt).toLocaleString()}
+                    </span>
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => handleApprovePasswordReset(req.id)}
+                      className="px-3 py-1.5 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700"
+                    >
+                      Aprobar
+                    </button>
+                    <button
+                      onClick={() => handleRejectPasswordReset(req.id)}
+                      className="px-3 py-1.5 bg-red-100 text-red-700 text-sm font-medium rounded-lg hover:bg-red-200"
+                    >
+                      Rechazar
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Modal: Enlace de recuperación aprobado para reenvío manual */}
+        {approvedResetLink && (
+          <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+            <div className="bg-white rounded-2xl w-full max-w-lg shadow-xl">
+              <div className="p-6 border-b border-gray-100">
+                <h3 className="text-lg font-semibold text-[#1a1a1a] flex items-center gap-2">
+                  <svg className="w-5 h-5 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  Solicitud aprobada
+                </h3>
+              </div>
+              <div className="p-6 space-y-4">
+                <p className="text-sm text-gray-600">
+                  Se ha enviado el enlace al correo del usuario. Aquí tienes el enlace para que puedas reenviarlo personalmente (WhatsApp, etc.):
+                </p>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    readOnly
+                    value={approvedResetLink}
+                    className="flex-1 px-4 py-2.5 rounded-lg border border-gray-200 bg-gray-50 text-sm font-mono text-[#1a1a1a]"
+                  />
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      try {
+                        await navigator.clipboard.writeText(approvedResetLink);
+                        alert("Enlace copiado al portapapeles.");
+                      } catch {
+                        alert("No se pudo copiar. Selecciona y copia el enlace manualmente.");
+                      }
+                    }}
+                    className="px-4 py-2.5 bg-[#1a1a1a] text-white rounded-lg font-medium hover:bg-gray-800 transition-colors whitespace-nowrap"
+                  >
+                    Copiar enlace
+                  </button>
+                </div>
+              </div>
+              <div className="p-6 pt-0 flex justify-end">
+                <button
+                  type="button"
+                  onClick={() => setApprovedResetLink(null)}
+                  className="px-4 py-2.5 bg-gray-100 text-[#1a1a1a] rounded-lg font-medium hover:bg-gray-200 transition-colors"
+                >
+                  Cerrar
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Users List - Mobile: Cards, Desktop: Table */}
         
         {/* Mobile Card Layout */}
@@ -1651,14 +1288,6 @@ const UsersPage = () => {
                     <span className="mobile-card-value">{u.clinicId}</span>
                   </div>
                 )}
-                {u.role === "podiatrist" && (
-                  <div className="mobile-card-row">
-                    <span className="mobile-card-label">Créditos</span>
-                    <span className="mobile-card-value">
-                      {u.credits.total} <span className="text-xs text-gray-400">({u.credits.monthly}m + {u.credits.extra}e)</span>
-                    </span>
-                  </div>
-                )}
                 <div className="mobile-card-row">
                   <span className="mobile-card-label">Datos</span>
                   <span className="mobile-card-value">{u.patientCount} pacientes · {u.sessionCount} sesiones</span>
@@ -1679,28 +1308,6 @@ const UsersPage = () => {
                   >
                     Editar
                   </button>
-                )}
-                {isSuperAdmin && (u.role === "podiatrist" || u.role === "clinic_admin" || u.role === "admin") && (
-                  <>
-                    <button
-                      onClick={() => { setSelectedUser(u); setShowCreditModal(true); }}
-                      className="py-2.5 px-4 bg-green-50 text-green-700 rounded-lg hover:bg-green-100 active:bg-green-200 transition-colors min-h-[44px]"
-                      title="Ajustar créditos"
-                    >
-                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                      </svg>
-                    </button>
-                    <button
-                      onClick={() => { setSelectedUser(u); setShowRenewalModal(true); }}
-                      className="py-2.5 px-4 bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 active:bg-blue-200 transition-colors min-h-[44px]"
-                      title="Renovación mensual"
-                    >
-                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                      </svg>
-                    </button>
-                  </>
                 )}
                 {/* Estado de cuenta - solo para superadmin y usuarios creados */}
                 {isSuperAdmin && isCreatedUser(u.id) && (
@@ -1774,7 +1381,6 @@ const UsersPage = () => {
                   <th className="text-left px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Rol</th>
                   <th className="text-left px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Estado</th>
                   <th className="text-left px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Clínica</th>
-                  <th className="text-left px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Créditos</th>
                   <th className="text-left px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Datos</th>
                   <th className="text-right px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Acciones</th>
                 </tr>
@@ -1809,18 +1415,6 @@ const UsersPage = () => {
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-600">
                       {u.clinicId || "-"}
-                    </td>
-                    <td className="px-6 py-4">
-                      {u.role === "podiatrist" ? (
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm font-medium text-[#1a1a1a]">{u.credits.total}</span>
-                          <span className="text-xs text-gray-400">
-                            ({u.credits.monthly}m + {u.credits.extra}e)
-                          </span>
-                        </div>
-                      ) : (
-                        <span className="text-sm text-gray-400">-</span>
-                      )}
                     </td>
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3 text-xs text-gray-500">
@@ -1861,35 +1455,6 @@ const UsersPage = () => {
                           </button>
                         )}
                         
-                        {/* Adjust Credits */}
-                        {isSuperAdmin && (u.role === "podiatrist" || u.role === "clinic_admin" || u.role === "admin") && (
-                          <>
-                            <button
-                              onClick={() => {
-                                setSelectedUser(u);
-                                setShowCreditModal(true);
-                              }}
-                              className="p-2 text-gray-400 hover:text-[#1a1a1a] hover:bg-gray-100 rounded-lg transition-colors"
-                              title={u.role === "clinic_admin" ? "Ajustar pool de créditos de la clínica" : "Ajustar créditos"}
-                            >
-                              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                              </svg>
-                            </button>
-                            <button
-                              onClick={() => {
-                                setSelectedUser(u);
-                                setShowRenewalModal(true);
-                              }}
-                              className="p-2 text-gray-400 hover:text-[#1a1a1a] hover:bg-gray-100 rounded-lg transition-colors"
-                              title="Gestionar renovación mensual"
-                            >
-                              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                              </svg>
-                            </button>
-                          </>
-                        )}
                         
                         {/* Export JSON */}
                         {isSuperAdmin && u.role === "podiatrist" && u.patientCount > 0 && (
@@ -2037,20 +1602,6 @@ const UsersPage = () => {
         onClose={() => setShowEditModal(false)}
         user={selectedUser}
         onSave={handleEditUser}
-      />
-      
-      <CreditAdjustmentModal
-        isOpen={showCreditModal}
-        onClose={() => setShowCreditModal(false)}
-        user={selectedUser}
-        onSave={handleCreditAdjustment}
-      />
-      
-      <MonthlyRenewalModal
-        isOpen={showRenewalModal}
-        onClose={() => setShowRenewalModal(false)}
-        user={selectedUser}
-        onSave={handleMonthlyRenewalUpdate}
       />
       
       <TransferHistoryModal

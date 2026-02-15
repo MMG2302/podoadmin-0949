@@ -658,9 +658,13 @@ const UsersPage = () => {
     );
   };
 
-  // Verificar si el usuario es creado (puede ser gestionado)
-  const isCreatedUser = (userId: string): boolean => {
-    return userId.startsWith("user_created_");
+  // Verificar si el usuario actual puede gestionar (bloquear, banear, eliminar) al usuario objetivo
+  const canManageUser = (targetUser: User): boolean => {
+    if (!currentUser) return false;
+    if (currentUser.id === targetUser.id) return false; // No gestionar a sí mismo
+    if (currentUser.role === "super_admin") return true; // Super admin puede gestionar a todos
+    if (currentUser.role === "clinic_admin" && targetUser.role === "receptionist" && targetUser.clinicId === currentUser.clinicId) return true;
+    return false;
   };
 
   const handleCreateUser = (userData: Partial<User> & { password: string }) => {
@@ -1312,10 +1316,10 @@ const UsersPage = () => {
                     Editar
                   </button>
                 )}
-                {/* Estado de cuenta - solo para superadmin y usuarios creados */}
-                {isSuperAdmin && isCreatedUser(u.id) && (
+                {/* Estado de cuenta: super_admin gestiona todos; clinic_admin solo recepcionistas de su clínica */}
+                {(isSuperAdmin || currentUser?.role === "clinic_admin") && canManageUser(u) && (
                   <div className="mt-2 pt-2 border-t border-gray-200 space-y-1">
-                    {u.isBanned ? (
+                    {isSuperAdmin && (u.isBanned ? (
                       <button
                         onClick={() => handleUnbanUser(u)}
                         className="w-full py-2 px-3 bg-green-50 text-green-700 rounded-lg hover:bg-green-100 active:bg-green-200 transition-colors text-xs font-medium"
@@ -1329,7 +1333,7 @@ const UsersPage = () => {
                       >
                         Banear
                       </button>
-                    )}
+                    ))}
                     {u.isBlocked ? (
                       <button
                         onClick={() => handleUnblockUser(u)}
@@ -1473,7 +1477,7 @@ const UsersPage = () => {
                         )}
                         
                         {/* Account Management Actions - Solo para superadmin y usuarios creados */}
-                        {isSuperAdmin && isCreatedUser(u.id) && (
+                        {(isSuperAdmin || currentUser?.role === "clinic_admin") && canManageUser(u) && (
                           <div className="relative inline-block">
                             <button
                               className="p-2 text-gray-400 hover:text-[#1a1a1a] hover:bg-gray-100 rounded-lg transition-colors"
@@ -1496,7 +1500,7 @@ const UsersPage = () => {
                               onClick={(e) => e.stopPropagation()}
                             >
                               <div className="py-1">
-                                {u.isBanned ? (
+                                {isSuperAdmin && (u.isBanned ? (
                                   <button
                                     onClick={() => {
                                       handleUnbanUser(u);
@@ -1516,7 +1520,7 @@ const UsersPage = () => {
                                   >
                                     Banear cuenta
                                   </button>
-                                )}
+                                ))}
                                 {u.isBlocked ? (
                                   <button
                                     onClick={() => {

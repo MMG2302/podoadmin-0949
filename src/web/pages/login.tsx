@@ -21,14 +21,15 @@ const Login = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [countdown, setCountdown] = useState<number | null>(null);
   const [officialDomain, setOfficialDomain] = useState<string | null>(null);
+  const [supportEmail, setSupportEmail] = useState<string | null>(null);
   const [originMismatch, setOriginMismatch] = useState(false);
 
-  // Obtener dominio oficial y verificar que el usuario está en el origen correcto (anti-phishing)
+  // Obtener dominio oficial y email de soporte
   useEffect(() => {
     let cancelled = false;
     fetch("/api/public/config", { credentials: "include" })
       .then((res) => (res.ok ? res.json() : null))
-      .then((data: { officialDomain?: string | null } | null) => {
+      .then((data: { officialDomain?: string | null; supportEmail?: string | null } | null) => {
         if (cancelled) return;
         const domain = data?.officialDomain;
         if (domain) {
@@ -40,6 +41,7 @@ const Login = () => {
             setOriginMismatch(false);
           }
         }
+        if (data?.supportEmail) setSupportEmail(data.supportEmail);
       })
       .catch(() => {});
     return () => { cancelled = true; };
@@ -331,7 +333,12 @@ const Login = () => {
                 ))}
               </div>
               <p className="text-gray-500 text-sm text-center">
-                {t.auth.contactAdminForAccount}
+                <a
+                  href={`mailto:${supportEmail || "soporte@podoadmin.com"}?subject=${encodeURIComponent("Solicitud de cuenta - PodoAdmin")}`}
+                  className="text-[#1a1a1a] hover:underline font-medium"
+                >
+                  {t.auth.contactAdminForAccount}
+                </a>
               </p>
             </div>
           </div>

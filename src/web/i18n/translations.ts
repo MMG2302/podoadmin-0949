@@ -121,6 +121,7 @@ export interface Translations {
     resetPasswordRepeatPassword: string;
     resetPasswordHint: string;
     requestNewLink: string;
+    contactToVerifyRecovery: string;
     // Login security notices (anti-phishing)
     securityLabel: string;
     loginOnlyOnOfficialDomainWithDomain: string;
@@ -656,6 +657,7 @@ export const translations: Record<Language, Translations> = {
       resetPasswordRedirecting: "Redirigiendo al login...",
       resetPasswordRepeatPassword: "Repetir contraseña",
       resetPasswordHint: "Mínimo 12 caracteres, mayúscula, minúscula, número y carácter especial.",
+      contactToVerifyRecovery: "Ponte en contacto con nosotros para verificar que eres tú quien está recuperando la cuenta.",
       requestNewLink: "Solicitar nuevo enlace",
       securityLabel: "Seguridad:",
       loginOnlyOnOfficialDomainWithDomain: "Solo inicia sesión en {domain}. No uses esta contraseña en otros sitios.",
@@ -1162,6 +1164,7 @@ export const translations: Record<Language, Translations> = {
       resetPasswordRedirecting: "Redirecting to login...",
       resetPasswordRepeatPassword: "Repeat password",
       resetPasswordHint: "Minimum 12 characters, uppercase, lowercase, number and special character.",
+      contactToVerifyRecovery: "Contact us to verify that you are the one recovering the account.",
       requestNewLink: "Request new link",
       securityLabel: "Security:",
       loginOnlyOnOfficialDomainWithDomain: "Only sign in at {domain}. Do not use this password on other sites.",
@@ -1668,6 +1671,7 @@ export const translations: Record<Language, Translations> = {
       resetPasswordRedirecting: "Redirecionando para o login...",
       resetPasswordRepeatPassword: "Repetir senha",
       resetPasswordHint: "Mínimo 12 caracteres, maiúscula, minúscula, número e caractere especial.",
+      contactToVerifyRecovery: "Entre em contato conosco para verificar que você é quem está recuperando a conta.",
       requestNewLink: "Solicitar novo link",
       securityLabel: "Segurança:",
       loginOnlyOnOfficialDomainWithDomain: "Inicie sessão apenas em {domain}. Não use esta senha em outros sites.",
@@ -2172,6 +2176,7 @@ export const translations: Record<Language, Translations> = {
       resetPasswordRedirecting: "Redirection vers la connexion...",
       resetPasswordRepeatPassword: "Répéter le mot de passe",
       resetPasswordHint: "Minimum 12 caractères, majuscule, minuscule, chiffre et caractère spécial.",
+      contactToVerifyRecovery: "Contactez-nous pour vérifier que vous êtes bien la personne qui récupère le compte.",
       requestNewLink: "Demander un nouveau lien",
       securityLabel: "Sécurité :",
       loginOnlyOnOfficialDomainWithDomain: "Connectez-vous uniquement sur {domain}. N'utilisez pas ce mot de passe sur d'autres sites.",

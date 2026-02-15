@@ -21,6 +21,16 @@ const ResetPassword = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState("");
+  const [supportEmail, setSupportEmail] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetch("/api/public/config", { credentials: "include" })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data: { supportEmail?: string | null } | null) => {
+        if (data?.supportEmail) setSupportEmail(data.supportEmail);
+      })
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -71,12 +81,26 @@ const ResetPassword = () => {
     return (
       <div className="min-h-screen bg-white flex items-center justify-center p-8">
         <div className="max-w-md w-full text-center">
+          <div className="flex justify-end mb-4">
+            <LanguageSwitcher />
+          </div>
           <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
             <svg className="w-8 h-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
             </svg>
           </div>
-          <p className="text-gray-700 mb-6">{error}</p>
+          <p className="text-gray-700 mb-4">{error}</p>
+          <div className="mb-6 rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-900 text-left">
+            <p>
+              {t.auth.contactToVerifyRecovery}{" "}
+              <a
+                href={`mailto:${supportEmail || "soporte@podoadmin.com"}?subject=${encodeURIComponent("Verificación de identidad - Recuperación de contraseña")}`}
+                className="font-medium text-[#1a1a1a] hover:underline"
+              >
+                {supportEmail || "soporte@podoadmin.com"}
+              </a>
+            </p>
+          </div>
           <button
             onClick={() => setLocation("/forgot-password")}
             className="w-full py-3 bg-[#1a1a1a] text-white font-medium rounded-lg hover:bg-[#2a2a2a]"
@@ -150,6 +174,18 @@ const ResetPassword = () => {
                   </h2>
                   <p className="text-gray-500">
                     {t.auth.resetPasswordSubtitle}
+                  </p>
+                </div>
+
+                <div className="mb-6 rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-900">
+                  <p>
+                    {t.auth.contactToVerifyRecovery}{" "}
+                    <a
+                      href={`mailto:${supportEmail || "soporte@podoadmin.com"}?subject=${encodeURIComponent("Verificación de identidad - Recuperación de contraseña")}`}
+                      className="font-medium text-[#1a1a1a] hover:underline"
+                    >
+                      {supportEmail || "soporte@podoadmin.com"}
+                    </a>
                   </p>
                 </div>
 

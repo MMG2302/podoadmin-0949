@@ -91,7 +91,8 @@ app.get('/ping', (c) => c.json({ message: `Pong! ${Date.now()}` }));
 // Configuración pública para anti-phishing: dominio oficial (frontend puede mostrar "Solo accede desde [este dominio]")
 app.get('/public/config', (c) => {
   const officialDomain = process.env.OFFICIAL_APP_DOMAIN || process.env.ALLOWED_ORIGINS?.split(',')[0]?.trim() || '';
-  return c.json({ officialDomain: officialDomain || null });
+  const supportEmail = process.env.SUPPORT_EMAIL || process.env.ADMIN_EMAIL || '';
+  return c.json({ officialDomain: officialDomain || null, supportEmail: supportEmail || null });
 });
 
 // Ruta para obtener token CSRF (debe estar antes de la protección CSRF)

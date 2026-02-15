@@ -48,6 +48,14 @@ VITE_BASE_URL=http://localhost:5173  # Desarrollo
 
 ## Variables Opcionales
 
+### Email de soporte (login)
+
+```env
+# Email para el enlace "Contacta al administrador para crear una cuenta" en la pantalla de login
+# Si no se define, se usa soporte@podoadmin.com por defecto
+SUPPORT_EMAIL=soporte@tudominio.com
+```
+
 ### IP Whitelist
 
 ```env

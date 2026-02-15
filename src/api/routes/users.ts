@@ -374,9 +374,18 @@ async function setUserFlag(id: string, updates: Partial<typeof createdUsers.$inf
   await database.update(createdUsers).set({ ...updates, updatedAt: new Date().toISOString() } as any).where(eq(createdUsers.id, id));
 }
 
+/** Bloquea o desbloquea todos los usuarios de una clínica (podólogos, recepcionistas, clinic_admin). */
+async function setClinicUsersBlockState(clinicId: string, blocked: boolean) {
+  const updates = blocked
+    ? ({ isBlocked: true, isEnabled: false, disabledAt: Date.now(), updatedAt: new Date().toISOString() } as any)
+    : ({ isBlocked: false, isEnabled: true, disabledAt: null, updatedAt: new Date().toISOString() } as any);
+  await database.update(createdUsers).set(updates).where(eq(createdUsers.clinicId, clinicId));
+}
+
 // Bloqueo / desbloqueo:
 // - super_admin: cualquier usuario
 // - clinic_admin: solo recepcionistas de su clínica
+// - Si se bloquea/desbloquea un clinic_admin: en cascada a todos los usuarios de su clínica
 usersRoutes.post('/:userId/block', requireRole('super_admin', 'clinic_admin'), async (c) => {
   const requester = c.get('user');
   const row = await getUserRowByAnyId(c.req.param('userId'));
@@ -387,6 +396,9 @@ usersRoutes.post('/:userId/block', requireRole('super_admin', 'clinic_admin'), a
     }
   }
   await setUserFlag(row.id, { isBlocked: true } as any);
+  if (row.role === 'clinic_admin' && row.clinicId) {
+    await setClinicUsersBlockState(row.clinicId, true);
+  }
   return c.json({ success: true });
 });
 usersRoutes.post('/:userId/unblock', requireRole('super_admin', 'clinic_admin'), async (c) => {
@@ -399,6 +411,9 @@ usersRoutes.post('/:userId/unblock', requireRole('super_admin', 'clinic_admin'),
     }
   }
   await setUserFlag(row.id, { isBlocked: false } as any);
+  if (row.role === 'clinic_admin' && row.clinicId) {
+    await setClinicUsersBlockState(row.clinicId, false);
+  }
   return c.json({ success: true });
 });
 

@@ -31,6 +31,19 @@ import { eq, inArray } from 'drizzle-orm';
 
 export async function deleteUserCascade(userId: string, userRecordId: string): Promise<{ deleted: boolean; error?: string }> {
   try {
+    // 0. Si es clinic_admin: bloquear cuentas de podólogos y recepcionistas de su clínica
+    const userRow = await database.select({ role: createdUsers.role, clinicId: createdUsers.clinicId }).from(createdUsers).where(eq(createdUsers.id, userRecordId)).limit(1);
+    if (userRow[0]?.role === 'clinic_admin' && userRow[0]?.clinicId) {
+      const clinicId = userRow[0].clinicId;
+      await database.update(createdUsers).set({
+        isBlocked: true,
+        isEnabled: false,
+        disabledAt: Date.now(),
+        updatedAt: new Date().toISOString(),
+      } as any).where(eq(createdUsers.clinicId, clinicId));
+      // Incluye al clinic_admin; se borrará a continuación
+    }
+
     // 1. Soporte: mensajes de conversaciones del usuario
     const convos = await database
       .select({ id: supportConversations.id })

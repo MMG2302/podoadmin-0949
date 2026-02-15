@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { useLanguage } from "../contexts/language-context";
 import { LanguageSwitcher } from "../components/language-switcher";
@@ -11,6 +11,16 @@ const ForgotPassword = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [sent, setSent] = useState(false);
   const [error, setError] = useState("");
+  const [supportEmail, setSupportEmail] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetch("/api/public/config", { credentials: "include" })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data: { supportEmail?: string | null } | null) => {
+        if (data?.supportEmail) setSupportEmail(data.supportEmail);
+      })
+      .catch(() => {});
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -91,6 +101,18 @@ const ForgotPassword = () => {
                   </h2>
                   <p className="text-gray-500">
                     {t.auth.forgotPasswordSubtitle}
+                  </p>
+                </div>
+
+                <div className="mb-6 rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-900">
+                  <p>
+                    {t.auth.contactToVerifyRecovery}{" "}
+                    <a
+                      href={`mailto:${supportEmail || "soporte@podoadmin.com"}?subject=${encodeURIComponent("Verificación de identidad - Recuperación de contraseña")}`}
+                      className="font-medium text-[#1a1a1a] hover:underline"
+                    >
+                      {supportEmail || "soporte@podoadmin.com"}
+                    </a>
                   </p>
                 </div>
 

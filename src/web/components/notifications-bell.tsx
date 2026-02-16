@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { Link } from "wouter";
 import { useLanguage } from "../contexts/language-context";
 import { useAuth } from "../contexts/auth-context";
+import { useRefreshOnFocus } from "../hooks/use-refresh-on-focus";
 import { api } from "../lib/api-client";
 import { Notification, NotificationType } from "../lib/storage";
 
@@ -80,13 +81,15 @@ export const NotificationsBell = () => {
 
   useEffect(() => {
     loadNotifications();
-    // Refresh notifications every 30 seconds
-    const interval = setInterval(loadNotifications, 30000);
+    // Refresh notifications every 5 seconds para actualizaciones casi instantáneas
+    const interval = setInterval(loadNotifications, 5000);
 
     return () => {
       clearInterval(interval);
     };
   }, [user?.id]);
+
+  useRefreshOnFocus(loadNotifications);
 
   // Close dropdown when clicking outside
   useEffect(() => {

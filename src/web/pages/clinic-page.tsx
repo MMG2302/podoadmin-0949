@@ -1,7 +1,8 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
 import { MainLayout } from "../components/layout/main-layout";
 import { useLanguage } from "../contexts/language-context";
 import { useAuth, User } from "../contexts/auth-context";
+import { useRefreshOnFocus } from "../hooks/use-refresh-on-focus";
 import { api } from "../lib/api-client";
 import { 
   addAuditLog,
@@ -178,7 +179,7 @@ const ClinicPage = () => {
   const clinicPodiatristIds = useMemo(() => new Set(clinicPodiatrists.map(p => p.id)), [clinicPodiatrists]);
 
   // Cargar pacientes y sesiones desde API (clinic_admin ve todos; filtramos por clínica en cliente)
-  useEffect(() => {
+  const loadClinicData = useCallback(() => {
     api.get<{ success?: boolean; patients?: PatientApi[] }>("/patients").then((r) => {
       if (r.success && Array.isArray(r.data?.patients)) setAllPatients(r.data.patients);
     });
@@ -186,6 +187,12 @@ const ClinicPage = () => {
       if (r.success && Array.isArray(r.data?.sessions)) setAllSessions(r.data.sessions);
     });
   }, []);
+
+  useEffect(() => {
+    loadClinicData();
+  }, [loadClinicData]);
+
+  useRefreshOnFocus(loadClinicData);
 
   // Cargar límite de podólogos de la clínica
   useEffect(() => {

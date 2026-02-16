@@ -1,7 +1,8 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { MainLayout } from "../components/layout/main-layout";
 import { useLanguage } from "../contexts/language-context";
 import { useAuth } from "../contexts/auth-context";
+import { useRefreshOnFocus } from "../hooks/use-refresh-on-focus";
 import { api } from "../lib/api-client";
 import { Notification, NotificationType } from "../lib/storage";
 
@@ -81,15 +82,20 @@ const NotificationsPage = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedNotifications, setSelectedNotifications] = useState<Set<string>>(new Set());
 
-  const loadNotifications = async () => {
+  const loadNotifications = useCallback(async () => {
     if (!user?.id) return;
     const r = await api.get<{ success?: boolean; notifications?: Notification[] }>("/notifications");
     if (r.success && Array.isArray(r.data?.notifications)) setNotifications(r.data.notifications);
-  };
+  }, [user?.id]);
 
   useEffect(() => {
     loadNotifications();
-  }, [user?.id]);
+    // Polling cada 5 segundos para actualizaciones casi instantáneas
+    const interval = setInterval(loadNotifications, 5000);
+    return () => clearInterval(interval);
+  }, [loadNotifications]);
+
+  useRefreshOnFocus(loadNotifications);
 
   // Filter notifications
   const filteredNotifications = useMemo(() => {

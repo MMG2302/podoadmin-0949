@@ -1,9 +1,10 @@
-import { useState, useMemo, useEffect, useRef } from "react";
+import { useState, useMemo, useEffect, useRef, useCallback } from "react";
 import { useLocation } from "wouter";
 import { MainLayout } from "../components/layout/main-layout";
 import { useLanguage } from "../contexts/language-context";
 import { useAuth } from "../contexts/auth-context";
 import { usePermissions } from "../hooks/use-permissions";
+import { useRefreshOnFocus } from "../hooks/use-refresh-on-focus";
 
 // Helper to check if user puede crear recetas
 // Por defecto: podólogo. Opcionalmente permitimos también clinic_admin para gestión clínica avanzada.
@@ -116,25 +117,45 @@ const SessionsPage = () => {
   const [showForm, setShowForm] = useState(false);
   const [editingSession, setEditingSession] = useState<ClinicalSession | null>(null);
 
-  const loadPatients = async () => {
+  const loadPatients = useCallback(async () => {
     try {
       const response = await api.get<{ success: boolean; patients: Patient[] }>("/patients");
-if (response.success && response.data?.success) {
-          setPatients(response.data.patients ?? []);
-        }
+      if (response.success && response.data?.success) {
+        setPatients(response.data.patients ?? []);
+      }
     } catch (error) {
       console.error("Error cargando pacientes:", error);
     }
-  };
+  }, []);
+
+  const loadSessions = useCallback(async () => {
+    try {
+      const response = await api.get<{ success: boolean; sessions: ClinicalSession[] }>("/sessions");
+      if (response.success && response.data?.success) {
+        setSessions(response.data.sessions);
+      } else {
+        console.error("Error cargando sesiones:", response.error || response.data?.message);
+      }
+    } catch (error) {
+      console.error("Error cargando sesiones:", error);
+    }
+  }, []);
+
+  const refreshData = useCallback(() => {
+    void loadPatients();
+    void loadSessions();
+  }, [loadPatients, loadSessions]);
 
   // Cargar pacientes al montar y cuando se abre el formulario (para tener datos frescos)
   useEffect(() => {
     loadPatients();
-  }, [user?.id]);
+  }, [user?.id, loadPatients]);
 
   useEffect(() => {
     if (showForm) loadPatients();
-  }, [showForm]);
+  }, [showForm, loadPatients]);
+
+  useRefreshOnFocus(refreshData);
 
   const getPatientById = (id: string) => patients.find((p) => p.id === id);
 
@@ -183,21 +204,8 @@ if (response.success && response.data?.success) {
   
   // Cargar sesiones desde la API (el backend aplica reglas de visibilidad por rol)
   useEffect(() => {
-    const loadSessions = async () => {
-      try {
-        const response = await api.get<{ success: boolean; sessions: ClinicalSession[] }>("/sessions");
-        if (response.success && response.data?.success) {
-          setSessions(response.data.sessions);
-        } else {
-          console.error("Error cargando sesiones:", response.error || response.data?.message);
-        }
-      } catch (error) {
-        console.error("Error cargando sesiones:", error);
-      }
-    };
-
     loadSessions();
-  }, [isPodiatrist, user?.id]);
+  }, [isPodiatrist, user?.id, loadSessions]);
 
   // Auto-open session if id is in URL
   useEffect(() => {

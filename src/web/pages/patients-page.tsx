@@ -1,9 +1,10 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
 import { useLocation, Link } from "wouter";
 import { MainLayout } from "../components/layout/main-layout";
 import { useLanguage } from "../contexts/language-context";
 import { useAuth } from "../contexts/auth-context";
 import { usePermissions } from "../hooks/use-permissions";
+import { useRefreshOnFocus } from "../hooks/use-refresh-on-focus";
 import {
   getSessionsByPatient,
   Patient,
@@ -113,22 +114,24 @@ const PatientsPage = () => {
   const patientIdFromUrl: string | null = searchParams.get("id");
 
   // Cargar pacientes desde la API (backend aplica reglas de visibilidad por rol: podólogo, recepcionista, clinic_admin)
-  useEffect(() => {
-    const loadPatients = async () => {
-      try {
-        const response = await api.get<{ success: boolean; patients: Patient[] }>("/patients");
-        if (response.success && response.data?.success) {
-          setPatients(response.data.patients);
-        } else {
-          console.error("Error cargando pacientes:", response.error || response.data?.message);
-        }
-      } catch (error) {
-        console.error("Error cargando pacientes:", error);
+  const loadPatients = useCallback(async () => {
+    try {
+      const response = await api.get<{ success: boolean; patients: Patient[] }>("/patients");
+      if (response.success && response.data?.success) {
+        setPatients(response.data.patients);
+      } else {
+        console.error("Error cargando pacientes:", response.error || response.data?.message);
       }
-    };
+    } catch (error) {
+      console.error("Error cargando pacientes:", error);
+    }
+  }, []);
 
+  useEffect(() => {
     loadPatients();
-  }, [user?.id]);
+  }, [user?.id, loadPatients]);
+
+  useRefreshOnFocus(loadPatients);
 
   const filteredPatients = useMemo(() => {
     if (!searchQuery) return patients;

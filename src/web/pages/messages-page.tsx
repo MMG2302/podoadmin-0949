@@ -2,6 +2,7 @@ import { useState, useMemo, useEffect } from "react";
 import { MainLayout } from "../components/layout/main-layout";
 import { useLanguage } from "../contexts/language-context";
 import { useAuth } from "../contexts/auth-context";
+import { useRefreshOnFocus } from "../hooks/use-refresh-on-focus";
 import { api } from "../lib/api-client";
 import { SentMessage } from "../lib/storage";
 
@@ -33,6 +34,8 @@ const MessagesPage = () => {
   useEffect(() => {
     refreshSentMessages();
   }, [user?.id]);
+
+  useRefreshOnFocus(refreshSentMessages);
 
   // Get recipients based on mode
   const getRecipients = (): string[] => {

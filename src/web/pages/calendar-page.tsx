@@ -1,9 +1,10 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
 import { Link } from "wouter";
 import { MainLayout } from "../components/layout/main-layout";
 import { useLanguage } from "../contexts/language-context";
 import { useAuth } from "../contexts/auth-context";
 import { usePermissions } from "../hooks/use-permissions";
+import { useRefreshOnFocus } from "../hooks/use-refresh-on-focus";
 import { api } from "../lib/api-client";
 import { 
   ClinicalSession, 
@@ -78,20 +79,23 @@ const CalendarPage = () => {
   const [appointmentSubmitError, setAppointmentSubmitError] = useState("");
 
   // Cargar sesiones, pacientes y citas desde API
-  useEffect(() => {
+  const loadCalendarData = useCallback(async () => {
     if (!user?.id) return;
-    const load = async () => {
-      const [sessRes, patRes, aptRes] = await Promise.all([
-        api.get<{ success?: boolean; sessions?: ClinicalSession[] }>("/sessions"),
-        api.get<{ success?: boolean; patients?: Patient[] }>("/patients"),
-        api.get<{ success?: boolean; appointments?: Appointment[] }>("/appointments"),
-      ]);
-      if (sessRes.success && Array.isArray(sessRes.data?.sessions)) setAllSessions(sessRes.data.sessions);
-      if (patRes.success && Array.isArray(patRes.data?.patients)) setAllPatients(patRes.data.patients);
-      if (aptRes.success && Array.isArray(aptRes.data?.appointments)) setAllAppointments(aptRes.data.appointments);
-    };
-    load();
-  }, [user?.id, refreshTrigger]);
+    const [sessRes, patRes, aptRes] = await Promise.all([
+      api.get<{ success?: boolean; sessions?: ClinicalSession[] }>("/sessions"),
+      api.get<{ success?: boolean; patients?: Patient[] }>("/patients"),
+      api.get<{ success?: boolean; appointments?: Appointment[] }>("/appointments"),
+    ]);
+    if (sessRes.success && Array.isArray(sessRes.data?.sessions)) setAllSessions(sessRes.data.sessions);
+    if (patRes.success && Array.isArray(patRes.data?.patients)) setAllPatients(patRes.data.patients);
+    if (aptRes.success && Array.isArray(aptRes.data?.appointments)) setAllAppointments(aptRes.data.appointments);
+  }, [user?.id]);
+
+  useEffect(() => {
+    loadCalendarData();
+  }, [loadCalendarData, refreshTrigger]);
+
+  useRefreshOnFocus(loadCalendarData);
 
   // Filter sessions based on role and podiatrist filter
   const filteredSessions: SessionWithPatient[] = useMemo(() => {

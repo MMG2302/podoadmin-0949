@@ -182,6 +182,7 @@ authRoutes.post('/login', async (c) => {
             isBlocked: dbUser.isBlocked,
             isEnabled: dbUser.isEnabled,
             isBanned: dbUser.isBanned,
+            mustChangePassword: dbUser.mustChangePassword || false,
           },
         };
       }
@@ -220,6 +221,39 @@ authRoutes.post('/login', async (c) => {
       if (shouldSendNotification(attemptCount)) {
         const isBlocked = attemptCount >= 10;
         await sendFailedLoginNotification(emailLower, attemptCount, isBlocked);
+      }
+
+      // Notificación in-app para super_admin cuando se alcanzan exactamente 10 intentos (evitar spam)
+      if (attemptCount === 10) {
+        try {
+          const { database } = await import('../database');
+          const schema = await import('../database/schema');
+          const { createdUsers, notifications: notificationsTable } = schema;
+          const { eq } = await import('drizzle-orm');
+          const superAdminRows = await database
+            .select({ userId: createdUsers.userId })
+            .from(createdUsers)
+            .where(eq(createdUsers.role, 'super_admin'));
+          const now = new Date().toISOString();
+          const title = '⚠️ Alerta de seguridad: 10+ intentos de login fallidos';
+          const message = `Se han registrado ${attemptCount} intentos fallidos de inicio de sesión para el correo ${emailLower}. La cuenta está bloqueada temporalmente (15 min).`;
+          const metadata = JSON.stringify({ email: emailLower, attemptCount, blocked: true });
+          for (const row of superAdminRows) {
+            const notifId = `notif_${crypto.randomUUID().replace(/-/g, '')}`;
+            await database.insert(notificationsTable).values({
+              id: notifId,
+              userId: row.userId,
+              type: 'system',
+              title,
+              message,
+              read: false,
+              metadata,
+              createdAt: now,
+            });
+          }
+        } catch (err) {
+          console.error('Error creando notificación de login fallido para super_admin:', err);
+        }
       }
 
       // Calcular delay para el siguiente intento (solo si no está whitelisted)
@@ -420,6 +454,7 @@ authRoutes.post('/login', async (c) => {
         role: matchedUser.user.role,
         clinicId: matchedUser.user.clinicId,
         assignedPodiatristIds: matchedUser.user.assignedPodiatristIds,
+        mustChangePassword: matchedUser.user.mustChangePassword,
       },
     });
   } catch (error) {
@@ -522,8 +557,89 @@ authRoutes.get('/verify', requireAuth, async (c) => {
       role: dbUser.role,
       clinicId: dbUser.clinicId || undefined,
       assignedPodiatristIds: dbUser.assignedPodiatristIds ?? undefined,
+      mustChangePassword: dbUser.mustChangePassword ?? false,
     },
   });
+});
+
+/**
+ * Schema para cambiar contraseña (usuario autenticado)
+ */
+const changePasswordSchema = {
+  currentPassword: (val: unknown) => typeof val === 'string' && val.length >= 1,
+  newPassword: (val: unknown) => typeof val === 'string' && val.length >= 1,
+};
+
+/**
+ * POST /api/auth/change-password
+ * Cambia la contraseña del usuario autenticado (obligatorio tras contraseña temporal)
+ */
+authRoutes.post('/change-password', requireAuth, async (c) => {
+  try {
+    const rawBody = await c.req.json().catch(() => ({}));
+    const { currentPassword, newPassword } = rawBody as { currentPassword?: string; newPassword?: string };
+
+    if (!changePasswordSchema.currentPassword(currentPassword) || !changePasswordSchema.newPassword(newPassword)) {
+      return c.json(
+        { error: 'Datos inválidos', message: 'Contraseña actual y nueva son requeridas' },
+        400
+      );
+    }
+
+    const user = c.get('user');
+    const dbUser = await getUserByIdFromDB(user.userId);
+    if (!dbUser || !dbUser.password) {
+      return c.json({ error: 'Usuario no encontrado' }, 404);
+    }
+
+    const { verifyPassword } = await import('../utils/password');
+    const valid = await verifyPassword(currentPassword, dbUser.password);
+    if (!valid) {
+      return c.json(
+        { error: 'Contraseña incorrecta', message: 'La contraseña actual no es correcta' },
+        400
+      );
+    }
+
+    const { validatePasswordStrength, hashPassword } = await import('../utils/password');
+    const validation = validatePasswordStrength(newPassword);
+    if (!validation.valid) {
+      return c.json(
+        { error: 'Contraseña débil', message: validation.errors[0], errors: validation.errors },
+        400
+      );
+    }
+
+    const { createdUsers } = await import('../database/schema');
+    const { database } = await import('../database');
+    const { eq } = await import('drizzle-orm');
+
+    const hashedPassword = await hashPassword(newPassword);
+    const now = new Date().toISOString();
+
+    await database
+      .update(createdUsers)
+      .set({ password: hashedPassword, updatedAt: now, mustChangePassword: false })
+      .where(eq(createdUsers.userId, user.userId));
+
+    const { logAuditEvent } = await import('../utils/audit-log');
+    await logAuditEvent({
+      userId: user.userId,
+      action: 'PASSWORD_CHANGED',
+      resourceType: 'authentication',
+      ipAddress: getClientIP(c.req.raw.headers),
+      userAgent: getSafeUserAgent(c),
+      details: { source: 'change_password' },
+    });
+
+    return c.json({ success: true, message: 'Contraseña actualizada correctamente' });
+  } catch (error) {
+    console.error('Error en change-password:', error);
+    return c.json(
+      { error: 'Error interno', message: 'Ocurrió un error al cambiar la contraseña' },
+      500
+    );
+  }
 });
 
 /**

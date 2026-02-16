@@ -2,7 +2,7 @@ import { Hono } from 'hono';
 import { eq, desc, and, ne } from 'drizzle-orm';
 import { requireAuth } from '../middleware/auth';
 import { database } from '../database';
-import { supportConversations, supportMessages, createdUsers } from '../database/schema';
+import { supportConversations, supportMessages, createdUsers, notifications as notificationsTable } from '../database/schema';
 import { logAuditEvent } from '../utils/audit-log';
 import { getClientIP } from '../utils/ip-tracking';
 import { getSafeUserAgent } from '../utils/request-headers';
@@ -61,6 +61,35 @@ supportRoutes.post('/conversations', async (c) => {
       ipAddress: getClientIP(c.req.raw.headers),
       userAgent: getSafeUserAgent(c),
     });
+
+    // Notificar a super_admin y admin de nuevo ticket
+    try {
+      const adminRows = await database
+        .select({ userId: createdUsers.userId })
+        .from(createdUsers)
+        .where(eq(createdUsers.role, 'super_admin'));
+      const adminRows2 = await database
+        .select({ userId: createdUsers.userId })
+        .from(createdUsers)
+        .where(eq(createdUsers.role, 'admin'));
+      const recipientIds = [...new Set([...adminRows.map((r) => r.userId), ...adminRows2.map((r) => r.userId)])];
+      const userName = user.name || user.email || user.userId;
+      for (const uid of recipientIds) {
+        const notifId = `notif_${crypto.randomUUID().replace(/-/g, '')}`;
+        await database.insert(notificationsTable).values({
+          id: notifId,
+          userId: uid,
+          type: 'system',
+          title: '📩 Nuevo mensaje de soporte',
+          message: `${userName} ha abierto un ticket: "${subject.slice(0, 60)}${subject.length > 60 ? '...' : ''}"`,
+          read: false,
+          metadata: JSON.stringify({ conversationId: convId, subject, fromUserId: user.userId }),
+          createdAt: now,
+        });
+      }
+    } catch (err) {
+      console.error('Error creando notificación de soporte:', err);
+    }
 
     return c.json({
       success: true,
@@ -232,6 +261,52 @@ supportRoutes.post('/conversations/:id/messages', async (c) => {
       .update(supportConversations)
       .set({ updatedAt: now })
       .where(eq(supportConversations.id, convId));
+
+    // Notificar al destinatario del mensaje
+    try {
+      const preview = messageBody.slice(0, 80) + (messageBody.length > 80 ? '...' : '');
+      if (isAdmin) {
+        // Admin responde -> notificar al usuario que abrió el ticket
+        const notifId = `notif_${crypto.randomUUID().replace(/-/g, '')}`;
+        await database.insert(notificationsTable).values({
+          id: notifId,
+          userId: conv.userId,
+          type: 'system',
+          title: '💬 Respuesta de soporte',
+          message: `PodoAdmin ha respondido en "${conv.subject.slice(0, 40)}${conv.subject.length > 40 ? '...' : ''}": ${preview}`,
+          read: false,
+          metadata: JSON.stringify({ conversationId: convId, subject: conv.subject, messageId: msgId }),
+          createdAt: now,
+        });
+      } else {
+        // Usuario envía mensaje -> notificar a super_admin y admin
+        const adminRows = await database
+          .select({ userId: createdUsers.userId })
+          .from(createdUsers)
+          .where(eq(createdUsers.role, 'super_admin'));
+        const adminRows2 = await database
+          .select({ userId: createdUsers.userId })
+          .from(createdUsers)
+          .where(eq(createdUsers.role, 'admin'));
+        const recipientIds = [...new Set([...adminRows.map((r) => r.userId), ...adminRows2.map((r) => r.userId)])];
+        const userName = user.name || user.email || user.userId;
+        for (const uid of recipientIds) {
+          const notifId = `notif_${crypto.randomUUID().replace(/-/g, '')}`;
+          await database.insert(notificationsTable).values({
+            id: notifId,
+            userId: uid,
+            type: 'system',
+            title: '📩 Nuevo mensaje de soporte',
+            message: `${userName} respondió en "${conv.subject.slice(0, 40)}${conv.subject.length > 40 ? '...' : ''}": ${preview}`,
+            read: false,
+            metadata: JSON.stringify({ conversationId: convId, subject: conv.subject, fromUserId: user.userId }),
+            createdAt: now,
+          });
+        }
+      }
+    } catch (err) {
+      console.error('Error creando notificación de mensaje soporte:', err);
+    }
 
     return c.json({
       success: true,

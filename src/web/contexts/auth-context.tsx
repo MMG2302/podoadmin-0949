@@ -13,6 +13,7 @@ export interface User {
   isEnabled?: boolean; // Cuenta habilitada (por defecto true)
   isBanned?: boolean; // Cuenta baneada permanentemente
   disabledAt?: number; // Timestamp cuando se deshabilitó (ciclo: 1 mes grace → bloqueo → 7 meses borrado)
+  mustChangePassword?: boolean; // Contraseña temporal: obligar cambio en primer login
 }
 
 interface AuthContextType {
@@ -35,6 +36,8 @@ interface AuthContextType {
   fetchUsers: () => Promise<void>;
   /** Comprueba si un email está en uso (según la lista cargada desde API). */
   isEmailTaken: (email: string) => boolean;
+  /** Actualiza datos del usuario en el contexto (p. ej. tras cambiar contraseña). */
+  updateUser: (updates: Partial<User>) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -121,8 +124,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       });
 
       if (response.success && response.data) {
-        setUser(response.data.user);
-        localStorage.setItem("podoadmin_user", JSON.stringify(response.data.user));
+        const userData = { ...response.data.user, mustChangePassword: response.data.user?.mustChangePassword ?? false };
+        setUser(userData);
+        localStorage.setItem("podoadmin_user", JSON.stringify(userData));
         try {
           await api.get("/csrf/token");
         } catch (error) {
@@ -168,6 +172,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const isEmailTaken = (email: string) =>
     users.some((u) => u.email.toLowerCase().trim() === email.toLowerCase().trim());
 
+  const updateUser = useCallback((updates: Partial<User>) => {
+    setUser((prev) => {
+      if (!prev) return null;
+      const updated = { ...prev, ...updates };
+      localStorage.setItem("podoadmin_user", JSON.stringify(updated));
+      return updated;
+    });
+  }, []);
+
   return (
     <AuthContext.Provider
       value={{
@@ -179,6 +192,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         getAllUsers,
         fetchUsers,
         isEmailTaken,
+        updateUser,
       }}
     >
       {children}

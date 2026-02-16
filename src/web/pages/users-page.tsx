@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { createPortal } from "react-dom";
 import { MainLayout } from "../components/layout/main-layout";
 import { useLanguage } from "../contexts/language-context";
@@ -217,6 +217,317 @@ const CreateUserModal = ({
             </button>
           </div>
         </form>
+      </div>
+    </div>
+  );
+};
+
+// CSV template for bulk import (semicolon delimiter - works well with Spanish names)
+const BULK_IMPORT_TEMPLATE = `nombre;email;password;rol;clinicMode;clinicId
+Juan Pérez;juan@ejemplo.com;TempPass123!;podiatrist;existing;clinic_001
+María García;maria@ejemplo.com;TempPass123!;clinic_admin;new;
+Pedro López;pedro@ejemplo.com;TempPass123!;podiatrist;none;`;
+
+// Bulk Import Modal
+const BulkImportModal = ({
+  isOpen,
+  onClose,
+  onImportComplete,
+  clinics = [],
+  isSuperAdmin,
+  currentUserClinicId,
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  onImportComplete: () => void;
+  clinics?: ClinicOption[];
+  isSuperAdmin: boolean;
+  currentUserClinicId?: string;
+}) => {
+  const [file, setFile] = useState<File | null>(null);
+  const [defaultPassword, setDefaultPassword] = useState("");
+  const [parsedRows, setParsedRows] = useState<Array<{ name: string; email: string; password: string; role: UserRole; clinicMode: string; clinicId: string }>>([]);
+  const [parseError, setParseError] = useState<string | null>(null);
+  const [isImporting, setIsImporting] = useState(false);
+  const [importResults, setImportResults] = useState<Array<{ index: number; name: string; email: string; success: boolean; error?: string }>>([]);
+  const [importDone, setImportDone] = useState(false);
+
+  const resetState = () => {
+    setFile(null);
+    setDefaultPassword("");
+    setParsedRows([]);
+    setParseError(null);
+    setImportResults([]);
+    setImportDone(false);
+  };
+
+  const handleClose = () => {
+    resetState();
+    onClose();
+  };
+
+  const downloadTemplate = () => {
+    const blob = new Blob([BULK_IMPORT_TEMPLATE], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "plantilla_usuarios.csv";
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const parseCSV = (text: string): string[][] => {
+    const lines = text.trim().split(/\r?\n/).filter((l) => l.trim());
+    const rows: string[][] = [];
+    for (const line of lines) {
+      const cells: string[] = [];
+      let current = "";
+      let inQuotes = false;
+      for (let i = 0; i < line.length; i++) {
+        const c = line[i];
+        if (c === '"') {
+          inQuotes = !inQuotes;
+        } else if ((c === ";" || c === ",") && !inQuotes) {
+          cells.push(current.trim());
+          current = "";
+        } else {
+          current += c;
+        }
+      }
+      cells.push(current.trim());
+      rows.push(cells);
+    }
+    return rows;
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0];
+    if (!f) return;
+    setParseError(null);
+    setParsedRows([]);
+    const reader = new FileReader();
+    reader.onload = () => {
+      try {
+        const text = String(reader.result);
+        const rows = parseCSV(text);
+        if (rows.length < 2) {
+          setParseError("El archivo debe tener al menos una fila de encabezado y una fila de datos.");
+          return;
+        }
+        const header = rows[0].map((h) => h.toLowerCase().replace(/\s/g, ""));
+        const nameIdx = header.findIndex((h) => h === "nombre" || h === "name");
+        const emailIdx = header.findIndex((h) => h === "email");
+        const passIdx = header.findIndex((h) => h === "password" || h === "contraseña");
+        const roleIdx = header.findIndex((h) => h === "rol" || h === "role");
+        const clinicModeIdx = header.findIndex((h) => h === "clinicmode" || h === "clinic_mode");
+        const clinicIdIdx = header.findIndex((h) => h === "clinicid" || h === "clinic_id");
+
+        if (nameIdx < 0 || emailIdx < 0 || passIdx < 0 || roleIdx < 0) {
+          setParseError("Faltan columnas obligatorias: nombre, email, password, rol");
+          return;
+        }
+
+        const validRoles = ["super_admin", "clinic_admin", "admin", "podiatrist", "receptionist"];
+        const parsed: typeof parsedRows = [];
+        for (let i = 1; i < rows.length; i++) {
+          const row = rows[i];
+          const name = (row[nameIdx] ?? "").trim();
+          const email = (row[emailIdx] ?? "").trim();
+          let password = (row[passIdx] ?? "").trim();
+          const roleRaw = (row[roleIdx] ?? "").trim().toLowerCase();
+          const role = (validRoles.includes(roleRaw) ? roleRaw : "podiatrist") as UserRole;
+          const clinicMode = clinicModeIdx >= 0 ? (row[clinicModeIdx] ?? "").trim().toLowerCase() : "existing";
+          const clinicId = clinicIdIdx >= 0 ? (row[clinicIdIdx] ?? "").trim() : "";
+
+          if (!name || !email) continue;
+          parsed.push({
+            name,
+            email,
+            password,
+            role,
+            clinicMode: clinicMode || "existing",
+            clinicId,
+          });
+        }
+        setParsedRows(parsed);
+        setFile(f);
+      } catch (err) {
+        setParseError(err instanceof Error ? err.message : "Error al leer el archivo");
+      }
+    };
+    reader.readAsText(f, "UTF-8");
+  };
+
+  const runImport = async () => {
+    if (parsedRows.length === 0) return;
+    setIsImporting(true);
+    setImportResults([]);
+    const results: typeof importResults = [];
+    for (let i = 0; i < parsedRows.length; i++) {
+      const row = parsedRows[i];
+      let password = row.password;
+      if (!password && defaultPassword) password = defaultPassword;
+      if (!password || password.length < 8) {
+        results.push({ index: i + 1, name: row.name, email: row.email, success: false, error: "Contraseña inválida (mín. 8 caracteres)" });
+        continue;
+      }
+      try {
+        const userPayload: Record<string, unknown> = {
+          email: row.email.toLowerCase(),
+          name: row.name,
+          role: row.role,
+          password,
+        };
+        if (isSuperAdmin) {
+          if (row.clinicMode === "existing" && row.clinicId) {
+            userPayload.clinicId = row.clinicId;
+          }
+          // Si clinicMode === "new", creamos usuario sin clínica, luego clínica, luego actualizamos
+        } else if (currentUserClinicId) {
+          userPayload.clinicId = currentUserClinicId;
+        }
+
+        const response = await api.post<{ success: boolean; user: User }>("/users", userPayload);
+        if (response.success && response.data?.success) {
+          const newUser = response.data.user;
+          if (isSuperAdmin && row.clinicMode === "new" && (row.role === "clinic_admin" || row.role === "podiatrist")) {
+            const clinicRes = await api.post<{ success?: boolean; clinic?: { clinicId: string } }>("/clinics", { ownerId: newUser.id });
+            if (clinicRes.success && clinicRes.data?.clinic) {
+              await api.put(`/users/${newUser.id}`, { clinicId: clinicRes.data.clinic.clinicId });
+            }
+          }
+          results.push({ index: i + 1, name: row.name, email: row.email, success: true });
+        } else {
+          const msg = (response.data as { message?: string })?.message || response.error || "Error desconocido";
+          results.push({ index: i + 1, name: row.name, email: row.email, success: false, error: msg });
+        }
+      } catch (err) {
+        results.push({
+          index: i + 1,
+          name: row.name,
+          email: row.email,
+          success: false,
+          error: err instanceof Error ? err.message : "Error de conexión",
+        });
+      }
+      setImportResults([...results]);
+    }
+    setIsImporting(false);
+    setImportDone(true);
+    onImportComplete();
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 overflow-y-auto">
+      <div className="bg-white rounded-2xl w-full max-w-2xl shadow-xl my-8 max-h-[90vh] flex flex-col">
+        <div className="p-6 border-b border-gray-100 flex-shrink-0">
+          <h3 className="text-lg font-semibold text-[#1a1a1a] flex items-center gap-2">
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+            </svg>
+            Importar usuarios desde CSV
+          </h3>
+        </div>
+        <div className="p-6 space-y-4 overflow-y-auto flex-1">
+          <p className="text-sm text-gray-600">
+            Sube un archivo CSV con columnas: <strong>nombre</strong>, <strong>email</strong>, <strong>password</strong>, <strong>rol</strong>.
+            {isSuperAdmin && " Opcional: clinicMode (existing|new|none), clinicId (si existing)."}
+          </p>
+          <div className="flex gap-3">
+            <button
+              type="button"
+              onClick={downloadTemplate}
+              className="px-4 py-2 border border-gray-200 rounded-lg text-sm font-medium text-[#1a1a1a] hover:bg-gray-50 transition-colors flex items-center gap-2"
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+              Descargar plantilla
+            </button>
+            <label className="px-4 py-2 bg-[#1a1a1a] text-white rounded-lg text-sm font-medium hover:bg-[#2a2a2a] transition-colors cursor-pointer flex items-center gap-2">
+              <input type="file" accept=".csv,.txt" className="hidden" onChange={handleFileChange} />
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+              </svg>
+              Seleccionar archivo
+            </label>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-[#1a1a1a] mb-1">Contraseña por defecto (si falta en CSV)</label>
+            <input
+              type="password"
+              value={defaultPassword}
+              onChange={(e) => setDefaultPassword(e.target.value)}
+              placeholder="Opcional"
+              className="w-full px-4 py-2.5 rounded-lg border border-gray-200 focus:border-[#1a1a1a] focus:ring-1 focus:ring-[#1a1a1a] outline-none transition-colors"
+            />
+          </div>
+          {parseError && <div className="p-3 bg-red-50 border border-red-100 rounded-lg text-sm text-red-700">{parseError}</div>}
+          {parsedRows.length > 0 && !importDone && (
+            <div className="border border-gray-200 rounded-lg overflow-hidden">
+              <p className="p-3 bg-gray-50 text-sm font-medium text-[#1a1a1a]">
+                {parsedRows.length} usuario(s) listo(s) para importar
+              </p>
+              <div className="max-h-40 overflow-y-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="bg-gray-50 border-b border-gray-200">
+                      <th className="text-left p-2">Nombre</th>
+                      <th className="text-left p-2">Email</th>
+                      <th className="text-left p-2">Rol</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {parsedRows.slice(0, 10).map((r, i) => (
+                      <tr key={i} className="border-b border-gray-100">
+                        <td className="p-2">{r.name}</td>
+                        <td className="p-2">{r.email}</td>
+                        <td className="p-2">{r.role}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                {parsedRows.length > 10 && <p className="p-2 text-xs text-gray-500">... y {parsedRows.length - 10} más</p>}
+              </div>
+            </div>
+          )}
+          {importDone && importResults.length > 0 && (
+            <div className="border border-gray-200 rounded-lg overflow-hidden">
+              <p className="p-3 bg-gray-50 text-sm font-medium text-[#1a1a1a]">
+                Resultados: {importResults.filter((r) => r.success).length} creados, {importResults.filter((r) => !r.success).length} con error
+              </p>
+              <div className="max-h-48 overflow-y-auto">
+                {importResults.map((r) => (
+                  <div key={r.index} className={`flex items-center justify-between p-2 text-sm border-b border-gray-100 ${r.success ? "bg-green-50" : "bg-red-50"}`}>
+                    <span className="font-medium">{r.name}</span>
+                    <span className={r.success ? "text-green-700" : "text-red-700"}>{r.success ? "✓ Creado" : r.error}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+        <div className="p-6 border-t border-gray-100 flex gap-3 flex-shrink-0">
+          <button
+            type="button"
+            onClick={handleClose}
+            className="flex-1 px-4 py-2.5 border border-gray-200 rounded-lg text-[#1a1a1a] font-medium hover:bg-gray-50 transition-colors"
+          >
+            {importDone ? "Cerrar" : "Cancelar"}
+          </button>
+          {!importDone && parsedRows.length > 0 && (
+            <button
+              type="button"
+              onClick={runImport}
+              disabled={isImporting}
+              className="flex-1 px-4 py-2.5 bg-[#1a1a1a] text-white rounded-lg font-medium hover:bg-[#2a2a2a] transition-colors disabled:opacity-50"
+            >
+              {isImporting ? `Importando... (${importResults.length}/${parsedRows.length})` : "Importar"}
+            </button>
+          )}
+        </div>
       </div>
     </div>
   );
@@ -642,6 +953,7 @@ const UsersPage = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [roleFilter, setRoleFilter] = useState<UserRole | "all">("all");
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showImportModal, setShowImportModal] = useState(false);
   const [clinics, setClinics] = useState<ClinicOption[]>([]);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showTransferModal, setShowTransferModal] = useState(false);
@@ -656,26 +968,24 @@ const UsersPage = () => {
   const [clinicLimitEdits, setClinicLimitEdits] = useState<Record<string, string>>({});
   const [clinicLimitSaving, setClinicLimitSaving] = useState<string | null>(null);
 
-  // Cargar usuarios desde la API (solo cuando el usuario tiene permiso)
+  const loadUsers = useCallback(async () => {
+    try {
+      const response = await api.get<{ success: boolean; users: User[] }>("/users");
+      if (response.success && response.data?.success) {
+        setAllUsers(response.data.users ?? []);
+      } else {
+        console.error("Error cargando usuarios:", response.error || response.data?.message);
+      }
+    } catch (error) {
+      console.error("Error cargando usuarios:", error);
+    }
+  }, []);
+
   useEffect(() => {
     const canLoad = currentUser && ["super_admin", "admin", "clinic_admin"].includes(currentUser.role);
     if (!canLoad) return;
-
-    const loadUsers = async () => {
-      try {
-        const response = await api.get<{ success: boolean; users: User[] }>("/users");
-        if (response.success && response.data?.success) {
-          setAllUsers(response.data.users ?? []);
-        } else {
-          console.error("Error cargando usuarios:", response.error || response.data?.message);
-        }
-      } catch (error) {
-        console.error("Error cargando usuarios:", error);
-      }
-    };
-
     loadUsers();
-  }, [currentUser]);
+  }, [currentUser, loadUsers]);
 
   // Cargar clínicas (para dropdown al crear usuarios)
   useEffect(() => {
@@ -1349,6 +1659,17 @@ const UsersPage = () => {
         {/* Header Actions */}
         <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
           <div className="flex flex-wrap gap-2">
+            {(isSuperAdmin || currentUser?.role === "clinic_admin") && (
+              <button
+                onClick={() => setShowImportModal(true)}
+                className="px-4 py-2 border border-gray-200 text-[#1a1a1a] rounded-lg text-sm font-medium hover:bg-gray-50 transition-colors flex items-center gap-2"
+              >
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                </svg>
+                Importar CSV
+              </button>
+            )}
             {isSuperAdmin && (
               <>
                 <button
@@ -1841,6 +2162,15 @@ const UsersPage = () => {
         onClose={() => setShowCreateModal(false)}
         onSave={handleCreateUser}
         clinics={clinics}
+      />
+
+      <BulkImportModal
+        isOpen={showImportModal}
+        onClose={() => setShowImportModal(false)}
+        onImportComplete={loadUsers}
+        clinics={clinics}
+        isSuperAdmin={!!isSuperAdmin}
+        currentUserClinicId={currentUser?.clinicId}
       />
       
       <EditUserModal

@@ -97,7 +97,8 @@ receptionistsRoutes.post('/', async (c) => {
     createdAt: now,
     updatedAt: now,
     createdBy: user.userId,
-  });
+    mustChangePassword: true,
+  } as any);
   await database.insert(userCredits).values({
     userId: id,
     totalCredits: 0,

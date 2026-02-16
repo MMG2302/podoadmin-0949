@@ -292,6 +292,7 @@ usersRoutes.post('/', requireRole('super_admin', 'clinic_admin'), async (c) => {
       appleId: null,
       oauthProvider: null,
       avatarUrl: null,
+      mustChangePassword: true, // Contraseña temporal: obligar cambio en primer login
     } as any);
 
     // Recepcionistas necesitan entrada en user_credits (0 créditos)

@@ -70,6 +70,7 @@ export const createdUsers = sqliteTable('created_users', {
   assignedPodiatristIds: text('assigned_podiatrist_ids'), // JSON array para receptionists
   // Ciclo cancelación: 1 mes grace → bloqueo → 7 meses después borrado permanente
   disabledAt: integer('disabled_at'), // Timestamp (ms) cuando se deshabilitó; null = nunca deshabilitado
+  mustChangePassword: integer('must_change_password', { mode: 'boolean' }).notNull().default(false), // Contraseña temporal: obligar cambio en primer login
 });
 
 // Tabla de créditos de usuario

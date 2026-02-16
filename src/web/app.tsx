@@ -1,4 +1,4 @@
-import { Route, Switch, Redirect } from "wouter";
+import { Route, Switch, Redirect, useLocation } from "wouter";
 import { Provider } from "./components/provider";
 import { ErrorBoundary } from "./components/error-boundary";
 import { AuthProvider, useAuth } from "./contexts/auth-context";
@@ -7,11 +7,13 @@ import Login from "./pages/login";
 import VerifyEmail from "./pages/verify-email";
 import ForgotPassword from "./pages/forgot-password";
 import ResetPassword from "./pages/reset-password";
+import ChangePassword from "./pages/change-password";
 import Terms from "./pages/terms";
 import Dashboard from "./pages/dashboard";
 
-const ProtectedRoute = ({ component: Component }: { component: React.ComponentType }) => {
+const ProtectedRoute = ({ component: Component, path }: { component: React.ComponentType; path?: string }) => {
   const { user, isLoading } = useAuth();
+  const [location] = useLocation();
 
   if (isLoading) {
     return (
@@ -28,6 +30,12 @@ const ProtectedRoute = ({ component: Component }: { component: React.ComponentTy
 
   if (!user) {
     return <Redirect to="/login" />;
+  }
+
+  // Si tiene contraseña temporal, obligar a cambiarla antes de acceder al resto
+  const currentPath = path ?? location;
+  if (user.mustChangePassword && currentPath !== "/change-password") {
+    return <Redirect to="/change-password" />;
   }
 
   return <Component />;
@@ -48,7 +56,7 @@ const PublicRoute = ({ component: Component }: { component: React.ComponentType 
   }
 
   if (user) {
-    return <Redirect to="/" />;
+    return <Redirect to={user.mustChangePassword ? "/change-password" : "/"} />;
   }
 
   return <Component />;
@@ -71,6 +79,9 @@ function AppRoutes() {
       </Route>
       <Route path="/terms">
         <PublicRoute component={Terms} />
+      </Route>
+      <Route path="/change-password">
+        <ProtectedRoute component={ChangePassword} path="/change-password" />
       </Route>
       <Route path="/">
         <ProtectedRoute component={Dashboard} />

@@ -121,6 +121,13 @@ export interface Translations {
     resetPasswordRepeatPassword: string;
     resetPasswordHint: string;
     requestNewLink: string;
+    // Change password (first login)
+    changePasswordTitle: string;
+    changePasswordSubtitle: string;
+    currentPasswordLabel: string;
+    changePasswordButton: string;
+    changePasswordSuccess: string;
+    changePasswordRedirecting: string;
     contactToVerifyRecovery: string;
     // Login security notices (anti-phishing)
     securityLabel: string;
@@ -657,6 +664,12 @@ export const translations: Record<Language, Translations> = {
       resetPasswordRedirecting: "Redirigiendo al login...",
       resetPasswordRepeatPassword: "Repetir contraseña",
       resetPasswordHint: "Mínimo 12 caracteres, mayúscula, minúscula, número y carácter especial.",
+      changePasswordTitle: "Cambiar contraseña",
+      changePasswordSubtitle: "Tu contraseña temporal debe cambiarse. Elige una contraseña segura de tu preferencia.",
+      currentPasswordLabel: "Contraseña actual (temporal)",
+      changePasswordButton: "Cambiar contraseña",
+      changePasswordSuccess: "Contraseña actualizada correctamente.",
+      changePasswordRedirecting: "Redirigiendo al panel...",
       contactToVerifyRecovery: "Ponte en contacto con nosotros para verificar que eres tú quien está recuperando la cuenta.",
       requestNewLink: "Solicitar nuevo enlace",
       securityLabel: "Seguridad:",
@@ -1164,6 +1177,12 @@ export const translations: Record<Language, Translations> = {
       resetPasswordRedirecting: "Redirecting to login...",
       resetPasswordRepeatPassword: "Repeat password",
       resetPasswordHint: "Minimum 12 characters, uppercase, lowercase, number and special character.",
+      changePasswordTitle: "Change password",
+      changePasswordSubtitle: "Your temporary password must be changed. Choose a secure password of your choice.",
+      currentPasswordLabel: "Current password (temporary)",
+      changePasswordButton: "Change password",
+      changePasswordSuccess: "Password updated successfully.",
+      changePasswordRedirecting: "Redirecting to dashboard...",
       contactToVerifyRecovery: "Contact us to verify that you are the one recovering the account.",
       requestNewLink: "Request new link",
       securityLabel: "Security:",
@@ -1671,6 +1690,12 @@ export const translations: Record<Language, Translations> = {
       resetPasswordRedirecting: "Redirecionando para o login...",
       resetPasswordRepeatPassword: "Repetir senha",
       resetPasswordHint: "Mínimo 12 caracteres, maiúscula, minúscula, número e caractere especial.",
+      changePasswordTitle: "Alterar senha",
+      changePasswordSubtitle: "Sua senha temporária deve ser alterada. Escolha uma senha segura de sua preferência.",
+      currentPasswordLabel: "Senha atual (temporária)",
+      changePasswordButton: "Alterar senha",
+      changePasswordSuccess: "Senha atualizada com sucesso.",
+      changePasswordRedirecting: "Redirecionando para o painel...",
       contactToVerifyRecovery: "Entre em contato conosco para verificar que você é quem está recuperando a conta.",
       requestNewLink: "Solicitar novo link",
       securityLabel: "Segurança:",
@@ -2176,6 +2201,12 @@ export const translations: Record<Language, Translations> = {
       resetPasswordRedirecting: "Redirection vers la connexion...",
       resetPasswordRepeatPassword: "Répéter le mot de passe",
       resetPasswordHint: "Minimum 12 caractères, majuscule, minuscule, chiffre et caractère spécial.",
+      changePasswordTitle: "Changer le mot de passe",
+      changePasswordSubtitle: "Votre mot de passe temporaire doit être changé. Choisissez un mot de passe sécurisé de votre choix.",
+      currentPasswordLabel: "Mot de passe actuel (temporaire)",
+      changePasswordButton: "Changer le mot de passe",
+      changePasswordSuccess: "Mot de passe mis à jour avec succès.",
+      changePasswordRedirecting: "Redirection vers le tableau de bord...",
       contactToVerifyRecovery: "Contactez-nous pour vérifier que vous êtes bien la personne qui récupère le compte.",
       requestNewLink: "Demander un nouveau lien",
       securityLabel: "Sécurité :",

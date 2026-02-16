@@ -166,6 +166,10 @@ const ClinicPage = () => {
   const [receptionistForm, setReceptionistForm] = useState({ name: "", email: "", password: "" });
   const [receptionistError, setReceptionistError] = useState<string | null>(null);
   const [receptionistActionLoadingId, setReceptionistActionLoadingId] = useState<string | null>(null);
+  const [showCreatePodiatristModal, setShowCreatePodiatristModal] = useState(false);
+  const [podiatristForm, setPodiatristForm] = useState({ name: "", email: "", password: "" });
+  const [podiatristError, setPodiatristError] = useState<string | null>(null);
+  const [clinicPodiatristLimit, setClinicPodiatristLimit] = useState<number | null>(null);
 
   // Get podiatrists in this clinic
   const clinicPodiatrists = allUsers.filter(
@@ -182,6 +186,14 @@ const ClinicPage = () => {
       if (r.success && Array.isArray(r.data?.sessions)) setAllSessions(r.data.sessions);
     });
   }, []);
+
+  // Cargar límite de podólogos de la clínica
+  useEffect(() => {
+    if (!currentUser?.clinicId) return;
+    api.get<{ success?: boolean; clinic?: { podiatristLimit?: number | null } }>(`/clinics/${currentUser.clinicId}`).then((r) => {
+      if (r.success && r.data?.clinic) setClinicPodiatristLimit(r.data.clinic.podiatristLimit ?? null);
+    });
+  }, [currentUser?.clinicId]);
 
   // Pacientes y sesiones de la clínica (filtrados por podólogos de la clínica)
   const clinicPatients = useMemo(
@@ -421,6 +433,40 @@ const ClinicPage = () => {
     }
   };
 
+  const handleCreatePodiatrist = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!currentUser?.clinicId) return;
+    setPodiatristError(null);
+    if (isEmailTaken(podiatristForm.email.trim())) {
+      setPodiatristError("Ya existe una cuenta con este correo electrónico");
+      return;
+    }
+    if (podiatristForm.password.length < 8) {
+      setPodiatristError("La contraseña debe tener al menos 8 caracteres");
+      return;
+    }
+    try {
+      const res = await api.post<{ success?: boolean; user?: { id: string }; error?: string; message?: string }>("/users", {
+        name: podiatristForm.name.trim(),
+        email: podiatristForm.email.trim(),
+        password: podiatristForm.password,
+        role: "podiatrist",
+        clinicId: currentUser.clinicId,
+      });
+      if (!res.success || !res.data?.user?.id) {
+        setPodiatristError(res.data?.message ?? res.error ?? "Error al crear podólogo");
+        return;
+      }
+      await fetchUsers();
+      setPodiatristForm({ name: "", email: "", password: "" });
+      setShowCreatePodiatristModal(false);
+    } catch (err) {
+      setPodiatristError(err instanceof Error ? err.message : "Error al crear podólogo");
+    }
+  };
+
+  const canCreatePodiatrist = clinicPodiatristLimit === null || clinicPodiatrists.length < clinicPodiatristLimit;
+
   return (
     <MainLayout title={t.nav.clinicManagement} >
       <div className="space-y-6">
@@ -538,9 +584,31 @@ const ClinicPage = () => {
           </div>
         )}
 
-        {/* Podiatrists Tab */}
+        {/* Podiatrists Tab - clinic_admin puede crear podólogos dentro del límite */}
         {activeTab === "podiatrists" && (
-          <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <p className="text-sm text-gray-500">
+                {clinicPodiatristLimit !== null
+                  ? `Podólogos: ${clinicPodiatrists.length} de ${clinicPodiatristLimit} (límite definido por PodoAdmin)`
+                  : "Podólogos de la clínica. Sin límite definido."}
+              </p>
+              <button
+                onClick={() => {
+                  setPodiatristError(null);
+                  setPodiatristForm({ name: "", email: "", password: "" });
+                  setShowCreatePodiatristModal(true);
+                }}
+                disabled={!canCreatePodiatrist}
+                className="px-4 py-2 bg-[#1a1a1a] text-white rounded-lg text-sm font-medium hover:bg-[#2a2a2a] transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                </svg>
+                Crear podólogo
+              </button>
+            </div>
+            <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
             <table className="w-full">
               <thead>
                 <tr className="border-b border-gray-100 bg-gray-50">
@@ -582,6 +650,7 @@ const ClinicPage = () => {
                 <p className="text-gray-500">No hay podólogos en esta clínica</p>
               </div>
             )}
+            </div>
           </div>
         )}
 
@@ -761,6 +830,69 @@ const ClinicPage = () => {
           </div>
         )}
       </div>
+
+      {/* Create Podiatrist Modal */}
+      {showCreatePodiatristModal && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl w-full max-w-md shadow-xl">
+            <div className="p-6 border-b border-gray-100">
+              <h3 className="text-lg font-semibold text-[#1a1a1a]">Crear podólogo</h3>
+              <p className="text-sm text-gray-500 mt-1">El nuevo podólogo será asignado a tu clínica.</p>
+            </div>
+            <form onSubmit={handleCreatePodiatrist} className="p-6 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-[#1a1a1a] mb-1">Nombre</label>
+                <input
+                  type="text"
+                  value={podiatristForm.name}
+                  onChange={(e) => setPodiatristForm((f) => ({ ...f, name: e.target.value }))}
+                  className="w-full px-4 py-2.5 rounded-lg border border-gray-200 focus:border-[#1a1a1a] focus:ring-1 focus:ring-[#1a1a1a] outline-none transition-colors"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-[#1a1a1a] mb-1">Email</label>
+                <input
+                  type="email"
+                  value={podiatristForm.email}
+                  onChange={(e) => setPodiatristForm((f) => ({ ...f, email: e.target.value }))}
+                  className="w-full px-4 py-2.5 rounded-lg border border-gray-200 focus:border-[#1a1a1a] focus:ring-1 focus:ring-[#1a1a1a] outline-none transition-colors"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-[#1a1a1a] mb-1">Contraseña inicial (mín. 8 caracteres)</label>
+                <input
+                  type="password"
+                  value={podiatristForm.password}
+                  onChange={(e) => setPodiatristForm((f) => ({ ...f, password: e.target.value }))}
+                  className="w-full px-4 py-2.5 rounded-lg border border-gray-200 focus:border-[#1a1a1a] focus:ring-1 focus:ring-[#1a1a1a] outline-none transition-colors"
+                  required
+                  minLength={8}
+                />
+              </div>
+              {podiatristError && (
+                <div className="text-sm text-red-600 bg-red-50 border border-red-100 rounded-lg p-3">{podiatristError}</div>
+              )}
+              <div className="flex gap-3 pt-4">
+                <button
+                  type="button"
+                  onClick={() => setShowCreatePodiatristModal(false)}
+                  className="flex-1 px-4 py-2.5 border border-gray-200 rounded-lg text-[#1a1a1a] font-medium hover:bg-gray-50 transition-colors"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 px-4 py-2.5 bg-[#1a1a1a] text-white rounded-lg font-medium hover:bg-[#2a2a2a] transition-colors"
+                >
+                  Crear podólogo
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {/* Create Receptionist Modal */}
       {showCreateReceptionistModal && (

@@ -161,9 +161,9 @@ export const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
           isOpen ? "translate-x-0" : "-translate-x-full"
         }`}
       >
-        <div className="flex flex-col h-full safe-area-inset">
+        <div className="flex flex-col h-full min-h-0 safe-area-inset">
           {/* Header with close button for mobile */}
-          <div className="p-4 md:p-6 border-b border-white/10">
+          <div className="flex-shrink-0 p-4 md:p-6 border-b border-white/10">
             <div className="flex items-center justify-between mb-4">
               <h1 className="text-white text-xl md:text-2xl font-light tracking-tight">
                 Podo<span className="font-bold">Admin</span>
@@ -196,15 +196,15 @@ export const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
             </div>
           </div>
 
-          {/* Navigation - scrollable */}
-          <nav className="flex-1 overflow-y-auto py-3 md:py-4 px-2 md:px-3 overscroll-contain">
+          {/* Navigation - scrollable, min-h-0 para que flex permita encoger */}
+          <nav className="flex-1 min-h-0 overflow-y-auto py-3 md:py-4 px-2 md:px-3 overscroll-contain">
             <ul className="space-y-1">
               {itemsToShow.map((item) => (
                 <li key={item.path}>
                   <Link
                     href={item.path}
                     onClick={onClose}
-                    className={`flex items-center gap-3 px-3 md:px-4 py-3 md:py-3 rounded-lg transition-all min-h-[48px] active:scale-[0.98] ${
+                    className={`flex items-center gap-3 px-3 md:px-4 py-2.5 md:py-2.5 rounded-lg transition-all min-h-[44px] active:scale-[0.98] ${
                       isActive(item.path)
                         ? "bg-white text-[#1a1a1a]"
                         : "text-gray-300 hover:bg-white/10 hover:text-white active:bg-white/20"
@@ -219,7 +219,7 @@ export const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
           </nav>
 
           {/* Footer with safe area padding */}
-          <div className="p-3 md:p-4 border-t border-white/10 space-y-2 md:space-y-3 pb-safe">
+          <div className="flex-shrink-0 p-3 md:p-4 border-t border-white/10 space-y-2 md:space-y-3 pb-safe">
             <LanguageSwitcher variant="inline" className="justify-center" />
             
             <button

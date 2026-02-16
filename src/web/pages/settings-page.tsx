@@ -6,6 +6,8 @@ import { ProfessionalInfo, type Clinic } from "../lib/storage";
 import { api } from "../lib/api-client";
 
 interface ClinicInfoForm {
+  clinicName: string;
+  clinicCode: string;
   phone: string;
   email: string;
   address: string;
@@ -55,7 +57,7 @@ const SettingsPage = () => {
       setUserClinic(null);
       return;
     }
-    api.get<{ success: boolean; clinic?: Record<string, unknown> }>(`/clinics/${user.clinicId}`).then((res) => {
+    api.get<{ success: boolean; clinic?: Record<string, unknown>; infoBlockedUntil?: string | null; logoBlockedUntil?: string | null }>(`/clinics/${user.clinicId}`).then((res) => {
       if (res.success && res.data?.clinic) {
         const c = res.data.clinic as Record<string, unknown>;
         setUserClinic({
@@ -73,6 +75,8 @@ const SettingsPage = () => {
           consentText: (c.consentText as string) ?? "",
           consentTextVersion: (c.consentTextVersion as number) ?? 0,
         } as Clinic);
+        setInfoBlockedUntil(res.data?.infoBlockedUntil ?? null);
+        setLogoBlockedUntil(res.data?.logoBlockedUntil ?? null);
       }
     }).catch(() => setUserClinic(null));
   }, [user?.clinicId]);
@@ -94,6 +98,8 @@ const SettingsPage = () => {
   
   // Clinic information form state (for clinic admins)
   const [clinicInfoForm, setClinicInfoForm] = useState<ClinicInfoForm>({
+    clinicName: "",
+    clinicCode: "",
     phone: "",
     email: "",
     address: "",
@@ -104,8 +110,11 @@ const SettingsPage = () => {
     consentText: "",
   });
   const [clinicInfoSaved, setClinicInfoSaved] = useState(false);
+  const [clinicInfoError, setClinicInfoError] = useState<string | null>(null);
   const [clinicConsentSaved, setClinicConsentSaved] = useState(false);
   const [clinicConsentError, setClinicConsentError] = useState<string | null>(null);
+  const [infoBlockedUntil, setInfoBlockedUntil] = useState<string | null>(null);
+  const [logoBlockedUntil, setLogoBlockedUntil] = useState<string | null>(null);
   
   // Professional Info state (for independent podiatrists)
   const [professionalInfoForm, setProfessionalInfoForm] = useState<ProfessionalInfo & { consentDocumentUrl?: string }>({
@@ -159,6 +168,8 @@ const SettingsPage = () => {
   useEffect(() => {
     if (userClinic) {
       setClinicInfoForm({
+        clinicName: userClinic.clinicName || "",
+        clinicCode: userClinic.clinicCode || "",
         phone: userClinic.phone || "",
         email: userClinic.email || "",
         address: userClinic.address || "",
@@ -238,15 +249,30 @@ const SettingsPage = () => {
   }, [isPodiatristIndependent, user?.id]);
 
   const clinicName = userClinic?.clinicName ?? getClinicNameFrom(userClinic, user?.clinicId ?? "");
+  const isInfoBlocked = !!infoBlockedUntil && new Date(infoBlockedUntil) > new Date();
+  const isLogoBlocked = !!logoBlockedUntil && new Date(logoBlockedUntil) > new Date();
+  const formatBlockedUntil = (iso: string) => {
+    const d = new Date(iso);
+    return d.toLocaleDateString(undefined, { day: "numeric", month: "long", year: "numeric" });
+  };
   
   const handleClinicInfoChange = (field: keyof ClinicInfoForm, value: string) => {
     setClinicInfoForm(prev => ({ ...prev, [field]: value }));
   };
   
   const handleSaveClinicInfo = async () => {
-    if (!canUploadLogo || !user?.clinicId) return;
+    if (!canUploadLogo || !user?.clinicId || isInfoBlocked) return;
+    setClinicInfoError(null);
+    const clinicName = (clinicInfoForm.clinicName || "").trim();
+    const clinicCode = (clinicInfoForm.clinicCode || "").trim();
+    if (!clinicName || !clinicCode) {
+      setClinicInfoError("Nombre y código de la clínica son obligatorios.");
+      return;
+    }
     try {
-      const res = await api.patch<{ success?: boolean; clinic?: Clinic }>(`/clinics/${user.clinicId}`, {
+      const res = await api.patch<{ success?: boolean; clinic?: Clinic; infoBlockedUntil?: string }>(`/clinics/${user.clinicId}`, {
+        clinicName,
+        clinicCode,
         phone: clinicInfoForm.phone,
         email: clinicInfoForm.email,
         address: clinicInfoForm.address,
@@ -258,8 +284,12 @@ const SettingsPage = () => {
       });
       if (res.success && res.data?.clinic) {
         setUserClinic(res.data.clinic as Clinic);
+        setInfoBlockedUntil(res.data?.infoBlockedUntil ?? null);
         setClinicInfoSaved(true);
         setTimeout(() => setClinicInfoSaved(false), 2000);
+      } else if (res.error === "cooldown" && res.data?.infoBlockedUntil) {
+        setInfoBlockedUntil(res.data.infoBlockedUntil);
+        setClinicInfoError(res.message ?? "Los datos solo pueden modificarse cada 15 días.");
       }
     } catch (err) {
       // Error ya se muestra en consola desde api-client; no marcamos como guardado
@@ -267,18 +297,22 @@ const SettingsPage = () => {
   };
 
   const handleSaveClinicConsent = async () => {
-    if (!canUploadLogo || !user?.clinicId) return;
+    if (!canUploadLogo || !user?.clinicId || isInfoBlocked) return;
     setClinicConsentError(null);
     try {
-      const res = await api.patch<{ success?: boolean; clinic?: Clinic }>(`/clinics/${user.clinicId}`, {
+      const res = await api.patch<{ success?: boolean; clinic?: Clinic; infoBlockedUntil?: string }>(`/clinics/${user.clinicId}`, {
         consentText: (clinicInfoForm.consentText ?? "").trim() || null,
       });
       const clinic = res.data?.clinic ?? (res.data as { clinic?: Clinic } | undefined)?.clinic;
       if (res.success && clinic) {
         setUserClinic(clinic as Clinic);
+        setInfoBlockedUntil((res.data as { infoBlockedUntil?: string })?.infoBlockedUntil ?? null);
         setClinicConsentSaved(true);
         setClinicConsentError(null);
         setTimeout(() => setClinicConsentSaved(false), 2000);
+      } else if (res.error === "cooldown" && (res.data as { infoBlockedUntil?: string })?.infoBlockedUntil) {
+        setInfoBlockedUntil((res.data as { infoBlockedUntil: string }).infoBlockedUntil);
+        setClinicConsentError(res.message ?? "Los datos solo pueden modificarse cada 15 días.");
       } else {
         setClinicConsentError(res.message ?? res.error ?? "Error al guardar el consentimiento.");
       }
@@ -368,7 +402,7 @@ const SettingsPage = () => {
   };
 
   const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (!canUploadLogo) return;
+    if (!canUploadLogo || isLogoBlocked) return;
     
     const file = e.target.files?.[0];
     if (!file) return;
@@ -397,15 +431,19 @@ const SettingsPage = () => {
   };
 
   const handleSaveLogo = async () => {
-    if (!canUploadLogo || !logoPreview || !user?.clinicId) return;
+    if (!canUploadLogo || !logoPreview || !user?.clinicId || isLogoBlocked) return;
     try {
-      const res = await api.put<{ success?: boolean }>(`/clinics/${user.clinicId}/logo`, { logo: logoPreview });
+      const res = await api.put<{ success?: boolean; logoBlockedUntil?: string }>(`/clinics/${user.clinicId}/logo`, { logo: logoPreview });
       if (res.success) {
         setCurrentLogo(logoPreview);
         setLogoPreview(null);
         if (fileInputRef.current) fileInputRef.current.value = "";
+        setLogoBlockedUntil(res.data?.logoBlockedUntil ?? null);
         setSaved(true);
         setTimeout(() => setSaved(false), 2000);
+      } else if (res.error === "cooldown" && res.data?.logoBlockedUntil) {
+        setLogoBlockedUntil(res.data.logoBlockedUntil);
+        setLogoError(res.message ?? "El logo solo puede modificarse cada 15 días.");
       }
     } catch {
       // No marcar como guardado si falla
@@ -413,11 +451,17 @@ const SettingsPage = () => {
   };
 
   const handleRemoveLogo = async () => {
-    if (!canUploadLogo || !user?.clinicId) return;
-    await api.delete(`/clinics/${user.clinicId}/logo`);
-    setCurrentLogo(null);
-    setLogoPreview(null);
-    if (fileInputRef.current) fileInputRef.current.value = "";
+    if (!canUploadLogo || !user?.clinicId || isLogoBlocked) return;
+    const res = await api.delete<{ success?: boolean; logoBlockedUntil?: string }>(`/clinics/${user.clinicId}/logo`);
+    if (res.success) {
+      setCurrentLogo(null);
+      setLogoPreview(null);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+      setLogoBlockedUntil(res.data?.logoBlockedUntil ?? null);
+    } else if (res.error === "cooldown" && res.data?.logoBlockedUntil) {
+      setLogoBlockedUntil(res.data.logoBlockedUntil);
+      setLogoError(res.message ?? "El logo solo puede modificarse cada 15 días.");
+    }
   };
 
   // Professional logo upload handler for independent podiatrists
@@ -848,6 +892,11 @@ const SettingsPage = () => {
             ) : canUploadLogo ? (
               // Clinic Admin can upload their clinic's logo
               <>
+                {isLogoBlocked && (
+                  <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-sm text-amber-800 mb-4">
+                    El logo solo puede modificarse cada 15 días. Próximo cambio permitido: {formatBlockedUntil(logoBlockedUntil!)}.
+                  </div>
+                )}
                 <p className="text-sm text-gray-500 mb-4">
                   Sube el logo de tu clínica. Este logo se mostrará en los documentos PDF de todos los podólogos de tu clínica. Dimensiones recomendadas: 200x80px
                 </p>
@@ -886,10 +935,11 @@ const SettingsPage = () => {
                         onChange={handleLogoUpload}
                         className="hidden"
                         id="logo-upload"
+                        disabled={isLogoBlocked}
                       />
                       <label
-                        htmlFor="logo-upload"
-                        className="inline-flex items-center gap-2 px-4 py-2.5 bg-gray-100 text-[#1a1a1a] rounded-lg text-sm font-medium hover:bg-gray-200 transition-colors cursor-pointer"
+                        htmlFor={isLogoBlocked ? undefined : "logo-upload"}
+                        className={`inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors ${isLogoBlocked ? "bg-gray-200 text-gray-500 cursor-not-allowed" : "bg-gray-100 text-[#1a1a1a] hover:bg-gray-200 cursor-pointer"}`}
                       >
                         <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
@@ -913,7 +963,8 @@ const SettingsPage = () => {
                       {logoPreview && (
                         <button
                           onClick={handleSaveLogo}
-                          className="px-4 py-2 bg-[#1a1a1a] text-white rounded-lg text-sm font-medium hover:bg-[#2a2a2a] transition-colors"
+                          disabled={isLogoBlocked}
+                          className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${isLogoBlocked ? "bg-gray-300 text-gray-500 cursor-not-allowed" : "bg-[#1a1a1a] text-white hover:bg-[#2a2a2a]"}`}
                         >
                           Guardar logo
                         </button>
@@ -932,7 +983,8 @@ const SettingsPage = () => {
                       {currentLogo && !logoPreview && (
                         <button
                           onClick={handleRemoveLogo}
-                          className="px-4 py-2 text-red-600 hover:bg-red-50 rounded-lg text-sm font-medium transition-colors"
+                          disabled={isLogoBlocked}
+                          className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${isLogoBlocked ? "text-gray-400 cursor-not-allowed" : "text-red-600 hover:bg-red-50"}`}
                         >
                           Eliminar logo
                         </button>
@@ -1075,6 +1127,11 @@ const SettingsPage = () => {
             )}
             {canUploadLogo && user?.clinicId && (
               <>
+                {isInfoBlocked && (
+                  <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-sm text-amber-800 mb-4">
+                    Los datos de la clínica solo pueden modificarse cada 15 días. Próximo cambio permitido: {formatBlockedUntil(infoBlockedUntil!)}.
+                  </div>
+                )}
                 <p className="text-sm text-gray-500 mb-4">
                   Texto que el paciente leerá y aceptará al crear la ficha. Si lo editas, los pacientes con versión anterior deberán volver a aceptar.
                 </p>
@@ -1086,7 +1143,8 @@ const SettingsPage = () => {
                   onChange={(e) => handleClinicInfoChange("consentText", e.target.value)}
                   placeholder="Redacta aquí los términos y el consentimiento informado que el paciente debe aceptar."
                   rows={6}
-                  className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#1a1a1a] focus:border-transparent transition-all resize-y"
+                  disabled={isInfoBlocked}
+                  className={`w-full px-4 py-2.5 border border-gray-200 rounded-lg transition-all resize-y ${isInfoBlocked ? "bg-gray-50 cursor-not-allowed" : "bg-white focus:ring-2 focus:ring-[#1a1a1a] focus:border-transparent"}`}
                 />
                 {clinicConsentError && (
                   <p className="text-sm text-red-600 mt-2">{clinicConsentError}</p>
@@ -1095,7 +1153,8 @@ const SettingsPage = () => {
                   <button
                     type="button"
                     onClick={handleSaveClinicConsent}
-                    className="px-4 py-2.5 bg-[#1a1a1a] text-white rounded-lg text-sm font-medium hover:bg-[#2a2a2a] transition-colors"
+                    disabled={isInfoBlocked}
+                    className={`px-4 py-2.5 rounded-lg text-sm font-medium transition-colors ${isInfoBlocked ? "bg-gray-300 text-gray-500 cursor-not-allowed" : "bg-[#1a1a1a] text-white hover:bg-[#2a2a2a]"}`}
                   >
                     Guardar consentimiento
                   </button>
@@ -1228,25 +1287,44 @@ const SettingsPage = () => {
             {canUploadLogo ? (
               // Clinic Admin can edit clinic information
               <div className="space-y-4">
+                {isInfoBlocked && (
+                  <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-sm text-amber-800">
+                    Los datos de la clínica solo pueden modificarse cada 15 días. Próximo cambio permitido: {formatBlockedUntil(infoBlockedUntil!)}.
+                  </div>
+                )}
                 <p className="text-sm text-gray-500">
                   Completa la información de tu clínica. Estos datos aparecerán en los documentos PDF generados.
                 </p>
+                {(clinicInfoForm.clinicName === "Clínica pendiente de configuración" || !clinicInfoForm.phone && !clinicInfoForm.email && !clinicInfoForm.address) && (
+                  <div className="bg-blue-50 border border-blue-100 rounded-lg p-3 text-sm text-blue-700">
+                    Completa los datos de tu clínica. Aparecerán en facturas, recetas y otros documentos.
+                  </div>
+                )}
                 
                 <div className="grid gap-4">
-                  {/* Clinic Name - Read Only */}
                   <div>
-                    <label className="block text-sm font-medium text-gray-500 mb-1 flex items-center gap-2">
-                      Nombre de la Clínica
-                      <svg className="w-3.5 h-3.5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                      </svg>
-                    </label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Nombre de la clínica *</label>
                     <input
                       type="text"
-                      value={userClinic.clinicName}
-                      disabled
-                      className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-gray-500 cursor-not-allowed"
+                      value={clinicInfoForm.clinicName}
+                      onChange={(e) => handleClinicInfoChange("clinicName", e.target.value)}
+                      placeholder="Mi Clínica Podológica"
+                      disabled={isInfoBlocked}
+                      className={`w-full px-4 py-2.5 border border-gray-200 rounded-lg transition-all ${isInfoBlocked ? "bg-gray-50 cursor-not-allowed" : "bg-white focus:ring-2 focus:ring-[#1a1a1a] focus:border-transparent"}`}
                     />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Código (para folios) *</label>
+                    <input
+                      type="text"
+                      value={clinicInfoForm.clinicCode}
+                      onChange={(e) => handleClinicInfoChange("clinicCode", e.target.value.toUpperCase())}
+                      placeholder="MICP"
+                      maxLength={8}
+                      disabled={isInfoBlocked}
+                      className={`w-full px-4 py-2.5 border border-gray-200 rounded-lg transition-all ${isInfoBlocked ? "bg-gray-50 cursor-not-allowed" : "bg-white focus:ring-2 focus:ring-[#1a1a1a] focus:border-transparent"}`}
+                    />
+                    <p className="text-xs text-gray-500 mt-1">Máx. 8 caracteres. Se usa en folios (ej: MICP-2025-001)</p>
                   </div>
                   
                   <div className="grid grid-cols-2 gap-4">
@@ -1257,7 +1335,8 @@ const SettingsPage = () => {
                         value={clinicInfoForm.phone}
                         onChange={(e) => handleClinicInfoChange("phone", e.target.value)}
                         placeholder="+34 912 345 678"
-                        className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#1a1a1a] focus:border-transparent transition-all"
+                        disabled={isInfoBlocked}
+                        className={`w-full px-4 py-2.5 border border-gray-200 rounded-lg transition-all ${isInfoBlocked ? "bg-gray-50 cursor-not-allowed" : "bg-white focus:ring-2 focus:ring-[#1a1a1a] focus:border-transparent"}`}
                       />
                     </div>
                     <div>
@@ -1267,7 +1346,8 @@ const SettingsPage = () => {
                         value={clinicInfoForm.email}
                         onChange={(e) => handleClinicInfoChange("email", e.target.value)}
                         placeholder="info@clinica.es"
-                        className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#1a1a1a] focus:border-transparent transition-all"
+                        disabled={isInfoBlocked}
+                        className={`w-full px-4 py-2.5 border border-gray-200 rounded-lg transition-all ${isInfoBlocked ? "bg-gray-50 cursor-not-allowed" : "bg-white focus:ring-2 focus:ring-[#1a1a1a] focus:border-transparent"}`}
                       />
                     </div>
                   </div>
@@ -1279,7 +1359,8 @@ const SettingsPage = () => {
                       value={clinicInfoForm.address}
                       onChange={(e) => handleClinicInfoChange("address", e.target.value)}
                       placeholder="Calle Gran Vía, 45, 2º Izquierda"
-                      className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#1a1a1a] focus:border-transparent transition-all"
+                      disabled={isInfoBlocked}
+                      className={`w-full px-4 py-2.5 border border-gray-200 rounded-lg transition-all ${isInfoBlocked ? "bg-gray-50 cursor-not-allowed" : "bg-white focus:ring-2 focus:ring-[#1a1a1a] focus:border-transparent"}`}
                     />
                   </div>
                   
@@ -1291,7 +1372,8 @@ const SettingsPage = () => {
                         value={clinicInfoForm.city}
                         onChange={(e) => handleClinicInfoChange("city", e.target.value)}
                         placeholder="Madrid"
-                        className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#1a1a1a] focus:border-transparent transition-all"
+                        disabled={isInfoBlocked}
+                        className={`w-full px-4 py-2.5 border border-gray-200 rounded-lg transition-all ${isInfoBlocked ? "bg-gray-50 cursor-not-allowed" : "bg-white focus:ring-2 focus:ring-[#1a1a1a] focus:border-transparent"}`}
                       />
                     </div>
                     <div>
@@ -1301,7 +1383,8 @@ const SettingsPage = () => {
                         value={clinicInfoForm.postalCode}
                         onChange={(e) => handleClinicInfoChange("postalCode", e.target.value)}
                         placeholder="28001"
-                        className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#1a1a1a] focus:border-transparent transition-all"
+                        disabled={isInfoBlocked}
+                        className={`w-full px-4 py-2.5 border border-gray-200 rounded-lg transition-all ${isInfoBlocked ? "bg-gray-50 cursor-not-allowed" : "bg-white focus:ring-2 focus:ring-[#1a1a1a] focus:border-transparent"}`}
                       />
                     </div>
                   </div>
@@ -1314,7 +1397,8 @@ const SettingsPage = () => {
                         value={clinicInfoForm.licenseNumber}
                         onChange={(e) => handleClinicInfoChange("licenseNumber", e.target.value)}
                         placeholder="CS-28/2024-POD-001"
-                        className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#1a1a1a] focus:border-transparent transition-all"
+                        disabled={isInfoBlocked}
+                        className={`w-full px-4 py-2.5 border border-gray-200 rounded-lg transition-all ${isInfoBlocked ? "bg-gray-50 cursor-not-allowed" : "bg-white focus:ring-2 focus:ring-[#1a1a1a] focus:border-transparent"}`}
                       />
                     </div>
                     <div>
@@ -1324,15 +1408,21 @@ const SettingsPage = () => {
                         value={clinicInfoForm.website}
                         onChange={(e) => handleClinicInfoChange("website", e.target.value)}
                         placeholder="https://www.clinica.es"
-                        className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#1a1a1a] focus:border-transparent transition-all"
+                        disabled={isInfoBlocked}
+                        className={`w-full px-4 py-2.5 border border-gray-200 rounded-lg transition-all ${isInfoBlocked ? "bg-gray-50 cursor-not-allowed" : "bg-white focus:ring-2 focus:ring-[#1a1a1a] focus:border-transparent"}`}
                       />
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-4 pt-4 border-t border-gray-100">
+                  <div className="pt-4 border-t border-gray-100 space-y-3">
+                    {clinicInfoError && (
+                      <p className="text-sm text-red-600">{clinicInfoError}</p>
+                    )}
+                    <div className="flex items-center gap-4">
                     <button
                       onClick={handleSaveClinicInfo}
-                      className="px-6 py-2.5 bg-[#1a1a1a] text-white rounded-lg text-sm font-medium hover:bg-[#2a2a2a] transition-colors"
+                      disabled={isInfoBlocked}
+                      className={`px-6 py-2.5 rounded-lg text-sm font-medium transition-colors ${isInfoBlocked ? "bg-gray-300 text-gray-500 cursor-not-allowed" : "bg-[#1a1a1a] text-white hover:bg-[#2a2a2a]"}`}
                     >
                       Guardar información
                     </button>
@@ -1344,6 +1434,7 @@ const SettingsPage = () => {
                         Guardado
                       </span>
                     )}
+                    </div>
                   </div>
                 </div>
               </div>

@@ -1,4 +1,5 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
+import { createPortal } from "react-dom";
 import { MainLayout } from "../components/layout/main-layout";
 import { useLanguage } from "../contexts/language-context";
 import { useAuth, User, UserRole } from "../contexts/auth-context";
@@ -18,15 +19,41 @@ interface UserWithData extends User {
   sessionCount: number;
 }
 
+interface ClinicOption {
+  clinicId: string;
+  clinicName: string;
+  clinicCode: string;
+  phone?: string;
+  email?: string;
+  address?: string;
+  city?: string;
+  postalCode?: string;
+}
+
+interface NewClinicPayload {
+  /** Vacío = la API genera placeholders, el clinic_admin completa en Configuración */
+}
+
+interface CreateUserPayload {
+  name: string;
+  email: string;
+  password: string;
+  role: UserRole;
+  clinicId?: string;
+  newClinic?: NewClinicPayload;
+}
+
 // Create User Modal
 const CreateUserModal = ({ 
   isOpen, 
   onClose, 
-  onSave 
+  onSave,
+  clinics = [],
 }: { 
   isOpen: boolean; 
   onClose: () => void; 
-  onSave: (user: Partial<User> & { password: string }) => void;
+  onSave: (payload: CreateUserPayload) => void;
+  clinics?: ClinicOption[];
 }) => {
   const { t } = useLanguage();
   const [formData, setFormData] = useState({
@@ -35,24 +62,53 @@ const CreateUserModal = ({
     password: "",
     role: "podiatrist" as UserRole,
     clinicId: "",
+    clinicMode: "existing" as "existing" | "new" | "none",
+      newClinic: {} as NewClinicPayload,
   });
+
+  const resetForm = () => {
+    setFormData({
+      name: "",
+      email: "",
+      password: "",
+      role: "podiatrist",
+      clinicId: "",
+      clinicMode: "existing",
+      newClinic: {} as NewClinicPayload,
+    });
+  };
 
   if (!isOpen) return null;
 
+  const needsClinic = formData.role === "podiatrist" || formData.role === "clinic_admin";
+  const showClinicSelector = needsClinic && formData.clinicMode === "existing";
+  const showNewClinicForm = needsClinic && formData.clinicMode === "new";
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onSave(formData);
-    setFormData({ name: "", email: "", password: "", role: "podiatrist", clinicId: "" });
+    const payload: CreateUserPayload = {
+      name: formData.name,
+      email: formData.email,
+      password: formData.password,
+      role: formData.role,
+    };
+    if (formData.clinicMode === "existing" && formData.clinicId) {
+      payload.clinicId = formData.clinicId;
+    } else if (formData.clinicMode === "new") {
+      payload.newClinic = {};
+    }
+    onSave(payload);
+    resetForm();
     onClose();
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl w-full max-w-md shadow-xl">
+    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 overflow-y-auto">
+      <div className="bg-white rounded-2xl w-full max-w-md shadow-xl my-8">
         <div className="p-6 border-b border-gray-100">
           <h3 className="text-lg font-semibold text-[#1a1a1a]">Crear nuevo usuario</h3>
         </div>
-        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+        <form onSubmit={handleSubmit} className="p-6 space-y-4 max-h-[70vh] overflow-y-auto">
           <div>
             <label className="block text-sm font-medium text-[#1a1a1a] mb-1">Nombre</label>
             <input
@@ -70,7 +126,7 @@ const CreateUserModal = ({
               value={formData.email}
               onChange={(e) => setFormData({ ...formData, email: e.target.value })}
               className="w-full px-4 py-2.5 rounded-lg border border-gray-200 focus:border-[#1a1a1a] focus:ring-1 focus:ring-[#1a1a1a] outline-none transition-colors"
-              pattern="[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}"
+              pattern="[a-zA-Z0-9._%+\\-]+@[a-zA-Z0-9.\\-]+\\.[a-zA-Z]{2,}"
               title={t.errors.invalidEmail}
               required
             />
@@ -89,7 +145,7 @@ const CreateUserModal = ({
             <label className="block text-sm font-medium text-[#1a1a1a] mb-1">Rol</label>
             <select
               value={formData.role}
-              onChange={(e) => setFormData({ ...formData, role: e.target.value as UserRole })}
+              onChange={(e) => setFormData({ ...formData, role: e.target.value as UserRole, clinicId: "", clinicMode: "existing" })}
               className="w-full px-4 py-2.5 rounded-lg border border-gray-200 focus:border-[#1a1a1a] focus:ring-1 focus:ring-[#1a1a1a] outline-none transition-colors"
             >
               <option value="podiatrist">Podólogo</option>
@@ -98,18 +154,53 @@ const CreateUserModal = ({
               <option value="super_admin">Super Administrador</option>
             </select>
           </div>
-          {(formData.role === "podiatrist" || formData.role === "clinic_admin") && (
-            <div>
-              <label className="block text-sm font-medium text-[#1a1a1a] mb-1">Clínica ID</label>
-              <input
-                type="text"
-                value={formData.clinicId}
-                onChange={(e) => setFormData({ ...formData, clinicId: e.target.value })}
-                className="w-full px-4 py-2.5 rounded-lg border border-gray-200 focus:border-[#1a1a1a] focus:ring-1 focus:ring-[#1a1a1a] outline-none transition-colors"
-                placeholder="clinic_001"
-              />
-            </div>
+
+          {needsClinic && (
+            <>
+              <div>
+                <label className="block text-sm font-medium text-[#1a1a1a] mb-1">
+                  {formData.role === "clinic_admin" ? "Clínica" : "Clínica (opcional)"}
+                </label>
+                <select
+                  value={formData.clinicMode}
+                  onChange={(e) => setFormData({ ...formData, clinicMode: e.target.value as "existing" | "new" | "none", clinicId: "" })}
+                  className="w-full px-4 py-2.5 rounded-lg border border-gray-200 focus:border-[#1a1a1a] focus:ring-1 focus:ring-[#1a1a1a] outline-none transition-colors"
+                >
+                  <option value="existing">Seleccionar clínica existente</option>
+                  <option value="new">{formData.role === "clinic_admin" ? "Crear nueva clínica" : "Crear nueva clínica"}</option>
+                  {formData.role === "podiatrist" && <option value="none">Sin clínica (independiente)</option>}
+                </select>
+              </div>
+
+              {showClinicSelector && (
+                <div>
+                  <label className="block text-sm font-medium text-[#1a1a1a] mb-1">Clínica</label>
+                  <select
+                    value={formData.clinicId}
+                    onChange={(e) => setFormData({ ...formData, clinicId: e.target.value })}
+                    className="w-full px-4 py-2.5 rounded-lg border border-gray-200 focus:border-[#1a1a1a] focus:ring-1 focus:ring-[#1a1a1a] outline-none transition-colors"
+                    required={formData.role === "clinic_admin"}
+                  >
+                    <option value="">— Seleccionar —</option>
+                    {clinics.map((c) => (
+                      <option key={c.clinicId} value={c.clinicId}>
+                        {c.clinicName} ({c.clinicCode})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              {showNewClinicForm && (
+                <div className="space-y-3 p-4 bg-gray-50 rounded-lg border border-gray-200">
+                  <p className="text-sm text-gray-600">
+                    Se creará una clínica con datos provisionales. El administrador completará <strong>nombre, código, teléfono, dirección</strong> y el resto en <strong>Configuración</strong>.
+                  </p>
+                </div>
+              )}
+            </>
           )}
+
           <div className="flex gap-3 pt-4">
             <button
               type="button"
@@ -136,12 +227,14 @@ const EditUserModal = ({
   isOpen, 
   onClose, 
   user,
-  onSave 
+  onSave,
+  clinics = [],
 }: { 
   isOpen: boolean; 
   onClose: () => void; 
   user: User | null;
   onSave: (userId: string, updates: Partial<User>) => void;
+  clinics?: ClinicOption[];
 }) => {
   const { t } = useLanguage();
   const [formData, setFormData] = useState({
@@ -170,6 +263,8 @@ const EditUserModal = ({
     onClose();
   };
 
+  const needsClinic = formData.role === "podiatrist" || formData.role === "clinic_admin";
+
   return (
     <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
       <div className="bg-white rounded-2xl w-full max-w-md shadow-xl">
@@ -194,7 +289,7 @@ const EditUserModal = ({
               value={formData.email}
               onChange={(e) => setFormData({ ...formData, email: e.target.value })}
               className="w-full px-4 py-2.5 rounded-lg border border-gray-200 focus:border-[#1a1a1a] focus:ring-1 focus:ring-[#1a1a1a] outline-none transition-colors"
-              pattern="[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}"
+              pattern="[a-zA-Z0-9._%+\\-]+@[a-zA-Z0-9.\\-]+\\.[a-zA-Z]{2,}"
               title={t.errors.invalidEmail}
               required
             />
@@ -212,16 +307,21 @@ const EditUserModal = ({
               <option value="super_admin">Super Administrador</option>
             </select>
           </div>
-          {(formData.role === "podiatrist" || formData.role === "clinic_admin") && (
+          {needsClinic && (
             <div>
-              <label className="block text-sm font-medium text-[#1a1a1a] mb-1">Clínica ID</label>
-              <input
-                type="text"
+              <label className="block text-sm font-medium text-[#1a1a1a] mb-1">Clínica</label>
+              <select
                 value={formData.clinicId}
                 onChange={(e) => setFormData({ ...formData, clinicId: e.target.value })}
                 className="w-full px-4 py-2.5 rounded-lg border border-gray-200 focus:border-[#1a1a1a] focus:ring-1 focus:ring-[#1a1a1a] outline-none transition-colors"
-                placeholder="clinic_001"
-              />
+              >
+                <option value="">— Sin clínica —</option>
+                {clinics.map((c) => (
+                  <option key={c.clinicId} value={c.clinicId}>
+                    {c.clinicName} ({c.clinicCode})
+                  </option>
+                ))}
+              </select>
             </div>
           )}
           <div className="flex gap-3 pt-4">
@@ -542,19 +642,30 @@ const UsersPage = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [roleFilter, setRoleFilter] = useState<UserRole | "all">("all");
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [clinics, setClinics] = useState<ClinicOption[]>([]);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showTransferModal, setShowTransferModal] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [approvedResetLink, setApprovedResetLink] = useState<string | null>(null);
+  const [openAccountMenuId, setOpenAccountMenuId] = useState<string | null>(null);
+  const [accountMenuPosition, setAccountMenuPosition] = useState<{ top?: number; bottom?: number; left: number } | null>(null);
+  const [clinicsForLimits, setClinicsForLimits] = useState<Array<{
+    clinicId: string; clinicName: string; clinicCode: string; podiatristLimit: number | null; podiatristCount: number;
+  }>>([]);
+  const [clinicLimitEdits, setClinicLimitEdits] = useState<Record<string, string>>({});
+  const [clinicLimitSaving, setClinicLimitSaving] = useState<string | null>(null);
 
-  // Cargar usuarios desde la API (incluye usuarios mock + creados según backend)
+  // Cargar usuarios desde la API (solo cuando el usuario tiene permiso)
   useEffect(() => {
+    const canLoad = currentUser && ["super_admin", "admin", "clinic_admin"].includes(currentUser.role);
+    if (!canLoad) return;
+
     const loadUsers = async () => {
       try {
         const response = await api.get<{ success: boolean; users: User[] }>("/users");
         if (response.success && response.data?.success) {
-          setAllUsers(response.data.users);
+          setAllUsers(response.data.users ?? []);
         } else {
           console.error("Error cargando usuarios:", response.error || response.data?.message);
         }
@@ -564,7 +675,39 @@ const UsersPage = () => {
     };
 
     loadUsers();
-  }, []);
+  }, [currentUser]);
+
+  // Cargar clínicas (para dropdown al crear usuarios)
+  useEffect(() => {
+    if (!isSuperAdmin && currentUser?.role !== "admin") return;
+    const loadClinics = async () => {
+      try {
+        const r = await api.get<{ success?: boolean; clinics?: ClinicOption[] }>("/clinics");
+        if (r.success && Array.isArray(r.data?.clinics)) {
+          setClinics(r.data.clinics);
+        }
+      } catch {
+        setClinics([]);
+      }
+    };
+    loadClinics();
+  }, [isSuperAdmin, currentUser?.role]);
+
+  // Cargar clínicas con límites (super_admin y admin, para mostrar en tabla)
+  useEffect(() => {
+    if (!isSuperAdmin && currentUser?.role !== "admin") return;
+    api.get<{ success?: boolean; clinics?: Array<{ clinicId: string; clinicName: string; clinicCode: string; podiatristLimit?: number | null; podiatristCount?: number }> }>("/clinics").then((res) => {
+      if (res.success && Array.isArray(res.data?.clinics)) {
+        setClinicsForLimits(res.data.clinics.map((c) => ({
+          clinicId: c.clinicId,
+          clinicName: c.clinicName,
+          clinicCode: c.clinicCode,
+          podiatristLimit: c.podiatristLimit ?? null,
+          podiatristCount: c.podiatristCount ?? 0,
+        })));
+      }
+    });
+  }, [isSuperAdmin, currentUser?.role]);
 
   // Cargar solicitudes de recuperación de contraseña (solo super_admin, admin)
   useEffect(() => {
@@ -612,6 +755,28 @@ const UsersPage = () => {
     podiatrist: t.roles.podiatrist,
     receptionist: t.roles.receptionist,
   };
+
+  // Mapa clínica -> info (para mostrar nombre y límite en cada fila)
+  const clinicMap = useMemo(() => {
+    const m = new Map<string, { clinicName: string; clinicCode: string; podiatristLimit: number | null; podiatristCount: number }>();
+    for (const c of clinicsForLimits) {
+      m.set(c.clinicId, { clinicName: c.clinicName, clinicCode: c.clinicCode, podiatristLimit: c.podiatristLimit, podiatristCount: c.podiatristCount });
+    }
+    return m;
+  }, [clinicsForLimits]);
+
+  // Primera fila de cada clínica (para mostrar edición de límite solo una vez)
+  const firstRowForClinic = useMemo(() => {
+    const seen = new Set<string>();
+    const first: Record<string, string> = {};
+    for (const u of filteredUsers) {
+      if (u.clinicId && !seen.has(u.clinicId)) {
+        seen.add(u.clinicId);
+        first[u.clinicId] = u.id;
+      }
+    }
+    return first;
+  }, [filteredUsers]);
 
   // Función auxiliar para obtener el estado visual de un usuario
   const getUserStatusBadge = (user: User) => {
@@ -667,76 +832,118 @@ const UsersPage = () => {
     return false;
   };
 
-  const handleCreateUser = (userData: Partial<User> & { password: string }) => {
+  const handleCreateUser = (payload: CreateUserPayload) => {
     (async () => {
-      const email = (userData.email || "").trim();
+      const email = (payload.email || "").trim();
       if (!email) {
         alert("El correo electrónico es obligatorio.");
         return;
       }
 
-      // Validación rápida en cliente usando lista actual
-      const emailExists = allUsers.some(
-        (u) => u.email.toLowerCase() === email.toLowerCase()
-      );
+      const emailExists = allUsers.some((u) => u.email.toLowerCase() === email.toLowerCase());
       if (emailExists) {
         alert("Ya existe una cuenta con este correo electrónico.");
         return;
       }
 
+      if (!payload.password || payload.password.length < 8) {
+        alert("La contraseña debe tener al menos 8 caracteres.");
+        return;
+      }
+
       try {
-        const response = await api.post<{ success: boolean; user: User }>("/users", {
+        const userPayload: Record<string, unknown> = {
           email,
-          name: userData.name || "",
-          role: userData.role || "podiatrist",
-          clinicId: userData.clinicId,
-          password: userData.password,
-        });
+          name: payload.name || "",
+          role: payload.role || "podiatrist",
+          password: payload.password,
+        };
+        if (payload.clinicId) userPayload.clinicId = payload.clinicId;
 
-        if (response.success && response.data?.success) {
-          const newUser = response.data.user;
-          setAllUsers((prev) => [...prev, newUser]);
+        const response = await api.post<{ success: boolean; user: User }>("/users", userPayload);
 
-          addAuditLog({
-            userId: currentUser?.id || "",
-            userName: currentUser?.name || "",
-            action: "CREATE",
-            entityType: "user",
-            entityId: newUser.id,
-            details: JSON.stringify({
-              action: "user_create",
-              newUserName: newUser.name,
-              newUserEmail: newUser.email,
-              newUserRole: newUser.role,
-              newUserClinicId: newUser.clinicId,
-            }),
-          });
-          alert("Usuario creado exitosamente. El usuario puede iniciar sesión inmediatamente.");
-        } else {
-          alert(response.error || response.data?.message || "Error al crear usuario");
+        if (!response.success || !response.data?.success) {
+          const msg = response.data?.message || response.error || "Error al crear usuario";
+          const issues = (response.data as any)?.issues as Array<{ message?: string; path?: (string | number)[] }> | undefined;
+          const details = issues?.length ? issues.map((i) => i.message || i.path?.join(".")).join(". ") : "";
+          alert(details ? `${msg}\n\nDetalles: ${details}` : msg);
+          return;
         }
+
+        let newUser = response.data.user;
+        let createdClinic: { clinicId: string; clinicName: string; clinicCode: string } | null = null;
+
+        if (payload.newClinic) {
+          const clinicRes = await api.post<{ success?: boolean; clinic?: { clinicId: string; clinicName: string; clinicCode: string } }>("/clinics", {
+            ownerId: newUser.id,
+          });
+
+          if (clinicRes.success && clinicRes.data?.clinic) {
+            createdClinic = clinicRes.data.clinic;
+            const updateRes = await api.put<{ success?: boolean; user?: User }>(`/users/${newUser.id}`, {
+              clinicId: clinicRes.data.clinic.clinicId,
+            });
+            if (updateRes.success && updateRes.data?.user) {
+              newUser = updateRes.data.user;
+            }
+          }
+        }
+
+        setAllUsers((prev) => [...prev, newUser]);
+        if (createdClinic) {
+          setClinics((prev) => [...prev, { clinicId: createdClinic!.clinicId, clinicName: createdClinic!.clinicName, clinicCode: createdClinic!.clinicCode }]);
+        }
+
+        addAuditLog({
+          userId: currentUser?.id || "",
+          userName: currentUser?.name || "",
+          action: "CREATE",
+          entityType: "user",
+          entityId: newUser.id,
+          details: JSON.stringify({
+            action: "user_create",
+            newUserName: newUser.name,
+            newUserEmail: newUser.email,
+            newUserRole: newUser.role,
+            newUserClinicId: newUser.clinicId,
+          }),
+        });
+        alert("Usuario creado exitosamente. El usuario puede iniciar sesión inmediatamente.");
       } catch (error) {
         console.error("Error creando usuario:", error);
-        alert("Error al crear usuario");
+        alert("Error al crear usuario. Comprueba la consola del navegador (F12) para más detalles.");
       }
     })();
   };
 
   const handleEditUser = (userId: string, updates: Partial<User>) => {
-    // In a real app, this would update the user in the backend
-    console.log("Updating user:", userId, updates);
-    addAuditLog({
-      userId: currentUser?.id || "",
-      userName: currentUser?.name || "",
-      action: "UPDATE",
-      entityType: "user",
-      entityId: userId,
-      details: JSON.stringify({
-        action: "user_update",
-        targetUserId: userId,
-        targetUserName: updates.name,
-      }),
-    });
+    (async () => {
+      try {
+        const payload: Record<string, unknown> = {};
+        if (updates.name !== undefined) payload.name = updates.name;
+        if (updates.email !== undefined) payload.email = updates.email;
+        if (updates.role !== undefined) payload.role = updates.role;
+        if (updates.clinicId !== undefined) payload.clinicId = updates.clinicId || null;
+
+        const response = await api.put<{ success?: boolean; user?: User }>(`/users/${userId}`, payload);
+        if (response.success && response.data?.user) {
+          setAllUsers((prev) => prev.map((u) => (u.id === userId ? response.data!.user! : u)));
+          addAuditLog({
+            userId: currentUser?.id || "",
+            userName: currentUser?.name || "",
+            action: "UPDATE",
+            entityType: "user",
+            entityId: userId,
+            details: JSON.stringify({ action: "user_update", targetUserId: userId, targetUserName: updates.name }),
+          });
+        } else {
+          alert(response.error || response.data?.message || "Error al actualizar usuario");
+        }
+      } catch (error) {
+        console.error("Error actualizando usuario:", error);
+        alert("Error al actualizar usuario.");
+      }
+    })();
   };
 
   const loadPasswordResetRequests = async () => {
@@ -1099,14 +1306,37 @@ const UsersPage = () => {
     })();
   };
 
-  // Cerrar menús de cuenta al hacer clic fuera
+  const handleSavePodiatristLimit = async (clinicId: string) => {
+    const raw = clinicLimitEdits[clinicId];
+    setClinicLimitSaving(clinicId);
+    try {
+      const value = raw === "" || raw === undefined ? null : parseInt(String(raw), 10);
+      if (value !== null && (Number.isNaN(value) || value < 0)) {
+        setClinicLimitSaving(null);
+        return;
+      }
+      const res = await api.patch<{ success?: boolean }>(`/clinics/${clinicId}`, { podiatristLimit: value });
+      if (res.success) {
+        setClinicsForLimits((prev) =>
+          prev.map((c) => (c.clinicId === clinicId ? { ...c, podiatristLimit: value } : c))
+        );
+        setClinicLimitEdits((prev) => {
+          const next = { ...prev };
+          delete next[clinicId];
+          return next;
+        });
+      }
+    } finally {
+      setClinicLimitSaving(null);
+    }
+  };
+
+  // Cerrar menú de cuenta al hacer clic fuera (portal)
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       const target = event.target as HTMLElement;
-      if (!target.closest('[id^="account-menu-"]') && !target.closest('button[title="Gestionar cuenta"]')) {
-        document.querySelectorAll('[id^="account-menu-"]').forEach(menu => {
-          menu.classList.add("hidden");
-        });
+      if (!target.closest('[data-account-menu]') && !target.closest('button[title="Gestionar cuenta"]')) {
+        setOpenAccountMenuId(null);
       }
     };
     document.addEventListener("click", handleClickOutside);
@@ -1115,7 +1345,7 @@ const UsersPage = () => {
 
   return (
     <MainLayout title={t.nav.users}>
-      <div className="space-y-6">
+      <div className="space-y-6 w-full max-w-full min-w-0">
         {/* Header Actions */}
         <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
           <div className="flex flex-wrap gap-2">
@@ -1290,10 +1520,43 @@ const UsersPage = () => {
               
               <div className="space-y-1">
                 {u.clinicId && (
-                  <div className="mobile-card-row">
-                    <span className="mobile-card-label">Clínica</span>
-                    <span className="mobile-card-value">{u.clinicId}</span>
-                  </div>
+                  <>
+                    <div className="mobile-card-row">
+                      <span className="mobile-card-label">Clínica</span>
+                      <span className="mobile-card-value">{clinicMap.get(u.clinicId)?.clinicName ?? u.clinicId}</span>
+                    </div>
+                    {clinicMap.get(u.clinicId) && (
+                      <div className="mobile-card-row">
+                        <span className="mobile-card-label">Límite podólogos</span>
+                        {isSuperAdmin && firstRowForClinic[u.clinicId] === u.id ? (
+                          <div className="flex items-center gap-2">
+                            <input
+                              type="number"
+                              inputMode="numeric"
+                              min={0}
+                              value={clinicLimitEdits[u.clinicId] ?? (clinicMap.get(u.clinicId)!.podiatristLimit === null ? "" : String(clinicMap.get(u.clinicId)!.podiatristLimit))}
+                              onChange={(e) => setClinicLimitEdits((prev) => ({ ...prev, [u.clinicId!]: e.target.value }))}
+                              placeholder="∞"
+                              className="w-20 px-3 py-2.5 text-base rounded-lg border border-gray-200 focus:ring-2 focus:ring-[#1a1a1a] focus:border-[#1a1a1a] outline-none min-h-[44px] touch-manipulation"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => handleSavePodiatristLimit(u.clinicId!)}
+                              disabled={clinicLimitSaving === u.clinicId}
+                              className="px-3 py-2 text-sm font-medium bg-[#1a1a1a] text-white rounded-lg hover:bg-[#2a2a2a] disabled:opacity-50 min-h-[44px]"
+                            >
+                              {clinicLimitSaving === u.clinicId ? "..." : "Guardar"}
+                            </button>
+                          </div>
+                        ) : (
+                          <span className="mobile-card-value">
+                            {clinicMap.get(u.clinicId)!.podiatristCount}/
+                            {clinicMap.get(u.clinicId)!.podiatristLimit === null ? "∞" : clinicMap.get(u.clinicId)!.podiatristLimit}
+                          </span>
+                        )}
+                      </div>
+                    )}
+                  </>
                 )}
                 <div className="mobile-card-row">
                   <span className="mobile-card-label">Datos</span>
@@ -1378,35 +1641,46 @@ const UsersPage = () => {
         </div>
         
         {/* Desktop Table Layout */}
-        <div className="hidden md:block bg-white rounded-xl border border-gray-100 overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full">
+        <div className="hidden md:block w-full max-w-full min-w-0 bg-white rounded-xl border border-gray-100 overflow-hidden">
+          <div className="overflow-x-auto w-full max-w-full min-w-0">
+            <table className="w-full min-w-[720px] table-fixed">
+              <colgroup>
+                <col className="w-[16%]" />
+                <col className="w-[18%]" />
+                <col className="w-[10%]" />
+                <col className="w-[10%]" />
+                <col className="w-[12%]" />
+                <col className="w-[10%]" />
+                <col className="w-[12%]" />
+                <col className="w-[12%]" />
+              </colgroup>
               <thead>
                 <tr className="border-b border-gray-100 bg-gray-50">
-                  <th className="text-left px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Usuario</th>
-                  <th className="text-left px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Email</th>
-                  <th className="text-left px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Rol</th>
-                  <th className="text-left px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Estado</th>
-                  <th className="text-left px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Clínica</th>
-                  <th className="text-left px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Datos</th>
-                  <th className="text-right px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Acciones</th>
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider truncate">Usuario</th>
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider truncate">Email</th>
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider truncate">Rol</th>
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider truncate">Estado</th>
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider truncate">Clínica</th>
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider truncate">Límite</th>
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider truncate">Datos</th>
+                  <th className="text-right px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider truncate">Acciones</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50">
                 {filteredUsers.map((u) => (
                   <tr key={u.id} className="hover:bg-gray-50 transition-colors">
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center flex-shrink-0">
-                          <span className="font-medium text-[#1a1a1a]">
+                    <td className="px-4 py-3">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <div className="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center flex-shrink-0">
+                          <span className="font-medium text-[#1a1a1a] text-sm">
                             {u.name.charAt(0)}
                           </span>
                         </div>
-                        <span className="font-medium text-[#1a1a1a] truncate">{u.name}</span>
+                        <span className="font-medium text-[#1a1a1a] truncate text-sm">{u.name}</span>
                       </div>
                     </td>
-                    <td className="px-6 py-4 text-sm text-gray-600">{u.email}</td>
-                    <td className="px-6 py-4">
+                    <td className="px-4 py-3 text-sm text-gray-600 truncate" title={u.email}>{u.email}</td>
+                    <td className="px-4 py-3">
                       <span className={`inline-flex px-2.5 py-1 rounded-full text-xs font-medium ${
                         u.role === "super_admin" ? "bg-[#1a1a1a] text-white" :
                         u.role === "clinic_admin" ? "bg-blue-100 text-blue-700" :
@@ -1417,20 +1691,60 @@ const UsersPage = () => {
                         {roleLabels[u.role] ?? u.role}
                       </span>
                     </td>
-                    <td className="px-6 py-4">
+                    <td className="px-4 py-3">
                       {getUserStatusBadge(u)}
                     </td>
-                    <td className="px-6 py-4 text-sm text-gray-600">
-                      {u.clinicId || "-"}
+                    <td className="px-4 py-3 text-sm text-gray-600 truncate" title={u.clinicId || undefined}>
+                      {u.clinicId ? (clinicMap.get(u.clinicId)?.clinicName ?? u.clinicId) : "-"}
                     </td>
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-3 text-xs text-gray-500">
+                    <td className="px-4 py-3">
+                      {u.clinicId ? (() => {
+                        const info = clinicMap.get(u.clinicId);
+                        const isFirst = isSuperAdmin && firstRowForClinic[u.clinicId] === u.id;
+                        const editVal = clinicLimitEdits[u.clinicId] ?? (info?.podiatristLimit === null ? "" : String(info?.podiatristLimit ?? ""));
+                        const hasChange = editVal !== (info?.podiatristLimit === null ? "" : String(info?.podiatristLimit ?? ""));
+                        if (info) {
+                          const display = `${info.podiatristCount}/${info.podiatristLimit === null ? "∞" : info.podiatristLimit}`;
+                          if (isFirst) {
+                            return (
+                              <div className="flex items-center gap-2">
+                                <input
+                                  type="number"
+                                  inputMode="numeric"
+                                  min={0}
+                                  value={editVal}
+                                  onChange={(e) => setClinicLimitEdits((prev) => ({ ...prev, [u.clinicId!]: e.target.value }))}
+                                  placeholder="∞"
+                                  className="w-16 min-w-[44px] min-h-[44px] px-2 py-2 text-sm rounded-lg border border-gray-200 focus:ring-2 focus:ring-[#1a1a1a] focus:border-[#1a1a1a] outline-none touch-manipulation"
+                                  title={`Actual: ${info.podiatristCount} podólogos`}
+                                />
+                                <button
+                                  type="button"
+                                  onClick={() => handleSavePodiatristLimit(u.clinicId!)}
+                                  disabled={!hasChange || clinicLimitSaving === u.clinicId}
+                                  className="px-3 py-2 min-h-[44px] text-sm font-medium bg-[#1a1a1a] text-white rounded-lg hover:bg-[#2a2a2a] disabled:opacity-50 disabled:cursor-not-allowed touch-manipulation"
+                                  title="Guardar límite"
+                                >
+                                  {clinicLimitSaving === u.clinicId ? "..." : "✓"}
+                                </button>
+                              </div>
+                            );
+                          }
+                          return <span className="text-xs text-gray-600">{display}</span>;
+                        }
+                        return <span className="text-xs text-gray-400" title="Clínica no encontrada o eliminada">-</span>;
+                      })() : (
+                        <span className="text-xs text-gray-400">-</span>
+                      )}
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="flex items-center gap-2 text-xs text-gray-500 truncate">
                         <span>{u.patientCount} pacientes</span>
                         <span>{u.sessionCount} sesiones</span>
                       </div>
                     </td>
-                    <td className="px-6 py-4">
-                      <div className="flex items-center justify-end gap-1">
+                    <td className="px-4 py-3">
+                      <div className="flex items-center justify-end gap-1 flex-shrink-0">
                         {/* View Profile */}
                         <button
                           onClick={() => {
@@ -1478,104 +1792,28 @@ const UsersPage = () => {
                         
                         {/* Account Management Actions - Solo para superadmin y usuarios creados */}
                         {(isSuperAdmin || currentUser?.role === "clinic_admin") && canManageUser(u) && (
-                          <div className="relative inline-block">
+                          <div className="inline-block">
                             <button
                               className="p-2 text-gray-400 hover:text-[#1a1a1a] hover:bg-gray-100 rounded-lg transition-colors"
                               title="Gestionar cuenta"
                               onClick={(e) => {
                                 e.stopPropagation();
-                                const menu = document.getElementById(`account-menu-${u.id}`);
-                                if (menu) {
-                                  menu.classList.toggle("hidden");
+                                const btn = e.currentTarget as HTMLElement;
+                                const rect = btn.getBoundingClientRect();
+                                const spaceBelow = window.innerHeight - rect.bottom;
+                                const menuHeight = 280;
+                                if (spaceBelow < menuHeight) {
+                                  setAccountMenuPosition({ bottom: window.innerHeight - rect.top + 4, left: rect.right - 192 });
+                                } else {
+                                  setAccountMenuPosition({ top: rect.bottom + 4, left: rect.right - 192 });
                                 }
+                                setOpenAccountMenuId(openAccountMenuId === u.id ? null : u.id);
                               }}
                             >
                               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
                               </svg>
                             </button>
-                            <div
-                              id={`account-menu-${u.id}`}
-                              className="hidden absolute right-0 mt-1 w-48 bg-white rounded-lg shadow-lg border border-gray-200 z-50"
-                              onClick={(e) => e.stopPropagation()}
-                            >
-                              <div className="py-1">
-                                {isSuperAdmin && (u.isBanned ? (
-                                  <button
-                                    onClick={() => {
-                                      handleUnbanUser(u);
-                                      document.getElementById(`account-menu-${u.id}`)?.classList.add("hidden");
-                                    }}
-                                    className="w-full text-left px-4 py-2 text-sm text-green-700 hover:bg-green-50"
-                                  >
-                                    Desbanear cuenta
-                                  </button>
-                                ) : (
-                                  <button
-                                    onClick={() => {
-                                      handleBanUser(u);
-                                      document.getElementById(`account-menu-${u.id}`)?.classList.add("hidden");
-                                    }}
-                                    className="w-full text-left px-4 py-2 text-sm text-red-700 hover:bg-red-50"
-                                  >
-                                    Banear cuenta
-                                  </button>
-                                ))}
-                                {u.isBlocked ? (
-                                  <button
-                                    onClick={() => {
-                                      handleUnblockUser(u);
-                                      document.getElementById(`account-menu-${u.id}`)?.classList.add("hidden");
-                                    }}
-                                    className="w-full text-left px-4 py-2 text-sm text-green-700 hover:bg-green-50"
-                                  >
-                                    Desbloquear cuenta
-                                  </button>
-                                ) : (
-                                  <button
-                                    onClick={() => {
-                                      handleBlockUser(u);
-                                      document.getElementById(`account-menu-${u.id}`)?.classList.add("hidden");
-                                    }}
-                                    className="w-full text-left px-4 py-2 text-sm text-orange-700 hover:bg-orange-50"
-                                  >
-                                    Bloquear cuenta
-                                  </button>
-                                )}
-                                {u.isEnabled === false ? (
-                                  <button
-                                    onClick={() => {
-                                      handleEnableUser(u);
-                                      document.getElementById(`account-menu-${u.id}`)?.classList.add("hidden");
-                                    }}
-                                    className="w-full text-left px-4 py-2 text-sm text-green-700 hover:bg-green-50 font-medium"
-                                  >
-                                    ✅ Habilitar cuenta
-                                  </button>
-                                ) : (
-                                  <button
-                                    onClick={() => {
-                                      handleDisableUser(u);
-                                      document.getElementById(`account-menu-${u.id}`)?.classList.add("hidden");
-                                    }}
-                                    className="w-full text-left px-4 py-2 text-sm text-yellow-700 hover:bg-yellow-50 font-medium"
-                                  >
-                                    ⚠️ Deshabilitar cuenta
-                                  </button>
-                                )}
-                                <div className="border-t border-gray-100 my-1"></div>
-                                <div className="border-t border-gray-100 my-1"></div>
-                                <button
-                                  onClick={() => {
-                                    handleDeleteUser(u);
-                                    document.getElementById(`account-menu-${u.id}`)?.classList.add("hidden");
-                                  }}
-                                  className="w-full text-left px-4 py-2 text-sm text-red-700 hover:bg-red-50"
-                                >
-                                  Eliminar cuenta
-                                </button>
-                              </div>
-                            </div>
                           </div>
                         )}
                       </div>
@@ -1602,12 +1840,14 @@ const UsersPage = () => {
         isOpen={showCreateModal}
         onClose={() => setShowCreateModal(false)}
         onSave={handleCreateUser}
+        clinics={clinics}
       />
       
       <EditUserModal
         isOpen={showEditModal}
         onClose={() => setShowEditModal(false)}
         user={selectedUser}
+        clinics={clinics}
         onSave={handleEditUser}
       />
       
@@ -1622,6 +1862,46 @@ const UsersPage = () => {
         onClose={() => setShowProfileModal(false)}
         user={selectedUser}
       />
+
+      {/* Portal: menú de 3 puntos (evita scrollbar por overflow) */}
+      {openAccountMenuId && accountMenuPosition && (() => {
+        const u = filteredUsers.find(usr => usr.id === openAccountMenuId);
+        if (!u) return null;
+        const pos = accountMenuPosition.top !== undefined
+          ? { top: accountMenuPosition.top, left: accountMenuPosition.left }
+          : { bottom: accountMenuPosition.bottom, left: accountMenuPosition.left };
+        const closeMenu = () => { setOpenAccountMenuId(null); setAccountMenuPosition(null); };
+        return createPortal(
+          <div
+            data-account-menu
+            className="fixed w-48 bg-white rounded-lg shadow-lg border border-gray-200 z-[9999]"
+            style={pos}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="py-1">
+              {isSuperAdmin && (u.isBanned ? (
+                <button onClick={() => { handleUnbanUser(u); closeMenu(); }} className="w-full text-left px-4 py-2 text-sm text-green-700 hover:bg-green-50">Desbanear cuenta</button>
+              ) : (
+                <button onClick={() => { handleBanUser(u); closeMenu(); }} className="w-full text-left px-4 py-2 text-sm text-red-700 hover:bg-red-50">Banear cuenta</button>
+              ))}
+              {u.isBlocked ? (
+                <button onClick={() => { handleUnblockUser(u); closeMenu(); }} className="w-full text-left px-4 py-2 text-sm text-green-700 hover:bg-green-50">Desbloquear cuenta</button>
+              ) : (
+                <button onClick={() => { handleBlockUser(u); closeMenu(); }} className="w-full text-left px-4 py-2 text-sm text-orange-700 hover:bg-orange-50">Bloquear cuenta</button>
+              )}
+              {u.isEnabled === false ? (
+                <button onClick={() => { handleEnableUser(u); closeMenu(); }} className="w-full text-left px-4 py-2 text-sm text-green-700 hover:bg-green-50 font-medium">✅ Habilitar cuenta</button>
+              ) : (
+                <button onClick={() => { handleDisableUser(u); closeMenu(); }} className="w-full text-left px-4 py-2 text-sm text-yellow-700 hover:bg-yellow-50 font-medium">⚠️ Deshabilitar cuenta</button>
+              )}
+              <div className="border-t border-gray-100 my-1" />
+              <div className="border-t border-gray-100 my-1" />
+              <button onClick={() => { handleDeleteUser(u); closeMenu(); }} className="w-full text-left px-4 py-2 text-sm text-red-700 hover:bg-red-50">Eliminar cuenta</button>
+            </div>
+          </div>,
+          document.body
+        );
+      })()}
     </MainLayout>
   );
 };

@@ -109,6 +109,9 @@ export const clinics = sqliteTable('clinics', {
   website: text('website'),
   consentText: text('consent_text'), // Términos y condiciones / consentimiento informado (texto editable por clinic_admin)
   consentTextVersion: integer('consent_text_version').notNull().default(0),
+  infoUpdatedAt: text('info_updated_at'), // Última modificación de datos; bloqueo 15 días
+  logoUpdatedAt: text('logo_updated_at'), // Última modificación de logo; bloqueo 15 días
+  podiatristLimit: integer('podiatrist_limit'), // null = sin límite; super_admin lo define según lo que pague la clínica
   createdAt: text('created_at').notNull(),
 });
 

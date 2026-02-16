@@ -8,6 +8,7 @@ import { createdUsers, userCredits as userCreditsTable, creditTransactions as cr
 import { hashPassword } from '../utils/password';
 import { logAuditEvent } from '../utils/audit-log';
 import { getClientIP } from '../utils/ip-tracking';
+import { getSafeUserAgent } from '../utils/request-headers';
 import { deleteUserCascade } from '../utils/delete-user-cascade';
 
 const usersRoutes = new Hono();
@@ -214,9 +215,10 @@ usersRoutes.get('/:userId', async (c) => {
 
 /**
  * POST /api/users
- * Crea un nuevo usuario (super_admin)
+ * - super_admin: crea cualquier usuario
+ * - clinic_admin: solo podólogos y recepcionistas de su clínica (respeta podiatrist_limit)
  */
-usersRoutes.post('/', requireRole('super_admin'), async (c) => {
+usersRoutes.post('/', requireRole('super_admin', 'clinic_admin'), async (c) => {
   try {
     const rawBody = await c.req.json().catch(() => ({}));
     const validation = validateData(createUserSchema, rawBody);
@@ -228,6 +230,35 @@ usersRoutes.post('/', requireRole('super_admin'), async (c) => {
     const requester = c.get('user');
     const emailLower = email.toLowerCase().trim();
 
+    // clinic_admin: solo podólogo o recepcionista, y clinicId debe ser su clínica
+    if (requester.role === 'clinic_admin') {
+      if (role !== 'podiatrist' && role !== 'receptionist') {
+        return c.json({ error: 'Acceso denegado', message: 'Solo puedes crear podólogos y recepcionistas' }, 403);
+      }
+      const effectiveClinicId = clinicId || requester.clinicId;
+      if (!requester.clinicId || effectiveClinicId !== requester.clinicId) {
+        return c.json({ error: 'Acceso denegado', message: 'Solo puedes crear usuarios para tu clínica' }, 403);
+      }
+      // Para podólogos: verificar límite
+      if (role === 'podiatrist') {
+        const clinicRow = await database.select().from(clinicsTable).where(eq(clinicsTable.clinicId, requester.clinicId)).limit(1);
+        const limit = clinicRow[0]?.podiatristLimit ?? null;
+        if (limit !== null) {
+          const podiatristRows = await database.select().from(createdUsers).where(and(eq(createdUsers.clinicId, requester.clinicId), eq(createdUsers.role, 'podiatrist')));
+          if (podiatristRows.length >= limit) {
+            return c.json({
+              error: 'Límite alcanzado',
+              message: `Tu clínica tiene un límite de ${limit} podólogos. Contacta a PodoAdmin para ampliarlo.`,
+              currentCount: podiatristRows.length,
+              limit,
+            },
+              403
+            );
+          }
+        }
+      }
+    }
+
     const existing = await database.select().from(createdUsers).where(eq(createdUsers.email, emailLower)).limit(1);
     if (existing.length) return c.json({ error: 'Datos inválidos', message: 'Ya existe una cuenta con este correo electrónico' }, 400);
 
@@ -235,13 +266,16 @@ usersRoutes.post('/', requireRole('super_admin'), async (c) => {
     const now = new Date().toISOString();
     const hashedPwd = await hashPassword(password);
 
+    // clinic_admin: clinicId fijo a su clínica
+    const finalClinicId = requester.role === 'clinic_admin' ? requester.clinicId : (clinicId || null);
+
     await database.insert(createdUsers).values({
       id,
       userId: id,
       email: emailLower,
       name,
       role,
-      clinicId: clinicId || null,
+      clinicId: finalClinicId || null,
       password: hashedPwd,
       createdAt: now,
       updatedAt: now,
@@ -259,6 +293,17 @@ usersRoutes.post('/', requireRole('super_admin'), async (c) => {
       oauthProvider: null,
       avatarUrl: null,
     } as any);
+
+    // Recepcionistas necesitan entrada en user_credits (0 créditos)
+    if (role === 'receptionist') {
+      await database.insert(userCreditsTable).values({
+        userId: id,
+        totalCredits: 0,
+        usedCredits: 0,
+        createdAt: now,
+        updatedAt: now,
+      });
+    }
 
     await logAuditEvent({
       userId: requester.userId,

@@ -12,13 +12,13 @@ export const MainLayout = ({ children, title }: MainLayoutProps) => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   return (
-    <div className="min-h-dvh min-h-screen bg-gray-50">
+    <div className="h-dvh h-screen min-h-0 flex overflow-hidden bg-gray-50">
       <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
       
-      {/* Main content area */}
-      <div className="md:pl-72">
+      {/* Main content area - flex para adaptarse al viewport */}
+      <div className="flex-1 flex flex-col min-w-0 min-h-0 md:pl-0 ml-0 md:ml-72 w-full overflow-hidden">
         {/* Top header - responsive */}
-        <header className="sticky top-0 z-30 bg-white border-b border-gray-100 safe-area-top">
+        <header className="flex-shrink-0 sticky top-0 z-30 bg-white border-b border-gray-100 safe-area-top">
           <div className="flex items-center justify-between px-3 sm:px-4 md:px-6 lg:px-8 h-14 sm:h-16">
             {/* Left side - menu button and title */}
             <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
@@ -47,8 +47,8 @@ export const MainLayout = ({ children, title }: MainLayoutProps) => {
           </div>
         </header>
 
-        {/* Page content - responsive padding */}
-        <main className="p-3 sm:p-4 md:p-6 lg:p-8 pb-safe">
+        {/* Page content - scroll interno, se adapta al viewport */}
+        <main className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden p-3 sm:p-4 md:p-6 lg:p-8 pb-safe">
           {children}
         </main>
       </div>

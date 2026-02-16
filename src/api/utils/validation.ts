@@ -42,12 +42,31 @@ export const createUserSchema = z.object({
     .min(1, 'Nombre es requerido')
     .max(255, 'Nombre demasiado largo')
     .transform((val) => escapeHtml(val)), // Escapar HTML
-  role: z.enum(['super_admin', 'clinic_admin', 'admin', 'podiatrist']),
+  role: z.enum(['super_admin', 'clinic_admin', 'admin', 'podiatrist', 'receptionist']),
   clinicId: z.string().max(100).optional(),
   password: z
     .string()
     .min(8, 'La contraseña debe tener al menos 8 caracteres')
     .max(255, 'Contraseña demasiado larga'),
+});
+
+/**
+ * Schema para crear clínica (super_admin)
+ * clinicId, clinicName, clinicCode opcionales: si no se envían, la API genera placeholders.
+ * El clinic_admin completará todo en Configuración.
+ */
+export const createClinicSchema = z.object({
+  clinicId: z.string().max(64, 'ID demasiado largo').regex(/^[a-zA-Z0-9_-]*$/, 'Solo letras, números, guiones y guiones bajos').optional(),
+  clinicName: z.string().max(255, 'Nombre demasiado largo').transform((val) => escapeHtml(val)).optional(),
+  clinicCode: z.string().max(20, 'Código demasiado largo').transform((val) => escapeHtml(val)).optional(),
+  ownerId: z.string().min(1, 'ID del propietario requerido').max(128, 'ID demasiado largo'),
+  phone: z.string().max(50, 'Teléfono demasiado largo').optional(),
+  email: z.string().max(255, 'Email demasiado largo').optional(),
+  address: z.string().max(500, 'Dirección demasiado larga').optional(),
+  city: z.string().max(100, 'Ciudad demasiado larga').optional(),
+  postalCode: z.string().max(20, 'Código postal demasiado largo').optional(),
+  licenseNumber: z.string().max(100, 'Número de licencia demasiado largo').optional(),
+  website: z.string().max(255, 'Web demasiado larga').optional(),
 });
 
 /**
@@ -66,7 +85,7 @@ export const updateUserSchema = z.object({
     .max(255, 'Nombre demasiado largo')
     .transform((val) => escapeHtml(val))
     .optional(),
-  role: z.enum(['super_admin', 'clinic_admin', 'admin', 'podiatrist']).optional(),
+  role: z.enum(['super_admin', 'clinic_admin', 'admin', 'podiatrist', 'receptionist']).optional(),
   clinicId: z.string().max(100).nullable().optional(),
 });
 

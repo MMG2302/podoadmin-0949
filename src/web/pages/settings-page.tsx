@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import { MainLayout } from "../components/layout/main-layout";
 import { useLanguage } from "../contexts/language-context";
 import { useAuth } from "../contexts/auth-context";
+import { AnimatedThemeToggler } from "../components/ui/animated-theme-toggler";
 import { ProfessionalInfo, type Clinic } from "../lib/storage";
 import { api } from "../lib/api-client";
 
@@ -583,8 +584,17 @@ const SettingsPage = () => {
   return (
     <MainLayout title={t.settings.title} >
       <div className="max-w-2xl space-y-8">
+        {/* Theme - todos los usuarios */}
+        <div className="bg-white dark:bg-[#1a1a1a] rounded-xl border border-gray-100 dark:border-white/10 p-6">
+          <h3 className="text-lg font-semibold text-[#1a1a1a] dark:text-white mb-4">{t.settings.theme}</h3>
+          <div className="flex items-center gap-4">
+            <AnimatedThemeToggler />
+            <span className="text-sm text-gray-500 dark:text-gray-400">{t.settings.darkMode}</span>
+          </div>
+        </div>
+
         {/* Language Settings */}
-        <div className="bg-white rounded-xl border border-gray-100 p-6">
+        <div className="bg-white dark:bg-[#1a1a1a] rounded-xl border border-gray-100 dark:border-white/10 p-6">
           <h3 className="text-lg font-semibold text-[#1a1a1a] mb-4">{t.settings.language}</h3>
           
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
@@ -594,8 +604,8 @@ const SettingsPage = () => {
                 onClick={() => setLanguage(lang)}
                 className={`px-4 py-3 rounded-xl text-sm font-medium transition-all ${
                   language === lang
-                    ? "bg-[#1a1a1a] text-white"
-                    : "bg-gray-50 text-gray-700 hover:bg-gray-100"
+                    ? "bg-[#1a1a1a] dark:bg-white text-white dark:text-gray-900"
+                    : "bg-gray-50 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
                 }`}
               >
                 {languageNames[lang]}
@@ -605,23 +615,23 @@ const SettingsPage = () => {
         </div>
 
         {/* Profile Settings */}
-        <div className="bg-white rounded-xl border border-gray-100 p-6">
-          <h3 className="text-lg font-semibold text-[#1a1a1a] mb-4">Perfil de usuario</h3>
+        <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-100 dark:border-gray-800 p-6">
+          <h3 className="text-lg font-semibold text-[#1a1a1a] dark:text-white mb-4">Perfil de usuario</h3>
           
           <div className="space-y-4">
             <div className="flex items-center gap-4">
-              <div className="w-16 h-16 bg-[#1a1a1a] rounded-full flex items-center justify-center">
-                <span className="text-white text-2xl font-semibold">
+              <div className="w-16 h-16 bg-[#1a1a1a] dark:bg-white rounded-full flex items-center justify-center">
+                <span className="text-white dark:text-gray-900 text-2xl font-semibold">
                   {(user?.name ?? "").charAt(0).toUpperCase() || "?"}
                 </span>
               </div>
               <div>
-                <p className="font-medium text-[#1a1a1a]">{user?.name}</p>
-                <p className="text-sm text-gray-500">{user?.email}</p>
+                <p className="font-medium text-[#1a1a1a] dark:text-white">{user?.name}</p>
+                <p className="text-sm text-gray-500 dark:text-gray-400">{user?.email}</p>
               </div>
             </div>
 
-            <div className="pt-4 border-t border-gray-100">
+            <div className="pt-4 border-t border-gray-100 dark:border-gray-800">
               <div className="grid gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-500 mb-1">Nombre</label>

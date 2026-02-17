@@ -63,8 +63,13 @@ if (!Array.prototype.includes) {
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { Router } from "wouter";
+import { getThemeSettings } from "@/lib/storage";
 import "./styles.css";
 import App from "./app.tsx";
+
+// Aplicar tema guardado antes del primer render (evita flash)
+const { mode } = getThemeSettings();
+document.documentElement.classList.toggle("dark", mode === "dark");
 
 createRoot(document.getElementById("root")!).render(
         <StrictMode>

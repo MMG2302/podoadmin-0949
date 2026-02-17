@@ -7,9 +7,18 @@ import { LanguageSwitcher } from "../language-switcher";
 interface SidebarProps {
   isOpen: boolean;
   onClose: () => void;
+  visibleOnDesktop?: boolean;
+  onToggleDesktop?: () => void;
+  locked?: "visible" | "hidden" | null;
 }
 
-export const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
+export const Sidebar = ({
+  isOpen,
+  onClose,
+  visibleOnDesktop = true,
+  onToggleDesktop,
+  locked = null,
+}: SidebarProps) => {
   const [location] = useLocation();
   const { user, logout } = useAuth();
   const { t } = useLanguage();
@@ -155,29 +164,44 @@ export const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
         onClick={onClose}
       />
 
-      {/* Sidebar - full height overlay on mobile, fixed on desktop */}
+      {/* Sidebar - overlay en móvil, colapsable en desktop */}
       <aside
-        className={`fixed top-0 left-0 z-50 h-full w-[85%] max-w-[300px] md:w-72 bg-[#1a1a1a] transform transition-transform duration-300 ease-out md:translate-x-0 ${
+        className={`fixed top-0 left-0 z-50 h-full w-[85%] max-w-[300px] md:w-72 bg-[#1a1a1a] transform transition-transform duration-300 ease-out ${
           isOpen ? "translate-x-0" : "-translate-x-full"
-        }`}
+        } ${visibleOnDesktop ? "md:translate-x-0" : "md:-translate-x-full"}`}
       >
         <div className="flex flex-col h-full min-h-0 safe-area-inset">
-          {/* Header with close button for mobile */}
+          {/* Header with close/collapse and lock buttons */}
           <div className="flex-shrink-0 p-4 md:p-6 border-b border-white/10">
             <div className="flex items-center justify-between mb-4">
               <h1 className="text-white text-xl md:text-2xl font-light tracking-tight">
                 Podo<span className="font-bold">Admin</span>
               </h1>
-              {/* Close button - only visible on mobile */}
-              <button
-                onClick={onClose}
-                className="md:hidden p-2 -mr-2 text-white/70 hover:text-white hover:bg-white/10 rounded-lg transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center"
-                aria-label="Cerrar menú"
-              >
-                <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
+              <div className="flex items-center gap-1">
+                {/* Colapsar - visible en desktop cuando sidebar abierto (oculto si bloqueado) */}
+                {onToggleDesktop && !locked && (
+                  <button
+                    onClick={onToggleDesktop}
+                    className="hidden md:flex p-2 rounded-lg text-white/70 hover:text-white hover:bg-white/10 transition-colors min-w-[40px] min-h-[40px] items-center justify-center"
+                    title="Ocultar menú"
+                    aria-label="Ocultar menú"
+                  >
+                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M11 19l-7-7 7-7m8 14l-7-7 7-7" />
+                    </svg>
+                  </button>
+                )}
+                {/* Cerrar - solo en móvil */}
+                <button
+                  onClick={onClose}
+                  className="md:hidden p-2 -mr-2 text-white/70 hover:text-white hover:bg-white/10 rounded-lg transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center"
+                  aria-label="Cerrar menú"
+                >
+                  <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
             </div>
             
             {/* User info */}

@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { Route, Switch, Link } from "wouter";
+import { Users, Stethoscope, Building2, UserCircle, CalendarCheck, Settings, UserPlus, Building, Calendar, FileText } from "lucide-react";
 import { MainLayout } from "../components/layout/main-layout";
+import { RoleDashboardBento } from "../components/ui/bento-grid";
 import { useLanguage } from "../contexts/language-context";
 import { useAuth } from "../contexts/auth-context";
 import { usePermissions } from "../hooks/use-permissions";
@@ -32,90 +34,30 @@ const SuperAdminDashboard = () => {
   const podiatrists = allUsers.filter(u => u.role === "podiatrist");
   const clinicAdmins = allUsers.filter(u => u.role === "clinic_admin");
 
-  const stats = [
-    { label: t.nav.users, value: allUsers.length.toString(), path: "/users" },
-    { label: "Podólogos", value: podiatrists.length.toString(), path: "/users" },
-  ];
-
   return (
     <MainLayout title={t.dashboard.title}>
-      <div className="space-y-8">
-        {/* Welcome */}
-        <div className="bg-[#1a1a1a] rounded-2xl p-8 text-white relative overflow-hidden">
-          <div className="absolute inset-0 opacity-5">
-            <svg width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
-              <defs>
-                <pattern id="welcome-grid" width="40" height="40" patternUnits="userSpaceOnUse">
-                  <path d="M 40 0 L 0 0 0 40" fill="none" stroke="white" strokeWidth="1"/>
-                </pattern>
-              </defs>
-              <rect width="100%" height="100%" fill="url(#welcome-grid)" />
-            </svg>
-          </div>
-          <div className="relative z-10">
-            <h2 className="text-2xl font-light mb-2">
-              {t.auth.welcomeBack}, <span className="font-semibold">{user?.name}</span>
-            </h2>
-            <p className="text-gray-400">
-              {t.roles.superAdminDesc}
-            </p>
-          </div>
-        </div>
-
-        {/* Quick Stats */}
-        <div>
-          <h3 className="text-lg font-semibold text-[#1a1a1a] mb-4">{t.dashboard.quickStats}</h3>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {stats.map((stat, index) => (
-              <Link key={index} href={stat.path}>
-                <div className="bg-white rounded-xl p-6 border border-gray-100 hover:border-gray-200 transition-colors cursor-pointer group">
-                  <p className="text-sm text-gray-500 mb-1">{stat.label}</p>
-                  <span className="text-3xl font-semibold text-[#1a1a1a] group-hover:text-[#1a1a1a]/80 transition-colors">
-                    {stat.value}
-                  </span>
-                </div>
-              </Link>
-            ))}
-          </div>
-        </div>
-
-        {/* Quick Actions for Super Admin */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          <Link href="/users">
-            <div className="bg-white rounded-xl p-5 border border-gray-100 hover:border-[#1a1a1a] transition-colors cursor-pointer group">
-              <div className="w-10 h-10 bg-gray-100 group-hover:bg-[#1a1a1a] rounded-lg flex items-center justify-center mb-3 transition-colors">
-                <svg className="w-5 h-5 text-gray-600 group-hover:text-white transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
-                </svg>
-              </div>
-              <p className="font-medium text-[#1a1a1a]">{t.nav.users}</p>
-              <p className="text-sm text-gray-500 mt-1">Gestionar usuarios y clínicas</p>
-            </div>
-          </Link>
-          
-          <Link href="/settings">
-            <div className="bg-white rounded-xl p-5 border border-gray-100 hover:border-[#1a1a1a] transition-colors cursor-pointer group">
-              <div className="w-10 h-10 bg-gray-100 group-hover:bg-[#1a1a1a] rounded-lg flex items-center justify-center mb-3 transition-colors">
-                <svg className="w-5 h-5 text-gray-600 group-hover:text-white transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                </svg>
-              </div>
-              <p className="font-medium text-[#1a1a1a]">{t.settings.title}</p>
-              <p className="text-sm text-gray-500 mt-1">Configuración del sistema</p>
-            </div>
-          </Link>
-        </div>
-
-        {/* Users Overview */}
-        <div>
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold text-[#1a1a1a]">Usuarios del Sistema</h3>
-            <Link href="/users" className="text-sm text-gray-500 hover:text-[#1a1a1a] transition-colors">
+      <RoleDashboardBento
+        welcomeTitle={<>{t.auth.welcomeBack}, <span className="font-semibold">{user?.name}</span></>}
+        welcomeDescription={t.roles.superAdminDesc}
+        statItems={[
+          { Icon: Users, label: t.nav.users, value: allUsers.length.toString(), path: "/users" },
+          { Icon: Stethoscope, label: "Podólogos", value: podiatrists.length.toString(), path: "/users" },
+          { Icon: Building2, label: "Administradores de clínica", value: clinicAdmins.length.toString(), path: "/users" },
+        ]}
+        actionItems={[
+          { Icon: Users, name: t.nav.users, description: "Gestionar usuarios y clínicas", href: "/users" },
+          { Icon: Settings, name: t.settings.title, description: "Configuración del sistema", href: "/settings" },
+        ]}
+      >
+        {/* Users Overview - full width */}
+        <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-100 dark:border-gray-800 overflow-hidden">
+          <div className="flex items-center justify-between p-4 border-b border-gray-50 dark:border-gray-800">
+            <h3 className="text-lg font-semibold text-[#1a1a1a] dark:text-white">Usuarios del Sistema</h3>
+            <Link href="/users" className="text-sm text-gray-500 dark:text-gray-400 hover:text-[#1a1a1a] dark:hover:text-white transition-colors">
               Ver todos →
             </Link>
           </div>
-          <div className="bg-white rounded-xl border border-gray-100 divide-y divide-gray-50">
+          <div className="divide-y divide-gray-50 dark:divide-gray-800">
             {allUsers.slice(0, 5).map((u) => {
               const roleLabel = {
                 super_admin: t.roles.superAdmin,
@@ -125,15 +67,15 @@ const SuperAdminDashboard = () => {
               }[u.role];
               
               return (
-                <div key={u.id} className="p-4 flex items-center gap-4 hover:bg-gray-50 transition-colors">
-                  <div className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center">
-                    <span className="font-medium text-[#1a1a1a]">
+                <div key={u.id} className="p-4 flex items-center gap-4 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
+                  <div className="w-10 h-10 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center">
+                    <span className="font-medium text-[#1a1a1a] dark:text-white">
                       {u.name.charAt(0)}
                     </span>
                   </div>
                   <div className="flex-1">
-                    <p className="text-sm font-medium text-[#1a1a1a]">{u.name}</p>
-                    <p className="text-xs text-gray-500">{u.email}</p>
+                    <p className="text-sm font-medium text-[#1a1a1a] dark:text-white">{u.name}</p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">{u.email}</p>
                   </div>
                   <span className={`px-2 py-1 rounded-full text-xs font-medium ${
                     u.role === "super_admin" ? "bg-[#1a1a1a] text-white" :
@@ -148,7 +90,7 @@ const SuperAdminDashboard = () => {
             })}
           </div>
         </div>
-      </div>
+      </RoleDashboardBento>
     </MainLayout>
   );
 };
@@ -180,11 +122,6 @@ const PodiatristDashboard = () => {
     return sessionDate.getMonth() === now.getMonth() && sessionDate.getFullYear() === now.getFullYear();
   });
 
-  const stats = [
-    { label: t.dashboard.totalPatients, value: patients.length.toString(), path: "/patients" },
-    { label: t.dashboard.sessionsThisMonth, value: sessionsThisMonth.length.toString(), path: "/sessions" },
-  ];
-
   const recentSessions = sessions
     .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
     .slice(0, 5);
@@ -209,46 +146,20 @@ const PodiatristDashboard = () => {
 
   return (
     <MainLayout title={t.dashboard.title}>
-      <div className="space-y-8">
-        {/* Welcome */}
-        <div className="bg-[#1a1a1a] rounded-2xl p-8 text-white relative overflow-hidden">
-          <div className="absolute inset-0 opacity-5">
-            <svg width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
-              <defs>
-                <pattern id="welcome-grid-pod" width="40" height="40" patternUnits="userSpaceOnUse">
-                  <path d="M 40 0 L 0 0 0 40" fill="none" stroke="white" strokeWidth="1"/>
-                </pattern>
-              </defs>
-              <rect width="100%" height="100%" fill="url(#welcome-grid-pod)" />
-            </svg>
-          </div>
-          <div className="relative z-10">
-            <h2 className="text-2xl font-light mb-2">
-              {t.auth.welcomeBack}, <span className="font-semibold">{user?.name}</span>
-            </h2>
-            <p className="text-gray-400">
-              {t.roles.podiatristDesc}
-            </p>
-          </div>
-        </div>
-
-        {/* Quick Stats */}
-        <div>
-          <h3 className="text-lg font-semibold text-[#1a1a1a] mb-4">{t.dashboard.quickStats}</h3>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {stats.map((stat, index) => (
-              <Link key={index} href={stat.path}>
-                <div className="bg-white rounded-xl p-6 border border-gray-100 hover:border-gray-200 transition-colors cursor-pointer group">
-                  <p className="text-sm text-gray-500 mb-1">{stat.label}</p>
-                  <span className="text-3xl font-semibold text-[#1a1a1a] group-hover:text-[#1a1a1a]/80 transition-colors">
-                    {stat.value}
-                  </span>
-                </div>
-              </Link>
-            ))}
-          </div>
-        </div>
-
+      <RoleDashboardBento
+        welcomeTitle={<>{t.auth.welcomeBack}, <span className="font-semibold">{user?.name}</span></>}
+        welcomeDescription={t.roles.podiatristDesc}
+        statItems={[
+          { Icon: UserCircle, label: t.dashboard.totalPatients, value: patients.length.toString(), path: "/patients" },
+          { Icon: CalendarCheck, label: t.dashboard.sessionsThisMonth, value: sessionsThisMonth.length.toString(), path: "/sessions" },
+        ]}
+        actionItems={[
+          { Icon: UserPlus, name: t.patients.addPatient, description: "Registrar nuevo paciente", href: "/patients" },
+          { Icon: FileText, name: t.sessions.newSession, description: "Iniciar consulta clínica", href: "/sessions" },
+          { Icon: Settings, name: t.settings.title, description: "Personalizar sistema", href: "/settings" },
+        ]}
+        gridClassName="md:grid-cols-2 lg:grid-cols-3"
+      >
         {/* Recent Activity */}
         <div>
           <div className="flex items-center justify-between mb-4">
@@ -294,47 +205,7 @@ const PodiatristDashboard = () => {
             )}
           </div>
         </div>
-
-        {/* Quick Actions */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <Link href="/patients">
-            <div className="bg-white rounded-xl p-5 border border-gray-100 hover:border-[#1a1a1a] transition-colors cursor-pointer group">
-              <div className="w-10 h-10 bg-gray-100 group-hover:bg-[#1a1a1a] rounded-lg flex items-center justify-center mb-3 transition-colors">
-                <svg className="w-5 h-5 text-gray-600 group-hover:text-white transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
-                </svg>
-              </div>
-              <p className="font-medium text-[#1a1a1a]">{t.patients.addPatient}</p>
-              <p className="text-sm text-gray-500 mt-1">Registrar nuevo paciente</p>
-            </div>
-          </Link>
-          
-          <Link href="/sessions">
-            <div className="bg-white rounded-xl p-5 border border-gray-100 hover:border-[#1a1a1a] transition-colors cursor-pointer group">
-              <div className="w-10 h-10 bg-gray-100 group-hover:bg-[#1a1a1a] rounded-lg flex items-center justify-center mb-3 transition-colors">
-                <svg className="w-5 h-5 text-gray-600 group-hover:text-white transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-              </div>
-              <p className="font-medium text-[#1a1a1a]">{t.sessions.newSession}</p>
-              <p className="text-sm text-gray-500 mt-1">Iniciar consulta clínica</p>
-            </div>
-          </Link>
-          
-          <Link href="/settings">
-            <div className="bg-white rounded-xl p-5 border border-gray-100 hover:border-[#1a1a1a] transition-colors cursor-pointer group">
-              <div className="w-10 h-10 bg-gray-100 group-hover:bg-[#1a1a1a] rounded-lg flex items-center justify-center mb-3 transition-colors">
-                <svg className="w-5 h-5 text-gray-600 group-hover:text-white transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                </svg>
-              </div>
-              <p className="font-medium text-[#1a1a1a]">{t.settings.title}</p>
-              <p className="text-sm text-gray-500 mt-1">Personalizar sistema</p>
-            </div>
-          </Link>
-        </div>
-      </div>
+      </RoleDashboardBento>
     </MainLayout>
   );
 };
@@ -346,57 +217,14 @@ const AdminDashboard = () => {
 
   return (
     <MainLayout title={t.dashboard.title}>
-      <div className="space-y-8">
-        {/* Welcome */}
-        <div className="bg-[#1a1a1a] rounded-2xl p-8 text-white relative overflow-hidden">
-          <div className="absolute inset-0 opacity-5">
-            <svg width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
-              <defs>
-                <pattern id="welcome-grid-admin" width="40" height="40" patternUnits="userSpaceOnUse">
-                  <path d="M 40 0 L 0 0 0 40" fill="none" stroke="white" strokeWidth="1"/>
-                </pattern>
-              </defs>
-              <rect width="100%" height="100%" fill="url(#welcome-grid-admin)" />
-            </svg>
-          </div>
-          <div className="relative z-10">
-            <h2 className="text-2xl font-light mb-2">
-              {t.auth.welcomeBack}, <span className="font-semibold">{user?.name}</span>
-            </h2>
-            <p className="text-gray-400">
-              {t.roles.adminDesc}
-            </p>
-          </div>
-        </div>
-
-        {/* Quick Actions for Admin */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          <Link href="/users">
-            <div className="bg-white rounded-xl p-5 border border-gray-100 hover:border-[#1a1a1a] transition-colors cursor-pointer group">
-              <div className="w-10 h-10 bg-gray-100 group-hover:bg-[#1a1a1a] rounded-lg flex items-center justify-center mb-3 transition-colors">
-                <svg className="w-5 h-5 text-gray-600 group-hover:text-white transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
-                </svg>
-              </div>
-              <p className="font-medium text-[#1a1a1a]">{t.nav.users}</p>
-              <p className="text-sm text-gray-500 mt-1">Ver usuarios del sistema</p>
-            </div>
-          </Link>
-          
-          <Link href="/settings">
-            <div className="bg-white rounded-xl p-5 border border-gray-100 hover:border-[#1a1a1a] transition-colors cursor-pointer group">
-              <div className="w-10 h-10 bg-gray-100 group-hover:bg-[#1a1a1a] rounded-lg flex items-center justify-center mb-3 transition-colors">
-                <svg className="w-5 h-5 text-gray-600 group-hover:text-white transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                </svg>
-              </div>
-              <p className="font-medium text-[#1a1a1a]">{t.settings.title}</p>
-              <p className="text-sm text-gray-500 mt-1">Configuración de cuenta</p>
-            </div>
-          </Link>
-        </div>
-      </div>
+      <RoleDashboardBento
+        welcomeTitle={<>{t.auth.welcomeBack}, <span className="font-semibold">{user?.name}</span></>}
+        welcomeDescription={t.roles.adminDesc}
+        actionItems={[
+          { Icon: Users, name: t.nav.users, description: "Ver usuarios del sistema", href: "/users" },
+          { Icon: Settings, name: t.settings.title, description: "Configuración de cuenta", href: "/settings" },
+        ]}
+      />
     </MainLayout>
   );
 };
@@ -408,81 +236,17 @@ const ClinicAdminDashboard = () => {
 
   return (
     <MainLayout title={t.dashboard.title}>
-      <div className="space-y-8">
-        {/* Welcome */}
-        <div className="bg-[#1a1a1a] rounded-2xl p-8 text-white relative overflow-hidden">
-          <div className="absolute inset-0 opacity-5">
-            <svg width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
-              <defs>
-                <pattern id="welcome-grid-clinic" width="40" height="40" patternUnits="userSpaceOnUse">
-                  <path d="M 40 0 L 0 0 0 40" fill="none" stroke="white" strokeWidth="1"/>
-                </pattern>
-              </defs>
-              <rect width="100%" height="100%" fill="url(#welcome-grid-clinic)" />
-            </svg>
-          </div>
-          <div className="relative z-10">
-            <h2 className="text-2xl font-light mb-2">
-              {t.auth.welcomeBack}, <span className="font-semibold">{user?.name}</span>
-            </h2>
-            <p className="text-gray-400">
-              {t.roles.clinicAdminDesc}
-            </p>
-          </div>
-        </div>
-
-        {/* Quick Actions for Clinic Admin */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <Link href="/clinic">
-            <div className="bg-white rounded-xl p-5 border border-gray-100 hover:border-[#1a1a1a] transition-colors cursor-pointer group">
-              <div className="w-10 h-10 bg-gray-100 group-hover:bg-[#1a1a1a] rounded-lg flex items-center justify-center mb-3 transition-colors">
-                <svg className="w-5 h-5 text-gray-600 group-hover:text-white transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-                </svg>
-              </div>
-              <p className="font-medium text-[#1a1a1a]">{t.nav.clinicManagement}</p>
-              <p className="text-sm text-gray-500 mt-1">Gestión de la clínica</p>
-            </div>
-          </Link>
-          
-          <Link href="/patients">
-            <div className="bg-white rounded-xl p-5 border border-gray-100 hover:border-[#1a1a1a] transition-colors cursor-pointer group">
-              <div className="w-10 h-10 bg-gray-100 group-hover:bg-[#1a1a1a] rounded-lg flex items-center justify-center mb-3 transition-colors">
-                <svg className="w-5 h-5 text-gray-600 group-hover:text-white transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-                </svg>
-              </div>
-              <p className="font-medium text-[#1a1a1a]">{t.nav.patients}</p>
-              <p className="text-sm text-gray-500 mt-1">Ver todos los pacientes</p>
-            </div>
-          </Link>
-          
-          <Link href="/sessions">
-            <div className="bg-white rounded-xl p-5 border border-gray-100 hover:border-[#1a1a1a] transition-colors cursor-pointer group">
-              <div className="w-10 h-10 bg-gray-100 group-hover:bg-[#1a1a1a] rounded-lg flex items-center justify-center mb-3 transition-colors">
-                <svg className="w-5 h-5 text-gray-600 group-hover:text-white transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                </svg>
-              </div>
-              <p className="font-medium text-[#1a1a1a]">{t.nav.clinicalSessions}</p>
-              <p className="text-sm text-gray-500 mt-1">Ver todas las sesiones</p>
-            </div>
-          </Link>
-          
-          <Link href="/settings">
-            <div className="bg-white rounded-xl p-5 border border-gray-100 hover:border-[#1a1a1a] transition-colors cursor-pointer group">
-              <div className="w-10 h-10 bg-gray-100 group-hover:bg-[#1a1a1a] rounded-lg flex items-center justify-center mb-3 transition-colors">
-                <svg className="w-5 h-5 text-gray-600 group-hover:text-white transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                </svg>
-              </div>
-              <p className="font-medium text-[#1a1a1a]">{t.settings.title}</p>
-              <p className="text-sm text-gray-500 mt-1">Configuración</p>
-            </div>
-          </Link>
-        </div>
-      </div>
+      <RoleDashboardBento
+        welcomeTitle={<>{t.auth.welcomeBack}, <span className="font-semibold">{user?.name}</span></>}
+        welcomeDescription={t.roles.clinicAdminDesc}
+        actionItems={[
+          { Icon: Building, name: t.nav.clinicManagement, description: "Gestión de la clínica", href: "/clinic" },
+          { Icon: UserCircle, name: t.nav.patients, description: "Ver todos los pacientes", href: "/patients" },
+          { Icon: FileText, name: t.nav.clinicalSessions, description: "Ver todas las sesiones", href: "/sessions" },
+          { Icon: Settings, name: t.settings.title, description: "Configuración", href: "/settings" },
+        ]}
+        gridClassName="md:grid-cols-2 lg:grid-cols-3"
+      />
     </MainLayout>
   );
 };
@@ -519,85 +283,38 @@ const ReceptionistDashboard = () => {
     }
   }, [user?.id, user?.clinicId]);
 
-  const stats = [
-    { label: "Pacientes de podólogos asignados", value: patientCount.toString(), path: "/patients" },
-  ];
+  const welcomeDescription = (
+    <>
+      <span className="text-gray-400">{t.roles.receptionistDesc}</span>
+      {clinic && (
+        <p className="text-gray-300 text-sm mt-1">
+          Clínica asignada: <span className="font-semibold">{clinic.clinicName}</span>
+        </p>
+      )}
+      {assignedPodiatrists.length > 0 && (
+        <p className="text-gray-300 text-sm mt-1">
+          Podólogos asignados:{" "}
+          <span className="font-semibold">{assignedPodiatrists.map((p) => p.name).join(", ")}</span>
+        </p>
+      )}
+    </>
+  );
 
   return (
     <MainLayout title={t.dashboard.title}>
-      <div className="space-y-8">
-        <div className="bg-[#1a1a1a] rounded-2xl p-8 text-white relative overflow-hidden">
-          <div className="relative z-10">
-            <h2 className="text-2xl font-light mb-2">
-              {t.auth.welcomeBack}, <span className="font-semibold">{user?.name}</span>
-            </h2>
-            <p className="text-gray-400">{t.roles.receptionistDesc}</p>
-            {/* Información de asignación específica */}
-            {clinic && (
-              <p className="text-gray-300 text-sm mt-1">
-                Clínica asignada: <span className="font-semibold">{clinic.clinicName}</span>
-              </p>
-            )}
-            {assignedPodiatrists.length > 0 && (
-              <p className="text-gray-300 text-sm mt-1">
-                Podólogos asignados:{" "}
-                <span className="font-semibold">
-                  {assignedPodiatrists.map((p) => p.name).join(", ")}
-                </span>
-              </p>
-            )}
-          </div>
-        </div>
-        <div>
-          <h3 className="text-lg font-semibold text-[#1a1a1a] mb-4">{t.dashboard.quickStats}</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {stats.map((stat, i) => (
-              <Link key={i} href={stat.path}>
-                <div className="bg-white rounded-xl p-6 border border-gray-100 hover:border-gray-200 transition-colors cursor-pointer group">
-                  <p className="text-sm text-gray-500 mb-1">{stat.label}</p>
-                  <span className="text-3xl font-semibold text-[#1a1a1a] group-hover:text-[#1a1a1a]/80">{stat.value}</span>
-                </div>
-              </Link>
-            ))}
-          </div>
-        </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <Link href="/patients">
-            <div className="bg-white rounded-xl p-5 border border-gray-100 hover:border-[#1a1a1a] transition-colors cursor-pointer group">
-              <div className="w-10 h-10 bg-gray-100 group-hover:bg-[#1a1a1a] rounded-lg flex items-center justify-center mb-3 transition-colors">
-                <svg className="w-5 h-5 text-gray-600 group-hover:text-white transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
-                </svg>
-              </div>
-              <p className="font-medium text-[#1a1a1a]">{t.patients.addPatient}</p>
-              <p className="text-sm text-gray-500 mt-1">Crear y gestionar pacientes</p>
-            </div>
-          </Link>
-          <Link href="/calendar">
-            <div className="bg-white rounded-xl p-5 border border-gray-100 hover:border-[#1a1a1a] transition-colors cursor-pointer group">
-              <div className="w-10 h-10 bg-gray-100 group-hover:bg-[#1a1a1a] rounded-lg flex items-center justify-center mb-3 transition-colors">
-                <svg className="w-5 h-5 text-gray-600 group-hover:text-white transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                </svg>
-              </div>
-              <p className="font-medium text-[#1a1a1a]">Calendario</p>
-              <p className="text-sm text-gray-500 mt-1">Crear y editar citas</p>
-            </div>
-          </Link>
-          <Link href="/settings" className="sm:col-span-2">
-            <div className="bg-white rounded-xl p-5 border border-gray-100 hover:border-[#1a1a1a] transition-colors cursor-pointer group">
-              <div className="w-10 h-10 bg-gray-100 group-hover:bg-[#1a1a1a] rounded-lg flex items-center justify-center mb-3 transition-colors">
-                <svg className="w-5 h-5 text-gray-600 group-hover:text-white transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                </svg>
-              </div>
-              <p className="font-medium text-[#1a1a1a]">{t.settings.title}</p>
-              <p className="text-sm text-gray-500 mt-1">Podólogos asignados y preferencias</p>
-            </div>
-          </Link>
-        </div>
-      </div>
+      <RoleDashboardBento
+        welcomeTitle={<>{t.auth.welcomeBack}, <span className="font-semibold">{user?.name}</span></>}
+        welcomeDescription={welcomeDescription}
+        statItems={[
+          { Icon: UserCircle, label: "Pacientes de podólogos asignados", value: patientCount.toString(), path: "/patients" },
+        ]}
+        actionItems={[
+          { Icon: UserPlus, name: t.patients.addPatient, description: "Crear y gestionar pacientes", href: "/patients" },
+          { Icon: Calendar, name: "Calendario", description: "Crear y editar citas", href: "/calendar" },
+          { Icon: Settings, name: t.settings.title, description: "Podólogos asignados y preferencias", href: "/settings" },
+        ]}
+        gridClassName="md:grid-cols-2 lg:grid-cols-3"
+      />
     </MainLayout>
   );
 };

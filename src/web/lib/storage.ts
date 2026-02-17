@@ -174,6 +174,7 @@ const KEYS = {
   CREDIT_TRANSACTIONS: "podoadmin_credit_transactions",
   AUDIT_LOG: "podoadmin_audit_log",
   THEME: "podoadmin_theme",
+  SIDEBAR: "podoadmin_sidebar",
   CREATED_USERS: "podoadmin_created_users",
   CLINIC_CREDITS: "podoadmin_clinic_credits",
   CLINIC_CREDIT_DISTRIBUTIONS: "podoadmin_clinic_credit_distributions",
@@ -705,6 +706,25 @@ export const getThemeSettings = (): ThemeSettings => {
 
 export const saveThemeSettings = (settings: ThemeSettings): void => {
   setItem(KEYS.THEME, settings);
+};
+
+// Sidebar preferences (collapsible on desktop, lock options)
+export type SidebarLockMode = "visible" | "hidden" | null;
+
+export interface SidebarSettings {
+  collapsed: boolean; // true = hidden on desktop
+  locked: SidebarLockMode; // null = can toggle, "visible" = always shown, "hidden" = always hidden
+}
+
+export const getSidebarSettings = (): SidebarSettings => {
+  return getItem<SidebarSettings>(KEYS.SIDEBAR, {
+    collapsed: false,
+    locked: null,
+  });
+};
+
+export const saveSidebarSettings = (settings: SidebarSettings): void => {
+  setItem(KEYS.SIDEBAR, settings);
 };
 
 // Export patient data as JSON

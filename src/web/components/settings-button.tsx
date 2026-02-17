@@ -7,12 +7,12 @@ export const SettingsButton = () => {
   return (
     <Link
       href="/settings"
-      className="relative p-2 rounded-lg hover:bg-gray-100 transition-colors"
+      className="relative p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
       aria-label={t.settings.title}
       title={t.settings.title}
     >
       <svg 
-        className="w-5 h-5 text-[#1a1a1a]" 
+        className="w-5 h-5 text-[#1a1a1a] dark:text-white" 
         fill="none" 
         viewBox="0 0 24 24" 
         stroke="currentColor" 

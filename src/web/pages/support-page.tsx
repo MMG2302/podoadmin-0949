@@ -250,18 +250,18 @@ const SupportPage = () => {
     <MainLayout title={t.support.title}>
       <div className="space-y-6">
         <div>
-          <h2 className="text-xl font-semibold text-[#1a1a1a]">{t.support.contactPodoAdmin}</h2>
-          <p className="text-sm text-gray-500 mt-1">
+          <h2 className="text-xl font-semibold text-[#1a1a1a] dark:text-white">{t.support.contactPodoAdmin}</h2>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
             Mensajes de usuarios y listas de registro para aprobación.
           </p>
         </div>
 
         {canCreateLists && (
-          <div className="flex gap-1 bg-gray-100 p-1 rounded-lg w-fit">
+          <div className="flex gap-1 bg-gray-100 dark:bg-gray-800 p-1 rounded-lg w-fit">
             <button
               onClick={() => setActiveTab("messages")}
               className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-                activeTab === "messages" ? "bg-white text-[#1a1a1a] shadow-sm" : "text-gray-600 hover:text-[#1a1a1a]"
+                activeTab === "messages" ? "bg-white dark:bg-gray-700 text-[#1a1a1a] dark:text-white shadow-sm" : "text-gray-600 dark:text-gray-300 hover:text-[#1a1a1a] dark:hover:text-white"
               }`}
             >
               Mensajes
@@ -269,7 +269,7 @@ const SupportPage = () => {
             <button
               onClick={() => setActiveTab("lists")}
               className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-                activeTab === "lists" ? "bg-white text-[#1a1a1a] shadow-sm" : "text-gray-600 hover:text-[#1a1a1a]"
+                activeTab === "lists" ? "bg-white dark:bg-gray-700 text-[#1a1a1a] dark:text-white shadow-sm" : "text-gray-600 dark:text-gray-300 hover:text-[#1a1a1a] dark:hover:text-white"
               }`}
             >
               Crear listas
@@ -279,37 +279,37 @@ const SupportPage = () => {
 
         {activeTab === "messages" && (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
-              <div className="p-4 border-b border-gray-100">
-                <h3 className="font-medium text-[#1a1a1a]">Conversaciones</h3>
+            <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-100 dark:border-gray-800 overflow-hidden">
+              <div className="p-4 border-b border-gray-100 dark:border-gray-800">
+                <h3 className="font-medium text-[#1a1a1a] dark:text-white">Conversaciones</h3>
               </div>
               <div className="max-h-[400px] overflow-y-auto">
                 {conversations.length === 0 ? (
-                  <div className="p-8 text-center text-gray-500">No hay conversaciones</div>
+                  <div className="p-8 text-center text-gray-500 dark:text-gray-400">No hay conversaciones</div>
                 ) : (
-                  <div className="divide-y divide-gray-50">
+                  <div className="divide-y divide-gray-50 dark:divide-gray-800">
                     {conversations.map((c) => (
                       <button
                         key={c.id}
                         onClick={() => openConversation(c)}
-                        className={`w-full text-left p-4 hover:bg-gray-50 transition-colors ${
-                          selected?.id === c.id ? "bg-blue-50" : ""
+                        className={`w-full text-left p-4 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors ${
+                          selected?.id === c.id ? "bg-blue-50 dark:bg-gray-800" : ""
                         }`}
                       >
                         <div className="flex justify-between items-start gap-2">
-                          <span className="font-medium text-[#1a1a1a] truncate">{c.subject}</span>
+                          <span className="font-medium text-[#1a1a1a] dark:text-white truncate">{c.subject}</span>
                           <span
                             className={`flex-shrink-0 text-xs px-2 py-0.5 rounded-full ${
-                              c.status === "open" ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-600"
+                              c.status === "open" ? "bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-400" : "bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400"
                             }`}
                           >
                             {c.status === "open" ? t.support.open : t.support.closed}
                           </span>
                         </div>
-                        <p className="text-sm text-gray-500 mt-1 truncate">
+                        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1 truncate">
                           {c.userName || c.userEmail || c.userId}
                         </p>
-                        <p className="text-xs text-gray-400 mt-0.5">
+                        <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">
                           {new Date(c.updatedAt).toLocaleString()}
                         </p>
                       </button>
@@ -319,13 +319,13 @@ const SupportPage = () => {
               </div>
             </div>
 
-            <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
+            <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-100 dark:border-gray-800 overflow-hidden">
               {selected ? (
                 <>
-                  <div className="p-4 border-b border-gray-100 flex justify-between items-start">
+                  <div className="p-4 border-b border-gray-100 dark:border-gray-800 flex justify-between items-start">
                     <div>
-                      <h3 className="font-medium text-[#1a1a1a]">{selected.subject}</h3>
-                      <p className="text-sm text-gray-500">
+                      <h3 className="font-medium text-[#1a1a1a] dark:text-white">{selected.subject}</h3>
+                      <p className="text-sm text-gray-500 dark:text-gray-400">
                         {selected.userName} {selected.userEmail && `(${selected.userEmail})`}
                       </p>
                     </div>
@@ -333,7 +333,7 @@ const SupportPage = () => {
                       {selected.status === "open" ? (
                         <button
                           onClick={closeConversation}
-                          className="text-xs px-2 py-1 bg-gray-100 text-gray-600 rounded hover:bg-gray-200"
+                          className="text-xs px-2 py-1 bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 rounded hover:bg-gray-200 dark:hover:bg-gray-700"
                         >
                           {t.support.closeConversation}
                         </button>
@@ -352,25 +352,25 @@ const SupportPage = () => {
                       <div
                         key={m.id}
                         className={`p-3 rounded-lg ${
-                          m.isFromSupport ? "bg-blue-50 ml-4" : "bg-gray-50 mr-4"
+                          m.isFromSupport ? "bg-blue-50 dark:bg-blue-900/30 ml-4" : "bg-gray-50 dark:bg-gray-800 mr-4"
                         }`}
                       >
-                        <p className="text-xs text-gray-500 mb-1">
+                        <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">
                           {m.isFromSupport ? (user?.name || "Soporte") : (selected.userName || selected.userEmail)} ·{" "}
                           {new Date(m.createdAt).toLocaleString()}
                         </p>
-                        <p className="text-sm text-[#1a1a1a] whitespace-pre-wrap">{m.body}</p>
+                        <p className="text-sm text-[#1a1a1a] dark:text-white whitespace-pre-wrap">{m.body}</p>
                       </div>
                     ))}
                   </div>
                   {selected.status === "open" && (
-                    <div className="p-4 border-t border-gray-100 flex gap-2">
+                    <div className="p-4 border-t border-gray-100 dark:border-gray-800 flex gap-2">
                       <textarea
                         value={reply}
                         onChange={(e) => setReply(e.target.value)}
                         placeholder={t.support.replyPlaceholder}
                         rows={3}
-                        className="flex-1 px-4 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#1a1a1a] resize-none"
+                        className="flex-1 px-4 py-2.5 border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-[#1a1a1a] dark:text-white focus:ring-2 focus:ring-[#1a1a1a] dark:focus:ring-gray-500 resize-none"
                       />
                       <button
                         onClick={sendReply}
@@ -383,7 +383,7 @@ const SupportPage = () => {
                   )}
                 </>
               ) : (
-                <div className="p-12 text-center text-gray-500">
+                <div className="p-12 text-center text-gray-500 dark:text-gray-400">
                   Selecciona una conversación para ver los mensajes y responder.
                 </div>
               )}
@@ -393,9 +393,9 @@ const SupportPage = () => {
 
         {activeTab === "lists" && canCreateLists && (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
-              <div className="p-4 border-b border-gray-100 flex justify-between items-center">
-                <h3 className="font-medium text-[#1a1a1a]">Listas de registro</h3>
+            <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-100 dark:border-gray-800 overflow-hidden">
+              <div className="p-4 border-b border-gray-100 dark:border-gray-800 flex justify-between items-center">
+                <h3 className="font-medium text-[#1a1a1a] dark:text-white">Listas de registro</h3>
                 <button
                   type="button"
                   onClick={() => void createList()}
@@ -405,36 +405,36 @@ const SupportPage = () => {
                   {listLoading ? "..." : "Nueva lista"}
                 </button>
               </div>
-              <div className="p-4 border-b border-gray-50">
+              <div className="p-4 border-b border-gray-50 dark:border-gray-800">
                 <input
                   type="text"
                   value={listName}
                   onChange={(e) => setListName(e.target.value)}
                   placeholder="Nombre de la nueva lista..."
-                  className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm"
+                  className="w-full px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-[#1a1a1a] dark:text-white text-sm"
                   onKeyDown={(e) => e.key === "Enter" && createList()}
                 />
               </div>
               <div className="max-h-[350px] overflow-y-auto">
                 {lists.length === 0 ? (
-                  <div className="p-8 text-center text-gray-500 text-sm">
+                  <div className="p-8 text-center text-gray-500 dark:text-gray-400 text-sm">
                     Crea listas de registros (cursos, eventos) y envíalas para que el administrador las apruebe e importe.
                   </div>
                 ) : (
-                  <div className="divide-y divide-gray-50">
+                  <div className="divide-y divide-gray-50 dark:divide-gray-800">
                     {lists.map((l) => (
                       <button
                         key={l.id}
                         onClick={() => openList(l.id)}
-                        className={`w-full text-left p-4 hover:bg-gray-50 transition-colors ${
-                          selectedList?.list.id === l.id ? "bg-blue-50" : ""
+                        className={`w-full text-left p-4 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors ${
+                          selectedList?.list.id === l.id ? "bg-blue-50 dark:bg-gray-800" : ""
                         }`}
                       >
-                        <span className="font-medium text-[#1a1a1a] truncate block">{l.name}</span>
+                        <span className="font-medium text-[#1a1a1a] dark:text-white truncate block">{l.name}</span>
                         <span
                           className={`inline-block mt-1 text-xs px-2 py-0.5 rounded-full ${
                             l.status === "draft"
-                              ? "bg-gray-100 text-gray-600"
+                              ? "bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400"
                               : l.status === "pending"
                               ? "bg-yellow-100 text-yellow-700"
                               : l.status === "approved"
@@ -444,7 +444,7 @@ const SupportPage = () => {
                         >
                           {statusLabel(l.status)}
                         </span>
-                        <p className="text-xs text-gray-400 mt-1">
+                        <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
                           {new Date(l.updatedAt).toLocaleString()}
                           {l.creatorName && isSuperAdmin ? ` · ${l.creatorName}` : ""}
                         </p>
@@ -455,10 +455,10 @@ const SupportPage = () => {
               </div>
             </div>
 
-            <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
+            <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-100 dark:border-gray-800 overflow-hidden">
               {selectedList ? (
                 <div className="flex flex-col h-full">
-                  <div className="p-4 border-b border-gray-100 flex justify-between items-start gap-2">
+                  <div className="p-4 border-b border-gray-100 dark:border-gray-800 flex justify-between items-start gap-2">
                     <div className="flex-1 min-w-0">
                       {selectedList.list.status === "draft" ? (
                         <input
@@ -466,10 +466,10 @@ const SupportPage = () => {
                           value={listName}
                           onChange={(e) => setListName(e.target.value)}
                           onBlur={updateListName}
-                          className="w-full font-medium text-[#1a1a1a] border-b border-transparent hover:border-gray-200 focus:border-[#1a1a1a] focus:outline-none px-1 py-0.5"
+                          className="w-full font-medium text-[#1a1a1a] dark:text-white border-b border-transparent hover:border-gray-200 dark:hover:border-gray-600 focus:border-[#1a1a1a] dark:focus:border-gray-400 focus:outline-none px-1 py-0.5 bg-transparent"
                         />
                       ) : (
-                        <h3 className="font-medium text-[#1a1a1a]">{selectedList.list.name}</h3>
+                        <h3 className="font-medium text-[#1a1a1a] dark:text-white">{selectedList.list.name}</h3>
                       )}
                       <span
                         className={`inline-block mt-1 text-xs px-2 py-0.5 rounded-full ${
@@ -505,8 +505,8 @@ const SupportPage = () => {
                   </div>
 
                   {selectedList.list.status === "draft" && (
-                    <div className="p-4 border-b border-gray-100 space-y-2">
-                      <p className="text-xs font-medium text-gray-500">Añadir registro</p>
+                    <div className="p-4 border-b border-gray-100 dark:border-gray-800 space-y-2">
+                      <p className="text-xs font-medium text-gray-500 dark:text-gray-400">Añadir registro</p>
                       <div className="flex flex-col gap-2">
                         <div className="flex gap-2 flex-wrap">
                           <input
@@ -514,26 +514,26 @@ const SupportPage = () => {
                             placeholder="Nombre"
                             value={newEntry.name}
                             onChange={(e) => setNewEntry((p) => ({ ...p, name: e.target.value }))}
-                            className="flex-1 min-w-[100px] px-3 py-2 border border-gray-200 rounded-lg text-sm"
+                            className="flex-1 min-w-[100px] px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-[#1a1a1a] dark:text-white text-sm"
                           />
                           <input
                             type="email"
                             placeholder="Email"
                             value={newEntry.email}
                             onChange={(e) => setNewEntry((p) => ({ ...p, email: e.target.value }))}
-                            className="flex-1 min-w-[120px] px-3 py-2 border border-gray-200 rounded-lg text-sm"
+                            className="flex-1 min-w-[120px] px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-[#1a1a1a] dark:text-white text-sm"
                           />
                           <select
                             value={newEntry.role}
                             onChange={(e) => setNewEntry((p) => ({ ...p, role: e.target.value }))}
-                            className="px-3 py-2 border border-gray-200 rounded-lg text-sm"
+                            className="px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-[#1a1a1a] dark:text-white text-sm"
                           >
                             <option value="podiatrist">Podólogo independiente</option>
                             <option value="clinic_admin">Admin de clínica</option>
                           </select>
                           {newEntry.role === "clinic_admin" && (
                             <div className="flex items-center gap-2">
-                              <label className="text-xs text-gray-500 whitespace-nowrap">Límite podólogos:</label>
+                              <label className="text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">Límite podólogos:</label>
                               <input
                                 type="number"
                                 min="1"
@@ -541,7 +541,7 @@ const SupportPage = () => {
                                 placeholder="Ej: 5"
                                 value={newEntry.podiatristLimit}
                                 onChange={(e) => setNewEntry((p) => ({ ...p, podiatristLimit: e.target.value }))}
-                                className="w-20 px-3 py-2 border border-gray-200 rounded-lg text-sm"
+                                className="w-20 px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-[#1a1a1a] dark:text-white text-sm"
                               />
                             </div>
                           )}
@@ -554,7 +554,7 @@ const SupportPage = () => {
                           </button>
                         </div>
                         {newEntry.role === "clinic_admin" && (
-                          <p className="text-xs text-gray-500">
+                          <p className="text-xs text-gray-500 dark:text-gray-400">
                             Los podólogos de la clínica estarán limitados a este número. Recepcionistas no cuentan en el límite.
                           </p>
                         )}
@@ -564,17 +564,17 @@ const SupportPage = () => {
 
                   <div className="flex-1 overflow-y-auto p-4 max-h-[300px]">
                     {selectedList.entries.length === 0 ? (
-                      <p className="text-sm text-gray-500">No hay registros en esta lista.</p>
+                      <p className="text-sm text-gray-500 dark:text-gray-400">No hay registros en esta lista.</p>
                     ) : (
                       <div className="space-y-2">
                         {selectedList.entries.map((e) => (
                           <div
                             key={e.id}
-                            className="flex justify-between items-center gap-2 p-3 bg-gray-50 rounded-lg"
+                            className="flex justify-between items-center gap-2 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg"
                           >
                             <div>
-                              <p className="font-medium text-sm text-[#1a1a1a]">{e.name}</p>
-                              <p className="text-xs text-gray-500">
+                              <p className="font-medium text-sm text-[#1a1a1a] dark:text-white">{e.name}</p>
+                              <p className="text-xs text-gray-500 dark:text-gray-400">
                                 {e.email} · {e.role === "clinic_admin" ? "Admin de clínica" : "Podólogo independiente"}
                                 {e.role === "clinic_admin" && e.podiatristLimit != null && (
                                   <> · Límite: {e.podiatristLimit} podólogos</>
@@ -596,7 +596,7 @@ const SupportPage = () => {
                   </div>
                 </div>
               ) : (
-                <div className="p-12 text-center text-gray-500">
+                <div className="p-12 text-center text-gray-500 dark:text-gray-400">
                   Selecciona una lista o crea una nueva.
                 </div>
               )}

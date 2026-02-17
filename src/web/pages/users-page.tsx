@@ -1241,19 +1241,6 @@ const UsersPage = () => {
     return list;
   }, [filteredUsers, sortBy, sortDir, clinicMap]);
 
-  // Primera fila de cada clínica (para mostrar edición de límite solo una vez)
-  const firstRowForClinic = useMemo(() => {
-    const seen = new Set<string>();
-    const first: Record<string, string> = {};
-    for (const u of sortedUsers) {
-      if (u.clinicId && !seen.has(u.clinicId)) {
-        seen.add(u.clinicId);
-        first[u.clinicId] = u.id;
-      }
-    }
-    return first;
-  }, [sortedUsers]);
-
   const handleSort = (key: SortKey) => {
     setSortBy(key);
     setSortDir((prev) => (sortBy === key ? (prev === "asc" ? "desc" : "asc") : "asc"));
@@ -1261,7 +1248,7 @@ const UsersPage = () => {
 
   const SortableTh = ({ sortKey, label, align = "left" }: { sortKey: SortKey; label: string; align?: "left" | "right" }) => (
     <th
-      className={`${align === "right" ? "text-right" : "text-left"} px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider truncate cursor-pointer select-none hover:bg-gray-100 active:bg-gray-200 transition-colors`}
+      className={`${align === "right" ? "text-right" : "text-left"} px-4 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider truncate cursor-pointer select-none hover:bg-gray-100 dark:hover:bg-gray-700 active:bg-gray-200 dark:active:bg-gray-600 transition-colors`}
       onClick={() => handleSort(sortKey)}
       title={`Ordenar por ${label}`}
     >
@@ -1895,12 +1882,12 @@ const UsersPage = () => {
               placeholder="Buscar usuarios..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="flex-1 sm:w-64 px-4 py-2 rounded-lg border border-gray-200 focus:border-[#1a1a1a] focus:ring-1 focus:ring-[#1a1a1a] outline-none transition-colors text-sm"
+              className="flex-1 sm:w-64 px-4 py-2 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 text-[#1a1a1a] dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:border-[#1a1a1a] dark:focus:border-gray-400 focus:ring-1 focus:ring-[#1a1a1a] dark:focus:ring-gray-400 outline-none transition-colors text-sm"
             />
             <select
               value={roleFilter}
               onChange={(e) => setRoleFilter(e.target.value as UserRole | "all")}
-              className="px-4 py-2 rounded-lg border border-gray-200 focus:border-[#1a1a1a] focus:ring-1 focus:ring-[#1a1a1a] outline-none transition-colors text-sm"
+              className="px-4 py-2 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 text-[#1a1a1a] dark:text-white focus:border-[#1a1a1a] dark:focus:border-gray-400 focus:ring-1 focus:ring-[#1a1a1a] dark:focus:ring-gray-400 outline-none transition-colors text-sm [&_option]:bg-white [&_option]:text-[#1a1a1a] dark:[&_option]:bg-gray-800 dark:[&_option]:text-white"
             >
               <option value="all">Todos los roles</option>
               <option value="super_admin">{t.roles.superAdmin}</option>
@@ -2093,7 +2080,7 @@ const UsersPage = () => {
                     {clinicMap.get(u.clinicId) && (
                       <div className="mobile-card-row">
                         <span className="mobile-card-label">Límite podólogos</span>
-                        {isSuperAdmin && firstRowForClinic[u.clinicId] === u.id ? (
+                        {isSuperAdmin && u.role === "clinic_admin" ? (
                           <div className="flex items-center gap-2">
                             <input
                               type="number"
@@ -2206,7 +2193,7 @@ const UsersPage = () => {
         </div>
         
         {/* Desktop Table Layout */}
-        <div className="hidden md:block w-full max-w-full min-w-0 bg-white rounded-xl border border-gray-100 overflow-hidden">
+        <div className="hidden md:block w-full max-w-full min-w-0 bg-white dark:bg-gray-900 rounded-xl border border-gray-100 dark:border-gray-800 overflow-hidden">
           <div className="overflow-x-auto w-full max-w-full min-w-0">
             <table className="w-full min-w-[720px] table-fixed">
               <colgroup>
@@ -2220,31 +2207,31 @@ const UsersPage = () => {
                 <col className="w-[12%]" />
               </colgroup>
               <thead>
-                <tr className="border-b border-gray-100 bg-gray-50">
+                <tr className="border-b border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-800">
                   <SortableTh sortKey="name" label="Usuario" />
                   <SortableTh sortKey="email" label="Email" />
                   <SortableTh sortKey="role" label="Rol" />
                   <SortableTh sortKey="status" label="Estado" />
                   <SortableTh sortKey="clinic" label="Clínica" />
-                  <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider truncate">Límite</th>
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider truncate">Límite</th>
                   <SortableTh sortKey="data" label="Datos" />
-                  <th className="text-right px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider truncate">Acciones</th>
+                  <th className="text-right px-4 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider truncate">Acciones</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-50">
+              <tbody className="divide-y divide-gray-50 dark:divide-gray-800">
                 {sortedUsers.map((u) => (
-                  <tr key={u.id} className="hover:bg-gray-50 transition-colors">
+                  <tr key={u.id} className="hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-2 min-w-0">
-                        <div className="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center flex-shrink-0">
-                          <span className="font-medium text-[#1a1a1a] text-sm">
+                        <div className="w-8 h-8 bg-gray-100 dark:bg-gray-700 rounded-full flex items-center justify-center flex-shrink-0">
+                          <span className="font-medium text-[#1a1a1a] dark:text-white text-sm">
                             {u.name.charAt(0)}
                           </span>
                         </div>
-                        <span className="font-medium text-[#1a1a1a] truncate text-sm">{u.name}</span>
+                        <span className="font-medium text-[#1a1a1a] dark:text-white truncate text-sm">{u.name}</span>
                       </div>
                     </td>
-                    <td className="px-4 py-3 text-sm text-gray-600 truncate" title={u.email}>{u.email}</td>
+                    <td className="px-4 py-3 text-sm text-gray-600 dark:text-gray-300 truncate" title={u.email}>{u.email}</td>
                     <td className="px-4 py-3">
                       <span className={`inline-flex px-2.5 py-1 rounded-full text-xs font-medium ${
                         u.role === "super_admin" ? "bg-[#1a1a1a] text-white" :
@@ -2259,18 +2246,18 @@ const UsersPage = () => {
                     <td className="px-4 py-3">
                       {getUserStatusBadge(u)}
                     </td>
-                    <td className="px-4 py-3 text-sm text-gray-600 truncate" title={u.clinicId || undefined}>
+                    <td className="px-4 py-3 text-sm text-gray-600 dark:text-gray-300 truncate" title={u.clinicId || undefined}>
                       {u.clinicId ? (clinicMap.get(u.clinicId)?.clinicName ?? u.clinicId) : "-"}
                     </td>
                     <td className="px-4 py-3">
                       {u.clinicId ? (() => {
                         const info = clinicMap.get(u.clinicId);
-                        const isFirst = isSuperAdmin && firstRowForClinic[u.clinicId] === u.id;
+                        const isClinicAdminRow = isSuperAdmin && u.role === "clinic_admin";
                         const editVal = clinicLimitEdits[u.clinicId] ?? (info?.podiatristLimit === null ? "" : String(info?.podiatristLimit ?? ""));
                         const hasChange = editVal !== (info?.podiatristLimit === null ? "" : String(info?.podiatristLimit ?? ""));
                         if (info) {
                           const display = `${info.podiatristCount}/${info.podiatristLimit === null ? "∞" : info.podiatristLimit}`;
-                          if (isFirst) {
+                          if (isClinicAdminRow) {
                             return (
                               <div className="flex items-center gap-2">
                                 <input

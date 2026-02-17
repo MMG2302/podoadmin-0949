@@ -303,28 +303,28 @@ const AuditLogPage = () => {
       <div className="space-y-6">
         {/* Statistics Summary */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <div className="bg-white rounded-xl border border-gray-100 p-4">
-            <div className="text-sm text-gray-500 mb-1">Total de registros</div>
-            <div className="text-2xl font-bold text-[#1a1a1a]">{statistics.total}</div>
+          <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-100 dark:border-gray-800 p-4">
+            <div className="text-sm text-gray-500 dark:text-gray-400 mb-1">Total de registros</div>
+            <div className="text-2xl font-bold text-[#1a1a1a] dark:text-white">{statistics.total}</div>
           </div>
-          <div className="bg-white rounded-xl border border-gray-100 p-4">
-            <div className="text-sm text-gray-500 mb-1">Tipos de acción</div>
-            <div className="text-2xl font-bold text-[#1a1a1a]">{Object.keys(statistics.actionCounts).length}</div>
+          <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-100 dark:border-gray-800 p-4">
+            <div className="text-sm text-gray-500 dark:text-gray-400 mb-1">Tipos de acción</div>
+            <div className="text-2xl font-bold text-[#1a1a1a] dark:text-white">{Object.keys(statistics.actionCounts).length}</div>
           </div>
-          <div className="bg-white rounded-xl border border-gray-100 p-4">
-            <div className="text-sm text-gray-500 mb-1">Tipos de entidad</div>
-            <div className="text-2xl font-bold text-[#1a1a1a]">{Object.keys(statistics.entityCounts).length}</div>
+          <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-100 dark:border-gray-800 p-4">
+            <div className="text-sm text-gray-500 dark:text-gray-400 mb-1">Tipos de entidad</div>
+            <div className="text-2xl font-bold text-[#1a1a1a] dark:text-white">{Object.keys(statistics.entityCounts).length}</div>
           </div>
-          <div className="bg-white rounded-xl border border-gray-100 p-4">
-            <div className="text-sm text-gray-500 mb-1">Usuarios activos</div>
-            <div className="text-2xl font-bold text-[#1a1a1a]">{statistics.topUsers.length}</div>
+          <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-100 dark:border-gray-800 p-4">
+            <div className="text-sm text-gray-500 dark:text-gray-400 mb-1">Usuarios activos</div>
+            <div className="text-2xl font-bold text-[#1a1a1a] dark:text-white">{statistics.topUsers.length}</div>
           </div>
         </div>
 
         {/* Top Users */}
         {statistics.topUsers.length > 0 && (
-          <div className="bg-white rounded-xl border border-gray-100 p-4">
-            <h3 className="text-sm font-medium text-gray-500 mb-3">Usuarios más activos</h3>
+          <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-100 dark:border-gray-800 p-4">
+            <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-3">Usuarios más activos</h3>
             <div className="flex flex-wrap gap-2">
               {statistics.topUsers.map((u) => (
                 <button
@@ -333,7 +333,7 @@ const AuditLogPage = () => {
                   className={`px-3 py-1.5 rounded-lg text-sm transition-colors ${
                     userFilter === u.userId
                       ? "bg-[#1a1a1a] text-white"
-                      : "bg-gray-50 text-gray-700 hover:bg-gray-100"
+                      : "bg-gray-50 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
                   }`}
                 >
                   {u.userName} <span className="opacity-60">({u.count})</span>
@@ -344,12 +344,12 @@ const AuditLogPage = () => {
         )}
 
         {/* Filters */}
-        <div className="bg-white rounded-xl border border-gray-100 p-4">
+        <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-100 dark:border-gray-800 p-4">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-sm font-medium text-gray-500">Filtros</h3>
+            <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400">Filtros</h3>
             <button
               onClick={clearFilters}
-              className="text-sm text-gray-500 hover:text-[#1a1a1a] transition-colors"
+              className="text-sm text-gray-500 dark:text-gray-400 hover:text-[#1a1a1a] dark:hover:text-white transition-colors"
             >
               Limpiar filtros
             </button>
@@ -369,13 +369,13 @@ const AuditLogPage = () => {
                 placeholder="Buscar..."
                 value={searchQuery}
                 onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1); }}
-                className="w-full pl-9 pr-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-[#1a1a1a] focus:ring-1 focus:ring-[#1a1a1a]"
+                className="w-full pl-9 pr-3 py-2 text-sm border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-[#1a1a1a] dark:text-white focus:outline-none focus:border-[#1a1a1a] dark:focus:border-gray-400 focus:ring-1 focus:ring-[#1a1a1a] dark:focus:ring-gray-400"
               />
             </div>
             <select
               value={actionFilter}
               onChange={(e) => { setActionFilter(e.target.value); setCurrentPage(1); }}
-              className="px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-[#1a1a1a] focus:ring-1 focus:ring-[#1a1a1a]"
+              className="px-3 py-2 text-sm border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-[#1a1a1a] dark:text-white focus:outline-none focus:border-[#1a1a1a] dark:focus:border-gray-400 focus:ring-1 focus:ring-[#1a1a1a] dark:focus:ring-gray-400"
             >
               <option value="all">Todas las acciones</option>
               {uniqueActions.map((action) => (
@@ -385,7 +385,7 @@ const AuditLogPage = () => {
             <select
               value={entityTypeFilter}
               onChange={(e) => { setEntityTypeFilter(e.target.value); setCurrentPage(1); }}
-              className="px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-[#1a1a1a] focus:ring-1 focus:ring-[#1a1a1a]"
+              className="px-3 py-2 text-sm border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-[#1a1a1a] dark:text-white focus:outline-none focus:border-[#1a1a1a] dark:focus:border-gray-400 focus:ring-1 focus:ring-[#1a1a1a] dark:focus:ring-gray-400"
             >
               <option value="all">Todos los tipos</option>
               {uniqueEntityTypes.map((type) => (
@@ -395,7 +395,7 @@ const AuditLogPage = () => {
             <select
               value={userFilter}
               onChange={(e) => { setUserFilter(e.target.value); setCurrentPage(1); }}
-              className="px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-[#1a1a1a] focus:ring-1 focus:ring-[#1a1a1a]"
+              className="px-3 py-2 text-sm border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-[#1a1a1a] dark:text-white focus:outline-none focus:border-[#1a1a1a] dark:focus:border-gray-400 focus:ring-1 focus:ring-[#1a1a1a] dark:focus:ring-gray-400"
             >
               <option value="all">Todos los usuarios</option>
               {uniqueUsers.map((userId) => {
@@ -407,14 +407,14 @@ const AuditLogPage = () => {
               type="date"
               value={dateFrom}
               onChange={(e) => { setDateFrom(e.target.value); setCurrentPage(1); }}
-              className="px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-[#1a1a1a] focus:ring-1 focus:ring-[#1a1a1a]"
+              className="px-3 py-2 text-sm border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-[#1a1a1a] dark:text-white focus:outline-none focus:border-[#1a1a1a] dark:focus:border-gray-400 focus:ring-1 focus:ring-[#1a1a1a] dark:focus:ring-gray-400"
               placeholder="Desde"
             />
             <input
               type="date"
               value={dateTo}
               onChange={(e) => { setDateTo(e.target.value); setCurrentPage(1); }}
-              className="px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-[#1a1a1a] focus:ring-1 focus:ring-[#1a1a1a]"
+              className="px-3 py-2 text-sm border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-[#1a1a1a] dark:text-white focus:outline-none focus:border-[#1a1a1a] dark:focus:border-gray-400 focus:ring-1 focus:ring-[#1a1a1a] dark:focus:ring-gray-400"
               placeholder="Hasta"
             />
           </div>
@@ -422,13 +422,13 @@ const AuditLogPage = () => {
 
         {/* Actions Bar */}
         <div className="flex items-center justify-between">
-          <div className="text-sm text-gray-500">
+          <div className="text-sm text-gray-500 dark:text-gray-400">
             {filteredLogs.length} registros {filteredLogs.length !== logs.length && `(de ${logs.length} total)`}
           </div>
           <div className="flex items-center gap-2">
             <button
               onClick={() => exportAuditLogs("csv")}
-              className="px-3 py-1.5 text-sm text-gray-600 hover:text-[#1a1a1a] bg-gray-50 hover:bg-gray-100 rounded-lg transition-colors flex items-center gap-1.5"
+              className="px-3 py-1.5 text-sm text-gray-600 dark:text-gray-300 hover:text-[#1a1a1a] dark:hover:text-white bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors flex items-center gap-1.5"
             >
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
@@ -437,7 +437,7 @@ const AuditLogPage = () => {
             </button>
             <button
               onClick={() => exportAuditLogs("json")}
-              className="px-3 py-1.5 text-sm text-gray-600 hover:text-[#1a1a1a] bg-gray-50 hover:bg-gray-100 rounded-lg transition-colors flex items-center gap-1.5"
+              className="px-3 py-1.5 text-sm text-gray-600 dark:text-gray-300 hover:text-[#1a1a1a] dark:hover:text-white bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors flex items-center gap-1.5"
             >
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
@@ -449,24 +449,24 @@ const AuditLogPage = () => {
 
         {/* Log List */}
         {paginatedLogs.length === 0 ? (
-          <div className="bg-white rounded-xl border border-gray-100 p-12 text-center">
-            <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <svg className="w-8 h-8 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-100 dark:border-gray-800 p-12 text-center">
+            <div className="w-16 h-16 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center mx-auto mb-4">
+              <svg className="w-8 h-8 text-gray-400 dark:text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
               </svg>
             </div>
-            <h3 className="text-lg font-semibold text-[#1a1a1a] mb-2">No hay registros</h3>
-            <p className="text-gray-500">No se encontraron registros de auditoría con los filtros seleccionados</p>
+            <h3 className="text-lg font-semibold text-[#1a1a1a] dark:text-white mb-2">No hay registros</h3>
+            <p className="text-gray-500 dark:text-gray-400">No se encontraron registros de auditoría con los filtros seleccionados</p>
           </div>
         ) : (
-          <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
-            <div className="divide-y divide-gray-50">
+          <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-100 dark:border-gray-800 overflow-hidden">
+            <div className="divide-y divide-gray-50 dark:divide-gray-800">
               {paginatedLogs.map((log) => {
                 const parsedDetails = parseDetails(log.details);
                 const isExpanded = expandedLogId === log.id;
                 
                 return (
-                  <div key={log.id} className="hover:bg-gray-50 transition-colors">
+                  <div key={log.id} className="hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
                     <div 
                       className="p-4 cursor-pointer"
                       onClick={() => setExpandedLogId(isExpanded ? null : log.id)}
@@ -478,15 +478,15 @@ const AuditLogPage = () => {
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 mb-1">
                             {getActionBadge(log.action)}
-                            <span className="text-sm font-medium text-[#1a1a1a]">{log.entityType}</span>
+                            <span className="text-sm font-medium text-[#1a1a1a] dark:text-white">{log.entityType}</span>
                           </div>
-                          <p className="text-sm text-gray-600 mb-1 truncate">
+                          <p className="text-sm text-gray-600 dark:text-gray-300 mb-1 truncate">
                             {parsedDetails ? (
                               parsedDetails.patientName || parsedDetails.targetUserName || parsedDetails.clinicName || parsedDetails.subject || JSON.stringify(parsedDetails).slice(0, 80)
                             ) : log.details.slice(0, 80)}
                             {(parsedDetails ? JSON.stringify(parsedDetails).length > 80 : log.details.length > 80) && "..."}
                           </p>
-                          <div className="flex items-center gap-3 text-xs text-gray-400">
+                          <div className="flex items-center gap-3 text-xs text-gray-400 dark:text-gray-500">
                             <span className="flex items-center gap-1">
                               <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
@@ -499,7 +499,7 @@ const AuditLogPage = () => {
                               </svg>
                               {formatDate(log.createdAt)}
                             </span>
-                            <span className="font-mono text-[10px] bg-gray-100 px-1.5 py-0.5 rounded">
+                            <span className="font-mono text-[10px] bg-gray-100 dark:bg-gray-800 px-1.5 py-0.5 rounded">
                               {log.entityId.slice(0, 12)}...
                             </span>
                             <svg 
@@ -518,34 +518,34 @@ const AuditLogPage = () => {
                     {/* Expanded Details */}
                     {isExpanded && (
                       <div className="px-4 pb-4 ml-9">
-                        <div className="bg-gray-50 rounded-lg p-4">
-                          <h4 className="text-xs font-medium text-gray-500 uppercase mb-2">Detalles completos</h4>
+                        <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4">
+                          <h4 className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase mb-2">Detalles completos</h4>
                           {parsedDetails ? (
                             <div className="space-y-2">
                               {Object.entries(parsedDetails).map(([key, value]) => (
                                 <div key={key} className="flex">
-                                  <span className="text-xs font-medium text-gray-500 w-40 flex-shrink-0">{key}:</span>
-                                  <span className="text-xs text-gray-700 break-all">
+                                  <span className="text-xs font-medium text-gray-500 dark:text-gray-400 w-40 flex-shrink-0">{key}:</span>
+                                  <span className="text-xs text-gray-700 dark:text-gray-300 break-all">
                                     {typeof value === "object" ? JSON.stringify(value) : String(value)}
                                   </span>
                                 </div>
                               ))}
                             </div>
                           ) : (
-                            <p className="text-sm text-gray-600">{log.details}</p>
+                            <p className="text-sm text-gray-600 dark:text-gray-300">{log.details}</p>
                           )}
-                          <div className="mt-3 pt-3 border-t border-gray-200">
+                          <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700">
                             <div className="flex">
-                              <span className="text-xs font-medium text-gray-500 w-40 flex-shrink-0">ID completo:</span>
-                              <span className="text-xs text-gray-700 font-mono">{log.entityId}</span>
+                              <span className="text-xs font-medium text-gray-500 dark:text-gray-400 w-40 flex-shrink-0">ID completo:</span>
+                              <span className="text-xs text-gray-700 dark:text-gray-300 font-mono">{log.entityId}</span>
                             </div>
                             <div className="flex mt-1">
-                              <span className="text-xs font-medium text-gray-500 w-40 flex-shrink-0">User ID:</span>
-                              <span className="text-xs text-gray-700 font-mono">{log.userId}</span>
+                              <span className="text-xs font-medium text-gray-500 dark:text-gray-400 w-40 flex-shrink-0">User ID:</span>
+                              <span className="text-xs text-gray-700 dark:text-gray-300 font-mono">{log.userId}</span>
                             </div>
                             <div className="flex mt-1">
-                              <span className="text-xs font-medium text-gray-500 w-40 flex-shrink-0">Log ID:</span>
-                              <span className="text-xs text-gray-700 font-mono">{log.id}</span>
+                              <span className="text-xs font-medium text-gray-500 dark:text-gray-400 w-40 flex-shrink-0">Log ID:</span>
+                              <span className="text-xs text-gray-700 dark:text-gray-300 font-mono">{log.id}</span>
                             </div>
                           </div>
                         </div>
@@ -564,14 +564,14 @@ const AuditLogPage = () => {
             <button
               onClick={() => setCurrentPage(1)}
               disabled={currentPage === 1}
-              className="px-3 py-1.5 text-sm rounded-lg border border-gray-200 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 transition-colors"
+              className="px-3 py-1.5 text-sm rounded-lg border border-gray-200 dark:border-gray-700 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
             >
               ««
             </button>
             <button
               onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
               disabled={currentPage === 1}
-              className="px-3 py-1.5 text-sm rounded-lg border border-gray-200 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 transition-colors"
+              className="px-3 py-1.5 text-sm rounded-lg border border-gray-200 dark:border-gray-700 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
             >
               «
             </button>
@@ -581,14 +581,14 @@ const AuditLogPage = () => {
             <button
               onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
               disabled={currentPage === totalPages}
-              className="px-3 py-1.5 text-sm rounded-lg border border-gray-200 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 transition-colors"
+              className="px-3 py-1.5 text-sm rounded-lg border border-gray-200 dark:border-gray-700 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
             >
               »
             </button>
             <button
               onClick={() => setCurrentPage(totalPages)}
               disabled={currentPage === totalPages}
-              className="px-3 py-1.5 text-sm rounded-lg border border-gray-200 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 transition-colors"
+              className="px-3 py-1.5 text-sm rounded-lg border border-gray-200 dark:border-gray-700 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
             >
               »»
             </button>

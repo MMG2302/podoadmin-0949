@@ -25,6 +25,7 @@ const ALLOWED_API_FIRST_SEGMENTS: ReadonlySet<string> = new Set([
   'notifications',
   'messages',
   'support',
+  'registration-lists',
 ]);
 
 /** Caracteres permitidos en un segmento de path (evita encoding raro o inyección). */

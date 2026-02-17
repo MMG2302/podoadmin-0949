@@ -319,6 +319,34 @@ export const supportMessages = sqliteTable('support_messages', {
   readAt: text('read_at'),
 });
 
+// Listas de registro pendientes (vendedores/soporte -> super_admin para aprobación)
+export const pendingRegistrationLists = sqliteTable('pending_registration_lists', {
+  id: text('id').primaryKey(),
+  name: text('name').notNull(),
+  createdBy: text('created_by').notNull(), // userId del vendedor/admin que la creó
+  status: text('status').notNull().default('draft'), // draft | pending | approved | rejected
+  submittedAt: text('submitted_at'), // cuando se envió para aprobación
+  reviewedBy: text('reviewed_by'), // userId del super_admin que aprobó/rechazó
+  reviewedAt: text('reviewed_at'),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+});
+
+// Entradas de cada lista (registros pendientes)
+export const pendingRegistrationEntries = sqliteTable('pending_registration_entries', {
+  id: text('id').primaryKey(),
+  listId: text('list_id').notNull().references(() => pendingRegistrationLists.id, { onDelete: 'cascade' }),
+  name: text('name').notNull(),
+  email: text('email').notNull(),
+  role: text('role').notNull().default('podiatrist'), // podiatrist | clinic_admin | receptionist
+  clinicId: text('clinic_id'),
+  clinicMode: text('clinic_mode'), // existing | new | none
+  podiatristLimit: integer('podiatrist_limit'), // solo clinic_admin: límite de podólogos de la clínica
+  notes: text('notes'),
+  sortOrder: integer('sort_order').notNull().default(0),
+  createdAt: text('created_at').notNull(),
+});
+
 // Tabla de rate limiting para registro
 export const registrationRateLimit = sqliteTable('registration_rate_limit', {
   identifier: text('identifier').primaryKey(), // IP address

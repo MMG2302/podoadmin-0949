@@ -32,6 +32,7 @@ interface ClinicOption {
 
 interface NewClinicPayload {
   /** Vacío = la API genera placeholders, el clinic_admin completa en Configuración */
+  podiatristLimit?: number | null;
 }
 
 interface CreateUserPayload {
@@ -63,7 +64,7 @@ const CreateUserModal = ({
     role: "podiatrist" as UserRole,
     clinicId: "",
     clinicMode: "existing" as "existing" | "new" | "none",
-      newClinic: {} as NewClinicPayload,
+    newClinic: { podiatristLimit: null as number | null } as NewClinicPayload,
   });
 
   const resetForm = () => {
@@ -74,7 +75,7 @@ const CreateUserModal = ({
       role: "podiatrist",
       clinicId: "",
       clinicMode: "existing",
-      newClinic: {} as NewClinicPayload,
+      newClinic: { podiatristLimit: null } as NewClinicPayload,
     });
   };
 
@@ -95,7 +96,11 @@ const CreateUserModal = ({
     if (formData.clinicMode === "existing" && formData.clinicId) {
       payload.clinicId = formData.clinicId;
     } else if (formData.clinicMode === "new") {
-      payload.newClinic = {};
+      payload.newClinic = {
+        podiatristLimit: formData.role === "clinic_admin" && formData.newClinic?.podiatristLimit != null && formData.newClinic.podiatristLimit >= 1
+          ? formData.newClinic.podiatristLimit
+          : undefined,
+      };
     }
     onSave(payload);
     resetForm();
@@ -196,6 +201,28 @@ const CreateUserModal = ({
                   <p className="text-sm text-gray-600">
                     Se creará una clínica con datos provisionales. El administrador completará <strong>nombre, código, teléfono, dirección</strong> y el resto en <strong>Configuración</strong>.
                   </p>
+                  {formData.role === "clinic_admin" && (
+                    <div>
+                      <label className="block text-sm font-medium text-[#1a1a1a] mb-1">Límite de podólogos (opcional)</label>
+                      <input
+                        type="number"
+                        min="1"
+                        max="999"
+                        placeholder="Ej: 5"
+                        value={formData.newClinic?.podiatristLimit ?? ""}
+                        onChange={(e) => {
+                          const v = e.target.value;
+                          const n = parseInt(v, 10);
+                          setFormData({
+                            ...formData,
+                            newClinic: { ...(formData.newClinic || {}), podiatristLimit: v === "" || Number.isNaN(n) ? null : n },
+                          });
+                        }}
+                        className="w-full px-4 py-2.5 rounded-lg border border-gray-200 focus:border-[#1a1a1a] focus:ring-1 focus:ring-[#1a1a1a] outline-none transition-colors"
+                      />
+                      <p className="text-xs text-gray-500 mt-1">Los podólogos de la clínica estarán limitados a este número. Recepcionistas no cuentan.</p>
+                    </div>
+                  )}
                 </div>
               )}
             </>
@@ -223,10 +250,10 @@ const CreateUserModal = ({
 };
 
 // CSV template for bulk import (semicolon delimiter - works well with Spanish names)
-const BULK_IMPORT_TEMPLATE = `nombre;email;password;rol;clinicMode;clinicId
-Juan Pérez;juan@ejemplo.com;TempPass123!;podiatrist;existing;clinic_001
-María García;maria@ejemplo.com;TempPass123!;clinic_admin;new;
-Pedro López;pedro@ejemplo.com;TempPass123!;podiatrist;none;`;
+const BULK_IMPORT_TEMPLATE = `nombre;email;password;rol;clinicMode;clinicId;podiatrist_limit
+Juan Pérez;juan@ejemplo.com;TempPass123!;podiatrist;existing;clinic_001;
+María García;maria@ejemplo.com;TempPass123!;clinic_admin;new;;5
+Pedro López;pedro@ejemplo.com;TempPass123!;podiatrist;none;;`;
 
 // Bulk Import Modal
 const BulkImportModal = ({
@@ -246,7 +273,7 @@ const BulkImportModal = ({
 }) => {
   const [file, setFile] = useState<File | null>(null);
   const [defaultPassword, setDefaultPassword] = useState("");
-  const [parsedRows, setParsedRows] = useState<Array<{ name: string; email: string; password: string; role: UserRole; clinicMode: string; clinicId: string }>>([]);
+  const [parsedRows, setParsedRows] = useState<Array<{ name: string; email: string; password: string; role: UserRole; clinicMode: string; clinicId: string; podiatristLimit?: number | null }>>([]);
   const [parseError, setParseError] = useState<string | null>(null);
   const [isImporting, setIsImporting] = useState(false);
   const [importResults, setImportResults] = useState<Array<{ index: number; name: string; email: string; success: boolean; error?: string }>>([]);
@@ -321,6 +348,7 @@ const BulkImportModal = ({
         const roleIdx = header.findIndex((h) => h === "rol" || h === "role");
         const clinicModeIdx = header.findIndex((h) => h === "clinicmode" || h === "clinic_mode");
         const clinicIdIdx = header.findIndex((h) => h === "clinicid" || h === "clinic_id");
+        const podiatristLimitIdx = header.findIndex((h) => h === "podiatristlimit" || h === "podiatrist_limit");
 
         if (nameIdx < 0 || emailIdx < 0 || passIdx < 0 || roleIdx < 0) {
           setParseError("Faltan columnas obligatorias: nombre, email, password, rol");
@@ -338,6 +366,12 @@ const BulkImportModal = ({
           const role = (validRoles.includes(roleRaw) ? roleRaw : "podiatrist") as UserRole;
           const clinicMode = clinicModeIdx >= 0 ? (row[clinicModeIdx] ?? "").trim().toLowerCase() : "existing";
           const clinicId = clinicIdIdx >= 0 ? (row[clinicIdIdx] ?? "").trim() : "";
+          let podiatristLimit: number | null = null;
+          if (podiatristLimitIdx >= 0 && role === "clinic_admin") {
+            const raw = (row[podiatristLimitIdx] ?? "").trim();
+            const n = parseInt(raw, 10);
+            if (!Number.isNaN(n) && n >= 1) podiatristLimit = Math.min(999, Math.floor(n));
+          }
 
           if (!name || !email) continue;
           parsed.push({
@@ -347,6 +381,7 @@ const BulkImportModal = ({
             role,
             clinicMode: clinicMode || "existing",
             clinicId,
+            podiatristLimit: role === "clinic_admin" ? podiatristLimit : undefined,
           });
         }
         setParsedRows(parsed);
@@ -391,7 +426,11 @@ const BulkImportModal = ({
         if (response.success && response.data?.success) {
           const newUser = response.data.user;
           if (isSuperAdmin && row.clinicMode === "new" && (row.role === "clinic_admin" || row.role === "podiatrist")) {
-            const clinicRes = await api.post<{ success?: boolean; clinic?: { clinicId: string } }>("/clinics", { ownerId: newUser.id });
+            const clinicPayload: Record<string, unknown> = { ownerId: newUser.id };
+            if (row.role === "clinic_admin" && row.podiatristLimit != null && row.podiatristLimit >= 1) {
+              clinicPayload.podiatristLimit = row.podiatristLimit;
+            }
+            const clinicRes = await api.post<{ success?: boolean; clinic?: { clinicId: string } }>("/clinics", clinicPayload);
             if (clinicRes.success && clinicRes.data?.clinic) {
               await api.put(`/users/${newUser.id}`, { clinicId: clinicRes.data.clinic.clinicId });
             }
@@ -433,7 +472,7 @@ const BulkImportModal = ({
         <div className="p-6 space-y-4 overflow-y-auto flex-1">
           <p className="text-sm text-gray-600">
             Sube un archivo CSV con columnas: <strong>nombre</strong>, <strong>email</strong>, <strong>password</strong>, <strong>rol</strong>.
-            {isSuperAdmin && " Opcional: clinicMode (existing|new|none), clinicId (si existing)."}
+            {isSuperAdmin && " Opcional: clinicMode (existing|new|none), clinicId (si existing), podiatrist_limit (solo clinic_admin)."}
           </p>
           <div className="flex gap-3">
             <button
@@ -952,6 +991,9 @@ const UsersPage = () => {
   
   const [searchTerm, setSearchTerm] = useState("");
   const [roleFilter, setRoleFilter] = useState<UserRole | "all">("all");
+  type SortKey = "name" | "email" | "role" | "status" | "clinic" | "data";
+  const [sortBy, setSortBy] = useState<SortKey>("name");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
   const [clinics, setClinics] = useState<ClinicOption[]>([]);
@@ -967,6 +1009,15 @@ const UsersPage = () => {
   }>>([]);
   const [clinicLimitEdits, setClinicLimitEdits] = useState<Record<string, string>>({});
   const [clinicLimitSaving, setClinicLimitSaving] = useState<string | null>(null);
+  const [pendingRegistrationLists, setPendingRegistrationLists] = useState<Array<{
+    id: string;
+    name: string;
+    createdBy: string;
+    status: string;
+    submittedAt?: string | null;
+    creatorName?: string | null;
+    createdAt: string;
+  }>>([]);
 
   const loadUsers = useCallback(async () => {
     try {
@@ -987,21 +1038,21 @@ const UsersPage = () => {
     loadUsers();
   }, [currentUser, loadUsers]);
 
-  // Cargar clínicas (para dropdown al crear usuarios)
-  useEffect(() => {
+  const loadClinics = useCallback(async () => {
     if (!isSuperAdmin && currentUser?.role !== "admin") return;
-    const loadClinics = async () => {
-      try {
-        const r = await api.get<{ success?: boolean; clinics?: ClinicOption[] }>("/clinics");
-        if (r.success && Array.isArray(r.data?.clinics)) {
-          setClinics(r.data.clinics);
-        }
-      } catch {
-        setClinics([]);
+    try {
+      const r = await api.get<{ success?: boolean; clinics?: ClinicOption[] }>("/clinics");
+      if (r.success && Array.isArray(r.data?.clinics)) {
+        setClinics(r.data.clinics);
       }
-    };
-    loadClinics();
+    } catch {
+      setClinics([]);
+    }
   }, [isSuperAdmin, currentUser?.role]);
+
+  useEffect(() => {
+    loadClinics();
+  }, [loadClinics]);
 
   // Cargar clínicas con límites (super_admin y admin, para mostrar en tabla)
   useEffect(() => {
@@ -1034,6 +1085,70 @@ const UsersPage = () => {
     };
     loadRequests();
   }, [isSuperAdmin, currentUser?.role]);
+
+  // Cargar listas de registro pendientes (solo super_admin)
+  useEffect(() => {
+    if (!isSuperAdmin) return;
+    const loadLists = async () => {
+      try {
+        const r = await api.get<{ success?: boolean; lists?: Array<{ id: string; name: string; createdBy: string; status: string; submittedAt?: string | null; creatorName?: string | null; createdAt: string }> }>("/registration-lists?status=pending");
+        if (r.success && Array.isArray(r.data?.lists)) {
+          setPendingRegistrationLists(r.data.lists);
+        }
+      } catch {
+        // Silenciar
+      }
+    };
+    loadLists();
+  }, [isSuperAdmin]);
+
+  const loadPendingLists = useCallback(async () => {
+    if (!isSuperAdmin) return;
+    const r = await api.get<{ success?: boolean; lists?: typeof pendingRegistrationLists }>("/registration-lists?status=pending");
+    if (r.success && Array.isArray(r.data?.lists)) setPendingRegistrationLists(r.data.lists);
+  }, [isSuperAdmin]);
+
+  const handleApproveRegistrationList = async (listId: string) => {
+    const r = await api.post<{ success?: boolean; created?: number; skipped?: string[]; errors?: Array<{ email: string; error: string }>; message?: string }>(`/registration-lists/${listId}/approve`);
+    if (r.success) {
+      await loadPendingLists();
+      await loadUsers();
+      await loadClinics();
+      const msg = r.data?.message ?? (r.data?.created ? `Se crearon ${r.data.created} usuario(s).` : "Lista aprobada.");
+      if (r.data?.errors?.length) {
+        alert(`${msg}\n\nErrores:\n${r.data.errors.map((e) => `${e.email}: ${e.error}`).join("\n")}`);
+      } else {
+        alert(msg);
+      }
+    } else {
+      alert(r.error || "Error al aprobar");
+    }
+  };
+
+  const handleRejectRegistrationList = async (listId: string) => {
+    const r = await api.post(`/registration-lists/${listId}/reject`);
+    if (r.success) {
+      await loadPendingLists();
+    } else {
+      alert(r.error || "Error al rechazar");
+    }
+  };
+
+  const handleDownloadRegistrationListCsv = async (listId: string) => {
+    try {
+      const res = await fetch(`/api/registration-lists/${listId}/csv`, { credentials: "include" });
+      if (!res.ok) return;
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `lista_${listId}.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch {
+      // ignore
+    }
+  };
 
   const pendingPasswordResets = passwordResetRequests.filter((r) => r.status === "pending");
 
@@ -1075,18 +1190,95 @@ const UsersPage = () => {
     return m;
   }, [clinicsForLimits]);
 
+  // Orden de rol para ordenar (clínica/subalternos: clinic_admin primero, luego podiatrist, etc.)
+  const roleOrder: Record<string, number> = { super_admin: 0, clinic_admin: 1, admin: 2, receptionist: 3, podiatrist: 4 };
+  const statusOrder = (u: User): number => {
+    if (u.isBanned) return 4;
+    if (u.isBlocked) return 3;
+    if (u.isEnabled === false) return 2;
+    return 0;
+  };
+
+  const sortedUsers = useMemo(() => {
+    const list = [...filteredUsers];
+    const mult = sortDir === "asc" ? 1 : -1;
+    list.sort((a, b) => {
+      let cmp = 0;
+      switch (sortBy) {
+        case "name":
+          cmp = (a.name || "").localeCompare(b.name || "", undefined, { sensitivity: "base" });
+          break;
+        case "email":
+          cmp = (a.email || "").localeCompare(b.email || "", undefined, { sensitivity: "base" });
+          break;
+        case "role":
+          cmp = (roleOrder[a.role] ?? 99) - (roleOrder[b.role] ?? 99);
+          if (cmp === 0) cmp = (a.name || "").localeCompare(b.name || "", undefined, { sensitivity: "base" });
+          break;
+        case "status":
+          cmp = statusOrder(a) - statusOrder(b);
+          if (cmp === 0) cmp = (a.name || "").localeCompare(b.name || "", undefined, { sensitivity: "base" });
+          break;
+        case "clinic": {
+          const nameA = a.clinicId ? (clinicMap.get(a.clinicId)?.clinicName ?? "") : "";
+          const nameB = b.clinicId ? (clinicMap.get(b.clinicId)?.clinicName ?? "") : "";
+          cmp = nameA.localeCompare(nameB, undefined, { sensitivity: "base" });
+          if (cmp === 0) cmp = (a.name || "").localeCompare(b.name || "", undefined, { sensitivity: "base" });
+          break;
+        }
+        case "data": {
+          const totalA = a.patientCount + a.sessionCount;
+          const totalB = b.patientCount + b.sessionCount;
+          cmp = totalA - totalB;
+          if (cmp === 0) cmp = (a.name || "").localeCompare(b.name || "", undefined, { sensitivity: "base" });
+          break;
+        }
+        default:
+          cmp = (a.name || "").localeCompare(b.name || "", undefined, { sensitivity: "base" });
+      }
+      return mult * cmp;
+    });
+    return list;
+  }, [filteredUsers, sortBy, sortDir, clinicMap]);
+
   // Primera fila de cada clínica (para mostrar edición de límite solo una vez)
   const firstRowForClinic = useMemo(() => {
     const seen = new Set<string>();
     const first: Record<string, string> = {};
-    for (const u of filteredUsers) {
+    for (const u of sortedUsers) {
       if (u.clinicId && !seen.has(u.clinicId)) {
         seen.add(u.clinicId);
         first[u.clinicId] = u.id;
       }
     }
     return first;
-  }, [filteredUsers]);
+  }, [sortedUsers]);
+
+  const handleSort = (key: SortKey) => {
+    setSortBy(key);
+    setSortDir((prev) => (sortBy === key ? (prev === "asc" ? "desc" : "asc") : "asc"));
+  };
+
+  const SortableTh = ({ sortKey, label, align = "left" }: { sortKey: SortKey; label: string; align?: "left" | "right" }) => (
+    <th
+      className={`${align === "right" ? "text-right" : "text-left"} px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider truncate cursor-pointer select-none hover:bg-gray-100 active:bg-gray-200 transition-colors`}
+      onClick={() => handleSort(sortKey)}
+      title={`Ordenar por ${label}`}
+    >
+      <span className="inline-flex items-center gap-1">
+        {label}
+        {sortBy === sortKey ? (
+          sortDir === "asc" ? (
+            <svg className="w-3.5 h-3.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" /></svg>
+          ) : (
+            <svg className="w-3.5 h-3.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+          )
+        ) : (
+          <span className="w-3.5 h-3.5 inline-block opacity-30" aria-hidden><svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" /></svg></span>
+        )}
+      </span>
+    </th>
+  );
 
   // Función auxiliar para obtener el estado visual de un usuario
   const getUserStatusBadge = (user: User) => {
@@ -1184,9 +1376,11 @@ const UsersPage = () => {
         let createdClinic: { clinicId: string; clinicName: string; clinicCode: string } | null = null;
 
         if (payload.newClinic) {
-          const clinicRes = await api.post<{ success?: boolean; clinic?: { clinicId: string; clinicName: string; clinicCode: string } }>("/clinics", {
-            ownerId: newUser.id,
-          });
+          const clinicPayload: Record<string, unknown> = { ownerId: newUser.id };
+          if (payload.newClinic.podiatristLimit != null && payload.newClinic.podiatristLimit >= 1) {
+            clinicPayload.podiatristLimit = payload.newClinic.podiatristLimit;
+          }
+          const clinicRes = await api.post<{ success?: boolean; clinic?: { clinicId: string; clinicName: string; clinicCode: string } }>("/clinics", clinicPayload);
 
           if (clinicRes.success && clinicRes.data?.clinic) {
             createdClinic = clinicRes.data.clinic;
@@ -1757,6 +1951,56 @@ const UsersPage = () => {
           </div>
         )}
 
+        {/* Listas de registro pendientes (solo super_admin) - enviadas por vendedores/soporte */}
+        {isSuperAdmin && pendingRegistrationLists.length > 0 && (
+          <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-6">
+            <h3 className="text-sm font-semibold text-blue-800 mb-3 flex items-center gap-2">
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+              </svg>
+              Listas de registro pendientes de aprobación
+            </h3>
+            <p className="text-xs text-blue-700 mb-3">
+              Listas enviadas por vendedores/soporte. Descarga el CSV, revísalo e impórtalo con "Importar CSV". Luego aprueba la lista.
+            </p>
+            <div className="space-y-2">
+              {pendingRegistrationLists.map((list) => (
+                <div key={list.id} className="flex flex-wrap items-center justify-between gap-2 bg-white rounded-lg p-3 border border-blue-100">
+                  <div>
+                    <span className="font-medium text-[#1a1a1a]">{list.name}</span>
+                    {list.creatorName && (
+                      <span className="text-gray-500 text-sm ml-2">por {list.creatorName}</span>
+                    )}
+                    <span className="text-xs text-gray-400 ml-2">
+                      {list.submittedAt && new Date(list.submittedAt).toLocaleString()}
+                    </span>
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => handleDownloadRegistrationListCsv(list.id)}
+                      className="px-3 py-1.5 border border-gray-200 text-[#1a1a1a] text-sm font-medium rounded-lg hover:bg-gray-50"
+                    >
+                      Descargar CSV
+                    </button>
+                    <button
+                      onClick={() => handleApproveRegistrationList(list.id)}
+                      className="px-3 py-1.5 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700"
+                    >
+                      Aprobar
+                    </button>
+                    <button
+                      onClick={() => handleRejectRegistrationList(list.id)}
+                      className="px-3 py-1.5 bg-red-100 text-red-700 text-sm font-medium rounded-lg hover:bg-red-200"
+                    >
+                      Rechazar
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* Modal: Enlace de recuperación aprobado para reenvío manual */}
         {approvedResetLink && (
           <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
@@ -1813,7 +2057,7 @@ const UsersPage = () => {
         
         {/* Mobile Card Layout */}
         <div className="md:hidden space-y-3">
-          {filteredUsers.map((u) => (
+          {sortedUsers.map((u) => (
             <div key={u.id} className="mobile-card">
               <div className="mobile-card-header">
                 <div className="flex items-center gap-3 flex-1 min-w-0">
@@ -1977,18 +2221,18 @@ const UsersPage = () => {
               </colgroup>
               <thead>
                 <tr className="border-b border-gray-100 bg-gray-50">
-                  <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider truncate">Usuario</th>
-                  <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider truncate">Email</th>
-                  <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider truncate">Rol</th>
-                  <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider truncate">Estado</th>
-                  <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider truncate">Clínica</th>
+                  <SortableTh sortKey="name" label="Usuario" />
+                  <SortableTh sortKey="email" label="Email" />
+                  <SortableTh sortKey="role" label="Rol" />
+                  <SortableTh sortKey="status" label="Estado" />
+                  <SortableTh sortKey="clinic" label="Clínica" />
                   <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider truncate">Límite</th>
-                  <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider truncate">Datos</th>
+                  <SortableTh sortKey="data" label="Datos" />
                   <th className="text-right px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider truncate">Acciones</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50">
-                {filteredUsers.map((u) => (
+                {sortedUsers.map((u) => (
                   <tr key={u.id} className="hover:bg-gray-50 transition-colors">
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-2 min-w-0">
@@ -2145,7 +2389,7 @@ const UsersPage = () => {
             </table>
           </div>
           
-          {filteredUsers.length === 0 && (
+          {sortedUsers.length === 0 && (
             <div className="p-12 text-center">
               <svg className="w-12 h-12 text-gray-300 mx-auto mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
@@ -2195,7 +2439,7 @@ const UsersPage = () => {
 
       {/* Portal: menú de 3 puntos (evita scrollbar por overflow) */}
       {openAccountMenuId && accountMenuPosition && (() => {
-        const u = filteredUsers.find(usr => usr.id === openAccountMenuId);
+        const u = sortedUsers.find(usr => usr.id === openAccountMenuId);
         if (!u) return null;
         const pos = accountMenuPosition.top !== undefined
           ? { top: accountMenuPosition.top, left: accountMenuPosition.left }

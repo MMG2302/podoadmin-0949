@@ -25,6 +25,7 @@ import appointmentsRoutes from './routes/appointments';
 import notificationsRoutes from './routes/notifications';
 import messagesRoutes from './routes/messages';
 import supportRoutes from './routes/support';
+import registrationListsRoutes from './routes/registration-lists';
 
 const app = new Hono<{ Variables: AppVariables }>()
   .basePath('api');
@@ -139,6 +140,7 @@ app.route('/appointments', appointmentsRoutes);
 app.route('/notifications', notificationsRoutes);
 app.route('/messages', messagesRoutes);
 app.route('/support', supportRoutes);
+app.route('/registration-lists', registrationListsRoutes);
 
 // IMPORTANTE: Todas las rutas que manejen datos sensibles DEBEN usar:
 // 1. requireAuth() - para verificar que el usuario está autenticado

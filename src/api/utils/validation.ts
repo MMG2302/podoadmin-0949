@@ -67,6 +67,10 @@ export const createClinicSchema = z.object({
   postalCode: z.string().max(20, 'Código postal demasiado largo').optional(),
   licenseNumber: z.string().max(100, 'Número de licencia demasiado largo').optional(),
   website: z.string().max(255, 'Web demasiado larga').optional(),
+  podiatristLimit: z
+    .union([z.number().int().min(0), z.string().transform((v) => (v === '' ? undefined : parseInt(v, 10)))])
+    .optional()
+    .nullable(),
 });
 
 /**

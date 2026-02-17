@@ -95,7 +95,7 @@ clinicsRoutes.post('/', requireRole('super_admin'), async (c) => {
       return c.json({ error: 'Datos inválidos', message: validation.error, issues: validation.issues }, 400);
     }
 
-    const { ownerId, phone, email, address, city, postalCode, licenseNumber, website } = validation.data;
+    const { ownerId, phone, email, address, city, postalCode, licenseNumber, website, podiatristLimit } = validation.data;
     const user = c.get('user');
 
     let clinicId = (validation.data.clinicId || '').trim();
@@ -137,12 +137,14 @@ clinicsRoutes.post('/', requireRole('super_admin'), async (c) => {
     }
 
     const now = new Date().toISOString();
+    const pl = podiatristLimit != null && !Number.isNaN(Number(podiatristLimit)) ? Math.max(0, Math.floor(Number(podiatristLimit))) : null;
     await database.insert(clinicsTable).values({
       clinicId,
       clinicName,
       clinicCode,
       ownerId,
       logo: null,
+      podiatristLimit: pl,
       phone: (phone || '').trim() || null,
       email: (email || '').trim() || null,
       address: (address || '').trim() || null,

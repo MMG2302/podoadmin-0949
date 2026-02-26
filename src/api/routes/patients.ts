@@ -391,6 +391,9 @@ patientsRoutes.post(
         body.consent || { given: false, date: null }
       );
 
+      // Asegurar que idNumber sea siempre string (evita error si llega como número o undefined)
+      const idNumber = typeof body.idNumber === 'string' ? body.idNumber : String(body.idNumber ?? '');
+
       await database.insert(patientsTable).values({
         id,
         folio,
@@ -398,7 +401,7 @@ patientsRoutes.post(
         lastName: body.lastName,
         dateOfBirth: body.dateOfBirth,
         gender: body.gender,
-        idNumber: body.idNumber,
+        idNumber,
         phone: body.phone,
         email: body.email || null,
         address: body.address || null,
@@ -418,6 +421,13 @@ patientsRoutes.post(
         .where(eq(patientsTable.id, id))
         .limit(1);
 
+      if (!row) {
+        console.error('Paciente creado pero no encontrado al leer:', id);
+        return c.json(
+          { error: 'Error interno', message: 'No se pudo recuperar el paciente creado' },
+          500
+        );
+      }
       const patient = mapDbPatient(row);
       return c.json({ success: true, patient }, 201);
     } catch (error) {

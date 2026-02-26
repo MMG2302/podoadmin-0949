@@ -1,7 +1,7 @@
 {
 	"$schema": "node_modules/wrangler/config-schema.json",
 	"name": "sandbox-website-template",
-	"compatibility_date": "2025-10-08",
+	"compatibility_date": "2025-06-17",
 	"compatibility_flags": [
 		"nodejs_compat"
 	],
@@ -28,12 +28,6 @@
 			"database_name": "sandbox-website-template",
 			"database_id": "e49f965d-a9a7-4c0d-83e5-1172b032e298",
 			"migrations_dir": "src/api/migrations"
-		},
-		{
-			"binding": "sandbox_website_template",
-			"database_name": "sandbox-website-template",
-			"database_id": "e49f965d-a9a7-4c0d-83e5-1172b032e298",
-			"remote": true
 		}
 	],
 	"r2_buckets": [

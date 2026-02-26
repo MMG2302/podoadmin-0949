@@ -110,9 +110,9 @@ export const createPatientSchema = z.object({
   dateOfBirth: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Fecha inválida'),
   gender: z.enum(['male', 'female', 'other']),
   idNumber: z
-    .string()
-    .max(50, 'Número de identificación demasiado largo')
-    .transform((val) => escapeHtml(val)),
+    .union([z.string(), z.number()])
+    .transform((val) => escapeHtml(val == null ? '' : String(val)))
+    .pipe(z.string().max(50, 'Número de identificación demasiado largo')),
   phone: z
     .string()
     .max(20, 'Teléfono demasiado largo')

@@ -8,8 +8,8 @@ interface LanguageSwitcherProps {
 }
 
 const flagEmojis: Record<Language, string> = {
-  es: "🇪🇸",
-  en: "🇬🇧",
+  es: "🇲🇽",
+  en: "🇺🇸",
   pt: "🇧🇷",
   fr: "🇫🇷",
 };

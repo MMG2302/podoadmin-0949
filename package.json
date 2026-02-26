@@ -54,6 +54,7 @@
     "check": "tsgo && vite build && wrangler deploy --dry-run",
     "deploy": "wrangler deploy",
     "dev": "vite",
+    "tunnel": "npx --yes cloudflared tunnel --url http://localhost:5173",
     "lint": "eslint .",
     "preview": "bun run build && vite preview",
     "db:generate": "drizzle-kit generate",

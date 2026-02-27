@@ -46,7 +46,7 @@ export function getAccessTokenCookieOptions(isProd: boolean = false): CookieOpti
     secure: isProd,
     sameSite: 'Lax',
     path: '/',
-    maxAge: 15 * 60, // 15 minutos en segundos
+    maxAge: 60 * 60, // 60 minutos en segundos
   };
 }
 

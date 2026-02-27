@@ -26,6 +26,7 @@ const MessagesPage = () => {
   const [error, setError] = useState("");
   const [sentMessages, setSentMessages] = useState<(SentMessage & { readStatus?: { total: number; read: number; unread: number } })[]>([]);
   const [userSearch, setUserSearch] = useState("");
+  const [singleUserSearch, setSingleUserSearch] = useState("");
 
   const refreshSentMessages = async () => {
     const r = await api.get<{ success?: boolean; messages?: (SentMessage & { readStatus?: { total: number; read: number; unread: number } })[] }>("/messages");
@@ -50,6 +51,20 @@ const MessagesPage = () => {
       });
     },
     [allUsers, userSearch]
+  );
+
+  const singleFilteredUsers = useMemo(
+    () => {
+      const q = singleUserSearch.trim().toLowerCase();
+      if (!q) return allUsers;
+      return allUsers.filter((u) => {
+        const name = (u.name || "").toLowerCase();
+        const email = (u.email || "").toLowerCase();
+        const role = (u.role || "").toLowerCase();
+        return name.includes(q) || email.includes(q) || role.includes(q);
+      });
+    },
+    [allUsers, singleUserSearch]
   );
 
   // Get recipients based on mode
@@ -324,14 +339,18 @@ const MessagesPage = () => {
                             </div>
                             <span
                               className={`px-2 py-0.5 rounded text-xs ${
-                                u.role === "clinic_admin"
+                                u.role === "super_admin"
+                                  ? "bg-purple-100 text-purple-700"
+                                  : u.role === "clinic_admin"
                                   ? "bg-blue-100 text-blue-700"
                                   : u.role === "admin"
                                   ? "bg-orange-100 text-orange-700"
                                   : "bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300"
                               }`}
                             >
-                              {u.role === "clinic_admin"
+                              {u.role === "super_admin"
+                                ? t.roles.superAdmin
+                                : u.role === "clinic_admin"
                                 ? t.roles.clinicAdmin
                                 : u.role === "admin"
                                 ? t.roles.admin
@@ -346,18 +365,84 @@ const MessagesPage = () => {
 
                 {recipientMode === "single" && (
                   <div className="border-t border-gray-100 dark:border-gray-800 pt-4 mt-4">
-                    <select
-                      value={singleUser}
-                      onChange={(e) => setSingleUser(e.target.value)}
-                      className="w-full px-4 py-3 border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-[#1a1a1a] dark:text-white text-sm focus:border-[#1a1a1a] dark:focus:border-gray-400 focus:ring-1 focus:ring-[#1a1a1a] dark:focus:ring-gray-400 outline-none"
-                    >
-                      <option value="">{t.messaging.selectRecipients}</option>
-                      {allUsers.map(u => (
-                        <option key={u.id} value={u.id}>
-                          {u.name} ({u.email})
-                        </option>
-                      ))}
-                    </select>
+                    <div className="flex flex-col gap-2 mb-3">
+                      <p className="text-sm text-gray-600 dark:text-gray-300">
+                        {t.messaging.selectRecipients}:
+                      </p>
+                      <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+                        <input
+                          type="text"
+                          value={singleUserSearch}
+                          onChange={(e) => setSingleUserSearch(e.target.value)}
+                          placeholder="Buscar por nombre, email o rol..."
+                          className="flex-1 px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-sm text-[#1a1a1a] dark:text-white"
+                        />
+                      </div>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">
+                        Mostrando {singleFilteredUsers.length} usuarios
+                        {singleUser && (
+                          <>
+                            {" · "}Seleccionado:{" "}
+                            {singleFilteredUsers.find((u) => u.id === singleUser)?.name ||
+                              allUsers.find((u) => u.id === singleUser)?.name ||
+                              ""}
+                          </>
+                        )}
+                      </p>
+                    </div>
+                    <div className="max-h-48 overflow-y-auto form-modal-scroll space-y-1">
+                      {singleFilteredUsers.map((u) => {
+                        const isSelected = singleUser === u.id;
+                        return (
+                          <label
+                            key={u.id}
+                            className={`flex items-center gap-3 p-2 rounded-lg cursor-pointer border ${
+                              isSelected
+                                ? "bg-blue-50 dark:bg-blue-900/30 border-blue-300"
+                                : "bg-transparent hover:bg-gray-50 dark:hover:bg-gray-800 border-transparent"
+                            }`}
+                          >
+                            <input
+                              type="radio"
+                              name="singleUser"
+                              checked={isSelected}
+                              onChange={() => setSingleUser(u.id)}
+                              className="w-4 h-4 text-[#1a1a1a] focus:ring-[#1a1a1a]"
+                            />
+                            <div className="flex-1">
+                              <span className="text-sm font-medium">
+                                {u.name}
+                                {isSelected && (
+                                  <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-200">
+                                    Seleccionado
+                                  </span>
+                                )}
+                              </span>
+                              <span className="text-xs text-gray-500 ml-2">{u.email}</span>
+                            </div>
+                            <span
+                              className={`px-2 py-0.5 rounded text-xs ${
+                                u.role === "super_admin"
+                                  ? "bg-purple-100 text-purple-700"
+                                  : u.role === "clinic_admin"
+                                  ? "bg-blue-100 text-blue-700"
+                                  : u.role === "admin"
+                                  ? "bg-orange-100 text-orange-700"
+                                  : "bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300"
+                              }`}
+                            >
+                              {u.role === "super_admin"
+                                ? t.roles.superAdmin
+                                : u.role === "clinic_admin"
+                                ? t.roles.clinicAdmin
+                                : u.role === "admin"
+                                ? t.roles.admin
+                                : t.roles.podiatrist}
+                            </span>
+                          </label>
+                        );
+                      })}
+                    </div>
                   </div>
                 )}
               </div>

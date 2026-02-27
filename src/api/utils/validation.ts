@@ -260,10 +260,12 @@ export function validateData<T>(
     return { success: true, data: validated };
   } catch (error) {
     if (error instanceof z.ZodError) {
+      const issues = Array.isArray(error.errors) ? error.errors : [];
+      const firstMessage = issues.length > 0 && issues[0]?.message ? issues[0].message : 'Error de validación';
       return {
         success: false,
-        error: error.errors[0]?.message || 'Error de validación',
-        issues: error.errors,
+        error: firstMessage,
+        issues,
       };
     }
     return {

@@ -20,7 +20,7 @@ export interface JWTPayload {
 }
 
 /**
- * Genera un access token JWT (corto, 15 minutos)
+ * Genera un access token JWT (corto, 60 minutos)
  */
 export async function generateAccessToken(payload: Omit<JWTPayload, 'iat' | 'exp' | 'type'>): Promise<string> {
   const token = await new SignJWT({
@@ -32,7 +32,7 @@ export async function generateAccessToken(payload: Omit<JWTPayload, 'iat' | 'exp
   })
     .setProtectedHeader({ alg: 'HS256' })
     .setIssuedAt()
-    .setExpirationTime('15m') // Access token expira en 15 minutos
+    .setExpirationTime('60m') // Access token expira en 60 minutos
     .sign(JWT_SECRET);
 
   return token;

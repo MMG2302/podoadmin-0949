@@ -70,6 +70,7 @@ const PatientsPage = () => {
   const [showForm, setShowForm] = useState(false);
   const [editingPatient, setEditingPatient] = useState<Patient | null>(null);
   const [formData, setFormData] = useState<PatientFormData>(emptyForm);
+  const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
 
   // Podólogos disponibles para una recepcionista (los que tiene asignados)
@@ -160,10 +161,28 @@ const PatientsPage = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setFormErrors({});
     const createdBy = isReceptionist && receptionistPodiatristId ? receptionistPodiatristId : (user?.id || "");
     if (isReceptionist && !receptionistPodiatristId && !editingPatient) {
       return; // receptionist must select podiatrist when creating
     }
+    // Validación rápida en frontend para evitar "error interno" cuando algo viene vacío/undefined (especialmente en móviles)
+    const localErrors: Record<string, string> = {};
+    if (!formData.firstName.trim()) localErrors.firstName = "Nombre es requerido";
+    if (!formData.lastName.trim()) localErrors.lastName = "Apellidos son requeridos";
+    if (!formData.dateOfBirth) localErrors.dateOfBirth = "Fecha de nacimiento es requerida";
+    if (!formData.gender) localErrors.gender = "Género es requerido";
+    if (!formData.idNumber.trim()) localErrors.idNumber = "DNI/NIE es requerido";
+    if (!formData.phone.trim()) localErrors.phone = "Teléfono es requerido";
+    // Email es opcional, pero si se rellena, validamos formato básico
+    if (formData.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+      localErrors.email = "Email inválido";
+    }
+    if (Object.keys(localErrors).length > 0) {
+      setFormErrors(localErrors);
+      return;
+    }
+
     const patientData = {
       firstName: formData.firstName,
       lastName: formData.lastName,
@@ -227,7 +246,19 @@ const PatientsPage = () => {
             }),
           });
         } else {
-          alert(response.error || response.data?.message || "No se pudo actualizar el paciente.");
+          const errData = response.data as any;
+          if (errData?.issues && Array.isArray(errData.issues)) {
+            const fieldErrors: Record<string, string> = {};
+            for (const issue of errData.issues as { path?: unknown[]; message?: string }[]) {
+              const field = issue?.path && Array.isArray(issue.path) ? issue.path[0] : undefined;
+              if (typeof field === "string" && issue.message && !fieldErrors[field]) {
+                fieldErrors[field] = issue.message;
+              }
+            }
+            setFormErrors(fieldErrors);
+          }
+          alert(response.error || errData?.message || "No se pudo actualizar el paciente.");
+          return;
         }
       } else {
         // Crear nuevo paciente vía API. Recepcionista debe enviar createdBy (podólogo asignado).
@@ -256,12 +287,25 @@ const PatientsPage = () => {
             }),
           });
         } else {
-          alert(response.error || response.data?.message || "No se pudo crear el paciente.");
+          const errData = response.data as any;
+          if (errData?.issues && Array.isArray(errData.issues)) {
+            const fieldErrors: Record<string, string> = {};
+            for (const issue of errData.issues as { path?: unknown[]; message?: string }[]) {
+              const field = issue?.path && Array.isArray(issue.path) ? issue.path[0] : undefined;
+              if (typeof field === "string" && issue.message && !fieldErrors[field]) {
+                fieldErrors[field] = issue.message;
+              }
+            }
+            setFormErrors(fieldErrors);
+          }
+          alert(response.error || errData?.message || "No se pudo crear el paciente.");
+          return;
         }
       }
     } catch (error) {
       console.error("Error guardando paciente:", error);
       alert("Ha ocurrido un error al guardar el paciente.");
+      return;
     }
 
     setShowForm(false);
@@ -645,12 +689,17 @@ const PatientsPage = () => {
                     onChange={(e) => !editingPatient && setFormData({ ...formData, firstName: e.target.value })}
                     disabled={!!editingPatient}
                     className={`w-full px-3 py-2 border rounded-lg focus:outline-none ${
-                      editingPatient 
-                        ? "bg-gray-100 border-gray-200 text-gray-500 cursor-not-allowed" 
+                      editingPatient
+                        ? "bg-gray-100 border-gray-200 text-gray-500 cursor-not-allowed"
+                        : formErrors.firstName
+                        ? "border-red-500 focus:border-red-500 focus:ring-1 focus:ring-red-500"
                         : "border-gray-200 focus:border-[#1a1a1a] focus:ring-1 focus:ring-[#1a1a1a]"
                     }`}
                     title={editingPatient ? "Este campo no puede ser modificado después de la creación del paciente" : ""}
                   />
+                  {formErrors.firstName && (
+                    <p className="mt-1 text-xs text-red-600">{formErrors.firstName}</p>
+                  )}
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-[#1a1a1a] mb-1 flex items-center gap-1">
@@ -664,12 +713,17 @@ const PatientsPage = () => {
                     onChange={(e) => !editingPatient && setFormData({ ...formData, lastName: e.target.value })}
                     disabled={!!editingPatient}
                     className={`w-full px-3 py-2 border rounded-lg focus:outline-none ${
-                      editingPatient 
-                        ? "bg-gray-100 border-gray-200 text-gray-500 cursor-not-allowed" 
+                      editingPatient
+                        ? "bg-gray-100 border-gray-200 text-gray-500 cursor-not-allowed"
+                        : formErrors.lastName
+                        ? "border-red-500 focus:border-red-500 focus:ring-1 focus:ring-red-500"
                         : "border-gray-200 focus:border-[#1a1a1a] focus:ring-1 focus:ring-[#1a1a1a]"
                     }`}
                     title={editingPatient ? "Este campo no puede ser modificado después de la creación del paciente" : ""}
                   />
+                  {formErrors.lastName && (
+                    <p className="mt-1 text-xs text-red-600">{formErrors.lastName}</p>
+                  )}
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-[#1a1a1a] mb-1 flex items-center gap-1">
@@ -683,12 +737,17 @@ const PatientsPage = () => {
                     onChange={(e) => !editingPatient && setFormData({ ...formData, dateOfBirth: e.target.value })}
                     disabled={!!editingPatient}
                     className={`w-full px-3 py-2 border rounded-lg focus:outline-none ${
-                      editingPatient 
-                        ? "bg-gray-100 border-gray-200 text-gray-500 cursor-not-allowed" 
+                      editingPatient
+                        ? "bg-gray-100 border-gray-200 text-gray-500 cursor-not-allowed"
+                        : formErrors.dateOfBirth
+                        ? "border-red-500 focus:border-red-500 focus:ring-1 focus:ring-red-500"
                         : "border-gray-200 focus:border-[#1a1a1a] focus:ring-1 focus:ring-[#1a1a1a]"
                     }`}
                     title={editingPatient ? "Este campo no puede ser modificado después de la creación del paciente" : ""}
                   />
+                  {formErrors.dateOfBirth && (
+                    <p className="mt-1 text-xs text-red-600">{formErrors.dateOfBirth}</p>
+                  )}
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-[#1a1a1a] mb-1 flex items-center gap-1">
@@ -701,8 +760,10 @@ const PatientsPage = () => {
                     onChange={(e) => !editingPatient && setFormData({ ...formData, gender: e.target.value as "male" | "female" | "other" })}
                     disabled={!!editingPatient}
                     className={`w-full px-3 py-2 border rounded-lg focus:outline-none ${
-                      editingPatient 
-                        ? "bg-gray-100 border-gray-200 text-gray-500 cursor-not-allowed" 
+                      editingPatient
+                        ? "bg-gray-100 border-gray-200 text-gray-500 cursor-not-allowed"
+                        : formErrors.gender
+                        ? "border-red-500 focus:border-red-500 focus:ring-1 focus:ring-red-500"
                         : "border-gray-200 focus:border-[#1a1a1a] focus:ring-1 focus:ring-[#1a1a1a]"
                     }`}
                     title={editingPatient ? "Este campo no puede ser modificado después de la creación del paciente" : ""}
@@ -730,6 +791,8 @@ const PatientsPage = () => {
                     className={`w-full px-3 py-2 border rounded-lg focus:outline-none ${
                       editingPatient && editingPatient.idNumber?.trim()
                         ? "bg-gray-100 border-gray-200 text-gray-500 cursor-not-allowed"
+                        : formErrors.idNumber
+                        ? "border-red-500 focus:border-red-500 focus:ring-1 focus:ring-red-500"
                         : "border-gray-200 focus:border-[#1a1a1a] focus:ring-1 focus:ring-[#1a1a1a]"
                     }`}
                     title={editingPatient && editingPatient.idNumber?.trim() ? "Este campo no puede ser modificado" : "Obligatorio. Para menores de edad, indicar el DNI del padre o tutor legal."}
@@ -737,6 +800,9 @@ const PatientsPage = () => {
                   <p className="text-xs text-gray-500 mt-1">
                     Obligatorio para crear sesiones. Si el paciente es menor de edad, indicar el DNI del padre o tutor.
                   </p>
+                  {formErrors.idNumber && (
+                    <p className="mt-1 text-xs text-red-600">{formErrors.idNumber}</p>
+                  )}
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-[#1a1a1a] mb-1">
@@ -752,8 +818,15 @@ const PatientsPage = () => {
                       setFormData({ ...formData, phone: v });
                     }}
                     placeholder="+34 612 345 678"
-                    className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:border-[#1a1a1a] focus:ring-1 focus:ring-[#1a1a1a]"
+                    className={`w-full px-3 py-2 border rounded-lg focus:outline-none ${
+                      formErrors.phone
+                        ? "border-red-500 focus:border-red-500 focus:ring-1 focus:ring-red-500"
+                        : "border-gray-200 focus:border-[#1a1a1a] focus:ring-1 focus:ring-[#1a1a1a]"
+                    }`}
                   />
+                  {formErrors.phone && (
+                    <p className="mt-1 text-xs text-red-600">{formErrors.phone}</p>
+                  )}
                 </div>
                 <div className="sm:col-span-2">
                   <label className="block text-sm font-medium text-[#1a1a1a] mb-1">
@@ -768,8 +841,15 @@ const PatientsPage = () => {
                       setFormData({ ...formData, email: v });
                     }}
                     placeholder="paciente@ejemplo.com"
-                    className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:border-[#1a1a1a] focus:ring-1 focus:ring-[#1a1a1a]"
+                    className={`w-full px-3 py-2 border rounded-lg focus:outline-none ${
+                      formErrors.email
+                        ? "border-red-500 focus:border-red-500 focus:ring-1 focus:ring-red-500"
+                        : "border-gray-200 focus:border-[#1a1a1a] focus:ring-1 focus:ring-[#1a1a1a]"
+                    }`}
                   />
+                  {formErrors.email && (
+                    <p className="mt-1 text-xs text-red-600">{formErrors.email}</p>
+                  )}
                 </div>
                 <div className="sm:col-span-2">
                   <label className="block text-sm font-medium text-[#1a1a1a] mb-1">

@@ -1843,7 +1843,7 @@ const UsersPage = () => {
             {(isSuperAdmin || currentUser?.role === "clinic_admin") && (
               <button
                 onClick={() => setShowImportModal(true)}
-                className="px-4 py-2 border border-gray-200 text-[#1a1a1a] rounded-lg text-sm font-medium hover:bg-gray-50 transition-colors flex items-center gap-2"
+                className="px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 border border-gray-200/80 bg-gradient-to-b from-gray-50 to-gray-100 text-[#1a1a1a] hover:from-gray-100 hover:to-gray-200 dark:border-gray-700 dark:from-gray-800 dark:to-gray-900 dark:text-white dark:hover:from-gray-700 dark:hover:to-gray-800 shadow-sm"
               >
                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
@@ -1864,7 +1864,7 @@ const UsersPage = () => {
                 </button>
                 <button
                   onClick={() => setShowTransferModal(true)}
-                  className="px-4 py-2 border border-gray-200 text-[#1a1a1a] rounded-lg text-sm font-medium hover:bg-gray-50 transition-colors flex items-center gap-2"
+                  className="px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 border border-gray-200/80 bg-gradient-to-b from-gray-50 to-gray-100 text-[#1a1a1a] hover:from-gray-100 hover:to-gray-200 dark:border-gray-700 dark:from-gray-800 dark:to-gray-900 dark:text-white dark:hover:from-gray-700 dark:hover:to-gray-800 shadow-sm"
                 >
                   <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />

@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 import { useLanguage } from "../contexts/language-context";
 import { useAuth } from "../contexts/auth-context";
 import { useRefreshOnFocus } from "../hooks/use-refresh-on-focus";
@@ -60,6 +60,7 @@ const formatTimeAgo = (dateStr: string, t: any): string => {
 export const NotificationsBell = () => {
   const { t } = useLanguage();
   const { user } = useAuth();
+  const [, navigate] = useLocation();
   const [isOpen, setIsOpen] = useState(false);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
@@ -162,14 +163,24 @@ export const NotificationsBell = () => {
               </div>
             ) : (
               recentNotifications.map((notification) => (
-                <div
+                <button
                   key={notification.id}
-                  className={`px-4 py-3 border-b border-gray-50 hover:bg-gray-50 transition-colors ${
-                    notification.type === "admin_message" 
-                      ? !notification.read 
-                        ? "bg-purple-50 border-l-4 border-l-purple-500" 
+                  type="button"
+                  onClick={async () => {
+                    if (!notification.read) {
+                      await handleMarkAsRead(notification.id);
+                    }
+                    setIsOpen(false);
+                    navigate("/notifications");
+                  }}
+                  className={`w-full text-left px-4 py-3 border-b border-gray-50 hover:bg-gray-50 transition-colors ${
+                    notification.type === "admin_message"
+                      ? !notification.read
+                        ? "bg-purple-50 border-l-4 border-l-purple-500"
                         : "bg-purple-50/30 border-l-4 border-l-purple-300"
-                      : !notification.read ? "bg-blue-50/30" : ""
+                      : !notification.read
+                      ? "bg-blue-50/30"
+                      : ""
                   }`}
                 >
                   <div className="flex gap-3">
@@ -191,18 +202,14 @@ export const NotificationsBell = () => {
                           {notification.title}
                         </p>
                         {!notification.read && (
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleMarkAsRead(notification.id);
-                            }}
-                            className="flex-shrink-0 p-1 text-gray-400 hover:text-green-600 transition-colors"
+                          <span
+                            className="flex-shrink-0 p-1 text-gray-400"
                             title={t.notifications.markAsRead}
                           >
                             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                             </svg>
-                          </button>
+                          </span>
                         )}
                       </div>
                       <p className="text-xs text-gray-600 mt-0.5 line-clamp-2">
@@ -219,7 +226,7 @@ export const NotificationsBell = () => {
                       </p>
                     </div>
                   </div>
-                </div>
+                </button>
               ))
             )}
           </div>

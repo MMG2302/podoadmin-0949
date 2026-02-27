@@ -23,6 +23,15 @@ export const MainLayout = ({ children, title }: MainLayoutProps) => {
     setSidebarLocked(s.locked);
   }, []);
 
+  // En móvil: asegurar que header/layout estén visibles tras login (evita pantalla en blanco hasta refresh)
+  useEffect(() => {
+    window.scrollTo(0, 0);
+    // Forzar reflow para que el navegador recalcule el layout (arregla header/sidebar que no aparecen hasta refresh)
+    requestAnimationFrame(() => {
+      document.body.offsetHeight;
+    });
+  }, []);
+
   // Sidebar visible en desktop: no colapsado (salvo si está bloqueado oculto)
   const sidebarVisibleOnDesktop =
     sidebarLocked === "visible" ? true : sidebarLocked === "hidden" ? false : !sidebarCollapsed;

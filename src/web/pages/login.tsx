@@ -84,7 +84,10 @@ const Login = () => {
     const result = await login(email, password);
 
     if (result.success) {
-      setLocation("/");
+      // Defer navigation so auth state is committed and layout paints correctly on mobile
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => setLocation("/"));
+      });
     } else {
       setError(getLoginErrorDisplay(result.error) || t.auth.invalidCredentials);
       setErrorDetails({

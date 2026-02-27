@@ -5,6 +5,14 @@ export function Metadata() {
 		<>
 			<title>{siteConfig.name}</title>
 			<meta name="description" content={siteConfig.description} />
+			<meta
+				name="keywords"
+				content={
+					Array.isArray((siteConfig as any).keywords)
+						? (siteConfig as any).keywords.join(", ")
+						: ((siteConfig as any).keywords || "")
+				}
+			/>
 
 			{/* Open Graph */}
 			<meta property="og:title" content={siteConfig.name} />

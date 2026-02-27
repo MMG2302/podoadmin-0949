@@ -47,7 +47,10 @@ type RegistrationEntry = {
   clinicMode?: string | null;
   podiatristLimit?: number | null;
   notes?: string | null;
+  paid?: boolean;
 };
+
+const isValidEmail = (email: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
 
 const SupportPage = () => {
   const { t } = useLanguage();
@@ -193,8 +196,18 @@ const SupportPage = () => {
   };
 
   const addEntry = async () => {
-    if (!selectedList || selectedList.list.status !== "draft" || !newEntry.name.trim() || !newEntry.email.trim())
+    if (
+      !selectedList ||
+      selectedList.list.status !== "draft" ||
+      !newEntry.name.trim() ||
+      !newEntry.email.trim()
+    )
       return;
+
+    if (!isValidEmail(newEntry.email)) {
+      alert("Introduce un correo electrónico válido.");
+      return;
+    }
     const payload: Record<string, unknown> = { name: newEntry.name, email: newEntry.email, role: newEntry.role };
     if (newEntry.role === "clinic_admin" && newEntry.podiatristLimit) {
       const n = parseInt(newEntry.podiatristLimit, 10);
@@ -220,6 +233,13 @@ const SupportPage = () => {
     );
   };
 
+  const deleteList = async (listId: string) => {
+    if (!confirm("¿Seguro que quieres eliminar esta lista?")) return;
+    await api.delete(`/registration-lists/${listId}`);
+    setLists((prev) => prev.filter((l) => l.id !== listId));
+    setSelectedList((prev) => (prev && prev.list.id === listId ? null : prev));
+  };
+
   const submitList = async () => {
     if (!selectedList || selectedList.list.status !== "draft" || selectedList.entries.length === 0) return;
     await api.post(`/registration-lists/${selectedList.list.id}/submit`);
@@ -227,9 +247,14 @@ const SupportPage = () => {
     loadLists();
   };
 
-  const downloadCsv = async (listId: string) => {
+  const downloadCsv = async (listId: string, entryIds?: string[]) => {
     try {
-      const res = await fetch(`/api/registration-lists/${listId}/csv`, { credentials: "include" });
+      const res = await fetch(`/api/registration-lists/${listId}/csv`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ entryIds }),
+      });
       if (!res.ok) return;
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
@@ -423,32 +448,49 @@ const SupportPage = () => {
                 ) : (
                   <div className="divide-y divide-gray-50 dark:divide-gray-800">
                     {lists.map((l) => (
-                      <button
+                      <div
                         key={l.id}
-                        onClick={() => openList(l.id)}
-                        className={`w-full text-left p-4 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors ${
+                        className={`flex items-start justify-between gap-2 p-4 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors ${
                           selectedList?.list.id === l.id ? "bg-blue-50 dark:bg-gray-800" : ""
                         }`}
                       >
-                        <span className="font-medium text-[#1a1a1a] dark:text-white truncate block">{l.name}</span>
-                        <span
-                          className={`inline-block mt-1 text-xs px-2 py-0.5 rounded-full ${
-                            l.status === "draft"
-                              ? "bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400"
-                              : l.status === "pending"
-                              ? "bg-yellow-100 text-yellow-700"
-                              : l.status === "approved"
-                              ? "bg-green-100 text-green-700"
-                              : "bg-red-100 text-red-700"
-                          }`}
+                        <button
+                          type="button"
+                          onClick={() => openList(l.id)}
+                          className="text-left flex-1"
                         >
-                          {statusLabel(l.status)}
-                        </span>
-                        <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
-                          {new Date(l.updatedAt).toLocaleString()}
-                          {l.creatorName && isSuperAdmin ? ` · ${l.creatorName}` : ""}
-                        </p>
-                      </button>
+                          <span className="font-medium text-[#1a1a1a] dark:text-white truncate block">{l.name}</span>
+                          <span
+                            className={`inline-block mt-1 text-xs px-2 py-0.5 rounded-full ${
+                              l.status === "draft"
+                                ? "bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400"
+                                : l.status === "pending"
+                                ? "bg-yellow-100 text-yellow-700"
+                                : l.status === "approved"
+                                ? "bg-green-100 text-green-700"
+                                : "bg-red-100 text-red-700"
+                            }`}
+                          >
+                            {statusLabel(l.status)}
+                          </span>
+                          <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
+                            {new Date(l.updatedAt).toLocaleString()}
+                            {l.creatorName && isSuperAdmin ? ` · ${l.creatorName}` : ""}
+                          </p>
+                        </button>
+                        {isSuperAdmin && (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              void deleteList(l.id);
+                            }}
+                            className="text-xs px-2 py-1 rounded bg-red-50 text-red-600 hover:bg-red-100"
+                          >
+                            Eliminar
+                          </button>
+                        )}
+                      </div>
                     ))}
                   </div>
                 )}
@@ -487,7 +529,14 @@ const SupportPage = () => {
                     </div>
                     <div className="flex gap-2 flex-shrink-0">
                       <button
-                        onClick={() => downloadCsv(selectedList.list.id)}
+                        onClick={() => {
+                          const paidIds = selectedList.entries.filter((e) => e.paid).map((e) => e.id);
+                          if (paidIds.length === 0) {
+                            alert("Marca al menos un registro como pagado para exportar.");
+                            return;
+                          }
+                          void downloadCsv(selectedList.list.id, paidIds);
+                        }}
                         className="text-xs px-2 py-1 bg-gray-100 text-gray-600 rounded hover:bg-gray-200"
                       >
                         Descargar CSV
@@ -518,6 +567,7 @@ const SupportPage = () => {
                           />
                           <input
                             type="email"
+                            inputMode="email"
                             placeholder="Email"
                             value={newEntry.email}
                             onChange={(e) => setNewEntry((p) => ({ ...p, email: e.target.value }))}
@@ -566,22 +616,53 @@ const SupportPage = () => {
                     {selectedList.entries.length === 0 ? (
                       <p className="text-sm text-gray-500 dark:text-gray-400">No hay registros en esta lista.</p>
                     ) : (
-                      <div className="space-y-2">
-                        {selectedList.entries.map((e) => (
+                      (() => {
+                        const isDraft = selectedList.list.status === "draft";
+                        const pending = selectedList.entries.filter((e) => !e.paid);
+                        const paid = selectedList.entries.filter((e) => e.paid);
+
+                        const renderRow = (e: RegistrationEntry) => (
                           <div
                             key={e.id}
                             className="flex justify-between items-center gap-2 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg"
                           >
-                            <div>
-                              <p className="font-medium text-sm text-[#1a1a1a] dark:text-white">{e.name}</p>
-                              <p className="text-xs text-gray-500 dark:text-gray-400">
-                                {e.email} · {e.role === "clinic_admin" ? "Admin de clínica" : "Podólogo independiente"}
-                                {e.role === "clinic_admin" && e.podiatristLimit != null && (
-                                  <> · Límite: {e.podiatristLimit} podólogos</>
-                                )}
-                              </p>
+                            <div className="flex items-center gap-3">
+                              <button
+                                type="button"
+                                onClick={
+                                  !isDraft
+                                    ? undefined
+                                    : () =>
+                                        setSelectedList((prev) =>
+                                          prev
+                                            ? {
+                                                ...prev,
+                                                entries: prev.entries.map((entry) =>
+                                                  entry.id === e.id ? { ...entry, paid: !entry.paid } : entry
+                                                ),
+                                              }
+                                            : prev
+                                        )
+                                }
+                                className={`flex items-center gap-1 text-xs px-2 py-1 rounded-full border transition-colors ${
+                                  e.paid
+                                    ? "bg-green-100 text-green-700 border-green-300"
+                                    : "bg-yellow-50 text-yellow-700 border-yellow-300"
+                                } ${isDraft ? "cursor-pointer" : "cursor-not-allowed opacity-60"}`}
+                              >
+                                {e.paid ? "Pagado" : "No pagado"}
+                              </button>
+                              <div>
+                                <p className="font-medium text-sm text-[#1a1a1a] dark:text-white">{e.name}</p>
+                                <p className="text-xs text-gray-500 dark:text-gray-400">
+                                  {e.email} · {e.role === "clinic_admin" ? "Admin de clínica" : "Podólogo independiente"}
+                                  {e.role === "clinic_admin" && e.podiatristLimit != null && (
+                                    <> · Límite: {e.podiatristLimit} podólogos</>
+                                  )}
+                                </p>
+                              </div>
                             </div>
-                            {selectedList.list.status === "draft" && (
+                            {isDraft && (
                               <button
                                 onClick={() => removeEntry(e.id)}
                                 className="text-red-600 hover:text-red-700 text-sm"
@@ -590,8 +671,29 @@ const SupportPage = () => {
                               </button>
                             )}
                           </div>
-                        ))}
-                      </div>
+                        );
+
+                        return (
+                          <div className="space-y-4">
+                            {pending.length > 0 && (
+                              <div className="space-y-1">
+                                <p className="text-xs font-semibold text-yellow-700 dark:text-yellow-400">
+                                  Pendientes de pago ({pending.length})
+                                </p>
+                                <div className="space-y-2">{pending.map((e) => renderRow(e))}</div>
+                              </div>
+                            )}
+                            {paid.length > 0 && (
+                              <div className="space-y-1">
+                                <p className="text-xs font-semibold text-green-700 dark:text-green-400">
+                                  Pagados (se exportan al CSV) ({paid.length})
+                                </p>
+                                <div className="space-y-2">{paid.map((e) => renderRow(e))}</div>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })()
                     )}
                   </div>
                 </div>

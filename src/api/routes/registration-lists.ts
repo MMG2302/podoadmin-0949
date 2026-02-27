@@ -242,7 +242,9 @@ registrationListsRoutes.patch('/:id', requireRole('super_admin', 'admin'), async
 
 /**
  * DELETE /api/registration-lists/:id
- * Eliminar lista (solo draft)
+ * Eliminar lista
+ * - admin: solo listas en borrador propias
+ * - super_admin: cualquier lista
  */
 registrationListsRoutes.delete('/:id', requireRole('super_admin', 'admin'), async (c) => {
   try {
@@ -259,7 +261,7 @@ registrationListsRoutes.delete('/:id', requireRole('super_admin', 'admin'), asyn
     if (list.createdBy !== user.userId && user.role !== 'super_admin') {
       return c.json({ error: 'Acceso denegado' }, 403);
     }
-    if (list.status !== 'draft') {
+    if (list.status !== 'draft' && user.role !== 'super_admin') {
       return c.json({ error: 'Solo se pueden eliminar listas en borrador' }, 400);
     }
 
@@ -490,7 +492,7 @@ registrationListsRoutes.post('/:id/submit', requireRole('super_admin', 'admin'),
 
 /**
  * GET /api/registration-lists/:id/csv
- * Descargar lista como CSV (formato compatible con import)
+ * Descargar lista completa como CSV (formato compatible con import)
  */
 registrationListsRoutes.get('/:id/csv', async (c) => {
   try {
@@ -530,6 +532,62 @@ registrationListsRoutes.get('/:id/csv', async (c) => {
     });
   } catch (err) {
     console.error('Error generando CSV:', err);
+    return c.json({ error: 'Error interno' }, 500);
+  }
+});
+
+/**
+ * POST /api/registration-lists/:id/csv
+ * Descargar CSV solo con las entradas seleccionadas (por ejemplo, pagados)
+ */
+registrationListsRoutes.post('/:id/csv', async (c) => {
+  try {
+    const user = c.get('user');
+    const listId = c.req.param('id');
+    const body = (await c.req.json().catch(() => ({}))) as { entryIds?: string[] };
+    const entryIds = Array.isArray(body.entryIds) ? body.entryIds.filter((id) => typeof id === 'string') : [];
+
+    const [list] = await database
+      .select()
+      .from(pendingRegistrationLists)
+      .where(eq(pendingRegistrationLists.id, listId))
+      .limit(1);
+
+    if (!list) return c.json({ error: 'Lista no encontrada' }, 404);
+
+    if (user.role !== 'super_admin' && list.createdBy !== user.userId) {
+      return c.json({ error: 'Acceso denegado' }, 403);
+    }
+
+    let entries = await database
+      .select()
+      .from(pendingRegistrationEntries)
+      .where(eq(pendingRegistrationEntries.listId, listId))
+      .orderBy(pendingRegistrationEntries.sortOrder, pendingRegistrationEntries.createdAt);
+
+    if (entryIds.length > 0) {
+      const set = new Set(entryIds);
+      entries = entries.filter((e) => set.has(e.id));
+    }
+
+    if (entries.length === 0) {
+      return c.json({ error: 'No hay registros seleccionados para exportar' }, 400);
+    }
+
+    const header = 'nombre;email;password;rol;clinicMode;clinicId;podiatrist_limit';
+    const rows = entries.map(
+      (e) =>
+        `${escapeCsv(e.name)};${escapeCsv(e.email)};;${e.role};${e.clinicMode || 'existing'};${e.clinicId || ''};${e.podiatristLimit ?? ''}`
+    );
+    const csv = [header, ...rows].join('\n');
+
+    c.header('Content-Type', 'text/csv; charset=utf-8');
+    c.header('Content-Disposition', `attachment; filename="lista_${list.name.replace(/[^a-zA-Z0-9]/g, '_')}_seleccion.csv"`);
+    return c.body(csv, 200, {
+      'Content-Type': 'text/csv; charset=utf-8',
+    });
+  } catch (err) {
+    console.error('Error generando CSV (selección):', err);
     return c.json({ error: 'Error interno' }, 500);
   }
 });

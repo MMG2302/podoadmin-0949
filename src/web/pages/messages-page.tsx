@@ -25,6 +25,7 @@ const MessagesPage = () => {
   const [successMessage, setSuccessMessage] = useState("");
   const [error, setError] = useState("");
   const [sentMessages, setSentMessages] = useState<(SentMessage & { readStatus?: { total: number; read: number; unread: number } })[]>([]);
+  const [userSearch, setUserSearch] = useState("");
 
   const refreshSentMessages = async () => {
     const r = await api.get<{ success?: boolean; messages?: (SentMessage & { readStatus?: { total: number; read: number; unread: number } })[] }>("/messages");
@@ -36,6 +37,20 @@ const MessagesPage = () => {
   }, [user?.id]);
 
   useRefreshOnFocus(refreshSentMessages);
+
+  const filteredUsers = useMemo(
+    () => {
+      const q = userSearch.trim().toLowerCase();
+      if (!q) return allUsers;
+      return allUsers.filter((u) => {
+        const name = (u.name || "").toLowerCase();
+        const email = (u.email || "").toLowerCase();
+        const role = (u.role || "").toLowerCase();
+        return name.includes(q) || email.includes(q) || role.includes(q);
+      });
+    },
+    [allUsers, userSearch]
+  );
 
   // Get recipients based on mode
   const getRecipients = (): string[] => {
@@ -243,34 +258,88 @@ const MessagesPage = () => {
                 {/* User Selection for Specific/Single modes */}
                 {recipientMode === "specific" && (
                   <div className="border-t border-gray-100 dark:border-gray-800 pt-4 mt-4">
-                    <p className="text-sm text-gray-600 dark:text-gray-300 mb-3">{t.messaging.selectRecipients}:</p>
+                    <div className="flex flex-col gap-2 mb-3">
+                      <p className="text-sm text-gray-600 dark:text-gray-300">
+                        {t.messaging.selectRecipients}:
+                      </p>
+                      <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+                        <input
+                          type="text"
+                          value={userSearch}
+                          onChange={(e) => setUserSearch(e.target.value)}
+                          placeholder="Buscar por nombre, email o rol..."
+                          className="flex-1 px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-sm text-[#1a1a1a] dark:text-white"
+                        />
+                        <div className="flex gap-2 text-xs">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setSelectedUsers(new Set(filteredUsers.map((u) => u.id)));
+                            }}
+                            className="px-2 py-1 rounded border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800"
+                          >
+                            Seleccionar filtrados
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setSelectedUsers(new Set())}
+                            className="px-2 py-1 rounded border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800"
+                          >
+                            Limpiar selección
+                          </button>
+                        </div>
+                      </div>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">
+                        Mostrando {filteredUsers.length} usuarios · Seleccionados: {selectedUsers.size}
+                      </p>
+                    </div>
                     <div className="max-h-48 overflow-y-auto form-modal-scroll space-y-1">
-                      {allUsers.map(u => (
-                        <label
-                          key={u.id}
-                          className="flex items-center gap-3 p-2 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer"
-                        >
-                          <input
-                            type="checkbox"
-                            checked={selectedUsers.has(u.id)}
-                            onChange={() => toggleUserSelection(u.id)}
-                            className="w-4 h-4 rounded text-[#1a1a1a] focus:ring-[#1a1a1a]"
-                          />
-                          <div className="flex-1">
-                            <span className="text-sm font-medium">{u.name}</span>
-                            <span className="text-xs text-gray-500 ml-2">{u.email}</span>
-                          </div>
-                          <span className={`px-2 py-0.5 rounded text-xs ${
-                            u.role === "clinic_admin" ? "bg-blue-100 text-blue-700" :
-                            u.role === "admin" ? "bg-orange-100 text-orange-700" :
-                            "bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300"
-                          }`}>
-                            {u.role === "clinic_admin" ? t.roles.clinicAdmin :
-                             u.role === "admin" ? t.roles.admin :
-                             t.roles.podiatrist}
-                          </span>
-                        </label>
-                      ))}
+                      {filteredUsers.map(u => {
+                        const isSelected = selectedUsers.has(u.id);
+                        return (
+                          <label
+                            key={u.id}
+                            className={`flex items-center gap-3 p-2 rounded-lg cursor-pointer border ${
+                              isSelected
+                                ? "bg-blue-50 dark:bg-blue-900/30 border-blue-300"
+                                : "bg-transparent hover:bg-gray-50 dark:hover:bg-gray-800 border-transparent"
+                            }`}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={isSelected}
+                              onChange={() => toggleUserSelection(u.id)}
+                              className="w-4 h-4 rounded text-[#1a1a1a] focus:ring-[#1a1a1a]"
+                            />
+                            <div className="flex-1">
+                              <span className="text-sm font-medium">
+                                {u.name}
+                                {isSelected && (
+                                  <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-200">
+                                    Seleccionado
+                                  </span>
+                                )}
+                              </span>
+                              <span className="text-xs text-gray-500 ml-2">{u.email}</span>
+                            </div>
+                            <span
+                              className={`px-2 py-0.5 rounded text-xs ${
+                                u.role === "clinic_admin"
+                                  ? "bg-blue-100 text-blue-700"
+                                  : u.role === "admin"
+                                  ? "bg-orange-100 text-orange-700"
+                                  : "bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300"
+                              }`}
+                            >
+                              {u.role === "clinic_admin"
+                                ? t.roles.clinicAdmin
+                                : u.role === "admin"
+                                ? t.roles.admin
+                                : t.roles.podiatrist}
+                            </span>
+                          </label>
+                        );
+                      })}
                     </div>
                   </div>
                 )}

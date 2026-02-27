@@ -1,1 +1,28 @@
-{"id":"u084r8gjch9ike03hlsop1m1cghdxtwa","name":"My Website","description":"A website built with Runable","url":"https://example.com","ogImage":"/og-image.png","favicon":"/vite.svg","twitter":{"card":"summary_large_image","site":"@runable"},"themeColor":"#000000","previewPort":8582,"previewUrl":"https://8582-iv7wqz32i2iq7kfkn6sjd.e2b.app"}
+{
+  "id": "u084r8gjch9ike03hlsop1m1cghdxtwa",
+  "name": "PodoAdmin | Software para podología y clínicas podológicas",
+  "description": "PodoAdmin es un software especializado para podólogos y clínicas de podología: agenda online, historia clínica podológica, gestión de pacientes, plantillas, informes y coordinación de equipos.",
+  "url": "https://example.com",
+  "ogImage": "/og-image.png",
+  "favicon": "/vite.svg",
+  "twitter": {
+    "card": "summary_large_image",
+    "site": "@runable"
+  },
+  "themeColor": "#000000",
+  "previewPort": 8582,
+  "previewUrl": "https://8582-iv7wqz32i2iq7kfkn6sjd.e2b.app",
+  "keywords": [
+    "podología",
+    "software de podología",
+    "historia clínica podológica",
+    "agenda podología",
+    "software para podólogos",
+    "gestión de clínica podológica",
+    "PodoAdmin",
+    "Podiadmin",
+    "Fixnail",
+    "software para uñas encarnadas",
+    "software para clínicas de podología"
+  ]
+}

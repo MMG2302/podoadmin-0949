@@ -219,18 +219,31 @@ const CalendarPage = () => {
     return days;
   };
 
-  const isToday = (date: Date) => {
-    const today = new Date();
-    return date.toDateString() === today.toDateString();
-  };
+const isToday = (date: Date) => {
+  const today = new Date();
+  return date.toDateString() === today.toDateString();
+};
 
-  const isCurrentMonth = (date: Date) => {
-    return date.getMonth() === currentDate.getMonth();
-  };
+const isCurrentMonth = (date: Date) => {
+  return date.getMonth() === currentDate.getMonth();
+};
 
-  const isSelected = (date: Date) => {
-    return selectedDate && date.toDateString() === selectedDate.toDateString();
-  };
+const isPastDay = (date: Date) => {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const d = new Date(date);
+  d.setHours(0, 0, 0, 0);
+  return d < today;
+};
+
+const isWeekend = (date: Date) => {
+  const day = date.getDay();
+  return day === 0 || day === 6;
+};
+
+const isSelected = (date: Date) => {
+  return selectedDate && date.toDateString() === selectedDate.toDateString();
+};
 
   const formatMonthYear = () => {
     return currentDate.toLocaleDateString(locale, { month: "long", year: "numeric" });
@@ -627,31 +640,55 @@ const CalendarPage = () => {
                   ))}
                 </div>
 
-                {/* Calendar days */}
-                <div className="grid grid-cols-7 min-w-[400px]">
-                  {getMonthGrid().map((date, index) => {
-                    const sessions = getSessionsForDate(date);
-                    const appointments = getAppointmentsForDate(date);
-                    const allItems = [...sessions.map(s => ({ type: 'session' as const, ...s })), ...appointments.map(a => ({ type: 'appointment' as const, ...a }))];
-                    
-                    return (
-                      <div
-                        key={index}
-                        onClick={() => setSelectedDate(date)}
-                        className={`min-h-[100px] p-2 border-b border-r border-gray-50 cursor-pointer transition-colors ${
-                          !isCurrentMonth(date) ? "bg-gray-50/50" : "hover:bg-gray-50"
-                        } ${isSelected(date) ? "bg-blue-50 ring-1 ring-blue-200" : ""}`}
-                      >
-                        <div className="flex items-center justify-between mb-1">
-                          <span className={`inline-flex items-center justify-center w-7 h-7 text-sm rounded-full ${
-                            isToday(date) 
-                              ? "bg-[#1a1a1a] text-white font-semibold" 
-                              : isCurrentMonth(date) 
-                                ? "text-[#1a1a1a]" 
-                                : "text-gray-400"
-                          }`}>
-                            {date.getDate()}
-                          </span>
+              {/* Calendar days */}
+              <div className="grid grid-cols-7 min-w-[400px]">
+                {getMonthGrid().map((date, index) => {
+                  const sessions = getSessionsForDate(date);
+                  const appointments = getAppointmentsForDate(date);
+                  const allItems = [
+                    ...sessions.map((s) => ({ type: "session" as const, ...s })),
+                    ...appointments.map((a) => ({ type: "appointment" as const, ...a })),
+                  ];
+
+                  const inCurrentMonth = isCurrentMonth(date);
+                  const pastDay = isPastDay(date);
+                  const weekend = isWeekend(date);
+                  const selected = isSelected(date);
+
+                  const baseCellClasses =
+                    "min-h-[100px] p-2 border-b border-r border-gray-50 cursor-pointer transition-colors";
+                  const backgroundClasses = !inCurrentMonth
+                    ? "bg-gray-50/50"
+                    : selected
+                      ? "bg-blue-50 ring-1 ring-blue-200"
+                      : pastDay && !isToday(date)
+                        ? "bg-gray-100"
+                        : weekend
+                          ? "bg-slate-50"
+                          : "hover:bg-gray-50";
+
+                  return (
+                    <div
+                      key={index}
+                      onClick={() => setSelectedDate(date)}
+                      className={`${baseCellClasses} ${backgroundClasses}`}
+                    >
+                      <div className="flex items-center justify-between mb-1">
+                        <span
+                          className={`inline-flex items-center justify-center w-7 h-7 text-sm rounded-full ${
+                            isToday(date)
+                              ? "bg-[#1a1a1a] text-white font-semibold ring-2 ring-blue-300"
+                              : !inCurrentMonth
+                                ? "text-gray-400"
+                                : pastDay
+                                  ? "text-gray-400"
+                                  : weekend
+                                    ? "text-emerald-700"
+                                    : "text-[#1a1a1a]"
+                          }`}
+                        >
+                          {date.getDate()}
+                        </span>
                           {allItems.length > 0 && (
                             <span className="text-xs font-medium text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded">
                               {allItems.length}

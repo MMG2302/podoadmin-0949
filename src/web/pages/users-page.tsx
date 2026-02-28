@@ -980,6 +980,7 @@ const UsersPage = () => {
   const { user: currentUser } = useAuth();
   const { isSuperAdmin } = usePermissions();
   const [allUsers, setAllUsers] = useState<User[]>([]);
+  const [usersLoading, setUsersLoading] = useState(false);
   const [passwordResetRequests, setPasswordResetRequests] = useState<Array<{
     id: string;
     email: string;
@@ -1020,23 +1021,26 @@ const UsersPage = () => {
   }>>([]);
 
   const loadUsers = useCallback(async () => {
+    if (!currentUser || !["super_admin", "admin", "clinic_admin"].includes(currentUser.role)) return;
+    setUsersLoading(true);
     try {
-      const response = await api.get<{ success: boolean; users: User[] }>("/users");
-      if (response.success && response.data?.success) {
-        setAllUsers(response.data.users ?? []);
+      // Usamos /users/visible para respetar la visibilidad por rol (super_admin ve todos)
+      const response = await api.get<{ success?: boolean; users?: User[] }>("/users/visible");
+      if (response.success && Array.isArray(response.data?.users)) {
+        setAllUsers(response.data.users);
       } else {
         console.error("Error cargando usuarios:", response.error || response.data?.message);
       }
     } catch (error) {
       console.error("Error cargando usuarios:", error);
+    } finally {
+      setUsersLoading(false);
     }
-  }, []);
+  }, [currentUser]);
 
   useEffect(() => {
-    const canLoad = currentUser && ["super_admin", "admin", "clinic_admin"].includes(currentUser.role);
-    if (!canLoad) return;
     loadUsers();
-  }, [currentUser, loadUsers]);
+  }, [loadUsers]);
 
   const loadClinics = useCallback(async () => {
     if (!isSuperAdmin && currentUser?.role !== "admin") return;
@@ -1291,14 +1295,22 @@ const UsersPage = () => {
     }
     if (user.isEnabled === false) {
       const disabledAt = user.disabledAt ?? 0;
-      const daysSinceDisabled = disabledAt ? (Date.now() - disabledAt) / (24 * 60 * 60 * 1000) : 0;
+      let daysSinceDisabled = disabledAt ? (Date.now() - disabledAt) / (24 * 60 * 60 * 1000) : 0;
+
+      // Mock visual para probar exactamente el límite de 30 días
+      if (import.meta.env.DEV && user.email === "pablo.hernandez@gmail.com") {
+        daysSinceDisabled = 30;
+      }
+
       const isGracePeriod = daysSinceDisabled < 30;
+      const graceDays = Math.floor(daysSinceDisabled);
+      const graceLabel = `Período de gracia (${graceDays} día${graceDays === 1 ? "" : "s"})`;
       return (
         <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${isGracePeriod ? "bg-amber-100 text-amber-700" : "bg-yellow-100 text-yellow-700"}`}>
           <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
-          {isGracePeriod ? "Período de gracia" : "Deshabilitado"}
+          {isGracePeriod ? graceLabel : "Deshabilitado"}
         </span>
       );
     }
@@ -2376,7 +2388,17 @@ const UsersPage = () => {
             </table>
           </div>
           
-          {sortedUsers.length === 0 && (
+          {usersLoading && (
+            <div className="p-12 text-center">
+              <svg className="w-6 h-6 text-gray-400 mx-auto mb-3 animate-spin" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
+              </svg>
+              <p className="text-gray-500 text-sm">Cargando usuarios…</p>
+            </div>
+          )}
+
+          {!usersLoading && sortedUsers.length === 0 && (
             <div className="p-12 text-center">
               <svg className="w-12 h-12 text-gray-300 mx-auto mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />

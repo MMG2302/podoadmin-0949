@@ -5,6 +5,7 @@ import { sanitizePathParam } from '../utils/sanitization';
 import { validateData, createPatientSchema, updatePatientSchema } from '../utils/validation';
 import { database } from '../database';
 import { patients as patientsTable, clinicalSessions as sessionsTable, appointments as appointmentsTable, creditTransactions as creditTransactionsTable, createdUsers as createdUsersTable } from '../database/schema';
+import { canUserAccess } from '../utils/user-retention';
 import { eq, inArray } from 'drizzle-orm';
 import { logAuditEvent } from '../utils/audit-log';
 import { getClientIP } from '../utils/ip-tracking';
@@ -333,6 +334,26 @@ patientsRoutes.post(
   async (c) => {
     try {
       const user = c.get('user');
+
+      // Restringir creación de pacientes para usuarios en período de gracia (cuenta deshabilitada)
+      if (user?.userId) {
+        const creatorRows = await database
+          .select()
+          .from(createdUsersTable)
+          .where(eq(createdUsersTable.userId, user.userId))
+          .limit(1);
+        const creator = creatorRows[0];
+        if (creator && creator.isEnabled === false && canUserAccess(creator.disabledAt)) {
+          return c.json(
+            {
+              error: 'usuario_en_periodo_gracia',
+              message:
+                'Tu cuenta está en período de gracia por exceso de pago. Durante 30 días puedes ver tus datos, pero no crear nuevos pacientes.',
+            },
+            403
+          );
+        }
+      }
 
       // Validar y sanitizar datos de entrada
       const rawBody = await c.req.json().catch(() => ({}));

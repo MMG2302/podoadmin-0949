@@ -86,6 +86,7 @@ const PatientsPage = () => {
   // Términos y condiciones / consentimiento informado (configurado por clinic_admin o podólogo)
   const [consentText, setConsentText] = useState<string | null>(null);
   const [consentTextVersion, setConsentTextVersion] = useState<number>(0);
+  const [graceError, setGraceError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!showForm || !canCreatePatient) return;
@@ -161,7 +162,8 @@ const PatientsPage = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setFormErrors({});
+  setFormErrors({});
+  setGraceError(null);
     const createdBy = isReceptionist && receptionistPodiatristId ? receptionistPodiatristId : (user?.id || "");
     if (isReceptionist && !receptionistPodiatristId && !editingPatient) {
       return; // receptionist must select podiatrist when creating
@@ -288,6 +290,16 @@ const PatientsPage = () => {
           });
         } else {
           const errData = response.data as any;
+          const errorCode = response.error || errData?.error;
+
+          if (errorCode === "usuario_en_periodo_gracia") {
+            setGraceError(
+              errData?.message ||
+                "Tu cuenta está en período de gracia por exceso de pago. Durante 30 días puedes ver tus datos, pero no crear nuevos pacientes."
+            );
+            return;
+          }
+
           if (errData?.issues && Array.isArray(errData.issues)) {
             const fieldErrors: Record<string, string> = {};
             for (const issue of errData.issues as { path?: unknown[]; message?: string }[]) {
@@ -993,6 +1005,32 @@ const PatientsPage = () => {
                 );
                 })()}
               </div>
+
+              {graceError && (
+                <div className="bg-red-50 border border-red-200 rounded-lg p-3 sm:p-4 flex gap-3">
+                  <svg
+                    className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M12 9v2m0 4h.01M5.07 19h13.86A2 2 0 0020.9 16.32L13.93 4.64a2 2 0 00-3.46 0L3.1 16.32A2 2 0 005.07 19z"
+                    />
+                  </svg>
+                  <div>
+                    <p className="text-sm font-semibold text-red-800">
+                      No puedes crear nuevos pacientes en este momento
+                    </p>
+                    <p className="mt-1 text-sm text-red-700">
+                      {graceError}
+                    </p>
+                  </div>
+                </div>
+              )}
 
               {/* Actions */}
               <div className="flex gap-3 pt-4 border-t border-gray-100">

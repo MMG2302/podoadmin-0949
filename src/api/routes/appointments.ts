@@ -5,6 +5,7 @@ import { requirePermission } from '../middleware/authorization';
 import { sanitizePathParam } from '../utils/sanitization';
 import { database } from '../database';
 import { appointments as appointmentsTable, createdUsers as createdUsersTable } from '../database/schema';
+import { canUserAccess } from '../utils/user-retention';
 import { logAuditEvent } from '../utils/audit-log';
 import { getClientIP } from '../utils/ip-tracking';
 import { getSafeUserAgent } from '../utils/request-headers';
@@ -203,6 +204,25 @@ appointmentsRoutes.get('/:id', requirePermission('view_patients'), async (c) => 
 appointmentsRoutes.post('/', requirePermission('manage_appointments'), async (c) => {
   try {
     const user = c.get('user');
+    // Restringir creación de citas para usuarios en período de gracia (cuenta deshabilitada)
+    if (user?.userId) {
+      const creatorRows = await database
+        .select()
+        .from(createdUsersTable)
+        .where(eq(createdUsersTable.userId, user.userId))
+        .limit(1);
+      const creator = creatorRows[0];
+      if (creator && creator.isEnabled === false && canUserAccess(creator.disabledAt)) {
+        return c.json(
+          {
+            error: 'usuario_en_periodo_gracia',
+            message:
+              'Tu cuenta está en período de gracia por exceso de pago. Durante 30 días puedes ver tus datos, pero no crear nuevas citas.',
+          },
+          403
+        );
+      }
+    }
     const body = (await c.req.json().catch(() => ({}))) as {
       patientId?: string | null;
       podiatristId?: string;

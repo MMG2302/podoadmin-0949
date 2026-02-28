@@ -6,6 +6,7 @@ import { database } from '../database';
 import { clinicalSessions as sessionsTable, patients as patientsTable, createdUsers as createdUsersTable } from '../database/schema';
 import { eq } from 'drizzle-orm';
 import { validateImageDataUri, MAX_SESSION_IMAGE_BYTES } from '../utils/logo-upload';
+import { canUserAccess } from '../utils/user-retention';
 import { checkSessionCreateRateLimit } from '../utils/action-rate-limit';
 import type { ClinicalSession } from '../../web/lib/storage';
 
@@ -264,6 +265,25 @@ sessionsRoutes.post(
   async (c) => {
     try {
       const user = c.get('user');
+      // Restringir creación de sesiones para usuarios en período de gracia (cuenta deshabilitada)
+      if (user?.userId) {
+        const creatorRows = await database
+          .select()
+          .from(createdUsersTable)
+          .where(eq(createdUsersTable.userId, user.userId))
+          .limit(1);
+        const creator = creatorRows[0];
+        if (creator && creator.isEnabled === false && canUserAccess(creator.disabledAt)) {
+          return c.json(
+            {
+              error: 'usuario_en_periodo_gracia',
+              message:
+                'Tu cuenta está en período de gracia por exceso de pago. Durante 30 días puedes ver tus datos, pero no crear nuevas sesiones clínicas.',
+            },
+            403
+          );
+        }
+      }
       const body = await c.req.json().catch(() => ({}));
 
       if (!body.patientId || !body.sessionDate) {

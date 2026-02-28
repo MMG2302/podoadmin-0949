@@ -11,7 +11,7 @@ import { getClientIP, createRateLimitIdentifier, isIPWhitelisted, getIPWhitelist
 import { getSafeUserAgent } from '../utils/request-headers';
 import type { User } from '../../web/contexts/auth-context';
 import { getUserByIdFromDB } from '../utils/user-db';
-import { canUserAccess } from '../utils/user-retention';
+import { canUserAccess, RETENTION } from '../utils/user-retention';
 
 const authRoutes = new Hono();
 
@@ -335,10 +335,22 @@ authRoutes.post('/login', async (c) => {
     if (matchedUser.user.isEnabled === false) {
       const disabledAt = dbUser?.disabledAt ?? null;
       if (!canUserAccess(disabledAt)) {
+        let daysLeftText = '';
+        if (disabledAt != null) {
+          const MS_PER_DAY = 24 * 60 * 60 * 1000;
+          const elapsedDays = (Date.now() - disabledAt) / MS_PER_DAY;
+          const daysLeft = Math.max(0, Math.round(RETENTION.DELETION_AFTER_DAYS - elapsedDays));
+          if (daysLeft > 0) {
+            daysLeftText = ` Tu cuenta será dada de baja de forma permanente en aproximadamente ${daysLeft} día(s).`;
+          }
+        }
         return c.json(
           {
             error: 'Cuenta deshabilitada',
-            message: 'Tu cuenta está deshabilitada. El período de gracia ha finalizado. Contacta al administrador.',
+            message:
+              'Tu cuenta está deshabilitada y no puedes acceder a la aplicación.' +
+              daysLeftText +
+              ' Si crees que se trata de un error, contacta con el administrador o con PodoAdmin.',
           },
           403
         );

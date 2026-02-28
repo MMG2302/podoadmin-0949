@@ -174,6 +174,7 @@ const SessionsPage = () => {
     filterPatientId ? { ...emptyForm, patientId: filterPatientId } : emptyForm
   );
   const [selectedSession, setSelectedSession] = useState<ClinicalSession | null>(null);
+  const [graceError, setGraceError] = useState<string | null>(null);
 
   const handleRescheduleNextAppointment = (session: ClinicalSession) => {
     // Open the session edit form so user can edit the next appointment date
@@ -406,6 +407,7 @@ const SessionsPage = () => {
 
   const handleSubmit = async (e: React.FormEvent, asDraft: boolean) => {
     e.preventDefault();
+  setGraceError(null);
     
     if (!formData.patientId) {
       alert("Seleccione un paciente.");
@@ -491,6 +493,17 @@ const SessionsPage = () => {
             }),
           });
         } else {
+          const errData = response.data as any;
+          const errorCode = response.error || errData?.error;
+
+          if (errorCode === "usuario_en_periodo_gracia") {
+            setGraceError(
+              errData?.message ||
+                "Tu cuenta está en período de gracia por exceso de pago. Durante 30 días puedes ver tus datos, pero no crear nuevas sesiones clínicas."
+            );
+            return;
+          }
+
           alert(response.error || response.data?.message || "No se pudo crear la sesión.");
           return;
         }
@@ -1564,44 +1577,69 @@ const SessionsPage = () => {
                     : undefined;
                 const showSaveBlockedHint = formData.patientId && !patientComplete;
                 return (
-              <div className="flex flex-col gap-3 pt-4 border-t border-gray-100">
-                {showSaveBlockedHint && (
-                  <p className="text-sm text-amber-700 bg-amber-50 px-4 py-2 rounded-lg border border-amber-200">
-                    Para guardar borrador o completar la sesión, primero complete los datos del paciente y haga clic en &quot;Actualizar datos&quot; arriba.
-                  </p>
-                )}
-              <div className="flex gap-3">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowForm(false);
-                    setEditingSession(null);
-                    setFormData(emptyForm);
-                  }}
-                  className="flex-1 py-3 bg-gray-100 text-[#1a1a1a] rounded-lg hover:bg-gray-200 transition-colors font-medium"
-                >
-                  {t.common.cancel}
-                </button>
-                <button
-                  type="button"
-                  onClick={(e) => handleSubmit(e, true)}
-                  disabled={!canSave}
-                  title={disableReason}
-                  className="flex-1 py-3 bg-gray-100 text-[#1a1a1a] rounded-lg hover:bg-gray-200 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {t.sessions.saveDraft}
-                </button>
-                <button
-                  type="button"
-                  onClick={(e) => handleSubmit(e, false)}
-                  disabled={!canSave}
-                  title={disableReason}
-                  className="flex-1 py-3 bg-[#1a1a1a] text-white rounded-lg hover:bg-[#2a2a2a] transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {t.sessions.complete}
-                </button>
-              </div>
-              </div>
+                  <div className="flex flex-col gap-3 pt-4 border-t border-gray-100">
+                    {showSaveBlockedHint && (
+                      <p className="text-sm text-amber-700 bg-amber-50 px-4 py-2 rounded-lg border border-amber-200">
+                        Para guardar borrador o completar la sesión, primero complete los datos del paciente y haga clic en &quot;Actualizar datos&quot; arriba.
+                      </p>
+                    )}
+                    {graceError && (
+                      <div className="bg-red-50 border border-red-200 rounded-lg p-3 sm:p-4 flex gap-3">
+                        <svg
+                          className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M12 9v2m0 4h.01M5.07 19h13.86A2 2 0 0020.9 16.32L13.93 4.64a2 2 0 00-3.46 0L3.1 16.32A2 2 0 005.07 19z"
+                          />
+                        </svg>
+                        <div>
+                          <p className="text-sm font-semibold text-red-800">
+                            No puedes crear nuevas sesiones en este momento
+                          </p>
+                          <p className="mt-1 text-sm text-red-700">
+                            {graceError}
+                          </p>
+                        </div>
+                      </div>
+                    )}
+                    <div className="flex gap-3">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setShowForm(false);
+                          setEditingSession(null);
+                          setFormData(emptyForm);
+                        }}
+                        className="flex-1 py-3 bg-gray-100 text-[#1a1a1a] rounded-lg hover:bg-gray-200 transition-colors font-medium"
+                      >
+                        {t.common.cancel}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={(e) => handleSubmit(e, true)}
+                        disabled={!canSave}
+                        title={disableReason}
+                        className="flex-1 py-3 bg-gray-100 text-[#1a1a1a] rounded-lg hover:bg-gray-200 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {t.sessions.saveDraft}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={(e) => handleSubmit(e, false)}
+                        disabled={!canSave}
+                        title={disableReason}
+                        className="flex-1 py-3 bg-[#1a1a1a] text-white rounded-lg hover:bg-[#2a2a2a] transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {t.sessions.complete}
+                      </button>
+                    </div>
+                  </div>
                 );
               })()}
             </form>

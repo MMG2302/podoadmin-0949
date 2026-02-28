@@ -4,7 +4,7 @@ import { requireAuth } from '../middleware/auth';
 import { requireRole } from '../middleware/authorization';
 import { validateData, createUserSchema, updateUserSchema } from '../utils/validation';
 import { database } from '../database';
-import { createdUsers, userCredits as userCreditsTable, creditTransactions as creditTransactionsTable, clinics as clinicsTable } from '../database/schema';
+import { createdUsers, userCredits as userCreditsTable, creditTransactions as creditTransactionsTable, clinics as clinicsTable, notifications as notificationsTable } from '../database/schema';
 import { hashPassword } from '../utils/password';
 import { logAuditEvent } from '../utils/audit-log';
 import { getClientIP } from '../utils/ip-tracking';
@@ -501,7 +501,30 @@ usersRoutes.post('/:userId/disable', requireRole('super_admin', 'clinic_admin'),
       return c.json({ error: 'Acceso denegado' }, 403);
     }
   }
-  await setUserFlag(row.id, { isEnabled: false, disabledAt: Date.now() } as any);
+
+  const disabledAt = Date.now();
+  await setUserFlag(row.id, { isEnabled: false, disabledAt } as any);
+
+  try {
+    const nowIso = new Date().toISOString();
+    await database.insert(notificationsTable).values({
+      id: `notif_${crypto.randomUUID().replace(/-/g, '')}`,
+      userId: row.userId,
+      type: 'system',
+      title: 'Cuenta deshabilitada - período de gracia',
+      message:
+        'Por exceso de pago, durante los próximos 30 días naturales no podrás crear nuevas sesiones clínicas. Podrás seguir accediendo a la aplicación y consultar pacientes y sesiones existentes, pero no crear sesiones nuevas.',
+      read: false,
+      metadata: JSON.stringify({
+        reason: 'disabled_grace_period',
+        disabledAt,
+      }),
+      createdAt: nowIso,
+    });
+  } catch (err) {
+    console.error('Error creando notificación de deshabilitación:', err);
+  }
+
   return c.json({ success: true });
 });
 

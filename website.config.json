@@ -4,7 +4,7 @@
   "description": "PodoAdmin es un software especializado para podólogos y clínicas de podología: agenda online, historia clínica podológica, gestión de pacientes, plantillas, informes y coordinación de equipos.",
   "url": "https://example.com",
   "ogImage": "/og-image.png",
-  "favicon": "/vite.svg",
+  "favicon": "/favicon.svg",
   "twitter": {
     "card": "summary_large_image",
     "site": "@runable"

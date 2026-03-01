@@ -301,8 +301,8 @@ const NotificationsPage = () => {
             </div>
           ) : (
             <>
-              {/* Header Row */}
-              <div className="flex items-center gap-4 px-4 py-3 border-b border-gray-100 bg-gray-50">
+              {/* Header Row - oculto en móvil/tablet para no amontonar */}
+              <div className="hidden md:flex items-center gap-4 px-4 py-3 border-b border-gray-100 bg-gray-50">
                 <input
                   type="checkbox"
                   checked={selectedNotifications.size === filteredNotifications.length && filteredNotifications.length > 0}
@@ -325,7 +325,7 @@ const NotificationsPage = () => {
               {filteredNotifications.map((notification) => (
                 <div
                   key={notification.id}
-                  className={`flex items-start gap-4 px-4 py-4 border-b border-gray-50 hover:bg-gray-50 transition-colors ${
+                  className={`flex flex-col gap-3 md:flex-row md:items-start md:gap-4 px-4 py-4 border-b border-gray-50 hover:bg-gray-50 transition-colors ${
                     notification.type === "admin_message" 
                       ? !notification.read 
                         ? "bg-purple-50 border-l-4 border-l-purple-500" 
@@ -333,37 +333,37 @@ const NotificationsPage = () => {
                       : !notification.read ? "bg-blue-50/30" : ""
                   }`}
                 >
-                  <input
-                    type="checkbox"
-                    checked={selectedNotifications.has(notification.id)}
-                    onChange={() => toggleSelect(notification.id)}
-                    className="w-4 h-4 mt-1 rounded border-gray-300 text-[#1a1a1a] focus:ring-[#1a1a1a]"
-                  />
-                  
-                  {/* Icon */}
-                  <div className={`flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center ${
-                    notification.type === "reassignment" ? "bg-blue-100 text-blue-600" :
-                    notification.type === "appointment" ? "bg-green-100 text-green-600" :
-                    notification.type === "credit" ? "bg-yellow-100 text-yellow-600" :
-                    notification.type === "admin_message" ? "bg-purple-100 text-purple-600" :
-                    "bg-gray-100 text-gray-600"
-                  }`}>
-                    <NotificationIcon type={notification.type} />
-                  </div>
-
-                  {/* Content */}
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-start gap-2">
-                      <p className={`text-sm ${!notification.read ? "font-semibold" : "font-medium"} text-[#1a1a1a]`}>
-                        {notification.title}
-                      </p>
-                      {!notification.read && (
-                        <span className="flex-shrink-0 w-2 h-2 mt-1.5 bg-blue-500 rounded-full"></span>
-                      )}
+                  {/* Fila principal: checkbox + icono + contenido (en móvil el mensaje tiene espacio) */}
+                  <div className="flex items-start gap-3 md:gap-4 min-w-0 flex-1">
+                    <input
+                      type="checkbox"
+                      checked={selectedNotifications.has(notification.id)}
+                      onChange={() => toggleSelect(notification.id)}
+                      className="w-4 h-4 mt-1 rounded border-gray-300 text-[#1a1a1a] focus:ring-[#1a1a1a] flex-shrink-0"
+                    />
+                    <div className={`flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center ${
+                      notification.type === "reassignment" ? "bg-blue-100 text-blue-600" :
+                      notification.type === "appointment" ? "bg-green-100 text-green-600" :
+                      notification.type === "credit" ? "bg-yellow-100 text-yellow-600" :
+                      notification.type === "admin_message" ? "bg-purple-100 text-purple-600" :
+                      "bg-gray-100 text-gray-600"
+                    }`}>
+                      <NotificationIcon type={notification.type} />
                     </div>
-                    <p className="text-sm text-gray-600 mt-1">
-                      {notification.message}
-                    </p>
+
+                    {/* Content: título y mensaje con espacio para no verse amontonado */}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-start gap-2">
+                        <p className={`text-sm ${!notification.read ? "font-semibold" : "font-medium"} text-[#1a1a1a]`}>
+                          {notification.title}
+                        </p>
+                        {!notification.read && (
+                          <span className="flex-shrink-0 w-2 h-2 mt-1.5 bg-blue-500 rounded-full"></span>
+                        )}
+                      </div>
+                      <p className="text-sm text-gray-600 mt-2 leading-relaxed">
+                        {notification.message}
+                      </p>
                     
                     {/* Metadata for reassignment */}
                     {notification.type === "reassignment" && notification.metadata && (
@@ -416,54 +416,53 @@ const NotificationsPage = () => {
                         )}
                       </div>
                     )}
+                    </div>
                   </div>
 
-                  {/* Type Badge */}
-                  <div className="w-24 flex justify-center">
-                    <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${
-                      notification.type === "reassignment" ? "bg-blue-100 text-blue-700" :
-                      notification.type === "appointment" ? "bg-green-100 text-green-700" :
-                      notification.type === "credit" ? "bg-yellow-100 text-yellow-700" :
-                      notification.type === "admin_message" ? "bg-purple-100 text-purple-700" :
-                      "bg-gray-100 text-gray-700"
-                    }`}>
-                      <NotificationIcon type={notification.type} size="sm" />
-                      {getTypeLabel(notification.type)}
-                    </span>
-                  </div>
-
-                  {/* Date */}
-                  <div className="w-32 text-right">
-                    <p className="text-xs text-gray-500">
-                      {formatTimeAgo(notification.createdAt, t)}
-                    </p>
-                    <p className="text-[10px] text-gray-400 mt-0.5">
-                      {formatFullDate(notification.createdAt)}
-                    </p>
-                  </div>
-
-                  {/* Actions */}
-                  <div className="w-20 flex items-center justify-end gap-2">
-                    {!notification.read && (
+                  {/* En móvil/tablet: tipo, fecha y acciones en una fila debajo; en desktop integrado en la fila */}
+                  <div className="flex flex-wrap items-center justify-between gap-2 md:contents">
+                    <div className="flex justify-center md:w-24 md:flex md:justify-center">
+                      <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${
+                        notification.type === "reassignment" ? "bg-blue-100 text-blue-700" :
+                        notification.type === "appointment" ? "bg-green-100 text-green-700" :
+                        notification.type === "credit" ? "bg-yellow-100 text-yellow-700" :
+                        notification.type === "admin_message" ? "bg-purple-100 text-purple-700" :
+                        "bg-gray-100 text-gray-700"
+                      }`}>
+                        <NotificationIcon type={notification.type} size="sm" />
+                        {getTypeLabel(notification.type)}
+                      </span>
+                    </div>
+                    <div className="text-right md:w-32">
+                      <p className="text-xs text-gray-500">
+                        {formatTimeAgo(notification.createdAt, t)}
+                      </p>
+                      <p className="text-[10px] text-gray-400 mt-0.5">
+                        {formatFullDate(notification.createdAt)}
+                      </p>
+                    </div>
+                    <div className="flex items-center justify-end gap-2 md:w-20 md:flex md:justify-end">
+                      {!notification.read && (
+                        <button
+                          onClick={() => handleMarkAsRead(notification.id)}
+                          className="p-1.5 text-gray-400 hover:text-green-600 hover:bg-green-50 rounded-lg transition-colors"
+                          title={t.notifications.markAsRead}
+                        >
+                          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                          </svg>
+                        </button>
+                      )}
                       <button
-                        onClick={() => handleMarkAsRead(notification.id)}
-                        className="p-1.5 text-gray-400 hover:text-green-600 hover:bg-green-50 rounded-lg transition-colors"
-                        title={t.notifications.markAsRead}
+                        onClick={() => handleDelete(notification.id)}
+                        className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                        title={t.notifications.delete}
                       >
                         <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                         </svg>
                       </button>
-                    )}
-                    <button
-                      onClick={() => handleDelete(notification.id)}
-                      className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                      title={t.notifications.delete}
-                    >
-                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                      </svg>
-                    </button>
+                    </div>
                   </div>
                 </div>
               ))}

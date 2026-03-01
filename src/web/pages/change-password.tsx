@@ -64,7 +64,7 @@ const ChangePassword = () => {
   };
 
   return (
-    <div className="min-h-screen bg-white flex">
+    <div className="min-h-screen h-dvh bg-white flex overflow-hidden">
       <div className="hidden lg:flex lg:w-1/2 bg-[#1a1a1a] relative overflow-hidden">
         <div className="absolute inset-0 opacity-[0.03]">
           <svg width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
@@ -85,12 +85,12 @@ const ChangePassword = () => {
         </div>
       </div>
 
-      <div className="w-full lg:w-1/2 flex flex-col">
-        <div className="flex justify-end p-4">
+      <div className="w-full lg:w-1/2 flex flex-col min-h-0 max-h-dvh">
+        <div className="flex justify-end p-4 flex-shrink-0">
           <LanguageSwitcher />
         </div>
-        <div className="flex-1 flex items-center justify-center p-8">
-          <div className="w-full max-w-md">
+        <div className="flex-1 min-h-0 overflow-y-auto overflow-scrolling-touch flex flex-col items-center justify-center p-8">
+          <div className="w-full max-w-md py-4 pb-mobile-safe">
             <div className="lg:hidden text-center mb-12">
               <h1 className="text-[#1a1a1a] text-4xl font-light tracking-tight">
                 Podo<span className="font-bold">Admin</span>

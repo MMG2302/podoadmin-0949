@@ -250,6 +250,22 @@ button, a, [role="button"], input, select, textarea {
   .min-h-dvh {
     min-height: 100dvh;
   }
+  /* Altura dinámica del viewport (móvil: excluye barra del navegador). Fallback para navegadores sin dvh. */
+  .h-dvh {
+    height: 100vh;
+    height: 100dvh;
+  }
+  .max-h-dvh {
+    max-height: 100vh;
+    max-height: 100dvh;
+  }
+  /* Scroll suave en iOS y padding inferior para no tapar el botón con la barra del navegador */
+  .overflow-scrolling-touch {
+    -webkit-overflow-scrolling: touch;
+  }
+  .pb-mobile-safe {
+    padding-bottom: max(6rem, env(safe-area-inset-bottom, 0px));
+  }
   /* Ensure minimum touch target size (Apple HIG / Material ~44px) */
   .touch-target {
     min-width: 44px;

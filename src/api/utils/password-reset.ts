@@ -39,11 +39,12 @@ export async function createPasswordResetToken(userId: string): Promise<string> 
 }
 
 /**
- * Verifica y consume un token de recuperación. Devuelve userId (created_users.id) si es válido.
+ * Verifica un token de recuperación (no lo consume). Devuelve userId y tokenId si es válido.
+ * El token solo debe marcarse como usado tras restablecer la contraseña con éxito (un solo uso).
  */
 export async function verifyPasswordResetToken(
   token: string
-): Promise<{ valid: boolean; userId?: string; error?: string }> {
+): Promise<{ valid: boolean; userId?: string; tokenId?: string; error?: string }> {
   try {
     const now = Date.now();
 
@@ -68,16 +69,21 @@ export async function verifyPasswordResetToken(
       return { valid: false, error: 'Token expirado' };
     }
 
-    await database
-      .update(passwordResetTokens)
-      .set({ used: true })
-      .where(eq(passwordResetTokens.id, tokenRecord.id));
-
-    return { valid: true, userId: tokenRecord.userId };
+    return { valid: true, userId: tokenRecord.userId, tokenId: tokenRecord.id };
   } catch (error) {
     console.error('Error verificando token de recuperación:', error);
     return { valid: false, error: 'Error al verificar token' };
   }
+}
+
+/**
+ * Marca un token de recuperación como usado. Llamar solo tras restablecer la contraseña con éxito (un solo uso).
+ */
+export async function markPasswordResetTokenUsed(tokenId: string): Promise<void> {
+  await database
+    .update(passwordResetTokens)
+    .set({ used: true })
+    .where(eq(passwordResetTokens.id, tokenId));
 }
 
 /**

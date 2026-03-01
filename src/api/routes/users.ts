@@ -513,7 +513,7 @@ usersRoutes.post('/:userId/disable', requireRole('super_admin', 'clinic_admin'),
       type: 'system',
       title: 'Cuenta deshabilitada - período de gracia',
       message:
-        'Por exceso de pago, durante los próximos 30 días naturales no podrás crear nuevas sesiones clínicas. Podrás seguir accediendo a la aplicación y consultar pacientes y sesiones existentes, pero no crear sesiones nuevas.',
+        'Por exceso de pago, durante los próximos 30 días naturales no podrás crear nuevas sesiones clínicas, pacientes ni citas. Podrás seguir accediendo a la aplicación y consultar pacientes y sesiones existentes.',
       read: false,
       metadata: JSON.stringify({
         reason: 'disabled_grace_period',

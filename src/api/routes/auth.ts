@@ -860,10 +860,10 @@ authRoutes.post('/reset-password', async (c) => {
 
     const { token, newPassword } = validation.data;
 
-    const { verifyPasswordResetToken } = await import('../utils/password-reset');
+    const { verifyPasswordResetToken, markPasswordResetTokenUsed } = await import('../utils/password-reset');
     const result = await verifyPasswordResetToken(token);
 
-    if (!result.valid || !result.userId) {
+    if (!result.valid || !result.userId || !result.tokenId) {
       const { recordSecurityMetric } = await import('../utils/security-metrics');
       await recordSecurityMetric({
         metricType: 'password_reset_failed',
@@ -937,6 +937,9 @@ authRoutes.post('/reset-password', async (c) => {
       ipAddress: getClientIP(c.req.raw.headers),
       details: { email: userEmail },
     });
+
+    // Enlace de un solo uso: marcar token como usado tras éxito
+    await markPasswordResetTokenUsed(result.tokenId);
 
     return c.json({
       success: true,

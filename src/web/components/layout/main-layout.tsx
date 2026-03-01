@@ -77,8 +77,8 @@ export const MainLayout = ({ children, title }: MainLayoutProps) => {
         {/* Top header - responsive */}
         <header className="flex-shrink-0 sticky top-0 z-30 bg-white dark:bg-gray-900 border-b border-gray-100 dark:border-gray-800 safe-area-top">
           <div className="flex items-center justify-between px-3 sm:px-4 md:px-6 lg:px-8 h-14 sm:h-16">
-            {/* Left side - menu button and title */}
-            <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
+            {/* Left side - menu button and title. min-w-[7rem] evita que Safari colapse a 0 en el primer pintado (menú no visible al iniciar sesión). */}
+            <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-[7rem] overflow-hidden [transform:translateZ(0)]">
               {/* Bloquear sidebar - solo en desktop, siempre visible */}
               <button
                 onClick={handleLockCycle}
@@ -98,7 +98,7 @@ export const MainLayout = ({ children, title }: MainLayoutProps) => {
                   <path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
                 </svg>
               </button>
-              {/* Menú: en móvil abre overlay, en desktop alterna visible/oculto */}
+              {/* Menú hamburguesa: flex-shrink-0 + min-width para que Safari lo pinte en el primer frame */}
               <button
                 onClick={() => {
                   if (window.matchMedia("(min-width: 768px)").matches) {
@@ -107,16 +107,16 @@ export const MainLayout = ({ children, title }: MainLayoutProps) => {
                     setSidebarOpen(true);
                   }
                 }}
-                className="p-2 -ml-1 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 active:bg-gray-200 dark:active:bg-gray-700 transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center flex-shrink-0"
+                className="shrink-0 p-2 ml-0 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 active:bg-gray-200 dark:active:bg-gray-700 transition-colors w-11 h-11 min-w-[44px] min-h-[44px] flex items-center justify-center"
                 aria-label={sidebarVisibleOnDesktop ? "Ocultar menú" : "Mostrar menú"}
               >
-                <svg className="w-6 h-6 text-[#1a1a1a] dark:text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                <svg className="w-6 h-6 text-[#1a1a1a] dark:text-white shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
                 </svg>
               </button>
 
               {/* Page title - truncate on small screens */}
-              <h1 className="text-base sm:text-lg md:text-xl font-semibold text-[#1a1a1a] dark:text-white truncate">
+              <h1 className="text-base sm:text-lg md:text-xl font-semibold text-[#1a1a1a] dark:text-white truncate min-w-0">
                 {title || "PodoAdmin"}
               </h1>
             </div>

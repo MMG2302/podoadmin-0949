@@ -860,20 +860,20 @@ authRoutes.post('/reset-password', async (c) => {
 
     const { token, newPassword } = validation.data;
 
-    const { verifyPasswordResetToken, markPasswordResetTokenUsed } = await import('../utils/password-reset');
-    const result = await verifyPasswordResetToken(token);
+    const { verifyPasswordResetToken, verifyAndConsumePasswordResetToken } = await import('../utils/password-reset');
+    const verifyResult = await verifyPasswordResetToken(token);
 
-    if (!result.valid || !result.userId || !result.tokenId) {
+    if (!verifyResult.valid || !verifyResult.userId || !verifyResult.tokenId) {
       const { recordSecurityMetric } = await import('../utils/security-metrics');
       await recordSecurityMetric({
         metricType: 'password_reset_failed',
         ipAddress: getClientIP(c.req.raw.headers),
-        details: { reason: result.error || 'invalid_token' },
+        details: { reason: verifyResult.error || 'invalid_token' },
       });
       return c.json(
         {
           error: 'Token inválido o expirado',
-          message: result.error || 'El enlace de recuperación no es válido o ha expirado. Solicita uno nuevo.',
+          message: verifyResult.error || 'El enlace de recuperación no es válido o ha expirado. Solicita uno nuevo.',
         },
         400
       );
@@ -900,11 +900,28 @@ authRoutes.post('/reset-password', async (c) => {
     const userRow = await database
       .select()
       .from(createdUsers)
-      .where(eq(createdUsers.id, result.userId))
+      .where(eq(createdUsers.id, verifyResult.userId))
       .limit(1);
 
     if (userRow.length === 0) {
       return c.json({ error: 'Usuario no encontrado' }, 404);
+    }
+
+    const consumeResult = await verifyAndConsumePasswordResetToken(token);
+    if (!consumeResult.valid || !consumeResult.userId) {
+      const { recordSecurityMetric } = await import('../utils/security-metrics');
+      await recordSecurityMetric({
+        metricType: 'password_reset_failed',
+        ipAddress: getClientIP(c.req.raw.headers),
+        details: { reason: consumeResult.error || 'token_already_used' },
+      });
+      return c.json(
+        {
+          error: 'Token no válido',
+          message: 'El enlace ya fue usado o expiró. Solicita uno nuevo si quieres restablecer la contraseña.',
+        },
+        400
+      );
     }
 
     const hashedPassword = await hashPassword(newPassword);
@@ -914,7 +931,7 @@ authRoutes.post('/reset-password', async (c) => {
         password: hashedPassword,
         updatedAt: new Date().toISOString(),
       })
-      .where(eq(createdUsers.id, result.userId));
+      .where(eq(createdUsers.id, consumeResult.userId));
 
     const userEmail = userRow[0].email;
     const { clearFailedAttemptsByEmailD1 } = await import('../utils/rate-limit-d1');
@@ -937,9 +954,6 @@ authRoutes.post('/reset-password', async (c) => {
       ipAddress: getClientIP(c.req.raw.headers),
       details: { email: userEmail },
     });
-
-    // Enlace de un solo uso: marcar token como usado tras éxito
-    await markPasswordResetTokenUsed(result.tokenId);
 
     return c.json({
       success: true,

@@ -40,7 +40,8 @@ export async function createPasswordResetToken(userId: string): Promise<string> 
 
 /**
  * Verifica un token de recuperación (no lo consume). Devuelve userId y tokenId si es válido.
- * El token solo debe marcarse como usado tras restablecer la contraseña con éxito (un solo uso).
+ * Solo usar para lecturas; para reset de contraseña usar verifyAndConsumePasswordResetToken
+ * para evitar condición TOCTOU.
  */
 export async function verifyPasswordResetToken(
   token: string
@@ -72,6 +73,50 @@ export async function verifyPasswordResetToken(
     return { valid: true, userId: tokenRecord.userId, tokenId: tokenRecord.id };
   } catch (error) {
     console.error('Error verificando token de recuperación:', error);
+    return { valid: false, error: 'Error al verificar token' };
+  }
+}
+
+/**
+ * Verifica y consume el token en una sola operación atómica (UPDATE ... WHERE used=false).
+ * Solo una petición concurrente con el mismo token puede obtener valid: true; las demás
+ * reciben "Token no encontrado o ya usado". Usar siempre esta función en el flujo de
+ * reset-password para evitar condición TOCTOU.
+ */
+export async function verifyAndConsumePasswordResetToken(
+  token: string
+): Promise<{ valid: boolean; userId?: string; tokenId?: string; error?: string }> {
+  try {
+    const now = Date.now();
+
+    const updated = await database
+      .update(passwordResetTokens)
+      .set({ used: true })
+      .where(
+        and(
+          eq(passwordResetTokens.token, token),
+          eq(passwordResetTokens.used, false)
+        )
+      )
+      .returning({
+        id: passwordResetTokens.id,
+        userId: passwordResetTokens.userId,
+        expiresAt: passwordResetTokens.expiresAt,
+      });
+
+    if (updated.length === 0) {
+      return { valid: false, error: 'Token no encontrado o ya usado' };
+    }
+
+    const tokenRecord = updated[0];
+
+    if (tokenRecord.expiresAt < now) {
+      return { valid: false, error: 'Token expirado' };
+    }
+
+    return { valid: true, userId: tokenRecord.userId, tokenId: tokenRecord.id };
+  } catch (error) {
+    console.error('Error verificando/consumiendo token de recuperación:', error);
     return { valid: false, error: 'Error al verificar token' };
   }
 }

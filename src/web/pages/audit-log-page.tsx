@@ -136,8 +136,125 @@ const AuditLogPage = () => {
   const uniqueEntityTypes = [...new Set(logs.map((log) => log.entityType))].sort();
   const uniqueUsers = [...new Set(logs.map((log) => log.userId))];
 
+  // Identidad legible del usuario (nombre, email o ID) para mostrar en lista y detalles
+  const getUserDisplay = (userId: string): { display: string; sub?: string } => {
+    const u = allUsers.find((u) => u.id === userId);
+    if (!u) {
+      const fromLog = logs.find((l) => l.userId === userId)?.userName;
+      return { display: fromLog || userId, sub: userId };
+    }
+    if (u.name && u.name.trim()) return { display: u.name, sub: u.email || userId };
+    return { display: u.email || userId, sub: userId };
+  };
+
+  // Etiquetas amigables para no depender del código interno en producción
+  const getFriendlyActionLabel = (action: string): string => {
+    const labels: Record<string, string> = {
+      LOGIN_SUCCESS: "Inicio de sesión",
+      LOGIN_FAILED: "Inicio de sesión fallido",
+      LOGOUT: "Cierre de sesión",
+      PASSWORD_CHANGED: "Contraseña cambiada",
+      PASSWORD_RESET_REJECTED: "Restablecimiento de contraseña rechazado",
+      PASSWORD_RESET_APPROVED: "Restablecimiento de contraseña aprobado",
+      PASSWORD_RESET_COMPLETED: "Restablecimiento de contraseña completado",
+      PASSWORD_RESET_REQUESTED: "Solicitud de restablecimiento de contraseña",
+      CREATE: "Creación",
+      CREATE_USER: "Usuario creado",
+      UPDATE: "Actualización",
+      DELETE: "Eliminación",
+      DELETE_USER: "Usuario eliminado",
+      COMPLETE: "Completado",
+      EXPORT: "Exportación",
+      PRINT: "Impresión",
+      UPDATE_DRAFT: "Borrador actualizado",
+      REASSIGN: "Reasignación",
+      TRANSFER: "Transferencia",
+      ADD_CREDITS: "Créditos añadidos",
+      SUBTRACT_CREDITS: "Créditos restados",
+      ADMIN_CREDIT_ADJUSTMENT: "Ajuste de créditos (admin)",
+      ALERT_MULTIPLE_PRINT_VIOLATIONS: "Alerta: múltiples impresiones",
+      PRINT_VIOLATION_FORM: "Intento de impresión desde formulario",
+    };
+    return labels[action] ?? action;
+  };
+
+  const getFriendlyEntityTypeLabel = (entityType: string): string => {
+    const type = entityType.toLowerCase();
+    const labels: Record<string, string> = {
+      authentication: "Autenticación",
+      session: "Sesión",
+      patient: "Paciente",
+      prescription: "Receta",
+      reassignment: "Reasignación",
+      credit: "Créditos",
+      user: "Usuario",
+      user_data: "Datos de usuario",
+      clinic: "Clínica",
+      professional_info: "Datos profesionales",
+      professional_credentials: "Credenciales",
+      logo: "Logo",
+      message: "Mensaje",
+      clinical_history: "Historial clínico",
+      receptionist: "Recepcionista",
+      registration_list: "Lista de registro",
+      support_conversation: "Conversación de soporte",
+    };
+    return labels[type] ?? entityType;
+  };
+
+  const getFriendlySummary = (log: AuditLog, parsedDetails: Record<string, unknown> | null): string => {
+    const action = log.action;
+    const entityType = (log.entityType || "").toLowerCase();
+    const d = parsedDetails || {};
+
+    if (action === "LOGIN_SUCCESS" && entityType === "authentication") {
+      const email = (d.email as string) ?? "";
+      const has2FA = d.has2FA === true;
+      return `Inicio de sesión correcto${email ? `: ${email}` : ""}${has2FA ? " (2FA activado)" : " (sin 2FA)"}`;
+    }
+    if (action === "LOGOUT" && entityType === "session") {
+      return "Cierre de sesión.";
+    }
+    if (action === "PASSWORD_CHANGED" && entityType === "authentication") {
+      return "Contraseña cambiada por el usuario.";
+    }
+    if (action === "LOGIN_FAILED" && entityType === "authentication") {
+      const email = (d.email as string) ?? "";
+      return email ? `Intento de inicio de sesión fallido: ${email}` : "Intento de inicio de sesión fallido.";
+    }
+    if (action === "PASSWORD_RESET_REJECTED" && entityType === "authentication") {
+      return "Solicitud de restablecimiento de contraseña rechazada.";
+    }
+    if (action === "PASSWORD_RESET_APPROVED" && entityType === "authentication") {
+      return "Restablecimiento de contraseña aprobado por un administrador.";
+    }
+    if (action === "PASSWORD_RESET_COMPLETED" && entityType === "authentication") {
+      return "El usuario completó el restablecimiento de contraseña.";
+    }
+    if (action === "PASSWORD_RESET_REQUESTED" && entityType === "authentication") {
+      return "Solicitud de restablecimiento de contraseña enviada.";
+    }
+    if (d.patientName && typeof d.patientName === "string") return `Paciente: ${d.patientName}`;
+    if (d.targetUserName && typeof d.targetUserName === "string") return `Usuario: ${d.targetUserName}`;
+    if (d.clinicName && typeof d.clinicName === "string") return `Clínica: ${d.clinicName}`;
+    if (d.subject && typeof d.subject === "string") return d.subject;
+    if (d.email && typeof d.email === "string") return d.email;
+    if (log.details && log.details.length <= 120) return log.details;
+    return `${getFriendlyActionLabel(log.action)} · ${getFriendlyEntityTypeLabel(log.entityType)}`;
+  };
+
   const getActionBadge = (action: string) => {
     const styles: Record<string, string> = {
+      LOGIN_SUCCESS: "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400",
+      LOGIN_FAILED: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400",
+      LOGOUT: "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300",
+      PASSWORD_CHANGED: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400",
+      PASSWORD_RESET_REJECTED: "bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400",
+      PASSWORD_RESET_APPROVED: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400",
+      PASSWORD_RESET_COMPLETED: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400",
+      PASSWORD_RESET_REQUESTED: "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400",
+      CREATE_USER: "bg-green-100 text-green-700",
+      DELETE_USER: "bg-red-100 text-red-700",
       CREATE: "bg-green-100 text-green-700",
       UPDATE: "bg-blue-100 text-blue-700",
       DELETE: "bg-red-100 text-red-700",
@@ -150,11 +267,13 @@ const AuditLogPage = () => {
       ADD_CREDITS: "bg-emerald-100 text-emerald-700",
       SUBTRACT_CREDITS: "bg-rose-100 text-rose-700",
       ADMIN_CREDIT_ADJUSTMENT: "bg-amber-100 text-amber-700",
+      ALERT_MULTIPLE_PRINT_VIOLATIONS: "bg-orange-100 text-orange-700",
+      PRINT_VIOLATION_FORM: "bg-amber-100 text-amber-700",
     };
     
     return (
-      <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${styles[action] || "bg-gray-100 text-gray-700"}`}>
-        {action}
+      <span title={action} className={`px-2 py-0.5 rounded-full text-xs font-medium ${styles[action] || "bg-gray-100 text-gray-700"}`}>
+        {getFriendlyActionLabel(action)}
       </span>
     );
   };
@@ -379,7 +498,7 @@ const AuditLogPage = () => {
             >
               <option value="all">Todas las acciones</option>
               {uniqueActions.map((action) => (
-                <option key={action} value={action}>{action}</option>
+                <option key={action} value={action}>{getFriendlyActionLabel(action)}</option>
               ))}
             </select>
             <select
@@ -389,7 +508,7 @@ const AuditLogPage = () => {
             >
               <option value="all">Todos los tipos</option>
               {uniqueEntityTypes.map((type) => (
-                <option key={type} value={type}>{type}</option>
+                <option key={type} value={type}>{getFriendlyEntityTypeLabel(type)}</option>
               ))}
             </select>
             <select
@@ -464,7 +583,7 @@ const AuditLogPage = () => {
               {paginatedLogs.map((log) => {
                 const parsedDetails = parseDetails(log.details);
                 const isExpanded = expandedLogId === log.id;
-                
+                const userDisplay = getUserDisplay(log.userId);
                 return (
                   <div key={log.id} className="hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
                     <div 
@@ -478,20 +597,17 @@ const AuditLogPage = () => {
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 mb-1">
                             {getActionBadge(log.action)}
-                            <span className="text-sm font-medium text-[#1a1a1a] dark:text-white">{log.entityType}</span>
+                            <span className="text-sm font-medium text-[#1a1a1a] dark:text-white">{getFriendlyEntityTypeLabel(log.entityType)}</span>
                           </div>
-                          <p className="text-sm text-gray-600 dark:text-gray-300 mb-1 truncate">
-                            {parsedDetails ? (
-                              parsedDetails.patientName || parsedDetails.targetUserName || parsedDetails.clinicName || parsedDetails.subject || JSON.stringify(parsedDetails).slice(0, 80)
-                            ) : log.details.slice(0, 80)}
-                            {(parsedDetails ? JSON.stringify(parsedDetails).length > 80 : log.details.length > 80) && "..."}
+                          <p className="text-sm text-gray-600 dark:text-gray-300 mb-1 truncate" title={log.details}>
+                            {getFriendlySummary(log, parsedDetails)}
                           </p>
                           <div className="flex items-center gap-3 text-xs text-gray-400 dark:text-gray-500">
-                            <span className="flex items-center gap-1">
+                            <span className="flex items-center gap-1" title={log.userId}>
                               <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                               </svg>
-                              {log.userName}
+                              {userDisplay.display}
                             </span>
                             <span className="flex items-center gap-1">
                               <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -499,9 +615,15 @@ const AuditLogPage = () => {
                               </svg>
                               {formatDate(log.createdAt)}
                             </span>
-                            <span className="font-mono text-[10px] bg-gray-100 dark:bg-gray-800 px-1.5 py-0.5 rounded">
-                              {log.entityId.slice(0, 12)}...
-                            </span>
+                            {log.entityId ? (
+                              <span className="font-mono text-[10px] bg-gray-100 dark:bg-gray-800 px-1.5 py-0.5 rounded" title={log.entityId}>
+                                {log.entityId.length > 12 ? `${log.entityId.slice(0, 12)}…` : log.entityId}
+                              </span>
+                            ) : (
+                              <span className="font-mono text-[10px] bg-gray-100 dark:bg-gray-800 px-1.5 py-0.5 rounded" title={log.id}>
+                                {log.id.length > 14 ? `${log.id.slice(0, 14)}…` : log.id}
+                              </span>
+                            )}
                             <svg 
                               className={`w-4 h-4 transition-transform ${isExpanded ? "rotate-180" : ""}`}
                               fill="none" 
@@ -535,18 +657,28 @@ const AuditLogPage = () => {
                             <p className="text-sm text-gray-600 dark:text-gray-300">{log.details}</p>
                           )}
                           <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700">
-                            <div className="flex">
-                              <span className="text-xs font-medium text-gray-500 dark:text-gray-400 w-40 flex-shrink-0">ID completo:</span>
-                              <span className="text-xs text-gray-700 dark:text-gray-300 font-mono">{log.entityId}</span>
+                            <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">Cada registro está vinculado al usuario que realizó la acción. El Log ID identifica de forma única este evento.</p>
+                            <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
+                              <span className="text-xs font-medium text-gray-500 dark:text-gray-400 flex-shrink-0">Usuario:</span>
+                              <span className="text-xs font-medium text-[#1a1a1a] dark:text-white">{userDisplay.display}</span>
+                              {userDisplay.sub && userDisplay.sub !== userDisplay.display && (
+                                <span className="text-xs text-gray-600 dark:text-gray-400">({userDisplay.sub})</span>
+                              )}
                             </div>
                             <div className="flex mt-1">
-                              <span className="text-xs font-medium text-gray-500 dark:text-gray-400 w-40 flex-shrink-0">User ID:</span>
+                              <span className="text-xs font-medium text-gray-500 dark:text-gray-400 w-40 flex-shrink-0">ID de usuario:</span>
                               <span className="text-xs text-gray-700 dark:text-gray-300 font-mono">{log.userId}</span>
                             </div>
                             <div className="flex mt-1">
-                              <span className="text-xs font-medium text-gray-500 dark:text-gray-400 w-40 flex-shrink-0">Log ID:</span>
+                              <span className="text-xs font-medium text-gray-500 dark:text-gray-400 w-40 flex-shrink-0">ID de registro (log):</span>
                               <span className="text-xs text-gray-700 dark:text-gray-300 font-mono">{log.id}</span>
                             </div>
+                            {log.entityId && (
+                              <div className="flex mt-1">
+                                <span className="text-xs font-medium text-gray-500 dark:text-gray-400 w-40 flex-shrink-0">ID recurso:</span>
+                                <span className="text-xs text-gray-700 dark:text-gray-300 font-mono">{log.entityId}</span>
+                              </div>
+                            )}
                           </div>
                         </div>
                       </div>

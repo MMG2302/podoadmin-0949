@@ -1,5 +1,10 @@
-// Secret key para CSRF - en producción debe estar en variables de entorno
-const CSRF_SECRET = process.env.CSRF_SECRET || 'csrf-secret-key-change-in-production-min-32-chars';
+function getCsrfSecret(): string {
+  const v = process.env.CSRF_SECRET;
+  if (!v || v.length < 32) {
+    throw new Error('CSRF_SECRET no válida (validate-env debería haber fallado al arrancar)');
+  }
+  return v;
+}
 
 /**
  * Genera bytes aleatorios usando Web Crypto API (compatible con Cloudflare Workers)
@@ -40,7 +45,7 @@ export async function generateCsrfToken(): Promise<string> {
   const randomToken = bytesToHex(randomBytes);
   
   // Crear hash del token con el secreto para validación adicional
-  const hash = await createHash(randomToken + CSRF_SECRET);
+  const hash = await createHash(randomToken + getCsrfSecret());
   
   // Combinar token y hash
   return `${randomToken}.${hash}`;
@@ -64,7 +69,7 @@ export async function validateCsrfToken(token: string): Promise<boolean> {
     const [randomToken, hash] = parts;
     
     // Verificar que el hash coincida
-    const expectedHash = await createHash(randomToken + CSRF_SECRET);
+    const expectedHash = await createHash(randomToken + getCsrfSecret());
     
     return hash === expectedHash;
   } catch (error) {

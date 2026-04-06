@@ -14,6 +14,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 const rootDir = join(__dirname, '..');
 const envPath = join(rootDir, '.env');
+const devVarsPath = join(rootDir, '.dev.vars');
 const envExamplePath = join(rootDir, '.env.example');
 
 // Generar clave secreta aleatoria
@@ -79,12 +80,20 @@ if (existsSync(envPath)) {
 // Escribir archivo .env
 writeFileSync(envPath, envContent, 'utf-8');
 
+// Wrangler lee .dev.vars para el Worker local (mismos secretos que el API)
+const devVarsContent = `JWT_SECRET=${jwtSecret}
+REFRESH_TOKEN_SECRET=${refreshTokenSecret}
+CSRF_SECRET=${csrfSecret}
+`;
+writeFileSync(devVarsPath, devVarsContent, 'utf-8');
+
 console.log('✅ Archivo .env creado exitosamente');
+console.log('✅ Archivo .dev.vars creado (Wrangler / Worker local)');
 console.log('\n📝 Variables generadas:');
 console.log(`   JWT_SECRET: ${jwtSecret.substring(0, 20)}...`);
 console.log(`   REFRESH_TOKEN_SECRET: ${refreshTokenSecret.substring(0, 20)}...`);
 console.log(`   CSRF_SECRET: ${csrfSecret.substring(0, 20)}...`);
 console.log('\n⚠️  IMPORTANTE:');
 console.log('   - No compartas estas claves');
-console.log('   - No commitees el archivo .env al repositorio');
-console.log('   - En producción, usa secrets de Cloudflare Workers\n');
+console.log('   - No commitees .env ni .dev.vars al repositorio');
+console.log('   - En producción, usa `wrangler secret put JWT_SECRET` (y análogos)\n');

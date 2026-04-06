@@ -1,10 +1,11 @@
 import { Hono } from 'hono';
-import { generateTokenPair, verifyRefreshToken } from '../utils/jwt';
+import { generateTokenPair, verifyRefreshToken, type JWTPayload } from '../utils/jwt';
 import { requireAuth } from '../middleware/auth';
 import { requireRole } from '../middleware/authorization';
 import { formatCookie, getAccessTokenCookieOptions, getRefreshTokenCookieOptions, createDeleteCookie, isProduction } from '../utils/cookies';
 import { checkRateLimitD1, recordFailedAttemptD1, clearFailedAttemptsD1, getFailedAttemptCountD1 } from '../utils/rate-limit-d1';
 import { sendFailedLoginNotification, shouldSendNotification } from '../utils/email-notifications';
+import { checkAndRecordActionRateLimit } from '../utils/action-rate-limit';
 import { validateData, loginSchema, verifyEmailSchema, forgotPasswordSchema, resetPasswordSchema } from '../utils/validation';
 import { escapeHtml, sanitizeEmail } from '../utils/sanitization';
 import { getClientIP, createRateLimitIdentifier, isIPWhitelisted, getIPWhitelist } from '../utils/ip-tracking';
@@ -14,6 +15,9 @@ import { getUserByIdFromDB } from '../utils/user-db';
 import { canUserAccess, RETENTION } from '../utils/user-retention';
 
 const authRoutes = new Hono();
+const LOGIN_IP_PER_MINUTE_LIMIT = 20;
+const LOGIN_IP_PER_MINUTE_WINDOW_MS = 60 * 1000;
+const LOGIN_IP_IDENTIFIER_PREFIX = 'ip:';
 
 /**
  * POST /api/auth/login
@@ -52,31 +56,54 @@ authRoutes.post('/login', async (c) => {
     const ipWhitelist = getIPWhitelist();
     const isWhitelisted = isIPWhitelisted(clientIP, ipWhitelist);
     
-    // Usar email + IP como identificador para mayor seguridad
-    // Si la IP está en whitelist, solo usar email
+    // Usar email + IP para proteger credenciales específicas y una clave por IP para frenar credential stuffing.
     const identifier = isWhitelisted ? emailLower : createRateLimitIdentifier(emailLower, clientIP);
+    const ipOnlyIdentifier = `${LOGIN_IP_IDENTIFIER_PREFIX}${clientIP}`;
 
     // Verificar rate limit antes de procesar (skip si IP está en whitelist)
-    let rateLimitCheck = { allowed: true as boolean };
-    let attemptCount = 0;
+    let credentialRateLimitCheck = { allowed: true as boolean };
+    let ipRateLimitCheck = { allowed: true as boolean };
+    let credentialAttemptCount = 0;
+    let ipAttemptCount = 0;
     if (!isWhitelisted) {
-      rateLimitCheck = await checkRateLimitD1(identifier);
-      attemptCount = await getFailedAttemptCountD1(identifier);
+      // Límite global por IP y por minuto (ráfagas).
+      const ipBurstRateLimit = await checkAndRecordActionRateLimit(
+        'login_ip_minute',
+        clientIP,
+        LOGIN_IP_PER_MINUTE_LIMIT,
+        LOGIN_IP_PER_MINUTE_WINDOW_MS
+      );
+      if (!ipBurstRateLimit.allowed) {
+        return c.json(
+          {
+            error: 'Demasiados intentos desde tu IP',
+            message: 'Se detectó una ráfaga de intentos de inicio de sesión. Espera un momento antes de volver a intentar.',
+            retryAfter: ipBurstRateLimit.retryAfterSeconds ?? 60,
+          },
+          429
+        );
+      }
+
+      credentialRateLimitCheck = await checkRateLimitD1(identifier);
+      ipRateLimitCheck = await checkRateLimitD1(ipOnlyIdentifier);
+      credentialAttemptCount = await getFailedAttemptCountD1(identifier);
+      ipAttemptCount = await getFailedAttemptCountD1(ipOnlyIdentifier);
     }
 
     // Verificar CAPTCHA si hay muchos intentos fallidos
-    if (!isWhitelisted && attemptCount >= 3) {
+    const effectiveAttemptCount = Math.max(credentialAttemptCount, ipAttemptCount);
+    if (!isWhitelisted && effectiveAttemptCount >= 3) {
       const { getCaptchaConfig, verifyCaptcha, shouldShowCaptcha } = await import('../utils/captcha');
       const captchaConfig = getCaptchaConfig();
       
-      if (captchaConfig && shouldShowCaptcha(attemptCount, 3)) {
+      if (captchaConfig && shouldShowCaptcha(effectiveAttemptCount, 3)) {
         if (!captchaToken) {
           return c.json(
             {
               error: 'CAPTCHA requerido',
               message: 'Por favor, completa el CAPTCHA para continuar',
               requiresCaptcha: true,
-              attemptCount,
+              attemptCount: effectiveAttemptCount,
             },
             400
           );
@@ -97,7 +124,7 @@ authRoutes.post('/login', async (c) => {
               error: 'CAPTCHA inválido',
               message: 'El CAPTCHA no se pudo verificar. Por favor, intenta nuevamente.',
               requiresCaptcha: true,
-              attemptCount,
+              attemptCount: effectiveAttemptCount,
             },
             400
           );
@@ -113,21 +140,27 @@ authRoutes.post('/login', async (c) => {
       }
     }
 
-    if (!rateLimitCheck.allowed) {
-      const delayMs = rateLimitCheck.delay || 0;
+    const activeRateLimitCheck =
+      !credentialRateLimitCheck.allowed && !ipRateLimitCheck.allowed
+        ? ((credentialRateLimitCheck.delay || 0) >= (ipRateLimitCheck.delay || 0) ? credentialRateLimitCheck : ipRateLimitCheck)
+        : !credentialRateLimitCheck.allowed
+        ? credentialRateLimitCheck
+        : ipRateLimitCheck;
+    if (!activeRateLimitCheck.allowed) {
+      const delayMs = activeRateLimitCheck.delay || 0;
       const delaySeconds = Math.ceil(delayMs / 1000);
       const delayMinutes = Math.ceil(delayMs / 60000);
 
       // Si está bloqueado por 15 minutos
-      if (rateLimitCheck.blockedUntil) {
-        const blockedUntilDate = new Date(rateLimitCheck.blockedUntil);
+      if (activeRateLimitCheck.blockedUntil) {
+        const blockedUntilDate = new Date(activeRateLimitCheck.blockedUntil);
         return c.json(
           {
-            error: 'Cuenta temporalmente bloqueada',
-            message: `Demasiados intentos fallidos. Tu cuenta está bloqueada hasta ${blockedUntilDate.toLocaleTimeString()}. Por favor, intenta más tarde.`,
+            error: 'Inicio de sesión temporalmente bloqueado',
+            message: `Demasiados intentos fallidos desde esta cuenta o IP. El acceso queda bloqueado hasta ${blockedUntilDate.toLocaleTimeString()}.`,
             retryAfter: delaySeconds,
-            blockedUntil: rateLimitCheck.blockedUntil,
-            attemptCount,
+            blockedUntil: activeRateLimitCheck.blockedUntil,
+            attemptCount: effectiveAttemptCount,
             isBlocked: true,
             blockDurationMinutes: 15,
           },
@@ -139,9 +172,9 @@ authRoutes.post('/login', async (c) => {
       return c.json(
         {
           error: 'Demasiados intentos',
-          message: `Demasiados intentos fallidos. Por favor, espera ${delayMinutes > 1 ? `${delayMinutes} minutos` : `${delaySeconds} segundos`} antes de intentar nuevamente.`,
+          message: `Demasiados intentos fallidos desde esta cuenta o IP. Por favor, espera ${delayMinutes > 1 ? `${delayMinutes} minutos` : `${delaySeconds} segundos`} antes de intentar nuevamente.`,
           retryAfter: delaySeconds,
-          attemptCount,
+          attemptCount: effectiveAttemptCount,
         },
         429 // Too Many Requests
       );
@@ -190,12 +223,14 @@ authRoutes.post('/login', async (c) => {
 
     if (!matchedUser || !passwordValid) {
       // Registrar intento fallido (skip si IP está en whitelist)
-      let failedAttempt = { count: 0 };
-      let attemptCount = 0;
+      let failedAttemptCount = 0;
+      let failedIpAttemptCount = 0;
       
       if (!isWhitelisted) {
-        failedAttempt = await recordFailedAttemptD1(identifier);
-        attemptCount = failedAttempt.count;
+        const failedAttempt = await recordFailedAttemptD1(identifier);
+        const failedIpAttempt = await recordFailedAttemptD1(ipOnlyIdentifier);
+        failedAttemptCount = failedAttempt.count;
+        failedIpAttemptCount = failedIpAttempt.count;
       }
 
       // Registrar métrica de seguridad
@@ -203,7 +238,7 @@ authRoutes.post('/login', async (c) => {
       await recordSecurityMetric({
         metricType: 'failed_login',
         ipAddress: clientIP,
-        details: { email: emailLower, attemptCount },
+        details: { email: emailLower, attemptCount: failedAttemptCount, ipAttemptCount: failedIpAttemptCount },
       });
 
       // Registrar evento de auditoría
@@ -214,17 +249,17 @@ authRoutes.post('/login', async (c) => {
         resourceType: 'authentication',
         ipAddress: clientIP,
         userAgent: getSafeUserAgent(c),
-        details: { email: emailLower, attemptCount },
+        details: { email: emailLower, attemptCount: failedAttemptCount, ipAttemptCount: failedIpAttemptCount },
       });
 
       // Enviar notificación por email si es necesario
-      if (shouldSendNotification(attemptCount)) {
-        const isBlocked = attemptCount >= 10;
-        await sendFailedLoginNotification(emailLower, attemptCount, isBlocked);
+      if (shouldSendNotification(failedAttemptCount)) {
+        const isBlocked = failedAttemptCount >= 10;
+        await sendFailedLoginNotification(emailLower, failedAttemptCount, isBlocked);
       }
 
       // Notificación in-app para super_admin cuando se alcanzan exactamente 10 intentos (evitar spam)
-      if (attemptCount === 10) {
+      if (failedAttemptCount === 10) {
         try {
           const { database } = await import('../database');
           const schema = await import('../database/schema');
@@ -236,8 +271,8 @@ authRoutes.post('/login', async (c) => {
             .where(eq(createdUsers.role, 'super_admin'));
           const now = new Date().toISOString();
           const title = '⚠️ Alerta de seguridad: 10+ intentos de login fallidos';
-          const message = `Se han registrado ${attemptCount} intentos fallidos de inicio de sesión para el correo ${emailLower}. La cuenta está bloqueada temporalmente (15 min).`;
-          const metadata = JSON.stringify({ email: emailLower, attemptCount, blocked: true });
+          const message = `Se han registrado ${failedAttemptCount} intentos fallidos de inicio de sesión para el correo ${emailLower}. La cuenta está bloqueada temporalmente (15 min).`;
+          const metadata = JSON.stringify({ email: emailLower, attemptCount: failedAttemptCount, blocked: true });
           for (const row of superAdminRows) {
             const notifId = `notif_${crypto.randomUUID().replace(/-/g, '')}`;
             await database.insert(notificationsTable).values({
@@ -258,12 +293,13 @@ authRoutes.post('/login', async (c) => {
 
       // Calcular delay para el siguiente intento (solo si no está whitelisted)
       let nextDelay = 0;
-      if (!isWhitelisted && attemptCount > 0) {
-        nextDelay = attemptCount >= 10
+      const nextEffectiveAttemptCount = Math.max(failedAttemptCount, failedIpAttemptCount);
+      if (!isWhitelisted && nextEffectiveAttemptCount > 0) {
+        nextDelay = nextEffectiveAttemptCount >= 10
           ? 15 * 60 // 15 minutos
-          : attemptCount >= 5
+          : nextEffectiveAttemptCount >= 5
           ? 30 // 30 segundos
-          : attemptCount >= 3
+          : nextEffectiveAttemptCount >= 3
           ? 5 // 5 segundos
           : 0;
       }
@@ -271,13 +307,15 @@ authRoutes.post('/login', async (c) => {
       // Determinar si se requiere CAPTCHA
       const { getCaptchaConfig, shouldShowCaptcha } = await import('../utils/captcha');
       const captchaConfig = getCaptchaConfig();
-      const requiresCaptcha = captchaConfig && shouldShowCaptcha(attemptCount, 3);
+      const requiresCaptcha = captchaConfig && shouldShowCaptcha(nextEffectiveAttemptCount, 3);
 
       return c.json(
         {
           error: 'Credenciales inválidas',
           message: 'Email o contraseña incorrectos',
-          attemptCount: isWhitelisted ? 0 : attemptCount, // No mostrar count si whitelisted
+          attemptCount: isWhitelisted ? 0 : nextEffectiveAttemptCount, // No mostrar count si whitelisted
+          credentialAttemptCount: isWhitelisted ? 0 : failedAttemptCount,
+          ipAttemptCount: isWhitelisted ? 0 : failedIpAttemptCount,
           retryAfter: nextDelay,
           requiresCaptcha,
         },
@@ -698,13 +736,13 @@ authRoutes.post('/refresh', async (c) => {
       );
     }
 
-    // Generar nuevo par de tokens
+    // Tokens siempre alineados con la BD (rol/clínica actuales; evita escalada con JWT obsoleto)
     const { generateTokenPair } = await import('../utils/jwt');
     const { accessToken, refreshToken: newRefreshToken } = await generateTokenPair({
-      userId: payload.userId,
-      email: payload.email,
-      role: payload.role,
-      clinicId: payload.clinicId,
+      userId: dbUser.userId,
+      email: dbUser.email,
+      role: dbUser.role as JWTPayload['role'],
+      clinicId: dbUser.clinicId ?? undefined,
     });
 
     // Determinar si estamos en producción

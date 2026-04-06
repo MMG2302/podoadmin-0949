@@ -7,24 +7,9 @@ import {
   professionalInfo as professionalInfoTable,
   createdUsers as createdUsersTable,
 } from '../database/schema';
+import { getAssignedPodiatristUserIds, getCreatedUserByIdOrUserId } from '../utils/tenant-isolation';
 
 const consentDocumentRoutes = new Hono();
-
-/** Obtiene los IDs de podólogos asignados a una recepcionista */
-async function getAssignedPodiatristIds(userId: string): Promise<string[]> {
-  const rows = await database
-    .select({ assignedPodiatristIds: createdUsersTable.assignedPodiatristIds })
-    .from(createdUsersTable)
-    .where(eq(createdUsersTable.id, userId))
-    .limit(1);
-  if (!rows[0]?.assignedPodiatristIds) return [];
-  try {
-    const parsed = JSON.parse(rows[0].assignedPodiatristIds) as unknown;
-    return Array.isArray(parsed) ? parsed.filter((id): id is string => typeof id === 'string') : [];
-  } catch {
-    return [];
-  }
-}
 
 /**
  * GET /api/consent-document
@@ -43,11 +28,15 @@ consentDocumentRoutes.get('/', requireAuth, async (c) => {
     let targetUserId: string;
 
     if (user.role === 'receptionist' && podiatristIdParam) {
-      const assigned = await getAssignedPodiatristIds(user.userId);
-      if (!assigned.includes(podiatristIdParam)) {
+      const targetPod = await getCreatedUserByIdOrUserId(podiatristIdParam);
+      if (!targetPod || targetPod.role !== 'podiatrist') {
+        return c.json({ error: 'Podólogo no encontrado' }, 404);
+      }
+      const assigned = await getAssignedPodiatristUserIds(user.userId);
+      if (!assigned.includes(targetPod.userId)) {
         return c.json({ error: 'No tienes permiso para ver el consentimiento de ese podólogo' }, 403);
       }
-      targetUserId = podiatristIdParam;
+      targetUserId = targetPod.userId;
     } else if (user.role === 'podiatrist') {
       targetUserId = user.userId;
     } else {
@@ -57,7 +46,7 @@ consentDocumentRoutes.get('/', requireAuth, async (c) => {
     const podRows = await database
       .select({ clinicId: createdUsersTable.clinicId })
       .from(createdUsersTable)
-      .where(eq(createdUsersTable.id, targetUserId))
+      .where(eq(createdUsersTable.userId, targetUserId))
       .limit(1);
     const clinicId = podRows[0]?.clinicId ?? null;
 

@@ -10,6 +10,11 @@ import { eq, inArray } from 'drizzle-orm';
 import { logAuditEvent } from '../utils/audit-log';
 import { getClientIP } from '../utils/ip-tracking';
 import { getSafeUserAgent } from '../utils/request-headers';
+import {
+  getAssignedPodiatristUserIds,
+  getCreatedUserByIdOrUserId,
+  isClinicAdminWithoutClinic,
+} from '../utils/tenant-isolation';
 
 const patientsRoutes = new Hono();
 
@@ -70,22 +75,6 @@ function mapDbPatient(row: DbPatient) {
   };
 }
 
-/** Obtiene los IDs de podólogos asignados a una recepcionista (desde DB). */
-async function getAssignedPodiatristIds(userId: string): Promise<string[]> {
-  const rows = await database
-    .select({ assignedPodiatristIds: createdUsersTable.assignedPodiatristIds })
-    .from(createdUsersTable)
-    .where(eq(createdUsersTable.id, userId))
-    .limit(1);
-  if (!rows[0]?.assignedPodiatristIds) return [];
-  try {
-    const parsed = JSON.parse(rows[0].assignedPodiatristIds) as unknown;
-    return Array.isArray(parsed) ? parsed.filter((id): id is string => typeof id === 'string') : [];
-  } catch {
-    return [];
-  }
-}
-
 // Genera folio simple basado en clinicId (o IND) y año
 async function generateFolio(clinicId?: string | null): Promise<string> {
   const year = new Date().getFullYear();
@@ -119,7 +108,14 @@ patientsRoutes.post(
   requirePermission('reassign_patients'),
   async (c) => {
     try {
-      const user = c.get('user');
+      const user = c.get('user')!;
+      if (isClinicAdminWithoutClinic(user)) {
+        return c.json(
+          { error: 'Acceso denegado', message: 'Cuenta de administrador de clínica sin clínica asignada' },
+          403
+        );
+      }
+
       const patientId = sanitizePathParam(c.req.param('patientId'), 64);
       if (!patientId) {
         return c.json({ error: 'ID de paciente inválido' }, 400);
@@ -140,42 +136,35 @@ patientsRoutes.post(
       const patient = patientRows[0];
       if (!patient) return c.json({ error: 'Paciente no encontrado' }, 404);
 
-      // En clinic_admin, restringir a su clínica cuando exista clinicId
-      if (user?.role === 'clinic_admin' && user.clinicId) {
-        // Si el paciente tiene clinicId, debe coincidir. Si no, igualmente validamos por destino (podólogo de la clínica).
-        if (patient.clinicId && patient.clinicId !== user.clinicId) {
+      if (user?.role === 'clinic_admin') {
+        if (patient.clinicId !== user.clinicId) {
           return c.json({ error: 'Acceso denegado' }, 403);
         }
       }
 
-      // Validar que el destino exista y sea podiatrist (y, si aplica, de la misma clínica)
-      const targetRows = await database
-        .select()
-        .from(createdUsersTable)
-        .where(eq(createdUsersTable.id, newPodiatristId))
-        .limit(1);
-      const target = targetRows[0];
+      const target = await getCreatedUserByIdOrUserId(newPodiatristId);
       if (!target || target.role !== 'podiatrist') {
         return c.json({ error: 'Podólogo destino no encontrado' }, 404);
       }
-      if (user?.role === 'clinic_admin' && user.clinicId) {
+      if (user?.role === 'clinic_admin') {
         if (target.clinicId !== user.clinicId) {
           return c.json({ error: 'Acceso denegado' }, 403);
         }
       }
 
+      const newOwnerUserId = target.userId;
       const previousPodiatristId = patient.createdBy;
       const now = new Date().toISOString();
 
-      // Persistir reasignación en DB (paciente + todas sus sesiones)
+      // createdBy en pacientes/sesiones es siempre user_id (mismo valor que JWT), no la PK interna
       await database
         .update(patientsTable)
-        .set({ createdBy: newPodiatristId, updatedAt: now })
+        .set({ createdBy: newOwnerUserId, updatedAt: now })
         .where(eq(patientsTable.id, patientId));
 
       await database
         .update(sessionsTable)
-        .set({ createdBy: newPodiatristId, updatedAt: now })
+        .set({ createdBy: newOwnerUserId, updatedAt: now })
         .where(eq(sessionsTable.patientId, patientId));
 
       await logAuditEvent({
@@ -187,7 +176,7 @@ patientsRoutes.post(
           action: 'patient_reassignment',
           patientId,
           fromUserId: previousPodiatristId,
-          toUserId: newPodiatristId,
+          toUserId: newOwnerUserId,
         },
         ipAddress: getClientIP(c.req.raw.headers),
         userAgent: getSafeUserAgent(c),
@@ -219,7 +208,13 @@ patientsRoutes.get(
   requirePermission('view_patients'),
   async (c) => {
     try {
-      const user = c.get('user');
+      const user = c.get('user')!;
+      if (isClinicAdminWithoutClinic(user)) {
+        return c.json(
+          { error: 'Acceso denegado', message: 'Cuenta de administrador de clínica sin clínica asignada' },
+          403
+        );
+      }
 
       // Cargar todos los pacientes desde la DB
       let rows = await database.select().from(patientsTable);
@@ -232,13 +227,13 @@ patientsRoutes.get(
       if (user?.role === 'podiatrist') {
         rows = rows.filter((p) => p.createdBy === user.userId);
       } else if (user?.role === 'receptionist') {
-        const assignedIds = await getAssignedPodiatristIds(user.userId);
+        const assignedIds = await getAssignedPodiatristUserIds(user.userId);
         if (assignedIds.length === 0) {
           rows = [];
         } else {
           rows = rows.filter((p) => assignedIds.includes(p.createdBy));
         }
-      } else if (user?.role === 'clinic_admin' && user.clinicId) {
+      } else if (user?.role === 'clinic_admin') {
         rows = rows.filter((p) => p.clinicId === user.clinicId);
       }
 
@@ -268,7 +263,13 @@ patientsRoutes.get(
       if (!patientId) {
         return c.json({ error: 'ID de paciente inválido' }, 400);
       }
-      const user = c.get('user');
+      const user = c.get('user')!;
+      if (isClinicAdminWithoutClinic(user)) {
+        return c.json(
+          { error: 'Acceso denegado', message: 'Cuenta de administrador de clínica sin clínica asignada' },
+          403
+        );
+      }
 
       const rows = await database
         .select()
@@ -296,7 +297,7 @@ patientsRoutes.get(
         );
       }
       if (user?.role === 'receptionist') {
-        const assignedIds = await getAssignedPodiatristIds(user.userId);
+        const assignedIds = await getAssignedPodiatristUserIds(user.userId);
         if (!assignedIds.includes(row.createdBy)) {
           return c.json(
             { error: 'Acceso denegado', message: 'No tienes permiso para ver este paciente' },
@@ -304,7 +305,7 @@ patientsRoutes.get(
           );
         }
       }
-      if (user?.role === 'clinic_admin' && user.clinicId && row.clinicId !== user.clinicId) {
+      if (user?.role === 'clinic_admin' && row.clinicId !== user.clinicId) {
         return c.json(
           { error: 'Acceso denegado', message: 'No tienes permiso para ver este paciente' },
           403
@@ -333,7 +334,13 @@ patientsRoutes.post(
   requirePermission('manage_patients'),
   async (c) => {
     try {
-      const user = c.get('user');
+      const user = c.get('user')!;
+      if (isClinicAdminWithoutClinic(user)) {
+        return c.json(
+          { error: 'Acceso denegado', message: 'Cuenta de administrador de clínica sin clínica asignada' },
+          403
+        );
+      }
 
       // Restringir creación de pacientes para usuarios en período de gracia (cuenta deshabilitada)
       if (user?.userId) {
@@ -375,7 +382,7 @@ patientsRoutes.post(
       let createdBy = user!.userId;
       let clinicIdForPatient: string | null = user?.clinicId || null;
 
-      // Recepcionista: debe enviar createdBy (podólogo asignado) y debe estar en sus asignados
+      // Recepcionista: debe enviar createdBy (id interno o user_id del podólogo) y debe estar en sus asignados
       if (user?.role === 'receptionist') {
         const podiatristId = (body as { createdBy?: string }).createdBy?.trim();
         if (!podiatristId) {
@@ -384,21 +391,19 @@ patientsRoutes.post(
             400
           );
         }
-        const assignedIds = await getAssignedPodiatristIds(user.userId);
-        if (!assignedIds.includes(podiatristId)) {
+        const targetPod = await getCreatedUserByIdOrUserId(podiatristId);
+        if (!targetPod || targetPod.role !== 'podiatrist') {
+          return c.json({ error: 'Podólogo no encontrado' }, 404);
+        }
+        const assignedIds = await getAssignedPodiatristUserIds(user.userId);
+        if (!assignedIds.includes(targetPod.userId)) {
           return c.json(
             { error: 'Acceso denegado', message: 'No puedes asignar pacientes a ese podólogo' },
             403
           );
         }
-        createdBy = podiatristId;
-        // Obtener clinicId del podólogo para el folio/clínica del paciente
-        const podRows = await database
-          .select({ clinicId: createdUsersTable.clinicId })
-          .from(createdUsersTable)
-          .where(eq(createdUsersTable.id, podiatristId))
-          .limit(1);
-        if (podRows[0]?.clinicId) clinicIdForPatient = podRows[0].clinicId;
+        createdBy = targetPod.userId;
+        if (targetPod.clinicId) clinicIdForPatient = targetPod.clinicId;
       }
 
       const now = new Date().toISOString();
@@ -475,7 +480,13 @@ patientsRoutes.put(
       if (!patientId) {
         return c.json({ error: 'ID de paciente inválido' }, 400);
       }
-      const user = c.get('user');
+      const user = c.get('user')!;
+      if (isClinicAdminWithoutClinic(user)) {
+        return c.json(
+          { error: 'Acceso denegado', message: 'Cuenta de administrador de clínica sin clínica asignada' },
+          403
+        );
+      }
 
       // Verificar existencia
       const existingRows = await database
@@ -505,7 +516,7 @@ patientsRoutes.put(
         );
       }
       if (user?.role === 'receptionist') {
-        const assignedIds = await getAssignedPodiatristIds(user.userId);
+        const assignedIds = await getAssignedPodiatristUserIds(user.userId);
         if (!assignedIds.includes(existing.createdBy)) {
           return c.json(
             { error: 'Acceso denegado', message: 'No tienes permiso para modificar este paciente' },
@@ -513,13 +524,13 @@ patientsRoutes.put(
           );
         }
       }
-      if (user?.role === 'clinic_admin' && user.clinicId && existing.clinicId !== user.clinicId) {
+      if (user?.role === 'clinic_admin' && existing.clinicId !== user.clinicId) {
         return c.json(
           { error: 'Acceso denegado', message: 'No tienes permiso para modificar este paciente' },
           403
         );
       }
-      
+
       // Validar y sanitizar datos de entrada
       const rawBody = await c.req.json().catch(() => ({}));
       const validation = validateData(updatePatientSchema, rawBody);
@@ -598,7 +609,13 @@ patientsRoutes.delete(
       if (!patientId) {
         return c.json({ error: 'ID de paciente inválido' }, 400);
       }
-      const user = c.get('user');
+      const user = c.get('user')!;
+      if (isClinicAdminWithoutClinic(user)) {
+        return c.json(
+          { error: 'Acceso denegado', message: 'Cuenta de administrador de clínica sin clínica asignada' },
+          403
+        );
+      }
 
       const existingRows = await database
         .select()
@@ -632,7 +649,7 @@ patientsRoutes.delete(
           403
         );
       }
-      if (user?.role === 'clinic_admin' && user.clinicId && existing.clinicId !== user.clinicId) {
+      if (user?.role === 'clinic_admin' && existing.clinicId !== user.clinicId) {
         return c.json(
           { error: 'Acceso denegado', message: 'No tienes permiso para eliminar este paciente' },
           403

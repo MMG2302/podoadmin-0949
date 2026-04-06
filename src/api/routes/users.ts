@@ -26,7 +26,8 @@ function safeJsonParseArray(value: string | null): string[] {
 
 function mapDbUser(row: typeof createdUsers.$inferSelect) {
   return {
-    id: row.id,
+    /** Identificador de negocio (JWT / createdBy / assignedPodiatristIds), no la PK interna */
+    id: row.userId,
     email: row.email,
     name: row.name,
     role: row.role,

@@ -1,5 +1,6 @@
 import { Hono } from 'hono';
-import { eq, and, inArray } from 'drizzle-orm';
+import { eq, and, inArray, or } from 'drizzle-orm';
+import { getCreatedUserByIdOrUserId } from '../utils/tenant-isolation';
 import { requireAuth } from '../middleware/auth';
 import { database } from '../database';
 import { createdUsers, userCredits } from '../database/schema';
@@ -27,7 +28,7 @@ function toCreatedUser(row: typeof createdUsers.$inferSelect) {
     }
   }
   return {
-    id: row.id,
+    id: row.userId,
     email: row.email,
     name: row.name,
     role: row.role as 'receptionist',
@@ -129,8 +130,7 @@ receptionistsRoutes.get('/assigned-podiatrists/:receptionistId', async (c) => {
   const user = c.get('user');
   const receptionistId = c.req.param('receptionistId');
   if (!user) return c.json({ error: 'No autorizado' }, 401);
-  const rows = await database.select().from(createdUsers).where(eq(createdUsers.id, receptionistId)).limit(1);
-  const row = rows[0];
+  const row = await getCreatedUserByIdOrUserId(receptionistId);
   if (!row || row.role !== 'receptionist') return c.json({ error: 'Recepcionista no encontrada' }, 404);
   const canAccess = user.role === 'super_admin' || user.role === 'admin' || row.createdBy === user.userId || (user.clinicId && row.clinicId === user.clinicId);
   if (!canAccess) return c.json({ error: 'Acceso denegado' }, 403);
@@ -145,10 +145,10 @@ receptionistsRoutes.get('/assigned-podiatrists/:receptionistId', async (c) => {
   let podiatrists: { id: string; name: string }[] = [];
   if (ids.length > 0) {
     const podRows = await database
-      .select({ id: createdUsers.id, name: createdUsers.name })
+      .select({ userId: createdUsers.userId, name: createdUsers.name })
       .from(createdUsers)
-      .where(inArray(createdUsers.id, ids));
-    podiatrists = podRows;
+      .where(or(inArray(createdUsers.userId, ids), inArray(createdUsers.id, ids)));
+    podiatrists = podRows.map((r) => ({ id: r.userId, name: r.name }));
   }
   return c.json({ success: true, assignedPodiatristIds: ids, podiatrists });
 });
@@ -161,8 +161,7 @@ receptionistsRoutes.patch('/:receptionistId/assigned-podiatrists', async (c) => 
   const user = c.get('user');
   const receptionistId = c.req.param('receptionistId');
   if (!user) return c.json({ error: 'No autorizado' }, 401);
-  const rows = await database.select().from(createdUsers).where(eq(createdUsers.id, receptionistId)).limit(1);
-  const row = rows[0];
+  const row = await getCreatedUserByIdOrUserId(receptionistId);
   if (!row || row.role !== 'receptionist') return c.json({ error: 'Recepcionista no encontrada' }, 404);
   const canEdit = user.role === 'super_admin' || user.role === 'admin' || row.createdBy === user.userId || (user.role === 'clinic_admin' && user.clinicId && row.clinicId === user.clinicId);
   if (!canEdit) return c.json({ error: 'Acceso denegado' }, 403);
@@ -171,12 +170,12 @@ receptionistsRoutes.patch('/:receptionistId/assigned-podiatrists', async (c) => 
   await database.update(createdUsers).set({
     assignedPodiatristIds: JSON.stringify(ids),
     updatedAt: new Date().toISOString(),
-  }).where(eq(createdUsers.id, receptionistId));
+  }).where(eq(createdUsers.id, row.id));
   await logAuditEvent({
     userId: user.userId,
     action: 'UPDATE',
     resourceType: 'receptionist_assigned_podiatrists',
-    resourceId: receptionistId,
+    resourceId: row.id,
     details: { action: 'receptionist_edit_assigned_podiatrists', assignedPodiatristIds: ids },
     ipAddress: getClientIP(c.req.raw.headers),
     userAgent: getSafeUserAgent(c),

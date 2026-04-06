@@ -100,18 +100,9 @@ z
 
 ---
 
-## 5. OAuth (si se va a usar)
+## 5. OAuth / pasarelas de pago
 
-- [ ] **Google OAuth**
-  - [ ] `GOOGLE_CLIENT_ID`
-  - [ ] `GOOGLE_CLIENT_SECRET`
-  - [ ] Callbacks configurados apuntando a `VITE_BASE_URL` de producción.
-
-- [ ] **Apple OAuth**
-  - [ ] `APPLE_CLIENT_ID`
-  - [ ] `APPLE_TEAM_ID`
-  - [ ] `APPLE_KEY_ID`
-  - [ ] `APPLE_PRIVATE_KEY`
+**No aplica en la versión actual**: login con email/contraseña (y 2FA); sin Google OAuth ni Stripe u otras pasarelas. Si más adelante se implementan, añadir aquí la checklist correspondiente.
 
 ---
 

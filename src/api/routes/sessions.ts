@@ -8,6 +8,12 @@ import { eq } from 'drizzle-orm';
 import { validateImageDataUri, MAX_SESSION_IMAGE_BYTES } from '../utils/logo-upload';
 import { canUserAccess } from '../utils/user-retention';
 import { checkSessionCreateRateLimit } from '../utils/action-rate-limit';
+import {
+  getAssignedPodiatristUserIds,
+  getPatientAccessDeniedReason,
+  getSessionAccessDeniedReason,
+  isClinicAdminWithoutClinic,
+} from '../utils/tenant-isolation';
 import type { ClinicalSession } from '../../web/lib/storage';
 
 const DEFAULT_MAX_SESSION_IMAGES = 10;
@@ -36,22 +42,6 @@ const sessionsRoutes = new Hono();
 
 // UUID criptográfico: imposible de adivinar por fuerza bruta, evita acceso por rutas predecibles
 const generateId = () => crypto.randomUUID();
-
-/** Obtiene los IDs de podólogos asignados a una recepcionista (desde DB). */
-async function getAssignedPodiatristIds(userId: string): Promise<string[]> {
-  const rows = await database
-    .select({ assignedPodiatristIds: createdUsersTable.assignedPodiatristIds })
-    .from(createdUsersTable)
-    .where(eq(createdUsersTable.id, userId))
-    .limit(1);
-  if (!rows[0]?.assignedPodiatristIds) return [];
-  try {
-    const parsed = JSON.parse(rows[0].assignedPodiatristIds) as unknown;
-    return Array.isArray(parsed) ? parsed.filter((id): id is string => typeof id === 'string') : [];
-  } catch {
-    return [];
-  }
-}
 
 type DbSession = typeof sessionsTable.$inferSelect;
 
@@ -145,7 +135,13 @@ sessionsRoutes.get(
   requirePermission('view_sessions'),
   async (c) => {
     try {
-      const user = c.get('user');
+      const user = c.get('user')!;
+      if (isClinicAdminWithoutClinic(user)) {
+        return c.json(
+          { error: 'Acceso denegado', message: 'Cuenta de administrador de clínica sin clínica asignada' },
+          403
+        );
+      }
       const patientFilter = c.req.query('patient');
 
       let rows = await database.select().from(sessionsTable);
@@ -157,10 +153,10 @@ sessionsRoutes.get(
       // - receptionist: solo sesiones de podólogos asignados
       if (user?.role === 'podiatrist') {
         rows = rows.filter((s) => s.createdBy === user.userId);
-      } else if (user?.role === 'clinic_admin' && user.clinicId) {
+      } else if (user?.role === 'clinic_admin') {
         rows = rows.filter((s) => s.clinicId === user.clinicId);
       } else if (user?.role === 'receptionist') {
-        const assignedIds = await getAssignedPodiatristIds(user.userId);
+        const assignedIds = await getAssignedPodiatristUserIds(user.userId);
         if (assignedIds.length === 0) {
           rows = [];
         } else {
@@ -198,7 +194,13 @@ sessionsRoutes.get(
       if (!sessionId) {
         return c.json({ error: 'ID de sesión inválido' }, 400);
       }
-      const user = c.get('user');
+      const user = c.get('user')!;
+      if (isClinicAdminWithoutClinic(user)) {
+        return c.json(
+          { error: 'Acceso denegado', message: 'Cuenta de administrador de clínica sin clínica asignada' },
+          403
+        );
+      }
 
       const rows = await database
         .select()
@@ -226,14 +228,14 @@ sessionsRoutes.get(
           403
         );
       }
-      if (user?.role === 'clinic_admin' && user.clinicId && row.clinicId !== user.clinicId) {
+      if (user?.role === 'clinic_admin' && row.clinicId !== user.clinicId) {
         return c.json(
           { error: 'Acceso denegado', message: 'No tienes permiso para ver esta sesión' },
           403
         );
       }
       if (user?.role === 'receptionist') {
-        const assignedIds = await getAssignedPodiatristIds(user.userId);
+        const assignedIds = await getAssignedPodiatristUserIds(user.userId);
         if (!assignedIds.includes(row.createdBy)) {
           return c.json(
             { error: 'Acceso denegado', message: 'No tienes permiso para ver esta sesión' },
@@ -264,7 +266,13 @@ sessionsRoutes.post(
   requirePermission('manage_sessions'),
   async (c) => {
     try {
-      const user = c.get('user');
+      const user = c.get('user')!;
+      if (isClinicAdminWithoutClinic(user)) {
+        return c.json(
+          { error: 'Acceso denegado', message: 'Cuenta de administrador de clínica sin clínica asignada' },
+          403
+        );
+      }
       // Restringir creación de sesiones para usuarios en período de gracia (cuenta deshabilitada)
       if (user?.userId) {
         const creatorRows = await database
@@ -314,6 +322,20 @@ sessionsRoutes.post(
         );
       }
 
+      const patientDeny = await getPatientAccessDeniedReason(user, patient);
+      if (patientDeny === 'clinic_admin_sin_clinica') {
+        return c.json(
+          { error: 'Acceso denegado', message: 'Cuenta de administrador de clínica sin clínica asignada' },
+          403
+        );
+      }
+      if (patientDeny) {
+        return c.json(
+          { error: 'Acceso denegado', message: 'No tienes permiso para crear sesiones para este paciente' },
+          403
+        );
+      }
+
       const sessionRateLimit = await checkSessionCreateRateLimit(user.userId);
       if (!sessionRateLimit.allowed) {
         c.header('Retry-After', String(sessionRateLimit.retryAfterSeconds ?? 60));
@@ -339,6 +361,9 @@ sessionsRoutes.post(
       const now = new Date().toISOString();
       const id = generateId();
 
+      // La sesión queda atribuida al podólogo titular del paciente si actúa la recepción (listados filtran por createdBy)
+      const sessionCreatedBy = user.role === 'receptionist' ? patient.createdBy : user.userId;
+
       const session: ClinicalSession = {
         id,
         patientId: String(body.patientId),
@@ -356,7 +381,7 @@ sessionsRoutes.post(
           status === 'completed'
             ? body.completedAt || now
             : null,
-        createdBy: user!.userId,
+        createdBy: sessionCreatedBy,
         creditReservedAt: body.creditReservedAt || null,
         nextAppointmentDate: body.nextAppointmentDate || null,
         followUpNotes: body.followUpNotes || null,
@@ -375,7 +400,7 @@ sessionsRoutes.post(
         createdBy: session.createdBy,
         createdAt: session.createdAt,
         updatedAt: session.updatedAt,
-        clinicId: user?.clinicId || null,
+        clinicId: user?.clinicId ?? patient.clinicId ?? null,
       });
 
       return c.json({ success: true, session }, 201);
@@ -403,7 +428,7 @@ sessionsRoutes.put(
       if (!sessionId) {
         return c.json({ error: 'ID de sesión inválido' }, 400);
       }
-      const user = c.get('user');
+      const user = c.get('user')!;
 
       const existingRows = await database
         .select()
@@ -418,15 +443,16 @@ sessionsRoutes.put(
       const existingRow = existingRows[0];
       const existingSession = mapDbSession(existingRow);
 
-      // Reglas de modificación:
-      // - super_admin: puede actualizar cualquier sesión
-      // - podiatrist: solo puede actualizar sesiones que él mismo creó
-      if (user?.role === 'podiatrist' && existingRow.createdBy !== user.userId) {
+      const sessionDeny = await getSessionAccessDeniedReason(user, existingRow);
+      if (sessionDeny === 'clinic_admin_sin_clinica') {
         return c.json(
-          {
-            error: 'Acceso denegado',
-            message: 'No tienes permiso para modificar esta sesión',
-          },
+          { error: 'Acceso denegado', message: 'Cuenta de administrador de clínica sin clínica asignada' },
+          403
+        );
+      }
+      if (sessionDeny) {
+        return c.json(
+          { error: 'Acceso denegado', message: 'No tienes permiso para modificar esta sesión' },
           403
         );
       }
@@ -451,6 +477,25 @@ sessionsRoutes.put(
 
       // No permitir cambiar de completed a draft
       const body = await c.req.json().catch(() => ({}));
+
+      const newPatientId =
+        body.patientId !== undefined && body.patientId !== null && String(body.patientId) !== String(existingRow.patientId)
+          ? String(body.patientId)
+          : null;
+      if (newPatientId) {
+        const npRows = await database.select().from(patientsTable).where(eq(patientsTable.id, newPatientId)).limit(1);
+        const np = npRows[0];
+        if (!np) {
+          return c.json({ error: 'Paciente no encontrado' }, 404);
+        }
+        const npDeny = await getPatientAccessDeniedReason(user, np);
+        if (npDeny) {
+          return c.json(
+            { error: 'Acceso denegado', message: 'No tienes permiso para vincular la sesión a ese paciente' },
+            403
+          );
+        }
+      }
 
       const requestedStatus: ClinicalSession['status'] | undefined =
         body.status === 'completed' || body.status === 'draft'
@@ -575,7 +620,7 @@ sessionsRoutes.delete(
       if (!sessionId) {
         return c.json({ error: 'ID de sesión inválido' }, 400);
       }
-      const user = c.get('user');
+      const user = c.get('user')!;
 
       const existingRows = await database
         .select()
@@ -590,15 +635,16 @@ sessionsRoutes.delete(
       const existingRow = existingRows[0];
       const existingSession = mapDbSession(existingRow);
 
-      // Reglas de borrado:
-      // - super_admin: puede borrar cualquier sesión
-      // - podiatrist: solo puede borrar sesiones que él mismo creó
-      if (user?.role === 'podiatrist' && existingRow.createdBy !== user.userId) {
+      const delDeny = await getSessionAccessDeniedReason(user, existingRow);
+      if (delDeny === 'clinic_admin_sin_clinica') {
         return c.json(
-          {
-            error: 'Acceso denegado',
-            message: 'No tienes permiso para eliminar esta sesión',
-          },
+          { error: 'Acceso denegado', message: 'Cuenta de administrador de clínica sin clínica asignada' },
+          403
+        );
+      }
+      if (delDeny) {
+        return c.json(
+          { error: 'Acceso denegado', message: 'No tienes permiso para eliminar esta sesión' },
           403
         );
       }

@@ -28,7 +28,7 @@ export const MainLayout = ({ children, title }: MainLayoutProps) => {
     window.scrollTo(0, 0);
     // Forzar reflow para que el navegador recalcule el layout (arregla header/sidebar que no aparecen hasta refresh)
     requestAnimationFrame(() => {
-      document.body.offsetHeight;
+      void document.body.offsetHeight;
     });
   }, []);
 
@@ -59,7 +59,7 @@ export const MainLayout = ({ children, title }: MainLayoutProps) => {
   };
 
   return (
-    <div className="h-dvh h-screen min-h-0 flex overflow-hidden bg-gray-50 dark:bg-gray-950">
+    <div className="flex min-h-dvh w-full overflow-x-hidden bg-gray-50 dark:bg-gray-950 md:h-dvh md:h-screen md:min-h-0 md:overflow-hidden">
       <Sidebar
         isOpen={sidebarOpen}
         onClose={() => setSidebarOpen(false)}
@@ -70,7 +70,7 @@ export const MainLayout = ({ children, title }: MainLayoutProps) => {
       
       {/* Main content area - flex para adaptarse al viewport, margen dinámico según sidebar */}
       <div
-        className={`flex-1 flex flex-col min-w-0 min-h-0 md:pl-0 ml-0 w-full overflow-hidden transition-[margin] duration-300 ${
+        className={`flex flex-1 flex-col min-w-0 md:min-h-0 md:overflow-hidden md:pl-0 ml-0 w-full overflow-x-hidden transition-[margin] duration-300 ${
           sidebarVisibleOnDesktop ? "md:ml-72" : "md:ml-0"
         }`}
       >
@@ -141,7 +141,7 @@ export const MainLayout = ({ children, title }: MainLayoutProps) => {
         </header>
 
         {/* Page content - scroll interno, fondo gris oscuro en dark mode */}
-        <main className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden p-3 sm:p-4 md:p-6 lg:p-8 pb-safe bg-gray-50 dark:bg-gray-950">
+        <main className="flex-1 min-w-0 overflow-x-hidden p-3 sm:p-4 md:p-6 lg:p-8 pb-safe bg-gray-50 dark:bg-gray-950 max-md:flex-none max-md:overflow-y-visible md:min-h-0 md:overflow-y-auto">
           {children}
         </main>
       </div>

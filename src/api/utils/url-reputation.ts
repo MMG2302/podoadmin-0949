@@ -22,7 +22,7 @@ export function extractUrlsFromText(text: string | null | undefined): string[] {
   let m: RegExpExecArray | null;
   const re = new RegExp(URL_IN_TEXT.source, 'gi');
   while ((m = re.exec(text)) !== null) {
-    let u = m[0].replace(/[.,;:!?)]+$/, '').slice(0, MAX_URL_LENGTH);
+    const u = m[0].replace(/[.,;:!?)]+$/, '').slice(0, MAX_URL_LENGTH);
     if (!seen.has(u)) {
       seen.add(u);
       urls.push(u);

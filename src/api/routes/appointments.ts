@@ -9,34 +9,15 @@ import { canUserAccess } from '../utils/user-retention';
 import { logAuditEvent } from '../utils/audit-log';
 import { getClientIP } from '../utils/ip-tracking';
 import { getSafeUserAgent } from '../utils/request-headers';
+import {
+  getAssignedPodiatristUserIds,
+  getCreatedUserByIdOrUserId,
+  getSessionAccessDeniedReason,
+  isClinicAdminWithoutClinic,
+} from '../utils/tenant-isolation';
 
 const appointmentsRoutes = new Hono();
 
-/** Obtiene los IDs de podólogos asignados a una recepcionista (desde DB; no está en JWT). */
-async function getAssignedPodiatristIds(userId: string): Promise<string[]> {
-  const rows = await database
-    .select({ assignedPodiatristIds: createdUsersTable.assignedPodiatristIds })
-    .from(createdUsersTable)
-    .where(eq(createdUsersTable.id, userId))
-    .limit(1);
-  if (!rows[0]?.assignedPodiatristIds) return [];
-  try {
-    const parsed = JSON.parse(rows[0].assignedPodiatristIds) as unknown;
-    return Array.isArray(parsed) ? parsed.filter((id): id is string => typeof id === 'string') : [];
-  } catch {
-    return [];
-  }
-}
-
-/** Obtiene el clinicId de un usuario (podólogo) desde la DB. */
-async function getClinicIdForUser(userId: string): Promise<string | null> {
-  const rows = await database
-    .select({ clinicId: createdUsersTable.clinicId })
-    .from(createdUsersTable)
-    .where(eq(createdUsersTable.id, userId))
-    .limit(1);
-  return rows[0]?.clinicId ?? null;
-}
 appointmentsRoutes.use('*', requireAuth);
 
 // UUID criptográfico: evita acceso por rutas predecibles
@@ -140,19 +121,35 @@ async function hasOverlappingSlot(
  */
 appointmentsRoutes.get('/', requirePermission('view_patients'), async (c) => {
   try {
-    const user = c.get('user');
+    const user = c.get('user')!;
+    if (isClinicAdminWithoutClinic(user)) {
+      return c.json({ error: 'Acceso denegado', message: 'Cuenta de administrador de clínica sin clínica asignada' }, 403);
+    }
     const clinicId = c.req.query('clinicId');
     const podiatristId = c.req.query('podiatristId');
     const date = c.req.query('date');
+
+    if (user.role === 'clinic_admin' && clinicId && clinicId !== user.clinicId) {
+      return c.json({ error: 'Acceso denegado', message: 'No puedes consultar otra clínica' }, 403);
+    }
+    if (user.role === 'podiatrist' && podiatristId && podiatristId !== user.userId) {
+      return c.json({ error: 'Acceso denegado', message: 'No puedes filtrar por otro podólogo' }, 403);
+    }
+    if (user.role === 'receptionist' && podiatristId) {
+      const assignedIds = await getAssignedPodiatristUserIds(user.userId);
+      if (!assignedIds.includes(podiatristId)) {
+        return c.json({ error: 'Acceso denegado', message: 'No tienes acceso a ese podólogo' }, 403);
+      }
+    }
 
     let rows = await database.select().from(appointmentsTable);
 
     if (user?.role === 'podiatrist') {
       rows = rows.filter((r) => r.createdBy === user.userId);
-    } else if (user?.role === 'clinic_admin' && user.clinicId) {
+    } else if (user?.role === 'clinic_admin') {
       rows = rows.filter((r) => r.clinicId === user.clinicId);
     } else if (user?.role === 'receptionist') {
-      const assignedIds = await getAssignedPodiatristIds(user.userId);
+      const assignedIds = await getAssignedPodiatristUserIds(user.userId);
       if (assignedIds.length === 0) {
         rows = [];
       } else {
@@ -178,18 +175,14 @@ appointmentsRoutes.get('/', requirePermission('view_patients'), async (c) => {
  */
 appointmentsRoutes.get('/:id', requirePermission('view_patients'), async (c) => {
   try {
-    const user = c.get('user');
+    const user = c.get('user')!;
     const id = sanitizePathParam(c.req.param('id'), 64);
     if (!id) return c.json({ error: 'ID de cita inválido' }, 400);
     const rows = await database.select().from(appointmentsTable).where(eq(appointmentsTable.id, id)).limit(1);
     if (!rows.length) return c.json({ error: 'Cita no encontrada' }, 404);
     const row = rows[0];
-    if (user?.role === 'podiatrist' && row.createdBy !== user.userId) return c.json({ error: 'Acceso denegado' }, 403);
-    if (user?.role === 'clinic_admin' && user.clinicId && row.clinicId !== user.clinicId) return c.json({ error: 'Acceso denegado' }, 403);
-    if (user?.role === 'receptionist') {
-      const assignedIds = await getAssignedPodiatristIds(user.userId);
-      if (!assignedIds.includes(row.createdBy)) return c.json({ error: 'Acceso denegado' }, 403);
-    }
+    const deny = await getSessionAccessDeniedReason(user, row);
+    if (deny) return c.json({ error: 'Acceso denegado', message: 'No tienes permiso para ver esta cita' }, 403);
     return c.json({ success: true, appointment: mapDbToAppointment(row) });
   } catch (err) {
     console.error('Error obteniendo cita:', err);
@@ -203,7 +196,10 @@ appointmentsRoutes.get('/:id', requirePermission('view_patients'), async (c) => 
  */
 appointmentsRoutes.post('/', requirePermission('manage_appointments'), async (c) => {
   try {
-    const user = c.get('user');
+    const user = c.get('user')!;
+    if (isClinicAdminWithoutClinic(user)) {
+      return c.json({ error: 'Acceso denegado', message: 'Cuenta de administrador de clínica sin clínica asignada' }, 403);
+    }
     // Restringir creación de citas para usuarios en período de gracia (cuenta deshabilitada)
     if (user?.userId) {
       const creatorRows = await database
@@ -234,32 +230,43 @@ appointmentsRoutes.post('/', requirePermission('manage_appointments'), async (c)
       pendingPatientName?: string;
       pendingPatientPhone?: string;
     };
-    let podiatristId = body.podiatristId || user?.userId;
+    const podiatristRaw = body.podiatristId || user.userId;
+    const podiatristRow = await getCreatedUserByIdOrUserId(String(podiatristRaw));
+    if (!podiatristRow || podiatristRow.role !== 'podiatrist') {
+      return c.json({ error: 'Podólogo no válido', message: 'El podólogo indicado no existe o no es válido' }, 400);
+    }
+    const podiatristUserId = podiatristRow.userId;
+
+    if (user.role === 'podiatrist' && podiatristUserId !== user.userId) {
+      return c.json({ error: 'Acceso denegado', message: 'No puedes crear citas para otro podólogo' }, 403);
+    }
+    if (user.role === 'clinic_admin' && podiatristRow.clinicId !== user.clinicId) {
+      return c.json({ error: 'Acceso denegado', message: 'El podólogo no pertenece a tu clínica' }, 403);
+    }
+    if (user.role === 'receptionist') {
+      if (!body.podiatristId || podiatristUserId === user.userId) {
+        return c.json({ error: 'podiatristId requerido', message: 'Debes seleccionar un podólogo para la cita' }, 400);
+      }
+      const assignedIds = await getAssignedPodiatristUserIds(user.userId);
+      if (!assignedIds.includes(podiatristUserId)) {
+        return c.json({ error: 'Acceso denegado', message: 'No puedes crear citas para ese podólogo' }, 403);
+      }
+    }
+
     const date = body.date || new Date().toISOString().slice(0, 10);
     const time = body.time || '09:00';
     const duration = typeof body.duration === 'number' ? body.duration : 30;
     const notes = buildNotes(body.notes ?? '', duration);
-    let clinicId = body.clinicId ?? user?.clinicId ?? null;
+    const clinicId =
+      user.role === 'clinic_admin'
+        ? user.clinicId ?? null
+        : body.clinicId ?? user.clinicId ?? podiatristRow.clinicId ?? null;
 
-    // Recepcionista: debe enviar podiatristId (podólogo asignado) y debe estar en sus asignados; clinicId del podólogo si falta
-    if (user?.role === 'receptionist') {
-      if (!podiatristId || podiatristId === user.userId) {
-        return c.json({ error: 'podiatristId requerido', message: 'Debes seleccionar un podólogo para la cita' }, 400);
-      }
-      const assignedIds = await getAssignedPodiatristIds(user.userId);
-      if (!assignedIds.includes(podiatristId)) {
-        return c.json({ error: 'Acceso denegado', message: 'No puedes crear citas para ese podólogo' }, 403);
-      }
-      if (!clinicId) {
-        clinicId = await getClinicIdForUser(podiatristId);
-      }
-    }
-
-    if (!podiatristId || !date || !time) {
+    if (!podiatristUserId || !date || !time) {
       return c.json({ error: 'podiatristId, date y time son requeridos' }, 400);
     }
 
-    const overlaps = await hasOverlappingSlot(podiatristId, date, time, duration);
+    const overlaps = await hasOverlappingSlot(podiatristUserId, date, time, duration);
     if (overlaps) {
       return c.json(
         { error: 'Horario no disponible', message: 'El horario se solapa con otra cita del mismo podólogo. Elige otra hora o fecha.', code: 'APPOINTMENT_OVERLAP' },
@@ -278,7 +285,7 @@ appointmentsRoutes.post('/', requirePermission('manage_appointments'), async (c)
       reason: body.notes || 'scheduled',
       status: 'scheduled',
       notes,
-      createdBy: podiatristId,
+      createdBy: podiatristUserId,
       createdAt: now,
       updatedAt: now,
       clinicId,
@@ -291,7 +298,7 @@ appointmentsRoutes.post('/', requirePermission('manage_appointments'), async (c)
       action: 'CREATE_APPOINTMENT',
       resourceType: 'appointment',
       resourceId: id,
-      details: { appointmentId: id, patientId: body.patientId, podiatristId, date },
+      details: { appointmentId: id, patientId: body.patientId, podiatristUserId, date },
       ipAddress: getClientIP(c.req.raw.headers),
       userAgent: getSafeUserAgent(c),
       clinicId: clinicId ?? undefined,
@@ -311,7 +318,7 @@ appointmentsRoutes.post('/', requirePermission('manage_appointments'), async (c)
  */
 appointmentsRoutes.put('/:id', requirePermission('manage_appointments'), async (c) => {
   try {
-    const user = c.get('user');
+    const user = c.get('user')!;
     const id = sanitizePathParam(c.req.param('id'), 64);
     if (!id) return c.json({ error: 'ID de cita inválido' }, 400);
     const body = (await c.req.json().catch(() => ({}))) as {
@@ -330,18 +337,31 @@ appointmentsRoutes.put('/:id', requirePermission('manage_appointments'), async (
     if (!rows.length) return c.json({ error: 'Cita no encontrada' }, 404);
     const row = rows[0];
 
-    if (user?.role === 'podiatrist' && row.createdBy !== user.userId) return c.json({ error: 'Acceso denegado' }, 403);
-    if (user?.role === 'clinic_admin' && user.clinicId && row.clinicId !== user.clinicId) return c.json({ error: 'Acceso denegado' }, 403);
-    if (user?.role === 'receptionist') {
-      const assignedIds = await getAssignedPodiatristIds(user.userId);
-      if (!assignedIds.includes(row.createdBy)) return c.json({ error: 'Acceso denegado' }, 403);
-    }
+    const denyPut = await getSessionAccessDeniedReason(user, row);
+    if (denyPut) return c.json({ error: 'Acceso denegado', message: 'No tienes permiso para modificar esta cita' }, 403);
 
     const duration = typeof body.duration === 'number' ? body.duration : parseNotes(row.notes).duration;
     const notes = buildNotes(body.notes ?? parseNotes(row.notes).text, duration);
     const now = new Date().toISOString();
 
-    const effectivePodiatristId = body.podiatristId ?? row.createdBy;
+    let effectivePodiatristId = row.createdBy;
+    if (body.podiatristId !== undefined && body.podiatristId !== null && String(body.podiatristId).trim() !== '') {
+      const pr = await getCreatedUserByIdOrUserId(String(body.podiatristId).trim());
+      if (!pr || pr.role !== 'podiatrist') {
+        return c.json({ error: 'Podólogo no válido' }, 400);
+      }
+      if (user.role === 'podiatrist' && pr.userId !== user.userId) {
+        return c.json({ error: 'Acceso denegado' }, 403);
+      }
+      if (user.role === 'clinic_admin' && pr.clinicId !== user.clinicId) {
+        return c.json({ error: 'Acceso denegado' }, 403);
+      }
+      if (user.role === 'receptionist') {
+        const ax = await getAssignedPodiatristUserIds(user.userId);
+        if (!ax.includes(pr.userId)) return c.json({ error: 'Acceso denegado' }, 403);
+      }
+      effectivePodiatristId = pr.userId;
+    }
     const effectiveDate = body.date ?? row.sessionDate;
     const effectiveTime = body.time ?? row.sessionTime;
     const overlaps = await hasOverlappingSlot(
@@ -367,7 +387,7 @@ appointmentsRoutes.put('/:id', requirePermission('manage_appointments'), async (
         reason: body.notes ?? row.reason,
         status: (body.status as any) ?? row.status,
         notes,
-        createdBy: body.podiatristId ?? row.createdBy,
+        createdBy: effectivePodiatristId,
         updatedAt: now,
         pendingPatientName: body.pendingPatientName !== undefined ? body.pendingPatientName : row.pendingPatientName,
         pendingPatientPhone: body.pendingPatientPhone !== undefined ? body.pendingPatientPhone : row.pendingPatientPhone,
@@ -399,7 +419,7 @@ appointmentsRoutes.put('/:id', requirePermission('manage_appointments'), async (
  */
 appointmentsRoutes.delete('/:id', requirePermission('manage_appointments'), async (c) => {
   try {
-    const user = c.get('user');
+    const user = c.get('user')!;
     const id = sanitizePathParam(c.req.param('id'), 64);
     if (!id) return c.json({ error: 'ID de cita inválido' }, 400);
 
@@ -407,12 +427,8 @@ appointmentsRoutes.delete('/:id', requirePermission('manage_appointments'), asyn
     if (!rows.length) return c.json({ error: 'Cita no encontrada' }, 404);
     const row = rows[0];
 
-    if (user?.role === 'podiatrist' && row.createdBy !== user.userId) return c.json({ error: 'Acceso denegado' }, 403);
-    if (user?.role === 'clinic_admin' && user.clinicId && row.clinicId !== user.clinicId) return c.json({ error: 'Acceso denegado' }, 403);
-    if (user?.role === 'receptionist') {
-      const assignedIds = await getAssignedPodiatristIds(user.userId);
-      if (!assignedIds.includes(row.createdBy)) return c.json({ error: 'Acceso denegado' }, 403);
-    }
+    const denyDel = await getSessionAccessDeniedReason(user, row);
+    if (denyDel) return c.json({ error: 'Acceso denegado', message: 'No tienes permiso para eliminar esta cita' }, 403);
 
     await database.delete(appointmentsTable).where(eq(appointmentsTable.id, id));
 

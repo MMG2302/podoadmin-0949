@@ -49,16 +49,14 @@ const emptyForm: PatientFormData = {
 const PatientsPage = () => {
   const { t } = useLanguage();
   const { user, getAllUsers } = useAuth();
-  const { isSuperAdmin, isPodiatrist, isClinicAdmin, isReceptionist } = usePermissions();
-  const [location, setLocation] = useLocation();
-  
-  // Clinic admins should use the Clinic Management page for patient viewing/reassignment
-  // Redirect them if they try to access /patients directly (recepcionistas no)
-  if (isClinicAdmin) {
-    setLocation("/clinic");
-    return null;
-  }
-  
+  const { isPodiatrist, isClinicAdmin, isReceptionist } = usePermissions();
+  const [, setLocation] = useLocation();
+
+  // Clinic admins deben usar Gestión de clínica; redirigir sin romper el orden de hooks
+  useEffect(() => {
+    if (isClinicAdmin) setLocation("/clinic");
+  }, [isClinicAdmin, setLocation]);
+
   // Podiatrists can siempre crear pacientes.
   // Recepcionistas solo pueden crear pacientes si tienen al menos un podólogo asignado.
   const receptionistHasAssignedPodiatrists =
@@ -159,6 +157,10 @@ const PatientsPage = () => {
       setSelectedPatient(null);
     }
   }, [patientIdFromUrl, patients]);
+
+  if (isClinicAdmin) {
+    return null;
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

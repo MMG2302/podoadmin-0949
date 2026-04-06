@@ -1,0 +1,5 @@
+# Copia a .dev.vars (no commitear). Wrangler injecta estas vars en el Worker local.
+# Mismos valores que JWT_SECRET, REFRESH_TOKEN_SECRET y CSRF_SECRET de tu .env
+JWT_SECRET=
+REFRESH_TOKEN_SECRET=
+CSRF_SECRET=

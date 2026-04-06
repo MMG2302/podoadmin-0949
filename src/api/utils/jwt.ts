@@ -1,13 +1,25 @@
 import { SignJWT, jwtVerify } from 'jose';
 
-// Secret keys para firmar JWT - en producción deben estar en variables de entorno
-const JWT_SECRET = new TextEncoder().encode(
-  process.env.JWT_SECRET || 'your-super-secret-key-change-in-production-min-32-chars'
-);
+function encodeSecret(name: 'JWT_SECRET' | 'REFRESH_TOKEN_SECRET'): Uint8Array {
+  const v = process.env[name];
+  if (!v || v.length < 32) {
+    throw new Error(`${name} no válida; debe existir antes de usar JWT (validate-env debería haber fallado al arrancar)`);
+  }
+  return new TextEncoder().encode(v);
+}
 
-const REFRESH_TOKEN_SECRET = new TextEncoder().encode(
-  process.env.REFRESH_TOKEN_SECRET || 'your-refresh-token-secret-key-change-in-production-min-32-chars'
-);
+let _access: Uint8Array | undefined;
+let _refresh: Uint8Array | undefined;
+
+function getAccessSecret(): Uint8Array {
+  _access ??= encodeSecret('JWT_SECRET');
+  return _access;
+}
+
+function getRefreshSecret(): Uint8Array {
+  _refresh ??= encodeSecret('REFRESH_TOKEN_SECRET');
+  return _refresh;
+}
 
 export interface JWTPayload {
   userId: string;
@@ -33,7 +45,7 @@ export async function generateAccessToken(payload: Omit<JWTPayload, 'iat' | 'exp
     .setProtectedHeader({ alg: 'HS256' })
     .setIssuedAt()
     .setExpirationTime('60m') // Access token expira en 60 minutos
-    .sign(JWT_SECRET);
+    .sign(getAccessSecret());
 
   return token;
 }
@@ -52,7 +64,7 @@ export async function generateRefreshToken(payload: Omit<JWTPayload, 'iat' | 'ex
     .setProtectedHeader({ alg: 'HS256' })
     .setIssuedAt()
     .setExpirationTime('7d') // Refresh token expira en 7 días
-    .sign(REFRESH_TOKEN_SECRET);
+    .sign(getRefreshSecret());
 
   return token;
 }
@@ -76,7 +88,7 @@ export async function generateTokenPair(
  */
 export async function verifyAccessToken(token: string): Promise<JWTPayload | null> {
   try {
-    const { payload } = await jwtVerify(token, JWT_SECRET);
+    const { payload } = await jwtVerify(token, getAccessSecret());
     const typedPayload = payload as JWTPayload;
     
     // Verificar que sea un access token
@@ -95,7 +107,7 @@ export async function verifyAccessToken(token: string): Promise<JWTPayload | nul
  */
 export async function verifyRefreshToken(token: string): Promise<JWTPayload | null> {
   try {
-    const { payload } = await jwtVerify(token, REFRESH_TOKEN_SECRET);
+    const { payload } = await jwtVerify(token, getRefreshSecret());
     const typedPayload = payload as JWTPayload;
     
     // Verificar que sea un refresh token

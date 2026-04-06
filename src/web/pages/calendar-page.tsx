@@ -186,7 +186,7 @@ const CalendarPage = () => {
     const lastDay = new Date(year, month + 1, 0);
     
     // Start from Monday (adjust if first day is Sunday)
-    let startDate = new Date(firstDay);
+    const startDate = new Date(firstDay);
     const dayOfWeek = startDate.getDay();
     const diff = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
     startDate.setDate(startDate.getDate() - diff);

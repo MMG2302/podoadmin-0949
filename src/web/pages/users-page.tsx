@@ -361,7 +361,7 @@ const BulkImportModal = ({
           const row = rows[i];
           const name = (row[nameIdx] ?? "").trim();
           const email = (row[emailIdx] ?? "").trim();
-          let password = (row[passIdx] ?? "").trim();
+          const password = (row[passIdx] ?? "").trim();
           const roleRaw = (row[roleIdx] ?? "").trim().toLowerCase();
           const role = (validRoles.includes(roleRaw) ? roleRaw : "podiatrist") as UserRole;
           const clinicMode = clinicModeIdx >= 0 ? (row[clinicModeIdx] ?? "").trim().toLowerCase() : "existing";

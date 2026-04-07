@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Route, Switch, Link } from "wouter";
-import { Users, Stethoscope, Building2, UserCircle, CalendarCheck, Settings, UserPlus, Building, Calendar, FileText } from "lucide-react";
+import { Users, Stethoscope, Building2, UserCircle, CalendarCheck, Settings, UserPlus, Building, Calendar, FileText, Activity } from "lucide-react";
 import { MainLayout } from "../components/layout/main-layout";
 import { RoleDashboardBento } from "../components/ui/bento-grid";
 import { useLanguage } from "../contexts/language-context";
@@ -17,6 +17,7 @@ import NotificationsPage from "./notifications-page";
 import CalendarPage from "./calendar-page";
 import MessagesPage from "./messages-page";
 import SupportPage from "./support-page";
+import SystemDiagnosticsPage from "./system-diagnostics-page";
 
 // Super Admin Dashboard - focused on Users, Settings
 const SuperAdminDashboard = () => {
@@ -46,6 +47,7 @@ const SuperAdminDashboard = () => {
         ]}
         actionItems={[
           { Icon: Users, name: t.nav.users, description: "Gestionar usuarios y clínicas", href: "/users" },
+          { Icon: Activity, name: t.nav.systemDiagnostics, description: t.systemDiagnostics.subtitle, href: "/system" },
           { Icon: Settings, name: t.settings.title, description: "Configuración del sistema", href: "/settings" },
         ]}
       >
@@ -321,7 +323,7 @@ const ReceptionistDashboard = () => {
 
 // Dashboard Home - routes to appropriate dashboard based on role
 const DashboardHome = () => {
-  const { isSuperAdmin, isClinicAdmin, isAdmin, isPodiatrist, isReceptionist } = usePermissions();
+  const { isSuperAdmin, isClinicAdmin, isAdmin, isReceptionist } = usePermissions();
 
   if (isSuperAdmin) return <SuperAdminDashboard />;
   if (isClinicAdmin) return <ClinicAdminDashboard />;
@@ -342,6 +344,7 @@ const Dashboard = () => {
       {isSuperAdmin && <Route path="/messages" component={MessagesPage} />}
       {isSuperAdmin && <Route path="/support" component={SupportPage} />}
       {isSuperAdmin && <Route path="/audit-log" component={AuditLogPage} />}
+      {isSuperAdmin && <Route path="/system" component={SystemDiagnosticsPage} />}
       
       {/* Admin routes */}
       {isAdmin && <Route path="/users" component={UsersManagementPage} />}

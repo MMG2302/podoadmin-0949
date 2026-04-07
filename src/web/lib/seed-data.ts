@@ -121,7 +121,6 @@ const examinations = [
   "Pie plano grado II. Valgo de retropié de 8°. Huella plantar patológica.",
 ];
 
-const sessionTypes = ["consultation", "treatment", "follow_up"];
 const cities = ["Madrid", "Barcelona", "Valencia", "Sevilla", "Zaragoza", "Málaga", "Bilbao", "Murcia"];
 const streets = ["Mayor", "Gran Vía", "Alcalá", "Serrano", "Goya", "Princesa", "Diagonal", "Ramblas"];
 
@@ -167,16 +166,6 @@ const getClinicCodeForPodiatrist = (podiatristId: string): string | null => {
     }
   }
   return null; // Independent podiatrist
-};
-
-// Get clinic ID for a podiatrist
-const getClinicIdForPodiatrist = (podiatristId: string): string | null => {
-  for (const [clinicId, podiatrists] of Object.entries(clinicPodiatrists)) {
-    if (podiatrists.includes(podiatristId)) {
-      return clinicId;
-    }
-  }
-  return null;
 };
 
 const podiatristNames: Record<string, string> = {

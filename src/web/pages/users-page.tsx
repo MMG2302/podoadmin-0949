@@ -9,8 +9,6 @@ import {
   getSessions, 
   addAuditLog,
   exportPatientData,
-  Patient,
-  ClinicalSession,
 } from "../lib/storage";
 import { api } from "../lib/api-client";
 
@@ -18,6 +16,15 @@ interface UserWithData extends User {
   patientCount: number;
   sessionCount: number;
 }
+
+/** Orden de columnas "rol" en la tabla de usuarios */
+const USER_TABLE_ROLE_ORDER: Record<string, number> = {
+  super_admin: 0,
+  clinic_admin: 1,
+  admin: 2,
+  receptionist: 3,
+  podiatrist: 4,
+};
 
 interface ClinicOption {
   clinicId: string;
@@ -260,7 +267,7 @@ const BulkImportModal = ({
   isOpen,
   onClose,
   onImportComplete,
-  clinics = [],
+  clinics: _clinics = [],
   isSuperAdmin,
   currentUserClinicId,
 }: {
@@ -271,7 +278,6 @@ const BulkImportModal = ({
   isSuperAdmin: boolean;
   currentUserClinicId?: string;
 }) => {
-  const [file, setFile] = useState<File | null>(null);
   const [defaultPassword, setDefaultPassword] = useState("");
   const [parsedRows, setParsedRows] = useState<Array<{ name: string; email: string; password: string; role: UserRole; clinicMode: string; clinicId: string; podiatristLimit?: number | null }>>([]);
   const [parseError, setParseError] = useState<string | null>(null);
@@ -280,7 +286,6 @@ const BulkImportModal = ({
   const [importDone, setImportDone] = useState(false);
 
   const resetState = () => {
-    setFile(null);
     setDefaultPassword("");
     setParsedRows([]);
     setParseError(null);
@@ -385,7 +390,6 @@ const BulkImportModal = ({
           });
         }
         setParsedRows(parsed);
-        setFile(f);
       } catch (err) {
         setParseError(err instanceof Error ? err.message : "Error al leer el archivo");
       }
@@ -773,7 +777,7 @@ const TransferHistoryModal = ({
         success: true,
         message: `Se han transferido ${sourcePatientIds.length} pacientes correctamente.`
       });
-    } catch (error) {
+    } catch {
       setResult({
         success: false,
         message: "Error al transferir los datos."
@@ -1194,8 +1198,6 @@ const UsersPage = () => {
     return m;
   }, [clinicsForLimits]);
 
-  // Orden de rol para ordenar (clínica/subalternos: clinic_admin primero, luego podiatrist, etc.)
-  const roleOrder: Record<string, number> = { super_admin: 0, clinic_admin: 1, admin: 2, receptionist: 3, podiatrist: 4 };
   const statusOrder = (u: User): number => {
     if (u.isBanned) return 4;
     if (u.isBlocked) return 3;
@@ -1216,7 +1218,7 @@ const UsersPage = () => {
           cmp = (a.email || "").localeCompare(b.email || "", undefined, { sensitivity: "base" });
           break;
         case "role":
-          cmp = (roleOrder[a.role] ?? 99) - (roleOrder[b.role] ?? 99);
+          cmp = (USER_TABLE_ROLE_ORDER[a.role] ?? 99) - (USER_TABLE_ROLE_ORDER[b.role] ?? 99);
           if (cmp === 0) cmp = (a.name || "").localeCompare(b.name || "", undefined, { sensitivity: "base" });
           break;
         case "status":
@@ -1365,7 +1367,8 @@ const UsersPage = () => {
 
         if (!response.success || !response.data?.success) {
           const msg = response.data?.message || response.error || "Error al crear usuario";
-          const issues = (response.data as any)?.issues as Array<{ message?: string; path?: (string | number)[] }> | undefined;
+          const issues = (response.data as { issues?: Array<{ message?: string; path?: (string | number)[] }> })
+            ?.issues;
           const details = issues?.length ? issues.map((i) => i.message || i.path?.join(".")).join(". ") : "";
           alert(details ? `${msg}\n\nDetalles: ${details}` : msg);
           return;
@@ -1479,7 +1482,7 @@ const UsersPage = () => {
       } else {
         alert(r.error || r.data?.message || "Error al aprobar");
       }
-    } catch (e) {
+    } catch {
       alert("Error al aprobar la solicitud");
     }
   };
@@ -1494,7 +1497,7 @@ const UsersPage = () => {
       } else {
         alert(r.error || r.data?.message || "Error al rechazar");
       }
-    } catch (e) {
+    } catch {
       alert("Error al rechazar la solicitud");
     }
   };

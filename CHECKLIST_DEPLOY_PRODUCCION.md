@@ -2,8 +2,9 @@
 
 Este documento resume, en formato de checklist accionable, lo que hay que revisar/ejecutar antes de desplegar PodoAdmin en producción.
 
+**Guía maestra (pasos, comandos, health, requestId, R2):** `DESPLIEGUE_PRODUCCION.md`  
 Para detalles extensos, ver también `PRODUCCION_CONFIG.md` y `ENV_VARIABLES.md`.
-z
+
 ---
 
 ## 1. Base de datos D1 (Cloudflare)
@@ -20,14 +21,14 @@ z
 - [ ] **Ejecutar migraciones remotas**
   - **Comando**:
     ```bash
-    bun db:migrate:remote
+    npm run db:migrate:remote
     ```
 
 - [ ] **(Solo primera vez) Crear `super_admin`**
   - **Comandos recomendados** (ejemplo):
     ```bash
     node scripts/create-super-admin.cjs "<EMAIL_SUPER_ADMIN>" "<PASSWORD_SUPER_ADMIN>" "<NOMBRE_SUPER_ADMIN>"
-    bunx wrangler d1 execute DB --remote --file=scripts/super-admin.sql
+    npx wrangler d1 execute DB --remote --file=scripts/super-admin.sql
     ```
   - **Verificar**: Que puedes iniciar sesión como `super_admin` en producción.
 
@@ -128,19 +129,26 @@ z
   - [ ] Probar múltiples intentos de login para ver bloqueo/rate limit.
   - [ ] (Opcional) `GOOGLE_SAFE_BROWSING_API_KEY` para comprobación de URLs en mensajes.
 
+- [ ] **Salud y operación (post-deploy)**
+  - [ ] `GET https://<tu-dominio>/api/health` responde `status: ok` (público, sin auth; útil para monitores).
+  - [ ] Super admin: pantalla **Estado del sistema** (`/system`) muestra diagnóstico y URLs de monitorización.
+  - [ ] En errores de API, comprobar que existen `requestId` (JSON o cabecera `X-Request-Id`) para cruzar con logs del Worker.
+
 ---
 
 ## 7. Orden recomendado antes del primer deploy
 
 - [ ] 1. Crear D1 remota y ajustar `wrangler.toml` con su `database_id` / `database_name`.
 - [ ] 2. Definir `[vars]` y Secrets (JWT, REFRESH, CSRF, NODE_ENV, VITE_BASE_URL, ALLOWED_ORIGINS, OFFICIAL_APP_DOMAIN).
-- [ ] 3. Ejecutar `bun db:migrate:remote`.
-- [ ] 4. Crear `super_admin` con `create-super-admin.cjs` + `wrangler d1 execute ... --remote`.
+- [ ] 3. Ejecutar `npm run db:migrate:remote`.
+- [ ] 4. Crear `super_admin` con `create-super-admin.cjs` + `npx wrangler d1 execute ... --remote`.
 - [ ] 5. Configurar dominio y HTTPS en Cloudflare.
 - [ ] 6. Configurar email, CAPTCHA y OAuth según necesidad.
-- [ ] 7. Hacer smoke-test en producción:
+- [ ] 7. `npm run build` y `npm run deploy` (o el flujo CI/CD equivalente).
+- [ ] 8. Smoke-test en producción:
   - [ ] Login correcto y logout.
   - [ ] Pantalla de dashboard carga sin errores.
-  - [ ] Crear/editar paciente y cita.
-  - [ ] Revisar que los logs de errores en Cloudflare estén limpios.
+  - [ ] Crear/editar paciente y cita (según roles que uses).
+  - [ ] `/api/health` y, si aplica, `/system` como super admin.
+  - [ ] Revisar logs del Worker ante cualquier error; usar `requestId` si lo muestra la API.
 

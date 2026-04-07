@@ -47,7 +47,17 @@ const NotificationIcon = ({ type, size = "md" }: { type: NotificationType; size?
   }
 };
 
-const formatTimeAgo = (dateStr: string, t: any): string => {
+type NotificationTimeLabels = {
+  notifications: {
+    justNow: string;
+    agoMinutes: string;
+    agoHours: string;
+    yesterday: string;
+    agoDays: string;
+  };
+};
+
+const formatTimeAgo = (dateStr: string, t: NotificationTimeLabels): string => {
   const date = new Date(dateStr);
   const now = new Date();
   const diffMs = now.getTime() - date.getTime();

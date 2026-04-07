@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { MainLayout } from "../components/layout/main-layout";
 import { useLanguage } from "../contexts/language-context";
 import { useAuth } from "../contexts/auth-context";
@@ -22,17 +22,6 @@ interface ClinicInfoForm {
 // Nombre de clínica desde datos cargados o fallback
 const getClinicNameFrom = (clinic: Clinic | null, clinicId: string): string =>
   clinic?.clinicName ?? (clinicId ? `Clínica ${clinicId}` : "");
-
-// Get logo for a user (considering clinic membership) - exported for PDF/async use (API)
-export async function getLogoForUser(userId: string, clinicId?: string): Promise<string | null> {
-  if (clinicId) {
-    const r = await api.get<{ success?: boolean; logo?: string | null }>(`/clinics/${clinicId}/logo`);
-    if (r.success && r.data?.logo) return r.data.logo;
-  }
-  const r = await api.get<{ success?: boolean; logo?: string | null }>(`/professionals/logo/${userId}`);
-  if (r.success && r.data?.logo) return r.data.logo;
-  return null;
-}
 
 const SettingsPage = () => {
   const { t, language, setLanguage, languageNames, availableLanguages } = useLanguage();
@@ -131,10 +120,6 @@ const SettingsPage = () => {
   });
   const [professionalInfoSaved, setProfessionalInfoSaved] = useState(false);
   
-  // Professional License state (for all podiatrists)
-  const [professionalLicense, setProfessionalLicenseState] = useState<string>("");
-  const [licenseSaved, setLicenseSaved] = useState(false);
-  
   // Professional Credentials state (for clinic subaltern podiatrists)
   const [credentialsCedula, setCredentialsCedula] = useState<string>("");
   const [credentialsRegistro, setCredentialsRegistro] = useState<string>("");
@@ -205,16 +190,7 @@ const SettingsPage = () => {
       });
     }
   }, [isPodiatristIndependent, user?.id, user?.name, user?.email]);
-  
-  // Cargar professional license desde API
-  useEffect(() => {
-    if (user?.role === "podiatrist" && user?.id) {
-      api.get<{ success?: boolean; license?: string | null }>(`/professionals/license/${user.id}`).then((res) => {
-        if (res.success && res.data?.license != null) setProfessionalLicenseState(res.data.license || "");
-      });
-    }
-  }, [user?.role, user?.id]);
-  
+
   // Cargar podólogos asignados para recepcionista desde API
   useEffect(() => {
     if (isReceptionist && user?.id) {
@@ -292,7 +268,7 @@ const SettingsPage = () => {
         setInfoBlockedUntil(res.data.infoBlockedUntil);
         setClinicInfoError(res.message ?? "Los datos solo pueden modificarse cada 15 días.");
       }
-    } catch (err) {
+    } catch {
       // Error ya se muestra en consola desde api-client; no marcamos como guardado
     }
   };
@@ -338,20 +314,6 @@ const SettingsPage = () => {
       }
     } catch {
       // No marcar como guardado si la API falla
-    }
-  };
-  
-  // Professional license handler (for all podiatrists)
-  const handleSaveProfessionalLicense = async () => {
-    if (user?.role !== "podiatrist" || !user?.id) return;
-    try {
-      const res = await api.put<{ success?: boolean }>(`/professionals/license/${user.id}`, { license: professionalLicense });
-      if (res.success) {
-        setLicenseSaved(true);
-        setTimeout(() => setLicenseSaved(false), 2000);
-      }
-    } catch {
-      // Silenciar, no marcar como guardado
     }
   };
   
@@ -514,12 +476,14 @@ const SettingsPage = () => {
   };
 
   // Cargar conversaciones de soporte (usuarios que no son admin/super_admin)
-  const loadSupportConversations = async () => {
+  const loadSupportConversations = useCallback(async () => {
     if (isAdminRole) return;
     const r = await api.get<{ success?: boolean; conversations?: typeof supportConversations }>("/support/conversations");
     if (r.success && Array.isArray(r.data?.conversations)) setSupportConversations(r.data.conversations);
-  };
-  useEffect(() => { loadSupportConversations(); }, [isAdminRole]);
+  }, [isAdminRole]);
+  useEffect(() => {
+    void loadSupportConversations();
+  }, [loadSupportConversations]);
 
   const handleCreateSupportConversation = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -1527,7 +1491,7 @@ const SettingsPage = () => {
                           
                           try {
                             new URL(url);
-                          } catch (error) {
+                          } catch {
                             e.preventDefault();
                             alert('La URL del sitio web no es válida. Por favor, verifica que esté correctamente configurada.');
                           }

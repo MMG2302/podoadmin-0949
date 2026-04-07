@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import type { Context } from 'hono';
 import { escapeHtml, sanitizeEmail, containsXssPayload } from './sanitization';
 
 /**
@@ -280,7 +281,7 @@ export function validateData<T>(
  * Middleware helper para validar requests
  */
 export function createValidationMiddleware<T>(schema: z.ZodSchema<T>) {
-  return async (c: any, next: () => Promise<void>) => {
+  return async (c: Context, next: () => Promise<void>) => {
     try {
       const body = await c.req.json().catch(() => ({}));
       const result = validateData(schema, body);
@@ -297,9 +298,9 @@ export function createValidationMiddleware<T>(schema: z.ZodSchema<T>) {
       }
 
       // Reemplazar body con datos validados y sanitizados
-      c.req.validated = result.data;
+      (c as Context & { req: Context['req'] & { validated: T } }).req.validated = result.data;
       return next();
-    } catch (error) {
+    } catch {
       return c.json(
         {
           error: 'Error procesando solicitud',

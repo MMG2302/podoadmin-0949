@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { Link, useLocation } from "wouter";
 import { useLanguage } from "../contexts/language-context";
 import { useAuth } from "../contexts/auth-context";
@@ -42,7 +42,17 @@ const NotificationIcon = ({ type }: { type: NotificationType }) => {
   }
 };
 
-const formatTimeAgo = (dateStr: string, t: any): string => {
+type NotificationTimeLabels = {
+  notifications: {
+    justNow: string;
+    agoMinutes: string;
+    agoHours: string;
+    yesterday: string;
+    agoDays: string;
+  };
+};
+
+const formatTimeAgo = (dateStr: string, t: NotificationTimeLabels): string => {
   const date = new Date(dateStr);
   const now = new Date();
   const diffMs = now.getTime() - date.getTime();
@@ -66,7 +76,7 @@ export const NotificationsBell = () => {
   const [unreadCount, setUnreadCount] = useState(0);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  const loadNotifications = async () => {
+  const loadNotifications = useCallback(async () => {
     if (!user?.id) return;
     const [listRes, countRes] = await Promise.all([
       api.get<{ success?: boolean; notifications?: Notification[] }>("/notifications"),
@@ -78,17 +88,13 @@ export const NotificationsBell = () => {
     if (countRes.success && typeof countRes.data?.unreadCount === "number") {
       setUnreadCount(countRes.data.unreadCount);
     }
-  };
+  }, [user?.id]);
 
   useEffect(() => {
-    loadNotifications();
-    // Refresh notifications every 5 seconds para actualizaciones casi instantáneas
-    const interval = setInterval(loadNotifications, 5000);
-
-    return () => {
-      clearInterval(interval);
-    };
-  }, [user?.id]);
+    void loadNotifications();
+    const interval = setInterval(() => void loadNotifications(), 5000);
+    return () => clearInterval(interval);
+  }, [loadNotifications]);
 
   useRefreshOnFocus(loadNotifications);
 

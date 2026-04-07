@@ -30,10 +30,31 @@ export default tseslint.config(
         "warn",
         { argsIgnorePattern: "^_", varsIgnorePattern: "^_" },
       ],
-      // Proyecto histórico: ir sustituyendo `any` con el tiempo
       "@typescript-eslint/no-explicit-any": "warn",
-      // Regex de control ASCII intencional (sanitización / cabeceras)
       "no-control-regex": "off",
+    },
+  },
+  {
+    files: [
+      "src/web/contexts/**/*.tsx",
+      "src/web/components/ui/button.tsx",
+      "src/web/pages/settings-page.tsx",
+    ],
+    rules: {
+      "react-refresh/only-export-components": "off",
+    },
+  },
+  {
+    files: ["src/web/lib/api-client.ts"],
+    rules: {
+      "@typescript-eslint/no-explicit-any": "off",
+    },
+  },
+  {
+    files: ["src/api/**/*.ts"],
+    rules: {
+      // Debe ir después del bloque **/*.{ts,tsx} para no ser sobrescrito
+      "@typescript-eslint/no-explicit-any": "off",
     },
   },
 );

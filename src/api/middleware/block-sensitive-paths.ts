@@ -7,6 +7,7 @@ import type { Context, Next } from 'hono';
  */
 const ALLOWED_API_FIRST_SEGMENTS: ReadonlySet<string> = new Set([
   'ping',
+  'health',
   'public',
   'csrf',
   'test',       // en producción la ruta no existe, Hono devolverá 404
@@ -26,6 +27,7 @@ const ALLOWED_API_FIRST_SEGMENTS: ReadonlySet<string> = new Set([
   'messages',
   'support',
   'registration-lists',
+  'system',
 ]);
 
 /** Caracteres permitidos en un segmento de path (evita encoding raro o inyección). */

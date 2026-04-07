@@ -12,6 +12,7 @@ type Permission =
   | "view_users"
   | "manage_users"
   | "view_audit_log"
+  | "view_system_diagnostics"
   | "export_data"
   | "print_documents"
   | "view_settings"
@@ -31,6 +32,7 @@ const rolePermissions: Record<UserRole, Permission[]> = {
     "view_users",
     "manage_users",
     "view_audit_log",
+    "view_system_diagnostics",
     "export_data",
     "view_settings",
     "manage_settings",

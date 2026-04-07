@@ -16,7 +16,7 @@ const PASSWORD_REQUIREMENTS = [
 const ChangePassword = () => {
   const { t } = useLanguage();
   const [, setLocation] = useLocation();
-  const { user, updateUser } = useAuth();
+  const { updateUser } = useAuth();
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");

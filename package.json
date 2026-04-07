@@ -16,7 +16,7 @@
     "clsx": "^2.1.1",
     "dedent": "^1.7.0",
     "drizzle-orm": "^0.44.7",
-    "hono": "4.8.2",
+    "hono": "^4.12.11",
     "lucide-react": "^0.555.0",
     "mathjs": "^15.1.0",
     "otpauth": "^9.4.1",
@@ -29,7 +29,7 @@
     "zod": "^4.1.13"
   },
   "devDependencies": {
-    "@cloudflare/vite-plugin": "1.7.5",
+    "@cloudflare/vite-plugin": "^1.31.0",
     "@eslint/js": "9.29.0",
     "@tailwindcss/vite": "^4.1.17",
     "@types/node": "^25.0.0",

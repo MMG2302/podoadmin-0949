@@ -1,6 +1,6 @@
 import { database } from '../database';
 import { registrationRateLimit } from '../database/schema';
-import { eq, lt } from 'drizzle-orm';
+import { eq } from 'drizzle-orm';
 
 /**
  * Rate limiting específico para registro público

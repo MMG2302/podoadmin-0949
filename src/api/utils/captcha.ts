@@ -59,7 +59,7 @@ async function verifyRecaptcha(
       success: data.success === true && (data.score || 0) >= 0.5, // Score mínimo 0.5 para v3
       error: data['error-codes']?.[0],
     };
-  } catch (error) {
+  } catch {
     return { success: false, error: 'Error de conexión con reCAPTCHA' };
   }
 }
@@ -85,7 +85,7 @@ async function verifyHcaptcha(
       success: data.success === true,
       error: data['error-codes']?.[0],
     };
-  } catch (error) {
+  } catch {
     return { success: false, error: 'Error de conexión con hCaptcha' };
   }
 }
@@ -111,7 +111,7 @@ async function verifyTurnstile(
       success: data.success === true,
       error: data['error-codes']?.[0],
     };
-  } catch (error) {
+  } catch {
     return { success: false, error: 'Error de conexión con Turnstile' };
   }
 }

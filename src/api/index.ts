@@ -5,6 +5,8 @@ import { cors } from "hono/cors";
 
 /** Variables que el middleware inyecta en el contexto (p. ej. safeHeaders) */
 export type AppVariables = { safeHeaders: Record<string, string> };
+import { requestIdMiddleware, getOrCreateRequestId } from './middleware/request-id';
+import { globalApiRateLimitMiddleware } from './middleware/global-api-rate-limit';
 import { blockSensitivePaths } from './middleware/block-sensitive-paths';
 import { authMiddleware } from './middleware/auth';
 import { csrfProtection } from './middleware/csrf';
@@ -28,9 +30,12 @@ import notificationsRoutes from './routes/notifications';
 import messagesRoutes from './routes/messages';
 import supportRoutes from './routes/support';
 import registrationListsRoutes from './routes/registration-lists';
+import systemRoutes from './routes/system';
 
 const app = new Hono<{ Variables: AppVariables }>()
   .basePath('api');
+
+app.use('*', requestIdMiddleware);
 
 // CORS configuration
 // IMPORTANTE: No se puede usar origin: "*" con credentials: true
@@ -69,10 +74,14 @@ const originValidator = (origin: string | null): boolean => {
 // Bloquear acceso por URL a archivos/carpetas sensibles (node_modules, .sql, migraciones, etc.)
 app.use('*', blockSensitivePaths);
 
+// Rate limiting global por IP (D1); exenciones: health, ping, public/config, csrf, OPTIONS
+app.use('*', globalApiRateLimitMiddleware);
+
 app.use(cors({
   origin: originValidator,
   credentials: true,
   allowHeaders: ['Content-Type', 'Authorization', 'X-CSRF-Token'],
+  exposeHeaders: ['X-Request-Id'],
 }));
 
 // Content Security Policy y headers de seguridad
@@ -90,6 +99,14 @@ app.use('*', authMiddleware);
 
 // Rutas públicas (no requieren autenticación)
 app.get('/ping', (c) => c.json({ message: `Pong! ${Date.now()}` }));
+
+/** Salud mínima para monitores externos (sin tocar D1). */
+app.get('/health', (c) =>
+  c.json({
+    status: 'ok',
+    timestamp: new Date().toISOString(),
+  })
+);
 
 // Configuración pública para anti-phishing: dominio oficial (frontend puede mostrar "Solo accede desde [este dominio]")
 app.get('/public/config', (c) => {
@@ -143,10 +160,36 @@ app.route('/notifications', notificationsRoutes);
 app.route('/messages', messagesRoutes);
 app.route('/support', supportRoutes);
 app.route('/registration-lists', registrationListsRoutes);
+app.route('/system', systemRoutes);
 
 // IMPORTANTE: Todas las rutas que manejen datos sensibles DEBEN usar:
 // 1. requireAuth() - para verificar que el usuario está autenticado
 // 2. requireRole() o requirePermission() - para verificar permisos específicos
 // 3. Validación adicional de ownership/clinicId cuando sea necesario
+
+app.onError((err, c) => {
+  const requestId = getOrCreateRequestId(c);
+  console.error('[api]', requestId, err);
+  return c.json(
+    {
+      error: 'Error interno',
+      message: err instanceof Error ? err.message : 'Error inesperado',
+      requestId,
+    },
+    500
+  );
+});
+
+app.notFound((c) => {
+  const requestId = getOrCreateRequestId(c);
+  return c.json(
+    {
+      error: 'Not Found',
+      message: 'Ruta no encontrada',
+      requestId,
+    },
+    404
+  );
+});
 
 export default app;

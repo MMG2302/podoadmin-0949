@@ -281,7 +281,7 @@ const ClinicPage = () => {
       sessionsThisMonth: sessionsThisMonth.length,
       podiatrists: clinicPodiatrists.length,
     };
-  }, [patientsWithPodiatrist, clinicSessions, clinicPodiatrists, podiatristStats]);
+  }, [patientsWithPodiatrist, clinicSessions, clinicPodiatrists]);
 
   // Handle patient reassignment (persiste en DB vía API)
   const handleReassign = async (patientId: string, newPodiatristId: string) => {

@@ -22,7 +22,6 @@ import {
   getProfessionalCredentials,
   getPrescriptionsBySession,
   savePrescription,
-  deletePrescription,
   ClinicalSession,
   Patient,
   AppointmentReason,
@@ -147,13 +146,13 @@ const SessionsPage = () => {
 
   const isPatientCompleteForSessions = (p: Patient | undefined) => {
     if (!p) return false;
-    const fn = (p as any).firstName ?? (p as any).first_name ?? "";
-    const ln = (p as any).lastName ?? (p as any).last_name ?? "";
-    const dob = (p as any).dateOfBirth ?? (p as any).date_of_birth ?? "";
-    const g = (p as any).gender ?? "";
-    const idn = (p as any).idNumber ?? (p as any).id_number ?? "";
-    return !!String(fn).trim() && !!String(ln).trim() && !!String(dob).trim() &&
-      !!String(g).trim() && !!String(idn).trim();
+    return (
+      !!String(p.firstName).trim() &&
+      !!String(p.lastName).trim() &&
+      !!String(p.dateOfBirth).trim() &&
+      !!String(p.gender).trim() &&
+      !!String(p.idNumber).trim()
+    );
   };
 
   const [formData, setFormData] = useState<SessionFormData>(
@@ -328,7 +327,7 @@ const SessionsPage = () => {
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
       filtered = filtered.filter((s) => {
-        const patient = getPatientById(s.patientId);
+        const patient = patients.find((x) => x.id === s.patientId);
         return (
           patient?.firstName.toLowerCase().includes(query) ||
           patient?.lastName.toLowerCase().includes(query) ||
@@ -338,7 +337,7 @@ const SessionsPage = () => {
     }
     
     return filtered.sort((a, b) => new Date(b.sessionDate).getTime() - new Date(a.sessionDate).getTime());
-  }, [sessions, searchQuery, statusFilter, filterPatientId]);
+  }, [sessions, patients, searchQuery, statusFilter, filterPatientId]);
 
   const [imageUploadError, setImageUploadError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -495,7 +494,7 @@ const SessionsPage = () => {
             }),
           });
         } else {
-          const errData = response.data as any;
+          const errData = response.data as { error?: string; message?: string } | undefined;
           const errorCode = response.error || errData?.error;
 
           if (errorCode === "usuario_en_periodo_gracia") {

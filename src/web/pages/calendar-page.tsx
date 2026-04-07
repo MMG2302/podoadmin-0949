@@ -133,7 +133,7 @@ const CalendarPage = () => {
       pendingPatientName: a.pendingPatientName,
       pendingPatientPhone: a.pendingPatientPhone,
     }));
-  }, [allAppointments, allPatients, isClinicAdmin, isReceptionist, podiatristFilter, clinicPodiatrists]);
+  }, [allAppointments, allPatients, isClinicAdmin, isReceptionist, podiatristFilter, clinicPodiatrists, t.calendar.unknown]);
 
   // Calendar navigation
   const navigatePrev = () => {
@@ -183,8 +183,7 @@ const CalendarPage = () => {
     const month = currentDate.getMonth();
     
     const firstDay = new Date(year, month, 1);
-    const lastDay = new Date(year, month + 1, 0);
-    
+
     // Start from Monday (adjust if first day is Sunday)
     const startDate = new Date(firstDay);
     const dayOfWeek = startDate.getDay();

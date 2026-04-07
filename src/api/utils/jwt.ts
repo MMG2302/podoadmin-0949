@@ -97,7 +97,7 @@ export async function verifyAccessToken(token: string): Promise<JWTPayload | nul
     }
     
     return typedPayload;
-  } catch (error) {
+  } catch {
     return null;
   }
 }
@@ -116,7 +116,7 @@ export async function verifyRefreshToken(token: string): Promise<JWTPayload | nu
     }
     
     return typedPayload;
-  } catch (error) {
+  } catch {
     return null;
   }
 }

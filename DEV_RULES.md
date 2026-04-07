@@ -8,6 +8,7 @@
 ## 📋 Índice
 
 1. [Seguridad](#1-seguridad)
+   - 1.0 [Política de seguridad operativa](#10-política-de-seguridad-operativa)
    - 1.1 [Secrets y Variables de Entorno](#11-secrets-y-variables-de-entorno)
    - 1.2 [Autenticación y Autorización](#12-autenticación-y-autorización)
    - 1.3 [Webhooks](#13-webhooks)
@@ -78,6 +79,60 @@ Esta guía cubre las superficies que suelen romper SaaS (en línea con tu lista)
 **Secrets en Cloudflare**: en producción usar `wrangler secret put <NOMBRE>`; en local, **`.dev.vars`** (nunca commitear). **`.env.example`** debe listar solo placeholders — nunca valores reales de `BETTER_AUTH_SECRET`, claves de terceros, etc.
 
 > **Nota sobre la estructura**: Tras 1.1–1.7 aparece un bloque resumido y, más abajo, otro bloque OWASP ampliado con subapartados **1.8–1.20** que profundizan en los mismos temas (numeración repetida a propósito como “cheat sheet” + guía larga).
+
+### 1.0 Política de seguridad operativa
+
+Normas que **toda nueva ruta, middleware o cambio en API/front** debe respetar. Stack de referencia: **Hono + Cloudflare Workers + D1** (no Express); los equivalentes a “helmet” / “express-rate-limit” son los middlewares propios del repo.
+
+#### 1.0.1 Rate limiting
+
+| Ámbito | Regla | Implementación en repo |
+|--------|--------|-------------------------|
+| **API en general** | Límite por IP en ventana de **15 min**; objetivo **100** peticiones/IP | `globalApiRateLimitMiddleware` + `checkAndRecordWindowLimit` (`src/api/middleware/global-api-rate-limit.ts`, `src/api/utils/global-rate-limit-d1.ts`), identificador `win:api:<IP>` |
+| **Auth (login, recuperación, verificación email)** | **5** peticiones POST sensibles por IP / 15 min (complementa el límite progresivo por credencial en login) | Mismo middleware: rutas `POST /api/auth/login`, `forgot-password`, `reset-password`, `verify-email` → `win:auth:<IP>` |
+| **Admin / mutaciones sensibles** | **10** mutaciones (POST/PUT/PATCH/DELETE) por IP / 15 min en prefijos acordados (`/api/users`, `/api/system`, `/api/audit-logs`, `/api/messages`, `/api/registration-lists`, `/api/clinics`, `/api/receptionists`, `/api/professionals`) | `win:sens:<IP>` |
+| **429** | Respuesta clara + cabecera `Retry-After` cuando aplique | Cuerpo: `error`, `message`, `retryAfter` (y `requestId` vía middleware de respuestas ≥400) |
+| **Exenciones** | `OPTIONS`, `/api/health`, `/api/ping`, `/api/public/config`, prefijo `/api/csrf` | Para monitores y preflight CORS |
+| **IP de confianza** | Sin cuota global si la IP está en `IP_WHITELIST` | `getIPWhitelist()` / `isIPWhitelisted()` |
+
+**Regla de producto**: al añadir endpoints públicos o muy llamados, revisar si deben entrar en la lista de exenciones o en un tier específico. Al añadir rutas **admin o de alto impacto**, actualizar `isSensitiveMutation` si el prefijo no está cubierto.
+
+Otros límites ya existentes: login progresivo (`rate-limit-d1.ts`), acciones (`action-rate-limit.ts`), registro, mensajes, logos — ver `RATE_LIMITING.md`.
+
+#### 1.0.2 Variables de entorno y secretos
+
+- **NUNCA** API keys, tokens, contraseñas o secretos en código fuente.
+- **SIEMPRE** variables de entorno / Secrets de Workers / `.dev.vars` en local.
+- **`.gitignore`**: debe incluir `.env`, `.dev.vars` y variantes; no commitear secretos.
+- **Documentación**: nuevas variables solo como nombres en **`.env.example`** (sin valores reales).
+- **Arranque**: el Worker **falla al iniciar** si faltan o son inválidos `JWT_SECRET`, `REFRESH_TOKEN_SECRET`, `CSRF_SECRET` (`src/api/utils/validate-env.ts`). Para otras variables críticas de una feature nueva, añadir validación explícita o documentar dependencia obligatoria en `ENV_VARIABLES.md`.
+
+#### 1.0.3 Validación y anti-inyección
+
+- Validar y sanitizar **entradas** (query, body JSON en POST/PUT/PATCH, headers relevantes) antes de usarlas en lógica o persistencia.
+- Preferir **Zod** (u otra librería de esquemas) en rutas nuevas; mantener coherencia con el resto del proyecto.
+- **SQL**: solo **Drizzle** u ORM parametrizado; prohibido concatenar input de usuario en SQL crudo.
+- **XSS**: React escapa por defecto; no usar `dangerouslySetInnerHTML` salvo necesidad auditada y sanitización fuerte.
+- **Rechazo de input**: devolver error controlado (4xx); **no** loguear cuerpos completos ni datos personales. Opcional: log mínimo (tipo de error, `requestId`, ruta) para patrones de abuso.
+
+#### 1.0.4 Cabeceras de seguridad HTTP
+
+- **CSP**, **X-Content-Type-Options**, **X-Frame-Options** (o frame-ancestors en CSP), **HSTS** en producción con HTTPS: configurados en `src/api/middleware/csp.ts` (y lógica asociada). Las nuevas rutas no deben debilitar estos headers sin revisión.
+
+#### 1.0.5 Autenticación y sesiones
+
+- Cookies de sesión/token: **HttpOnly**, **Secure** cuando corresponda, **SameSite** acorde al flujo (`COOKIES_IMPLEMENTATION.md`).
+- **CSRF** en mutaciones; exclusiones solo las documentadas (p. ej. login/refresh).
+- Contraseñas: **bcrypt** (u algoritmo acordado); **nunca** en claro en BD ni en logs.
+
+#### 1.0.6 Logging de seguridad
+
+| Evento | Qué hacer |
+|--------|-----------|
+| Autenticación fallida | Ya cubierto en flujo de login (notificaciones / intentos); no loguear la contraseña. |
+| Rate limit superado | `console.warn('[rate-limit]', requestId, tier, IP, método, path, retryAfter)` en middleware global. |
+| Validación / input rechazado | Mensaje de error al cliente; logs sin PII ni payloads completos. |
+| **Prohibido** en logs | Contraseñas, tokens completos, refresh/access JWT, datos clínicos o personales innecesarios. |
 
 ### 1.1 Secrets y Variables de Entorno
 

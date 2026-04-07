@@ -7,7 +7,6 @@ import { checkRateLimitD1, recordFailedAttemptD1, clearFailedAttemptsD1, getFail
 import { sendFailedLoginNotification, shouldSendNotification } from '../utils/email-notifications';
 import { checkAndRecordActionRateLimit } from '../utils/action-rate-limit';
 import { validateData, loginSchema, verifyEmailSchema, forgotPasswordSchema, resetPasswordSchema } from '../utils/validation';
-import { escapeHtml, sanitizeEmail } from '../utils/sanitization';
 import { getClientIP, createRateLimitIdentifier, isIPWhitelisted, getIPWhitelist } from '../utils/ip-tracking';
 import { getSafeUserAgent } from '../utils/request-headers';
 import type { User } from '../../web/contexts/auth-context';
@@ -1141,7 +1140,7 @@ authRoutes.post('/password-reset-requests/:id/reject', requireAuth, requireRole(
     const reason = (rawBody as { reason?: string }).reason || '';
 
     const { database } = await import('../database');
-    const { passwordResetRequests, createdUsers } = await import('../database/schema');
+    const { passwordResetRequests } = await import('../database/schema');
     const { eq } = await import('drizzle-orm');
 
     const [reqRow] = await database
@@ -1153,8 +1152,6 @@ authRoutes.post('/password-reset-requests/:id/reject', requireAuth, requireRole(
     if (!reqRow || reqRow.status !== 'pending') {
       return c.json({ error: 'Solicitud no encontrada o ya procesada' }, 404);
     }
-
-    const [userRow] = await database.select().from(createdUsers).where(eq(createdUsers.id, reqRow.userId)).limit(1);
 
     await database
       .update(passwordResetRequests)

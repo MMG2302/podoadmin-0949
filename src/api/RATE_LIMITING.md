@@ -4,6 +4,20 @@
 
 Se ha implementado un sistema de rate limiting progresivo para proteger contra ataques de fuerza bruta en el endpoint de login. El sistema aplica delays y bloqueos temporales basados en el número de intentos fallidos.
 
+### Rate limiting global por IP (API completa)
+
+Además, un **middleware global** (`src/api/middleware/global-api-rate-limit.ts`) aplica ventanas de **15 minutos** en D1 por IP:
+
+| Tier | Límite | Alcance |
+|------|--------|---------|
+| General | 100 req/IP | Resto de rutas `/api/*` |
+| Auth estricto | 5 req/IP | `POST` login, forgot-password, reset-password, verify-email |
+| Sensibles | 10 req/IP | `POST`/`PUT`/`PATCH`/`DELETE` en users, system, audit-logs, messages, registration-lists, clinics, receptionists, professionals |
+
+**Exenciones**: `OPTIONS`, `/api/health`, `/api/ping`, `/api/public/config`, rutas bajo `/api/csrf`. Las IPs en `IP_WHITELIST` no cuentan para este límite global.
+
+Detalle normativo: `DEV_RULES.md` §1.0.1.
+
 ## Límites Progresivos
 
 ### 1. 3 Intentos Fallidos → Retardo de 5 segundos

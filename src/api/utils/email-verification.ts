@@ -1,6 +1,6 @@
 import { database } from '../database';
 import { emailVerificationTokens } from '../database/schema';
-import { eq, and, lt } from 'drizzle-orm';
+import { eq, and } from 'drizzle-orm';
 
 /**
  * Utilidades para tokens de verificación de email

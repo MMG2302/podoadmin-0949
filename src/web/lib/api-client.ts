@@ -13,6 +13,8 @@ export interface ApiResponse<T = any> {
   data?: T;
   error?: string;
   message?: string;
+  /** Presente en errores HTTP de la API (JSON o cabecera X-Request-Id) para cruzar con logs del Worker */
+  requestId?: string;
   // Campos adicionales que pueden venir en respuestas de error (ej: rate limiting)
   retryAfter?: number;
   blockedUntil?: number;
@@ -178,6 +180,10 @@ export async function apiRequest<T = any>(
       // Body vacío o no JSON: data queda {}
     }
 
+    const headerRequestId = response.headers.get('X-Request-Id') ?? undefined;
+    const bodyRequestId = typeof data?.requestId === 'string' ? data.requestId : undefined;
+    const resolvedRequestId = bodyRequestId || headerRequestId;
+
     // Si el access token expiró (401), intentar renovar con refresh token
     if (response.status === 401 && !isLogin && !isRefresh && endpoint !== '/auth/refresh') {
       const refreshed = await refreshAccessToken();
@@ -210,10 +216,15 @@ export async function apiRequest<T = any>(
         const retryData = await retryResponse.json();
         
         if (!retryResponse.ok) {
+          const rid =
+            (typeof retryData?.requestId === 'string' ? retryData.requestId : undefined) ||
+            retryResponse.headers.get('X-Request-Id') ||
+            undefined;
           return {
             success: false,
             error: retryData.error || 'Error en la solicitud',
             message: retryData.message,
+            requestId: rid,
             retryAfter: retryData.retryAfter,
             blockedUntil: retryData.blockedUntil,
             attemptCount: retryData.attemptCount,
@@ -233,6 +244,7 @@ export async function apiRequest<T = any>(
         success: false,
         error: data.error || 'Error en la solicitud',
         message: data.message,
+        requestId: resolvedRequestId,
         data, // Incluir body completo para que el frontend pueda leer data.message
         // Pasar campos de rate limiting para login
         retryAfter: data.retryAfter,

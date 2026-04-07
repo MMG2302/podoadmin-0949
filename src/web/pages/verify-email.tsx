@@ -1,32 +1,18 @@
-import { useState, useEffect } from "react";
-import { useLocation, useLocation as useWouterLocation } from "wouter";
+import { useState, useEffect, useCallback } from "react";
+import { useLocation } from "wouter";
 import { useLanguage } from "../contexts/language-context";
 import { LanguageSwitcher } from "../components/language-switcher";
 import { api } from "../lib/api-client";
 
 const VerifyEmail = () => {
   const { t } = useLanguage();
-  const [location, setLocation] = useWouterLocation();
-  const [token, setToken] = useState<string | null>(null);
+  const [, setLocation] = useLocation();
   const [isVerifying, setIsVerifying] = useState(false);
   const [isVerified, setIsVerified] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [user, setUser] = useState<{ id: string; email: string; name: string } | null>(null);
 
-  useEffect(() => {
-    // Obtener token de la URL
-    const urlParams = new URLSearchParams(window.location.search);
-    const tokenParam = urlParams.get("token");
-    
-    if (tokenParam) {
-      setToken(tokenParam);
-      verifyEmail(tokenParam);
-    } else {
-      setError("No se proporcionó un token de verificación");
-    }
-  }, []);
-
-  const verifyEmail = async (emailToken: string) => {
+  const verifyEmail = useCallback(async (emailToken: string) => {
     setIsVerifying(true);
     setError(null);
 
@@ -44,20 +30,30 @@ const VerifyEmail = () => {
         if (response.data?.user) {
           setUser(response.data.user);
         }
-        // Redirigir al login después de 3 segundos
         setTimeout(() => {
           setLocation("/login");
         }, 3000);
       } else {
         setError(response.error || response.message || "Error al verificar el email");
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Error verificando email:", err);
       setError("Error de conexión con el servidor");
     } finally {
       setIsVerifying(false);
     }
-  };
+  }, [setLocation]);
+
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const tokenParam = urlParams.get("token");
+
+    if (tokenParam) {
+      void verifyEmail(tokenParam);
+    } else {
+      setError("No se proporcionó un token de verificación");
+    }
+  }, [verifyEmail]);
 
   return (
     <div className="min-h-screen bg-white flex">

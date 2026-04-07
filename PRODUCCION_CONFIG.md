@@ -2,6 +2,7 @@
 
 Guía de variables, secretos y pasos para desplegar PodoAdmin en producción (Cloudflare Workers + D1).
 
+**Guía maestra de despliegue (comandos, health, requestId, lista blanca de rutas):** **DESPLIEGUE_PRODUCCION.md**  
 Para detalle de cada variable, ver **ENV_VARIABLES.md**.
 
 ---
@@ -160,6 +161,7 @@ Asegurar que en producción **no** se usen valores por defecto de desarrollo par
 
 ## 8. Referencias
 
+- **DESPLIEGUE_PRODUCCION.md** – Despliegue end-to-end: build, deploy, `/api/health`, Estado del sistema, `requestId`, R2, errores frecuentes.
 - **ENV_VARIABLES.md** – Listado completo de variables y generación de claves.
 - **README.md** – Comandos de DB y desarrollo.
 - **PHISHING_PROTECTION.md** – Medidas anti-phishing.

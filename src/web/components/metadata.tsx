@@ -1,18 +1,17 @@
 import siteConfig from "../../../website.config.json";
 
+type SiteConfigJson = typeof siteConfig & { keywords?: string[] | string };
+
 export function Metadata() {
+	const cfg = siteConfig as SiteConfigJson;
+	const kw = cfg.keywords;
+	const keywordsContent = Array.isArray(kw) ? kw.join(", ") : kw ?? "";
+
 	return (
 		<>
 			<title>{siteConfig.name}</title>
 			<meta name="description" content={siteConfig.description} />
-			<meta
-				name="keywords"
-				content={
-					Array.isArray((siteConfig as any).keywords)
-						? (siteConfig as any).keywords.join(", ")
-						: ((siteConfig as any).keywords || "")
-				}
-			/>
+			<meta name="keywords" content={keywordsContent} />
 
 			{/* Open Graph */}
 			<meta property="og:title" content={siteConfig.name} />

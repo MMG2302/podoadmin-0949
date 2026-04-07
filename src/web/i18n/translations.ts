@@ -223,6 +223,7 @@ export interface Translations {
     settings: string;
     users: string;
     auditLog: string;
+    systemDiagnostics: string;
     profile: string;
     clinicManagement: string;
   };
@@ -443,6 +444,34 @@ export interface Translations {
     reopenConversation: string;
     from: string;
     sent: string;
+  };
+
+  /** Estado del sistema / guía de incidencias (solo super_admin en UI) */
+  systemDiagnostics: {
+    title: string;
+    subtitle: string;
+    sectionStatus: string;
+    workerLabel: string;
+    databaseLabel: string;
+    statusOk: string;
+    statusError: string;
+    latencyLabel: string;
+    environmentSection: string;
+    checkedAtLabel: string;
+    refresh: string;
+    loadError: string;
+    publicHealthTitle: string;
+    publicHealthDesc: string;
+    sessionHealthUrlLabel: string;
+    productionHealthUrlLabel: string;
+    productionHealthNote: string;
+    sectionGuide: string;
+    guideIntro: string;
+    guideItem1: string;
+    guideItem2: string;
+    guideItem3: string;
+    guideItem4: string;
+    correlationHint: string;
   };
   
   // Roles
@@ -690,6 +719,7 @@ export const translations: Record<Language, Translations> = {
       settings: "Configuración",
       users: "Usuarios",
       auditLog: "Registro de auditoría",
+      systemDiagnostics: "Estado del sistema",
       profile: "Perfil",
       clinicManagement: "Gestión de Clínica",
     },
@@ -896,6 +926,36 @@ export const translations: Record<Language, Translations> = {
       reopenConversation: "Reabrir conversación",
       from: "De",
       sent: "Enviado",
+    },
+    systemDiagnostics: {
+      title: "Estado del sistema",
+      subtitle: "Comprueba el worker, la base de datos y la URL de salud pública; guía breve ante incidencias.",
+      sectionStatus: "Estado operativo",
+      workerLabel: "API / Worker",
+      databaseLabel: "Base de datos (D1)",
+      statusOk: "Correcto",
+      statusError: "Error",
+      latencyLabel: "Latencia",
+      environmentSection: "Entorno (NODE_ENV)",
+      checkedAtLabel: "Última comprobación",
+      refresh: "Actualizar",
+      loadError: "No se pudo cargar el diagnóstico.",
+      publicHealthTitle: "Monitorización externa",
+      publicHealthDesc:
+        "Puedes usar esta URL en herramientas de disponibilidad (solo comprueba que el worker responde, sin consultar D1):",
+      sessionHealthUrlLabel: "Desde esta sesión (origen del navegador)",
+      productionHealthUrlLabel: "URL pública para monitorización (dominio configurado en el Worker)",
+      productionHealthNote:
+        "En desarrollo verás localhost; es normal. En producción abre la app con tu dominio real (p. ej. https://app.tudominio.com) y esta sección mostrará esa URL. Para que aparezca aquí aunque entres por localhost, configura OFFICIAL_APP_DOMAIN o el primer valor de ALLOWED_ORIGINS en Cloudflare (Variables del Worker). Los monitores externos deben apuntar siempre a la URL de producción, no a tu PC.",
+      sectionGuide: "Ante errores o caídas",
+      guideIntro: "Para acotar y comunicar un problema:",
+      guideItem1: "Anota la hora aproximada, la pantalla y la acción que realizabas.",
+      guideItem2:
+        "En errores de API, el cliente expone requestId (cuerpo JSON o cabecera X-Request-Id). Inclúyelo al reportar para cruzarlo con los logs del Worker en Cloudflare.",
+      guideItem3: "Revisa el registro de auditoría para acciones recientes de usuarios.",
+      guideItem4: "En Cloudflare, revisa métricas y logs del Worker asociados a ese intervalo de tiempo.",
+      correlationHint:
+        "Las respuestas con código HTTP de error incluyen requestId en el JSON y la cabecera X-Request-Id en todas las respuestas JSON para correlación.",
     },
     roles: {
       superAdmin: "Super Administrador",
@@ -1203,6 +1263,7 @@ export const translations: Record<Language, Translations> = {
       settings: "Settings",
       users: "Users",
       auditLog: "Audit Log",
+      systemDiagnostics: "System status",
       profile: "Profile",
       clinicManagement: "Clinic Management",
     },
@@ -1409,6 +1470,36 @@ export const translations: Record<Language, Translations> = {
       reopenConversation: "Reopen conversation",
       from: "From",
       sent: "Sent",
+    },
+    systemDiagnostics: {
+      title: "System status",
+      subtitle: "Check the worker, database, and public health URL; short guide when something fails.",
+      sectionStatus: "Operational status",
+      workerLabel: "API / Worker",
+      databaseLabel: "Database (D1)",
+      statusOk: "OK",
+      statusError: "Error",
+      latencyLabel: "Latency",
+      environmentSection: "Environment (NODE_ENV)",
+      checkedAtLabel: "Last check",
+      refresh: "Refresh",
+      loadError: "Could not load diagnostics.",
+      publicHealthTitle: "External monitoring",
+      publicHealthDesc:
+        "Use this URL in uptime tools (checks that the worker responds only; does not query D1):",
+      sessionHealthUrlLabel: "From this session (browser origin)",
+      productionHealthUrlLabel: "Public URL for monitoring (domain set on the Worker)",
+      productionHealthNote:
+        "In development you will see localhost; that is expected. In production open the app with your real domain and this section will show that URL. To show the production URL here even while on localhost, set OFFICIAL_APP_DOMAIN or the first ALLOWED_ORIGINS entry in Cloudflare Worker variables. External monitors must target the production URL, not your PC.",
+      sectionGuide: "When errors or outages occur",
+      guideIntro: "To narrow down and report an issue:",
+      guideItem1: "Note the approximate time, screen, and action you were performing.",
+      guideItem2:
+        "On API errors, the client surfaces requestId (JSON body or X-Request-Id header). Include it when reporting to match Cloudflare Worker logs.",
+      guideItem3: "Review the audit log for recent user actions.",
+      guideItem4: "In Cloudflare, check Worker metrics and logs for that time window.",
+      correlationHint:
+        "Error responses include requestId in the JSON body; X-Request-Id is set on JSON responses for correlation.",
     },
     roles: {
       superAdmin: "Super Admin",
@@ -1716,6 +1807,7 @@ export const translations: Record<Language, Translations> = {
       settings: "Configurações",
       users: "Usuários",
       auditLog: "Log de Auditoria",
+      systemDiagnostics: "Estado do sistema",
       profile: "Perfil",
       clinicManagement: "Gestão da Clínica",
     },
@@ -1920,6 +2012,36 @@ export const translations: Record<Language, Translations> = {
       reopenConversation: "Reabrir conversa",
       from: "De",
       sent: "Enviado",
+    },
+    systemDiagnostics: {
+      title: "Estado do sistema",
+      subtitle: "Verifique o worker, a base de dados e o URL de saúde pública; guia breve em caso de incidentes.",
+      sectionStatus: "Estado operacional",
+      workerLabel: "API / Worker",
+      databaseLabel: "Base de dados (D1)",
+      statusOk: "OK",
+      statusError: "Erro",
+      latencyLabel: "Latência",
+      environmentSection: "Ambiente (NODE_ENV)",
+      checkedAtLabel: "Última verificação",
+      refresh: "Atualizar",
+      loadError: "Não foi possível carregar o diagnóstico.",
+      publicHealthTitle: "Monitorização externa",
+      publicHealthDesc:
+        "Pode usar este URL em ferramentas de disponibilidade (apenas confirma que o worker responde, sem consultar D1):",
+      sessionHealthUrlLabel: "Desta sessão (origem do navegador)",
+      productionHealthUrlLabel: "URL pública para monitorização (domínio configurado no Worker)",
+      productionHealthNote:
+        "Em desenvolvimento verá localhost; é normal. Em produção abra a app com o domínio real. Para mostrar aqui a URL de produção mesmo em localhost, configure OFFICIAL_APP_DOMAIN ou ALLOWED_ORIGINS nas variáveis do Worker na Cloudflare. Monitores externos devem usar a URL de produção, não o seu PC.",
+      sectionGuide: "Ante erros ou indisponibilidade",
+      guideIntro: "Para isolar e comunicar um problema:",
+      guideItem1: "Anote a hora aproximada, o ecrã e a ação que estava a realizar.",
+      guideItem2:
+        "Em erros da API, o cliente mostra requestId (corpo JSON ou cabeçalho X-Request-Id). Inclua ao reportar para cruzar com os logs do Worker.",
+      guideItem3: "Consulte o registo de auditoria para ações recentes dos utilizadores.",
+      guideItem4: "No Cloudflare, veja métricas e logs do Worker nesse intervalo.",
+      correlationHint:
+        "Respostas de erro incluem requestId no JSON; o cabeçalho X-Request-Id é enviado nas respostas JSON para correlação.",
     },
     roles: {
       superAdmin: "Super Administrador",
@@ -2227,6 +2349,7 @@ export const translations: Record<Language, Translations> = {
       settings: "Paramètres",
       users: "Utilisateurs",
       auditLog: "Journal d'audit",
+      systemDiagnostics: "État du système",
       profile: "Profil",
       clinicManagement: "Gestion de Clinique",
     },
@@ -2433,6 +2556,36 @@ export const translations: Record<Language, Translations> = {
       reopenConversation: "Rouvrir la conversation",
       from: "De",
       sent: "Envoyé",
+    },
+    systemDiagnostics: {
+      title: "État du système",
+      subtitle: "Vérifiez le worker, la base de données et l'URL de santé publique ; guide rapide en cas d'incident.",
+      sectionStatus: "État opérationnel",
+      workerLabel: "API / Worker",
+      databaseLabel: "Base de données (D1)",
+      statusOk: "OK",
+      statusError: "Erreur",
+      latencyLabel: "Latence",
+      environmentSection: "Environnement (NODE_ENV)",
+      checkedAtLabel: "Dernière vérification",
+      refresh: "Actualiser",
+      loadError: "Impossible de charger le diagnostic.",
+      publicHealthTitle: "Surveillance externe",
+      publicHealthDesc:
+        "Vous pouvez utiliser cette URL dans des outils de disponibilité (vérifie seulement que le worker répond, sans interroger D1) :",
+      sessionHealthUrlLabel: "Depuis cette session (origine du navigateur)",
+      productionHealthUrlLabel: "URL publique pour la surveillance (domaine configuré sur le Worker)",
+      productionHealthNote:
+        "En développement vous verrez localhost ; c'est normal. En production ouvrez l'app avec votre domaine réel. Pour afficher ici l'URL de production même en localhost, définissez OFFICIAL_APP_DOMAIN ou ALLOWED_ORIGINS dans les variables du Worker Cloudflare. Les moniteurs externes doivent cibler l'URL de production, pas votre PC.",
+      sectionGuide: "En cas d'erreurs ou de panne",
+      guideIntro: "Pour cibler et signaler un problème :",
+      guideItem1: "Notez l'heure approximative, l'écran et l'action en cours.",
+      guideItem2:
+        "En cas d'erreur API, le client expose requestId (corps JSON ou en-tête X-Request-Id). Indiquez-le dans le rapport pour le croiser avec les logs du Worker.",
+      guideItem3: "Consultez le journal d'audit pour les actions récentes des utilisateurs.",
+      guideItem4: "Dans Cloudflare, consultez les métriques et journaux du Worker sur cette plage horaire.",
+      correlationHint:
+        "Les réponses d'erreur incluent requestId dans le JSON ; l'en-tête X-Request-Id est envoyé sur les réponses JSON pour corrélation.",
     },
     roles: {
       superAdmin: "Super Administrateur",

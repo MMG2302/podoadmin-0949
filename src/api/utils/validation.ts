@@ -12,20 +12,30 @@ import { escapeHtml, sanitizeEmail, containsXssPayload } from './sanitization';
 export const loginSchema = z.object({
   email: z
     .string()
-    .min(1, 'Email es requerido')
-    .email('Email inválido')
-    .max(255, 'Email demasiado largo')
-    .refine((val) => !containsXssPayload(val), {
-      message: 'Email contiene caracteres no permitidos',
-    })
-    .transform((val) => sanitizeEmail(val) || val), // Sanitizar email
+    .transform((val) => val.replace(/\s/g, ''))
+    .pipe(
+      z
+        .string()
+        .min(1, 'Email es requerido')
+        .email('Email inválido')
+        .max(255, 'Email demasiado largo')
+        .refine((val) => !containsXssPayload(val), {
+          message: 'Email contiene caracteres no permitidos',
+        })
+        .transform((val) => sanitizeEmail(val) || val),
+    ),
   password: z
     .string()
-    .min(1, 'Contraseña es requerida')
-    .max(255, 'Contraseña demasiado larga')
-    .refine((val) => !containsXssPayload(val), {
-      message: 'Contraseña contiene caracteres no permitidos',
-    }),
+    .transform((val) => val.replace(/\s/g, ''))
+    .pipe(
+      z
+        .string()
+        .min(1, 'Contraseña es requerida')
+        .max(255, 'Contraseña demasiado larga')
+        .refine((val) => !containsXssPayload(val), {
+          message: 'Contraseña contiene caracteres no permitidos',
+        }),
+    ),
 });
 
 /**

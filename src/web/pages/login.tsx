@@ -4,6 +4,11 @@ import { useLanguage } from "../contexts/language-context";
 import { LanguageSwitcher } from "../components/language-switcher";
 import { useLocation } from "wouter";
 
+/** Quita espacios, tabs y saltos para evitar cadenas “partidas” al pegar o escribir. */
+function stripWhitespace(value: string): string {
+  return value.replace(/\s/g, "");
+}
+
 const Login = () => {
   const { login } = useAuth();
   const { t } = useLanguage();
@@ -82,7 +87,7 @@ const Login = () => {
     setErrorDetails({});
     setIsLoading(true);
 
-    const result = await login(email, password);
+    const result = await login(stripWhitespace(email), stripWhitespace(password));
 
     if (result.success) {
       // Defer navigation so auth state is committed and layout paints correctly on mobile
@@ -261,7 +266,7 @@ const Login = () => {
                 <input
                   type="email"
                   value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  onChange={(e) => setEmail(stripWhitespace(e.target.value))}
                   className="w-full px-4 py-3.5 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:border-[#1a1a1a] focus:ring-1 focus:ring-[#1a1a1a] transition-all text-[#1a1a1a] placeholder:text-gray-400"
                   placeholder={t.auth.emailPlaceholder}
                   required
@@ -277,7 +282,7 @@ const Login = () => {
                   <input
                     type={showPassword ? "text" : "password"}
                     value={password}
-                    onChange={(e) => setPassword(e.target.value)}
+                    onChange={(e) => setPassword(stripWhitespace(e.target.value))}
                     className="w-full px-4 py-3.5 pr-11 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:border-[#1a1a1a] focus:ring-1 focus:ring-[#1a1a1a] transition-all text-[#1a1a1a] placeholder:text-gray-400"
                     placeholder={t.auth.passwordPlaceholder}
                     required

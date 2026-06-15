@@ -11,6 +11,10 @@ import { parseAndSanitizeHeaders } from '../utils/request-headers';
 const BODY_METHODS = ['POST', 'PUT', 'PATCH'];
 
 export const sanitizationMiddleware = createMiddleware(async (c, next) => {
+  if (c.req.path === '/stripe/webhook' || c.req.path.endsWith('/stripe/webhook')) {
+    return next();
+  }
+
   // 1. Query: mismo pipeline (normalize + escape en sanitizeInput)
   const query = c.req.query();
   if (Object.keys(query).length > 0) {

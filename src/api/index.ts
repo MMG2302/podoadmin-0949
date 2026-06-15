@@ -1,12 +1,8 @@
-import './utils/validate-env';
+import './utils/validate-production-safety';
 
 import { Hono } from 'hono';
 import { cors } from "hono/cors";
-
-/** Variables que el middleware inyecta en el contexto (p. ej. safeHeaders) */
-export type AppVariables = { safeHeaders: Record<string, string> };
-import { requestIdMiddleware, getOrCreateRequestId } from './middleware/request-id';
-import { globalApiRateLimitMiddleware } from './middleware/global-api-rate-limit';
+import type { AppVariables } from './types';
 import { blockSensitivePaths } from './middleware/block-sensitive-paths';
 import { authMiddleware } from './middleware/auth';
 import { csrfProtection } from './middleware/csrf';
@@ -30,12 +26,32 @@ import notificationsRoutes from './routes/notifications';
 import messagesRoutes from './routes/messages';
 import supportRoutes from './routes/support';
 import registrationListsRoutes from './routes/registration-lists';
-import systemRoutes from './routes/system';
+import whatsappRoutes from './routes/whatsapp';
+import whatsappMessagesRoutes from './routes/whatsapp-messages';
+import prescriptionsRoutes from './routes/prescriptions';
+import subscriptionsRoutes from './routes/subscriptions';
+import clinicalFeaturesRoutes from './routes/clinical-features';
+import complianceRoutes from './routes/compliance';
+import labAttachmentsRoutes from './routes/lab-attachments';
+import whatsappCampaignsRoutes from './routes/whatsapp-campaigns';
+import stripeWebhookRoutes from './routes/stripe-webhook';
+import trialActivationRoutes from './routes/trial-activation';
+import { requireActiveSubscription } from './middleware/subscription';
+import { getCaptchaConfig, isCaptchaExplicitlyDisabledInDev } from './utils/captcha';
+import { isEmailVerificationRequired } from './utils/email-verification';
+import { isStripeConfigured, getStripePublishableKey } from './utils/stripe-client';
+import { requestIdMiddleware } from './middleware/request-id';
+import {
+  globalRateLimitMiddleware,
+  tenantRateLimitMiddleware,
+} from './middleware/rate-limit-middleware';
+import { logger } from './utils/logger';
+import { captureServerError } from './utils/sentry-server';
+
+export type { AppVariables } from './types';
 
 const app = new Hono<{ Variables: AppVariables }>()
   .basePath('api');
-
-app.use('*', requestIdMiddleware);
 
 // CORS configuration
 // IMPORTANTE: No se puede usar origin: "*" con credentials: true
@@ -74,14 +90,16 @@ const originValidator = (origin: string | null): boolean => {
 // Bloquear acceso por URL a archivos/carpetas sensibles (node_modules, .sql, migraciones, etc.)
 app.use('*', blockSensitivePaths);
 
-// Rate limiting global por IP (D1); exenciones: health, ping, public/config, csrf, OPTIONS
-app.use('*', globalApiRateLimitMiddleware);
+// Webhook Stripe (cuerpo raw; sin CSRF ni suscripción activa)
+app.route('/stripe/webhook', stripeWebhookRoutes);
+
+// Correlation ID para trazabilidad (logs + respuestas de error)
+app.use('*', requestIdMiddleware);
 
 app.use(cors({
   origin: originValidator,
   credentials: true,
-  allowHeaders: ['Content-Type', 'Authorization', 'X-CSRF-Token'],
-  exposeHeaders: ['X-Request-Id'],
+  allowHeaders: ['Content-Type', 'Authorization', 'X-CSRF-Token', 'X-Request-Id'],
 }));
 
 // Content Security Policy y headers de seguridad
@@ -97,22 +115,35 @@ app.use('*', sanitizationMiddleware);
 // Cada ruta debe usar requireAuth() explícitamente para protección
 app.use('*', authMiddleware);
 
+// Rate limiting global (IP + ráfaga) y por tenant (clinicId) — escalado multi-clínica
+app.use('*', globalRateLimitMiddleware);
+app.use('*', tenantRateLimitMiddleware);
+
 // Rutas públicas (no requieren autenticación)
 app.get('/ping', (c) => c.json({ message: `Pong! ${Date.now()}` }));
-
-/** Salud mínima para monitores externos (sin tocar D1). */
-app.get('/health', (c) =>
-  c.json({
-    status: 'ok',
-    timestamp: new Date().toISOString(),
-  })
-);
 
 // Configuración pública para anti-phishing: dominio oficial (frontend puede mostrar "Solo accede desde [este dominio]")
 app.get('/public/config', (c) => {
   const officialDomain = process.env.OFFICIAL_APP_DOMAIN || process.env.ALLOWED_ORIGINS?.split(',')[0]?.trim() || '';
   const supportEmail = process.env.SUPPORT_EMAIL || process.env.ADMIN_EMAIL || '';
-  return c.json({ officialDomain: officialDomain || null, supportEmail: supportEmail || null });
+  const captchaConfig = getCaptchaConfig();
+  const sentryDsn = process.env.SENTRY_DSN?.trim() || null;
+  return c.json({
+    officialDomain: officialDomain || null,
+    supportEmail: supportEmail || null,
+    captcha: captchaConfig
+      ? { provider: captchaConfig.provider, siteKey: captchaConfig.siteKey }
+      : null,
+    captchaDisabledInDev: isCaptchaExplicitlyDisabledInDev(),
+    captchaRequired: process.env.NODE_ENV === 'production',
+    emailVerificationRequired: isEmailVerificationRequired(),
+    publicRegistrationEnabled: true,
+    googleOAuthEnabled: Boolean(process.env.GOOGLE_CLIENT_ID?.trim()),
+    stripeEnabled: isStripeConfigured(),
+    stripePublishableKey: getStripePublishableKey(),
+    sentryDsn,
+    sentryEnvironment: process.env.NODE_ENV || 'development',
+  });
 });
 
 // Ruta para obtener token CSRF (debe estar antes de la protección CSRF)
@@ -136,7 +167,15 @@ app.use('*', async (c, next) => {
   
   if (
     (path === '/api/auth/login' && method === 'POST') ||
-    (path === '/api/auth/refresh' && method === 'POST')
+    (path === '/api/auth/refresh' && method === 'POST') ||
+    (path === '/api/auth/register' && method === 'POST') ||
+    (path === '/api/auth/verify-email' && method === 'POST') ||
+    (path === '/api/auth/forgot-password' && method === 'POST') ||
+    (path === '/api/auth/reset-password' && method === 'POST') ||
+    (path === '/api/auth/google/callback' && method === 'POST') ||
+    (path === '/api/auth/google/url' && method === 'GET') ||
+    (path === '/api/subscriptions/stripe/checkout' && method === 'POST') ||
+    (path === '/api/subscriptions/stripe/portal' && method === 'POST')
   ) {
     return next();
   }
@@ -144,10 +183,32 @@ app.use('*', async (c, next) => {
   return csrfProtection(c, next);
 });
 
-// Rutas protegidas - requieren autenticación y autorización
+// Rutas protegidas - requieren autenticación, suscripción activa (excepto admin) y autorización
+app.use('/users/*', requireActiveSubscription);
+app.use('/patients/*', requireActiveSubscription);
+app.use('/sessions/*', requireActiveSubscription);
+app.use('/appointments/*', requireActiveSubscription);
+app.use('/prescriptions/*', requireActiveSubscription);
+app.use('/clinical/*', requireActiveSubscription);
+app.use('/whatsapp-messages/*', requireActiveSubscription);
+app.use('/whatsapp-campaigns/*', requireActiveSubscription);
+app.use('/integrations/whatsapp/*', requireActiveSubscription);
+app.use('/receptionists/*', requireActiveSubscription);
+app.use('/professionals/*', requireActiveSubscription);
+app.use('/consent-document/*', requireActiveSubscription);
+app.use('/clinics/*', requireActiveSubscription);
+app.use('/lab-attachments/*', requireActiveSubscription);
+
 app.route('/users', usersRoutes);
 app.route('/patients', patientsRoutes);
 app.route('/sessions', sessionsRoutes);
+app.route('/prescriptions', prescriptionsRoutes);
+app.route('/subscriptions', subscriptionsRoutes);
+app.route('/trial', trialActivationRoutes);
+app.route('/clinical', clinicalFeaturesRoutes);
+app.route('/compliance', complianceRoutes);
+app.route('/lab-attachments', labAttachmentsRoutes);
+app.route('/whatsapp-campaigns', whatsappCampaignsRoutes);
 app.route('/2fa', twoFactorRoutes);
 app.route('/security-metrics', metricsRoutes);
 app.route('/audit-logs', auditLogRoutes);
@@ -160,36 +221,25 @@ app.route('/notifications', notificationsRoutes);
 app.route('/messages', messagesRoutes);
 app.route('/support', supportRoutes);
 app.route('/registration-lists', registrationListsRoutes);
-app.route('/system', systemRoutes);
+app.route('/integrations/whatsapp', whatsappRoutes);
+app.route('/whatsapp-messages', whatsappMessagesRoutes);
+
+app.onError((err, c) => {
+  const requestId = c.get('requestId');
+  logger.error({
+    event: 'unhandled_api_error',
+    requestId,
+    path: c.req.path,
+    method: c.req.method,
+    message: err instanceof Error ? err.message : String(err),
+  });
+  captureServerError(err, { requestId, path: c.req.path, method: c.req.method });
+  return c.json({ error: 'Error interno', requestId }, 500);
+});
 
 // IMPORTANTE: Todas las rutas que manejen datos sensibles DEBEN usar:
 // 1. requireAuth() - para verificar que el usuario está autenticado
 // 2. requireRole() o requirePermission() - para verificar permisos específicos
 // 3. Validación adicional de ownership/clinicId cuando sea necesario
-
-app.onError((err, c) => {
-  const requestId = getOrCreateRequestId(c);
-  console.error('[api]', requestId, err);
-  return c.json(
-    {
-      error: 'Error interno',
-      message: err instanceof Error ? err.message : 'Error inesperado',
-      requestId,
-    },
-    500
-  );
-});
-
-app.notFound((c) => {
-  const requestId = getOrCreateRequestId(c);
-  return c.json(
-    {
-      error: 'Not Found',
-      message: 'Ruta no encontrada',
-      requestId,
-    },
-    404
-  );
-});
 
 export default app;

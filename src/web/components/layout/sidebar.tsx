@@ -1,5 +1,6 @@
 import { useLocation, Link } from "wouter";
-import { useAuth } from "../../contexts/auth-context";
+import { useAuth, getPostLoginPath } from "../../contexts/auth-context";
+import { hasActiveSystemAccess, isNavPathAllowedWithoutPayment } from "../../lib/system-access";
 import { useLanguage } from "../../contexts/language-context";
 import { usePermissions } from "../../hooks/use-permissions";
 import { LanguageSwitcher } from "../language-switcher";
@@ -22,7 +23,15 @@ export const Sidebar = ({
   const [location] = useLocation();
   const { user, logout } = useAuth();
   const { t } = useLanguage();
-  const { hasPermission, isSuperAdmin, isClinicAdmin, isAdmin, isPodiatrist, isReceptionist } = usePermissions();
+  const {
+    hasPermission,
+    canViewWhatsAppMessages,
+    isSuperAdmin,
+    isClinicAdmin,
+    isAdmin,
+    isPodiatrist,
+    isReceptionist,
+  } = usePermissions();
 
   const getRoleLabel = () => {
     if (isSuperAdmin) return t.roles.superAdmin;
@@ -123,6 +132,50 @@ export const Sidebar = ({
       roles: ["clinic_admin", "podiatrist", "receptionist"] as const,
     },
     {
+      path: "/billing",
+      label: "Facturación",
+      icon: (
+        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+        </svg>
+      ),
+      permission: "view_sessions" as const,
+      roles: ["clinic_admin", "podiatrist"] as const,
+    },
+    {
+      path: "/clinical-tools",
+      label: "Herramientas clínicas",
+      icon: (
+        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />
+        </svg>
+      ),
+      permission: "manage_sessions" as const,
+      roles: ["clinic_admin", "podiatrist"] as const,
+    },
+    {
+      path: "/whatsapp-campaigns",
+      label: "Campañas WhatsApp",
+      icon: (
+        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M11 5.882V19.24a1.76 1.76 0 01-3.417-.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z" />
+        </svg>
+      ),
+      permission: "view_whatsapp_messages" as const,
+      roles: ["clinic_admin", "podiatrist"] as const,
+    },
+    {
+      path: "/whatsapp-messages",
+      label: t.nav.whatsappMessages,
+      icon: (
+        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M8.625 9.75h6.75m-6.75 3h4.5m-7.23 6.72A9 9 0 1119.5 6.5a9 9 0 01-12.605 12.72L3 21l1.78-3.78z" />
+        </svg>
+      ),
+      permission: "view_whatsapp_messages" as const,
+      roles: ["clinic_admin", "podiatrist"] as const,
+    },
+    {
       path: "/audit-log",
       label: t.nav.auditLog,
       icon: (
@@ -148,17 +201,38 @@ export const Sidebar = ({
 
   const filteredNavItems = navItems.filter((item) => {
     if (!user) return false;
-    // Check if user role is in the allowed roles
-    return item.roles.includes(user.role as typeof item.roles[number]) && hasPermission(item.permission);
+    const roleAllowed = item.roles.includes(user.role as (typeof item.roles)[number]);
+    if (!roleAllowed) return false;
+    if (!hasActiveSystemAccess(user) && !isNavPathAllowedWithoutPayment(item.path)) return false;
+    if (item.path === "/whatsapp-messages" || item.path === "/whatsapp-campaigns") return canViewWhatsAppMessages;
+    return hasPermission(item.permission);
   });
 
   // Si no hay ningún ítem (rol no reconocido o permisos raros), mostrar al menos Inicio para no dejar sin nada
+  const pendingAccessFallback = user && !hasActiveSystemAccess(user)
+    ? [
+        {
+          path: getPostLoginPath(user),
+          label: user.role === "clinic_admin" || user.role === "podiatrist" ? "Facturación" : "Soporte",
+          icon: (
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+            </svg>
+          ),
+          permission: "view_dashboard" as const,
+          roles: ["super_admin", "clinic_admin", "admin", "podiatrist", "receptionist"] as const,
+        },
+      ]
+    : [];
+
   const itemsToShow =
     filteredNavItems.length > 0
       ? filteredNavItems
-      : user
-        ? navItems.filter((item) => item.path === "/")
-        : [];
+      : pendingAccessFallback.length > 0
+        ? pendingAccessFallback
+        : user
+          ? navItems.filter((item) => item.path === "/")
+          : [];
 
   const isActive = (path: string) => {
     if (path === "/") return location === "/";

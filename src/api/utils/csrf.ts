@@ -72,7 +72,7 @@ export async function validateCsrfToken(token: string): Promise<boolean> {
     const expectedHash = await createHash(randomToken + getCsrfSecret());
     
     return hash === expectedHash;
-  } catch {
+  } catch (error) {
     return false;
   }
 }

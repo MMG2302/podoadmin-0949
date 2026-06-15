@@ -5,11 +5,14 @@ import { useLanguage } from "../contexts/language-context";
 import { useAuth } from "../contexts/auth-context";
 import { usePermissions } from "../hooks/use-permissions";
 import { useRefreshOnFocus } from "../hooks/use-refresh-on-focus";
+import type { Patient, ClinicalSession } from "../types/clinical";
+import { postAuditLog } from "../lib/audit-client";
 import {
-  getSessionsByPatient,
-  Patient,
-  addAuditLog,
-} from "../lib/storage";
+  PatientClinicalAlertsSection,
+  PatientLabAttachmentsSection,
+} from "../components/patients/patient-clinical-extras";
+import { PatientEvolutionNotesSection } from "../components/patients/patient-evolution-notes";
+import { PatientEvolutionReportButton } from "../components/sessions/session-clinical-extras";
 import { api } from "../lib/api-client";
 
 interface PatientFormData {
@@ -18,6 +21,7 @@ interface PatientFormData {
   dateOfBirth: string;
   gender: "male" | "female" | "other";
   idNumber: string;
+  curp: string;
   phone: string;
   email: string;
   address: string;
@@ -35,6 +39,7 @@ const emptyForm: PatientFormData = {
   dateOfBirth: "",
   gender: "other",
   idNumber: "",
+  curp: "",
   phone: "",
   email: "",
   address: "",
@@ -49,14 +54,16 @@ const emptyForm: PatientFormData = {
 const PatientsPage = () => {
   const { t } = useLanguage();
   const { user, getAllUsers } = useAuth();
-  const { isPodiatrist, isClinicAdmin, isReceptionist } = usePermissions();
-  const [, setLocation] = useLocation();
-
-  // Clinic admins deben usar Gestión de clínica; redirigir sin romper el orden de hooks
-  useEffect(() => {
-    if (isClinicAdmin) setLocation("/clinic");
-  }, [isClinicAdmin, setLocation]);
-
+  const { isSuperAdmin, isPodiatrist, isClinicAdmin, isReceptionist } = usePermissions();
+  const [location, setLocation] = useLocation();
+  
+  // Clinic admins should use the Clinic Management page for patient viewing/reassignment
+  // Redirect them if they try to access /patients directly (recepcionistas no)
+  if (isClinicAdmin) {
+    setLocation("/clinic");
+    return null;
+  }
+  
   // Podiatrists can siempre crear pacientes.
   // Recepcionistas solo pueden crear pacientes si tienen al menos un podólogo asignado.
   const receptionistHasAssignedPodiatrists =
@@ -64,6 +71,7 @@ const PatientsPage = () => {
   const canCreatePatient = isPodiatrist || receptionistHasAssignedPodiatrists;
   
   const [patients, setPatients] = useState<Patient[]>([]);
+  const [sessions, setSessions] = useState<ClinicalSession[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [showForm, setShowForm] = useState(false);
   const [editingPatient, setEditingPatient] = useState<Patient | null>(null);
@@ -127,11 +135,34 @@ const PatientsPage = () => {
     }
   }, []);
 
+  const loadSessions = useCallback(async () => {
+    try {
+      const response = await api.get<{ success: boolean; sessions: ClinicalSession[] }>("/sessions");
+      if (response.success && response.data?.success) {
+        setSessions(response.data.sessions);
+      }
+    } catch (error) {
+      console.error("Error cargando sesiones:", error);
+    }
+  }, []);
+
+  const sessionCountByPatient = useMemo(() => {
+    const counts: Record<string, number> = {};
+    for (const s of sessions) {
+      counts[s.patientId] = (counts[s.patientId] ?? 0) + 1;
+    }
+    return counts;
+  }, [sessions]);
+
   useEffect(() => {
     loadPatients();
-  }, [user?.id, loadPatients]);
+    loadSessions();
+  }, [user?.id, loadPatients, loadSessions]);
 
-  useRefreshOnFocus(loadPatients);
+  useRefreshOnFocus(() => {
+    loadPatients();
+    loadSessions();
+  });
 
   const filteredPatients = useMemo(() => {
     if (!searchQuery) return patients;
@@ -158,14 +189,11 @@ const PatientsPage = () => {
     }
   }, [patientIdFromUrl, patients]);
 
-  if (isClinicAdmin) {
-    return null;
-  }
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
   setFormErrors({});
   setGraceError(null);
+    const createdBy = isReceptionist && receptionistPodiatristId ? receptionistPodiatristId : (user?.id || "");
     if (isReceptionist && !receptionistPodiatristId && !editingPatient) {
       return; // receptionist must select podiatrist when creating
     }
@@ -192,6 +220,7 @@ const PatientsPage = () => {
       dateOfBirth: formData.dateOfBirth,
       gender: formData.gender,
       idNumber: formData.idNumber,
+      curp: formData.curp.trim() || undefined,
       phone: formData.phone,
       email: formData.email,
       address: formData.address,
@@ -236,20 +265,18 @@ const PatientsPage = () => {
           setPatients((prev) =>
             prev.map((p) => (p.id === updated.id ? updated : p))
           );
-          addAuditLog({
-            userId: user?.id || "",
-            userName: user?.name || "",
+          void postAuditLog({
             action: "UPDATE",
-            entityType: "patient",
-            entityId: updated.id,
-            details: JSON.stringify({
+            resourceType: "patient",
+            resourceId: updated.id,
+            details: {
               patientId: updated.id,
               patientName: `${updated.firstName} ${updated.lastName}`,
               folio: updated.folio,
-            }),
+            },
           });
         } else {
-          const errData = response.data as { issues?: unknown; message?: string } | undefined;
+          const errData = response.data as any;
           if (errData?.issues && Array.isArray(errData.issues)) {
             const fieldErrors: Record<string, string> = {};
             for (const issue of errData.issues as { path?: unknown[]; message?: string }[]) {
@@ -277,20 +304,18 @@ const PatientsPage = () => {
         if (response.success && response.data?.success) {
           const newPatient = response.data.patient;
           setPatients((prev) => [newPatient, ...prev]);
-          addAuditLog({
-            userId: user?.id || "",
-            userName: user?.name || "",
+          void postAuditLog({
             action: "CREATE",
-            entityType: "patient",
-            entityId: newPatient.id,
-            details: JSON.stringify({
+            resourceType: "patient",
+            resourceId: newPatient.id,
+            details: {
               patientId: newPatient.id,
               patientName: `${newPatient.firstName} ${newPatient.lastName}`,
               folio: newPatient.folio,
-            }),
+            },
           });
         } else {
-          const errData = response.data as { error?: string; message?: string; issues?: unknown } | undefined;
+          const errData = response.data as any;
           const errorCode = response.error || errData?.error;
 
           if (errorCode === "usuario_en_periodo_gracia") {
@@ -335,6 +360,7 @@ const PatientsPage = () => {
       dateOfBirth: patient.dateOfBirth,
       gender: patient.gender,
       idNumber: patient.idNumber,
+      curp: patient.curp ?? "",
       phone: patient.phone,
       email: patient.email,
       address: patient.address,
@@ -367,21 +393,19 @@ const PatientsPage = () => {
 
       if (response.success && response.data?.success) {
         setPatients((prev) => prev.filter((p) => p.id !== patient.id));
+        if (cascade) await loadSessions();
         closeDeleteConfirm();
         if (selectedPatient?.id === patient.id) setSelectedPatient(null);
-        addAuditLog({
-          userId: user?.id || "",
-          userName: user?.name || "",
+        void postAuditLog({
           action: "DELETE",
-          entityType: "patient",
-          entityId: patient.id,
-          details: JSON.stringify({
-            sessionId: null,
+          resourceType: "patient",
+          resourceId: patient.id,
+          details: {
             patientId: patient.id,
             patientName: `${patient.firstName} ${patient.lastName}`,
             folio: patient.folio,
             cascade,
-          }),
+          },
         });
       } else {
         const err = response.data as { error?: string; message?: string } | undefined;
@@ -508,6 +532,20 @@ const PatientsPage = () => {
                 </div>
               </div>
 
+              {/* Alertas clínicas */}
+              <PatientClinicalAlertsSection
+                patient={selectedPatient}
+                onUpdated={(alerts) =>
+                  setSelectedPatient((p) => (p ? { ...p, clinicalAlerts: alerts } : p))
+                }
+              />
+
+              <PatientEvolutionNotesSection patient={selectedPatient} />
+
+              <div className="mt-2">
+                <PatientEvolutionReportButton patientId={selectedPatient.id} />
+              </div>
+
               {/* Consent */}
               <div>
                 <h4 className="font-medium text-[#1a1a1a] mb-3">{t.patients.consent}</h4>
@@ -535,13 +573,15 @@ const PatientsPage = () => {
                 </div>
               </div>
 
+              <PatientLabAttachmentsSection patientId={selectedPatient.id} />
+
               {/* Sessions Summary */}
               <div>
                 <h4 className="font-medium text-[#1a1a1a] mb-3">{t.patients.clinicalHistory}</h4>
                 <div className="text-sm">
                   <span className="text-gray-500">{t.patients.totalSessions}:</span>
                   <span className="ml-2 font-medium">
-                    {getSessionsByPatient(selectedPatient.id).length}
+                    {sessionCountByPatient[selectedPatient.id] ?? 0}
                   </span>
                 </div>
               </div>
@@ -816,6 +856,20 @@ const PatientsPage = () => {
                   {formErrors.idNumber && (
                     <p className="mt-1 text-xs text-red-600">{formErrors.idNumber}</p>
                   )}
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-[#1a1a1a] dark:text-gray-100 mb-1">
+                    {t.patients.curp}
+                  </label>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">{t.patients.curpHint}</p>
+                  <input
+                    type="text"
+                    value={formData.curp}
+                    onChange={(e) => setFormData({ ...formData, curp: e.target.value.toUpperCase() })}
+                    maxLength={18}
+                    placeholder="XXXX000000HXXXXXX00"
+                    className="w-full px-3 py-2 border border-gray-200 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-[#1a1a1a] dark:text-white focus:outline-none focus:border-[#1a1a1a] dark:focus:border-gray-400"
+                  />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-[#1a1a1a] mb-1">
@@ -1170,7 +1224,7 @@ const PatientsPage = () => {
                     </div>
                     <div className="mobile-card-row">
                       <span className="mobile-card-label">{t.patients.totalSessions}</span>
-                      <span className="mobile-card-value">{getSessionsByPatient(patient.id).length}</span>
+                      <span className="mobile-card-value">{sessionCountByPatient[patient.id] ?? 0}</span>
                     </div>
                   </div>
                   
@@ -1238,7 +1292,7 @@ const PatientsPage = () => {
                         <td className="px-6 py-4 text-sm text-gray-600">{patient.email}</td>
                         <td className="px-6 py-4 text-sm text-gray-600">{patient.phone}</td>
                         <td className="px-6 py-4 text-sm text-gray-600">
-                          {getSessionsByPatient(patient.id).length}
+                          {sessionCountByPatient[patient.id] ?? 0}
                         </td>
                         <td className="px-6 py-4">
                           <div className="flex items-center justify-end gap-2">

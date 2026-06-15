@@ -1,5 +1,31 @@
-# Copia a .dev.vars (no commitear). Wrangler injecta estas vars en el Worker local.
-# Mismos valores que JWT_SECRET, REFRESH_TOKEN_SECRET y CSRF_SECRET de tu .env
+# Worker local (Wrangler). Copia a .dev.vars o ejecuta npm run setup:env
+# Min. 32 caracteres en cada secreto.
+
 JWT_SECRET=
 REFRESH_TOKEN_SECRET=
 CSRF_SECRET=
+
+NODE_ENV=development
+APP_BASE_URL=http://localhost:5173
+
+# CAPTCHA: en local (NODE_ENV=development) está desactivado por defecto.
+# Para probar Turnstile en local: CAPTCHA_FORCE_IN_DEV=1 y las keys CAPTCHA_*.
+# En producción (NODE_ENV=production) el CAPTCHA es obligatorio para registro público.
+
+# Verificación de email: desactivada en dev por defecto (email auto-verificado al registrarse).
+# Para probar el flujo completo en local: EMAIL_VERIFICATION_FORCE_IN_DEV=1
+
+# ALLOWED_ORIGINS=https://app.tudominio.com
+# OFFICIAL_APP_DOMAIN=https://app.tudominio.com
+
+# Observabilidad (opcional — Sentry)
+# SENTRY_DSN=https://xxx@xxx.ingest.sentry.io/xxx
+# Frontend build (opcional si no usas /api/public/config):
+# VITE_SENTRY_DSN=https://xxx@xxx.ingest.sentry.io/xxx
+
+# Rate limiting (opcional; ver src/api/RATE_LIMITING.md)
+# RATE_LIMIT_ANON_READ_PER_MIN=120
+# RATE_LIMIT_TENANT_WRITE_PER_MIN=400
+
+# Cifrado tokens WhatsApp (opcional; si no se define, usa CSRF_SECRET)
+# WHATSAPP_TOKEN_ENCRYPTION_KEY=genera-32-chars-aleatorios

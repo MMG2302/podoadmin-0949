@@ -1,10 +1,12 @@
 import { useState, useEffect, ReactNode } from "react";
+import { useLocation } from "wouter";
 import { Sidebar } from "./sidebar";
 import { NotificationsBell } from "../notifications-bell";
 import { SettingsButton } from "../settings-button";
 import { AnimatedThemeToggler } from "../ui/animated-theme-toggler";
 import { Dock, DockIcon } from "../ui/dock";
-import { getSidebarSettings, saveSidebarSettings } from "../../lib/storage";
+import { getSidebarSettings, saveSidebarSettings } from "../../lib/ui-preferences";
+import { useAuth, getPostLoginPath, hasActiveSystemAccess } from "../../contexts/auth-context";
 
 interface MainLayoutProps {
   children: ReactNode;
@@ -12,9 +14,19 @@ interface MainLayoutProps {
 }
 
 export const MainLayout = ({ children, title }: MainLayoutProps) => {
+  const [location, setLocation] = useLocation();
+  const { user } = useAuth();
+  const pendingAccess = user != null && !hasActiveSystemAccess(user);
+  const [subscriptionBanner, setSubscriptionBanner] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [sidebarLocked, setSidebarLocked] = useState<"visible" | "hidden" | null>(null);
+
+  useEffect(() => {
+    const onInactive = () => setSubscriptionBanner(true);
+    window.addEventListener("subscription:inactive", onInactive);
+    return () => window.removeEventListener("subscription:inactive", onInactive);
+  }, []);
 
   // Cargar preferencias de sidebar al iniciar
   useEffect(() => {
@@ -28,7 +40,7 @@ export const MainLayout = ({ children, title }: MainLayoutProps) => {
     window.scrollTo(0, 0);
     // Forzar reflow para que el navegador recalcule el layout (arregla header/sidebar que no aparecen hasta refresh)
     requestAnimationFrame(() => {
-      void document.body.offsetHeight;
+      document.body.offsetHeight;
     });
   }, []);
 
@@ -59,7 +71,7 @@ export const MainLayout = ({ children, title }: MainLayoutProps) => {
   };
 
   return (
-    <div className="flex min-h-dvh w-full overflow-x-hidden bg-gray-50 dark:bg-gray-950 md:h-dvh md:h-screen md:min-h-0 md:overflow-hidden">
+    <div className="h-dvh h-screen min-h-0 flex overflow-hidden bg-gray-50 dark:bg-gray-950">
       <Sidebar
         isOpen={sidebarOpen}
         onClose={() => setSidebarOpen(false)}
@@ -70,7 +82,7 @@ export const MainLayout = ({ children, title }: MainLayoutProps) => {
       
       {/* Main content area - flex para adaptarse al viewport, margen dinámico según sidebar */}
       <div
-        className={`flex flex-1 flex-col min-w-0 md:min-h-0 md:overflow-hidden md:pl-0 ml-0 w-full overflow-x-hidden transition-[margin] duration-300 ${
+        className={`flex-1 flex flex-col min-w-0 min-h-0 md:pl-0 ml-0 w-full overflow-hidden transition-[margin] duration-300 ${
           sidebarVisibleOnDesktop ? "md:ml-72" : "md:ml-0"
         }`}
       >
@@ -141,7 +153,33 @@ export const MainLayout = ({ children, title }: MainLayoutProps) => {
         </header>
 
         {/* Page content - scroll interno, fondo gris oscuro en dark mode */}
-        <main className="flex-1 min-w-0 overflow-x-hidden p-3 sm:p-4 md:p-6 lg:p-8 pb-safe bg-gray-50 dark:bg-gray-950 max-md:flex-none max-md:overflow-y-visible md:min-h-0 md:overflow-y-auto">
+        <main className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden p-3 sm:p-4 md:p-6 lg:p-8 pb-safe bg-gray-50 dark:bg-gray-950">
+          {pendingAccess && !location.startsWith("/billing") && !location.startsWith("/support") && (
+            <div className="mb-4 p-3 rounded-lg bg-amber-50 border border-amber-200 text-amber-900 text-sm flex flex-wrap items-center justify-between gap-2">
+              <span>
+                Tu acceso clínico está pendiente. Activa el pago en Facturación o espera a que un administrador habilite tu cuenta.
+              </span>
+              <button
+                type="button"
+                className="px-3 py-1 bg-amber-900 text-white rounded-lg text-xs font-medium"
+                onClick={() => setLocation(getPostLoginPath(user!))}
+              >
+                {user?.role === "clinic_admin" || user?.role === "podiatrist" ? "Ir a facturación" : "Ir a soporte"}
+              </button>
+            </div>
+          )}
+          {subscriptionBanner && !location.startsWith("/billing") && (
+            <div className="mb-4 p-3 rounded-lg bg-amber-50 border border-amber-200 text-amber-900 text-sm flex flex-wrap items-center justify-between gap-2">
+              <span>Tu suscripción no está activa. Renueva para seguir usando la plataforma.</span>
+              <button
+                type="button"
+                className="px-3 py-1 bg-amber-900 text-white rounded-lg text-xs font-medium"
+                onClick={() => setLocation("/billing")}
+              >
+                Ir a facturación
+              </button>
+            </div>
+          )}
           {children}
         </main>
       </div>

@@ -8,9 +8,6 @@ type Permission =
   | 'view_sessions'
   | 'manage_sessions'
   | 'manage_appointments'
-  | 'view_credits'
-  | 'manage_credits'
-  | 'purchase_credits'
   | 'view_users'
   | 'manage_users'
   | 'view_audit_log'
@@ -19,16 +16,13 @@ type Permission =
   | 'view_settings'
   | 'manage_settings'
   | 'view_clinic_stats'
-  | 'reassign_patients'
-  | 'adjust_credits';
+  | 'reassign_patients';
 
 const rolePermissions: Record<UserRole, Permission[]> = {
   super_admin: [
     'view_dashboard',
     'view_patients',
     'manage_patients',
-    'view_credits',
-    'manage_credits',
     'view_users',
     'manage_users',
     'view_audit_log',
@@ -41,7 +35,6 @@ const rolePermissions: Record<UserRole, Permission[]> = {
     'view_patients',
     'view_sessions',
     'manage_appointments',
-    'view_credits',
     'view_clinic_stats',
     'reassign_patients',
     'print_documents',
@@ -50,8 +43,6 @@ const rolePermissions: Record<UserRole, Permission[]> = {
   admin: [
     'view_dashboard',
     'view_users',
-    'view_credits',
-    'adjust_credits',
     'view_settings',
   ],
   podiatrist: [
@@ -61,7 +52,6 @@ const rolePermissions: Record<UserRole, Permission[]> = {
     'view_sessions',
     'manage_sessions',
     'manage_appointments',
-    'view_credits',
     'print_documents',
     'view_settings',
   ],

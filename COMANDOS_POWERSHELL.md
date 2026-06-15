@@ -7,7 +7,7 @@ Comandos para ejecutar desde PowerShell en la raíz del proyecto.
 ## Ir al proyecto
 
 ```powershell
-cd "c:\Users\mvs92\OneDrive\Escritorio\clinic\podoadmin-0949"
+cd "C:\proyectos\podoadmin-0949"
 ```
 
 ---
@@ -52,6 +52,8 @@ bun run db:seed:remote
 bun run db:create-super-admin "tu@email.com" "TuPasswordSegura" "Tu Nombre"
 ```
 
+> `scripts/super-admin.sql` es generado localmente y está en `.gitignore`. No lo subas al repositorio.
+
 **Aplicar en local** (para poder entrar con ese usuario en desarrollo):
 
 ```powershell
@@ -87,9 +89,9 @@ bun run cf-typegen
 ## Flujo típico la primera vez (solo local para dev)
 
 ```powershell
-cd "c:\Users\mvs92\OneDrive\Escritorio\clinic\podoadmin-0949"
+cd "C:\proyectos\podoadmin-0949"
 echo y | bunx wrangler d1 migrations apply DB --local
-bun run db:create-super-admin "mvs.92.m@gmail.com" "MarioMauriesG9223*" "Mario Mauries García"
+bun run db:create-super-admin "tu@email.com" "TuPasswordSegura" "Tu Nombre"
 bunx wrangler d1 execute DB --local --file=scripts/super-admin.sql
 bun dev
 ```
@@ -99,8 +101,8 @@ bun dev
 ## Flujo para remoto (producción)
 
 ```powershell
-cd "c:\Users\mvs92\OneDrive\Escritorio\clinic\podoadmin-0949"
+cd "C:\proyectos\podoadmin-0949"
 bun run db:migrate:remote
-bun run db:create-super-admin "mvs.92.m@gmail.com" "MarioMauriesG9223*" "Mario Mauries García"
+bun run db:create-super-admin "tu@email.com" "TuPasswordSegura" "Tu Nombre"
 bunx wrangler d1 execute DB --remote --file=scripts/super-admin.sql
 ```

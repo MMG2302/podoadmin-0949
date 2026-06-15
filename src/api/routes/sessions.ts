@@ -2,10 +2,18 @@ import { Hono } from 'hono';
 import { requireAuth } from '../middleware/auth';
 import { requirePermission } from '../middleware/authorization';
 import { sanitizePathParam } from '../utils/sanitization';
+import {
+  validateData,
+  validateQuery,
+  createSessionSchema,
+  updateSessionSchema,
+  sessionsListQuerySchema,
+} from '../utils/validation';
 import { database } from '../database';
 import { clinicalSessions as sessionsTable, patients as patientsTable, createdUsers as createdUsersTable } from '../database/schema';
 import { eq } from 'drizzle-orm';
 import { validateImageDataUri, MAX_SESSION_IMAGE_BYTES } from '../utils/logo-upload';
+import { syncClinicalRetentionForSession } from '../utils/clinical-retention';
 import { canUserAccess } from '../utils/user-retention';
 import { checkSessionCreateRateLimit } from '../utils/action-rate-limit';
 import {
@@ -14,7 +22,8 @@ import {
   getSessionAccessDeniedReason,
   isClinicAdminWithoutClinic,
 } from '../utils/tenant-isolation';
-import type { ClinicalSession } from '../../web/lib/storage';
+import type { ClinicalSession } from '../../web/types/clinical';
+import { mapDbSession } from '../utils/clinical-maps';
 
 const DEFAULT_MAX_SESSION_IMAGES = 10;
 /** Máximo de imágenes por sesión. Configurable con SESSION_IMAGE_MAX_COUNT (modo ligero). */
@@ -43,65 +52,6 @@ const sessionsRoutes = new Hono();
 // UUID criptográfico: imposible de adivinar por fuerza bruta, evita acceso por rutas predecibles
 const generateId = () => crypto.randomUUID();
 
-type DbSession = typeof sessionsTable.$inferSelect;
-
-// Mapea el registro de DB al shape esperado por el frontend (ClinicalSession de storage.ts)
-function mapDbSession(row: DbSession): ClinicalSession {
-  type NotesPayload = {
-    clinicalNotes?: string;
-    anamnesis?: string;
-    physicalExamination?: string;
-    diagnosis?: string;
-    treatmentPlan?: string;
-    images?: string[];
-    nextAppointmentDate?: string | null;
-    followUpNotes?: string | null;
-    appointmentReason?: string | null;
-    status?: ClinicalSession['status'];
-    completedAt?: string | null;
-    creditReservedAt?: string | null;
-  };
-
-  let extra: NotesPayload = {};
-
-  if (row.notes) {
-    try {
-      const parsed = JSON.parse(row.notes) as NotesPayload | string;
-      if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
-        extra = parsed as NotesPayload;
-      }
-    } catch {
-      // Si no es JSON, usamos el valor de notes solo como texto clínico
-    }
-  }
-
-  const status: ClinicalSession['status'] =
-    extra.status ?? (row.creditsUsed && row.creditsUsed > 0 ? 'completed' : 'draft');
-
-  return {
-    id: row.id,
-    patientId: row.patientId,
-    sessionDate: row.sessionDate,
-    status,
-    clinicalNotes: extra.clinicalNotes ?? row.notes ?? '',
-    anamnesis: extra.anamnesis ?? '',
-    physicalExamination: extra.physicalExamination ?? '',
-    diagnosis: extra.diagnosis ?? row.diagnosis ?? '',
-    treatmentPlan: extra.treatmentPlan ?? row.treatment ?? '',
-    images: extra.images ?? [],
-    createdAt: row.createdAt,
-    updatedAt: row.updatedAt,
-    completedAt:
-      extra.completedAt ??
-      (status === 'completed' ? row.updatedAt : null),
-    createdBy: row.createdBy,
-    creditReservedAt: extra.creditReservedAt ?? null,
-    nextAppointmentDate: extra.nextAppointmentDate ?? null,
-    followUpNotes: extra.followUpNotes ?? null,
-    appointmentReason: extra.appointmentReason ?? null,
-  };
-}
-
 // Serializa una sesión clínica completa en el campo notes (JSON)
 function buildNotesPayload(session: ClinicalSession): string {
   const payload = {
@@ -116,7 +66,6 @@ function buildNotesPayload(session: ClinicalSession): string {
     appointmentReason: session.appointmentReason,
     status: session.status,
     completedAt: session.completedAt,
-    creditReservedAt: session.creditReservedAt,
   };
 
   return JSON.stringify(payload);
@@ -142,7 +91,11 @@ sessionsRoutes.get(
           403
         );
       }
-      const patientFilter = c.req.query('patient');
+      const queryResult = validateQuery(sessionsListQuerySchema, c.req.query());
+      if (!queryResult.success) {
+        return c.json({ error: 'Parámetros inválidos', message: queryResult.error, issues: queryResult.issues }, 400);
+      }
+      const patientFilter = queryResult.data.patient;
 
       let rows = await database.select().from(sessionsTable);
 
@@ -292,17 +245,12 @@ sessionsRoutes.post(
           );
         }
       }
-      const body = await c.req.json().catch(() => ({}));
-
-      if (!body.patientId || !body.sessionDate) {
-        return c.json(
-          {
-            error: 'Datos inválidos',
-            message: 'patientId y sessionDate son requeridos',
-          },
-          400
-        );
+      const rawBody = await c.req.json().catch(() => ({}));
+      const validation = validateData(createSessionSchema, rawBody);
+      if (!validation.success) {
+        return c.json({ error: 'Datos inválidos', message: validation.error, issues: validation.issues }, 400);
       }
+      const body = validation.data;
 
       const patientRows = await database.select().from(patientsTable).where(eq(patientsTable.id, body.patientId)).limit(1);
       const patient = patientRows[0];
@@ -382,7 +330,6 @@ sessionsRoutes.post(
             ? body.completedAt || now
             : null,
         createdBy: sessionCreatedBy,
-        creditReservedAt: body.creditReservedAt || null,
         nextAppointmentDate: body.nextAppointmentDate || null,
         followUpNotes: body.followUpNotes || null,
         appointmentReason: body.appointmentReason || null,
@@ -396,11 +343,19 @@ sessionsRoutes.post(
         diagnosis: session.diagnosis || null,
         treatment: session.treatmentPlan || null,
         notes: buildNotesPayload(session),
-        creditsUsed: status === 'completed' ? 1 : 0,
+        creditsUsed: 0,
         createdBy: session.createdBy,
         createdAt: session.createdAt,
         updatedAt: session.updatedAt,
         clinicId: user?.clinicId ?? patient.clinicId ?? null,
+      });
+
+      await syncClinicalRetentionForSession({
+        sessionId: session.id,
+        patientId: session.patientId,
+        sessionDate: session.sessionDate,
+        completedAt: session.completedAt,
+        updatedAtIso: session.updatedAt,
       });
 
       return c.json({ success: true, session }, 201);
@@ -476,7 +431,12 @@ sessionsRoutes.put(
       }
 
       // No permitir cambiar de completed a draft
-      const body = await c.req.json().catch(() => ({}));
+      const rawBody = await c.req.json().catch(() => ({}));
+      const validation = validateData(updateSessionSchema, rawBody);
+      if (!validation.success) {
+        return c.json({ error: 'Datos inválidos', message: validation.error, issues: validation.issues }, 400);
+      }
+      const body = validation.data;
 
       const newPatientId =
         body.patientId !== undefined && body.patientId !== null && String(body.patientId) !== String(existingRow.patientId)
@@ -564,10 +524,6 @@ sessionsRoutes.put(
             ? body.completedAt || existingSession.completedAt || now
             : null,
         createdBy: existingSession.createdBy,
-        creditReservedAt:
-          body.creditReservedAt !== undefined
-            ? body.creditReservedAt
-            : existingSession.creditReservedAt,
         nextAppointmentDate:
           body.nextAppointmentDate !== undefined
             ? body.nextAppointmentDate
@@ -590,10 +546,18 @@ sessionsRoutes.put(
           diagnosis: updatedSession.diagnosis || null,
           treatment: updatedSession.treatmentPlan || null,
           notes: buildNotesPayload(updatedSession),
-          creditsUsed: updatedSession.status === 'completed' ? 1 : 0,
+          creditsUsed: 0,
           updatedAt: updatedSession.updatedAt,
         })
         .where(eq(sessionsTable.id, sessionId));
+
+      await syncClinicalRetentionForSession({
+        sessionId,
+        patientId: updatedSession.patientId,
+        sessionDate: updatedSession.sessionDate,
+        completedAt: updatedSession.completedAt,
+        updatedAtIso: updatedSession.updatedAt,
+      });
 
       return c.json({ success: true, session: updatedSession });
     } catch (error) {

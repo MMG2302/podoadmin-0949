@@ -8,6 +8,8 @@ import { logAuditEvent } from '../utils/audit-log';
 import { getClientIP } from '../utils/ip-tracking';
 import { getSafeUserAgent } from '../utils/request-headers';
 import { checkMessagesRateLimit } from '../utils/action-rate-limit';
+import { sanitizePathParam } from '../utils/sanitization';
+import { validateData, createMessageSchema } from '../utils/validation';
 
 const messagesRoutes = new Hono();
 messagesRoutes.use('*', requireAuth);
@@ -82,7 +84,8 @@ messagesRoutes.get('/', requireRole('super_admin'), async (c) => {
 messagesRoutes.get('/:id/read-status', requireRole('super_admin'), async (c) => {
   try {
     const user = c.get('user');
-    const messageId = c.req.param('id');
+    const messageId = sanitizePathParam(c.req.param('id'), 64);
+    if (!messageId) return c.json({ error: 'ID de mensaje inválido' }, 400);
 
     const rows = await database.select().from(sentMessagesTable).where(eq(sentMessagesTable.id, messageId)).limit(1);
     if (!rows.length) return c.json({ error: 'Mensaje no encontrado' }, 404);
@@ -121,19 +124,12 @@ messagesRoutes.get('/:id/read-status', requireRole('super_admin'), async (c) => 
 messagesRoutes.post('/', requireRole('super_admin'), async (c) => {
   try {
     const user = c.get('user');
-    const body = (await c.req.json().catch(() => ({}))) as {
-      subject?: string;
-      body?: string;
-      recipientIds?: string[];
-      recipientType?: 'all' | 'specific' | 'single';
-    };
-    const subject = (body.subject || '').trim();
-    const messageBody = (body.body || '').trim();
-    const recipientIds = Array.isArray(body.recipientIds) ? body.recipientIds : [];
-    const recipientType = body.recipientType || 'specific';
-
-    if (!subject || !messageBody) return c.json({ error: 'subject y body son requeridos' }, 400);
-    if (recipientIds.length === 0) return c.json({ error: 'recipientIds no puede estar vacío' }, 400);
+    const rawBody = await c.req.json().catch(() => ({}));
+    const validation = validateData(createMessageSchema, rawBody);
+    if (!validation.success) {
+      return c.json({ error: 'Datos inválidos', message: validation.error, issues: validation.issues }, 400);
+    }
+    const { subject, body: messageBody, recipientIds, recipientType } = validation.data;
 
     const rateLimit = await checkMessagesRateLimit(user.userId);
     if (!rateLimit.allowed) {
@@ -156,8 +152,18 @@ messagesRoutes.post('/', requireRole('super_admin'), async (c) => {
     const { extractUrlsFromText, checkUrlsWithSafeBrowsing } = await import('../utils/url-reputation');
     const urls = [...extractUrlsFromText(subject), ...extractUrlsFromText(messageBody)];
     if (urls.length > 0) {
-      const { unsafe } = await checkUrlsWithSafeBrowsing(urls);
-      if (unsafe.length > 0) {
+      const sb = await checkUrlsWithSafeBrowsing(urls);
+      if (sb.error && process.env.GOOGLE_SAFE_BROWSING_API_KEY) {
+        return c.json(
+          {
+            error: 'Verificación de enlaces no disponible',
+            message:
+              'No se pudo comprobar la seguridad de los enlaces. Intenta de nuevo en unos minutos o quita las URLs del mensaje.',
+          },
+          503
+        );
+      }
+      if (sb.unsafe.length > 0) {
         return c.json(
           {
             error: 'Enlace no seguro',

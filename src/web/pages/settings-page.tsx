@@ -1,10 +1,12 @@
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect } from "react";
 import { MainLayout } from "../components/layout/main-layout";
 import { useLanguage } from "../contexts/language-context";
 import { useAuth } from "../contexts/auth-context";
 import { AnimatedThemeToggler } from "../components/ui/animated-theme-toggler";
 import { ProfessionalInfo, type Clinic } from "../lib/storage";
 import { api } from "../lib/api-client";
+import { WhatsAppSettingsSection } from "../components/settings/whatsapp-settings-section";
+import { ComplianceSettingsSection } from "../components/settings/compliance-settings-section";
 
 interface ClinicInfoForm {
   clinicName: string;
@@ -17,11 +19,27 @@ interface ClinicInfoForm {
   licenseNumber: string;
   website: string;
   consentText: string;
+  legalName: string;
+  rfc: string;
+  clues: string;
+  establishmentType: string;
+  cofeprisRegistration: string;
 }
 
 // Nombre de clínica desde datos cargados o fallback
 const getClinicNameFrom = (clinic: Clinic | null, clinicId: string): string =>
   clinic?.clinicName ?? (clinicId ? `Clínica ${clinicId}` : "");
+
+// Get logo for a user (considering clinic membership) - exported for PDF/async use (API)
+export async function getLogoForUser(userId: string, clinicId?: string): Promise<string | null> {
+  if (clinicId) {
+    const r = await api.get<{ success?: boolean; logo?: string | null }>(`/clinics/${clinicId}/logo`);
+    if (r.success && r.data?.logo) return r.data.logo;
+  }
+  const r = await api.get<{ success?: boolean; logo?: string | null }>(`/professionals/logo/${userId}`);
+  if (r.success && r.data?.logo) return r.data.logo;
+  return null;
+}
 
 const SettingsPage = () => {
   const { t, language, setLanguage, languageNames, availableLanguages } = useLanguage();
@@ -33,6 +51,8 @@ const SettingsPage = () => {
   const isPodiatristIndependent = user?.role === "podiatrist" && !user?.clinicId;
   const isAdminRole = user?.role === "super_admin" || user?.role === "admin";
   const isReceptionist = user?.role === "receptionist";
+  const canConfigureWhatsApp =
+    user?.role === "podiatrist" || user?.role === "clinic_admin";
   
   const [userClinic, setUserClinic] = useState<Clinic | null>(null);
   const [saved, setSaved] = useState(false);
@@ -98,6 +118,11 @@ const SettingsPage = () => {
     licenseNumber: "",
     website: "",
     consentText: "",
+    legalName: "",
+    rfc: "",
+    clues: "",
+    establishmentType: "private_office",
+    cofeprisRegistration: "",
   });
   const [clinicInfoSaved, setClinicInfoSaved] = useState(false);
   const [clinicInfoError, setClinicInfoError] = useState<string | null>(null);
@@ -119,6 +144,10 @@ const SettingsPage = () => {
     consentDocumentUrl: "",
   });
   const [professionalInfoSaved, setProfessionalInfoSaved] = useState(false);
+  
+  // Professional License state (for all podiatrists)
+  const [professionalLicense, setProfessionalLicenseState] = useState<string>("");
+  const [licenseSaved, setLicenseSaved] = useState(false);
   
   // Professional Credentials state (for clinic subaltern podiatrists)
   const [credentialsCedula, setCredentialsCedula] = useState<string>("");
@@ -164,6 +193,11 @@ const SettingsPage = () => {
         licenseNumber: userClinic.licenseNumber || "",
         website: userClinic.website || "",
         consentText: userClinic.consentText || "",
+        legalName: (userClinic as { legalName?: string }).legalName || "",
+        rfc: (userClinic as { rfc?: string }).rfc || "",
+        clues: (userClinic as { clues?: string }).clues || "",
+        establishmentType: (userClinic as { establishmentType?: string }).establishmentType || "private_office",
+        cofeprisRegistration: (userClinic as { cofeprisRegistration?: string }).cofeprisRegistration || "",
       });
     }
   }, [userClinic]);
@@ -190,7 +224,16 @@ const SettingsPage = () => {
       });
     }
   }, [isPodiatristIndependent, user?.id, user?.name, user?.email]);
-
+  
+  // Cargar professional license desde API
+  useEffect(() => {
+    if (user?.role === "podiatrist" && user?.id) {
+      api.get<{ success?: boolean; license?: string | null }>(`/professionals/license/${user.id}`).then((res) => {
+        if (res.success && res.data?.license != null) setProfessionalLicenseState(res.data.license || "");
+      });
+    }
+  }, [user?.role, user?.id]);
+  
   // Cargar podólogos asignados para recepcionista desde API
   useEffect(() => {
     if (isReceptionist && user?.id) {
@@ -258,6 +301,11 @@ const SettingsPage = () => {
         licenseNumber: clinicInfoForm.licenseNumber,
         website: clinicInfoForm.website,
         consentText: clinicInfoForm.consentText || null,
+        legalName: clinicInfoForm.legalName || null,
+        rfc: clinicInfoForm.rfc || null,
+        clues: clinicInfoForm.clues || null,
+        establishmentType: clinicInfoForm.establishmentType || "private_office",
+        cofeprisRegistration: clinicInfoForm.cofeprisRegistration || null,
       });
       if (res.success && res.data?.clinic) {
         setUserClinic(res.data.clinic as Clinic);
@@ -268,7 +316,7 @@ const SettingsPage = () => {
         setInfoBlockedUntil(res.data.infoBlockedUntil);
         setClinicInfoError(res.message ?? "Los datos solo pueden modificarse cada 15 días.");
       }
-    } catch {
+    } catch (err) {
       // Error ya se muestra en consola desde api-client; no marcamos como guardado
     }
   };
@@ -314,6 +362,20 @@ const SettingsPage = () => {
       }
     } catch {
       // No marcar como guardado si la API falla
+    }
+  };
+  
+  // Professional license handler (for all podiatrists)
+  const handleSaveProfessionalLicense = async () => {
+    if (user?.role !== "podiatrist" || !user?.id) return;
+    try {
+      const res = await api.put<{ success?: boolean }>(`/professionals/license/${user.id}`, { license: professionalLicense });
+      if (res.success) {
+        setLicenseSaved(true);
+        setTimeout(() => setLicenseSaved(false), 2000);
+      }
+    } catch {
+      // Silenciar, no marcar como guardado
     }
   };
   
@@ -476,14 +538,12 @@ const SettingsPage = () => {
   };
 
   // Cargar conversaciones de soporte (usuarios que no son admin/super_admin)
-  const loadSupportConversations = useCallback(async () => {
+  const loadSupportConversations = async () => {
     if (isAdminRole) return;
     const r = await api.get<{ success?: boolean; conversations?: typeof supportConversations }>("/support/conversations");
     if (r.success && Array.isArray(r.data?.conversations)) setSupportConversations(r.data.conversations);
-  }, [isAdminRole]);
-  useEffect(() => {
-    void loadSupportConversations();
-  }, [loadSupportConversations]);
+  };
+  useEffect(() => { loadSupportConversations(); }, [isAdminRole]);
 
   const handleCreateSupportConversation = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -577,6 +637,9 @@ const SettingsPage = () => {
             ))}
           </div>
         </div>
+
+        {/* WhatsApp Business — solo podólogo y clinic_admin */}
+        {canConfigureWhatsApp && <WhatsAppSettingsSection />}
 
         {/* Profile Settings */}
         <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-100 dark:border-gray-800 p-6">
@@ -1388,6 +1451,49 @@ const SettingsPage = () => {
                     </div>
                   </div>
 
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Razón social (NOM)</label>
+                      <input
+                        type="text"
+                        value={clinicInfoForm.legalName}
+                        onChange={(e) => handleClinicInfoChange("legalName", e.target.value)}
+                        disabled={isInfoBlocked}
+                        className={`w-full px-4 py-2.5 border border-gray-200 rounded-lg ${isInfoBlocked ? "bg-gray-50 cursor-not-allowed" : "bg-white"}`}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">RFC</label>
+                      <input
+                        type="text"
+                        value={clinicInfoForm.rfc}
+                        onChange={(e) => handleClinicInfoChange("rfc", e.target.value.toUpperCase())}
+                        disabled={isInfoBlocked}
+                        className={`w-full px-4 py-2.5 border border-gray-200 rounded-lg ${isInfoBlocked ? "bg-gray-50 cursor-not-allowed" : "bg-white"}`}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">CLUES</label>
+                      <input
+                        type="text"
+                        value={clinicInfoForm.clues}
+                        onChange={(e) => handleClinicInfoChange("clues", e.target.value)}
+                        disabled={isInfoBlocked}
+                        className={`w-full px-4 py-2.5 border border-gray-200 rounded-lg ${isInfoBlocked ? "bg-gray-50 cursor-not-allowed" : "bg-white"}`}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Registro COFEPRIS</label>
+                      <input
+                        type="text"
+                        value={clinicInfoForm.cofeprisRegistration}
+                        onChange={(e) => handleClinicInfoChange("cofeprisRegistration", e.target.value)}
+                        disabled={isInfoBlocked}
+                        className={`w-full px-4 py-2.5 border border-gray-200 rounded-lg ${isInfoBlocked ? "bg-gray-50 cursor-not-allowed" : "bg-white"}`}
+                      />
+                    </div>
+                  </div>
+
                   <div className="pt-4 border-t border-gray-100 space-y-3">
                     {clinicInfoError && (
                       <p className="text-sm text-red-600">{clinicInfoError}</p>
@@ -1491,7 +1597,7 @@ const SettingsPage = () => {
                           
                           try {
                             new URL(url);
-                          } catch {
+                          } catch (error) {
                             e.preventDefault();
                             alert('La URL del sitio web no es válida. Por favor, verifica que esté correctamente configurada.');
                           }
@@ -1808,6 +1914,8 @@ const SettingsPage = () => {
             </div>
           </div>
         )}
+
+        <ComplianceSettingsSection />
 
         {/* Save Confirmation */}
         {saved && (

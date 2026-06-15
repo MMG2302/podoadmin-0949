@@ -1,9 +1,11 @@
 import { database } from '../database';
 import { registrationRateLimit } from '../database/schema';
-import { eq } from 'drizzle-orm';
+import { eq, lt } from 'drizzle-orm';
 
 /**
- * Rate limiting específico para registro público
+ * Rate limiting específico para registro público.
+ * Usado por POST /api/auth/register (checkRegistrationRateLimit + recordSuccessful/FailedRegistration).
+ *
  * Sistema progresivo:
  * - Nivel 1: 10 registros en 10 minutos
  * - Nivel 2: 5 registros en 30 minutos (después de alcanzar nivel 1)
@@ -115,7 +117,13 @@ export async function checkRegistrationRateLimit(
     return { allowed: true };
   } catch (error) {
     console.error('Error verificando rate limit de registro:', error);
-    // En caso de error, permitir para no bloquear usuarios legítimos
+    if (process.env.NODE_ENV === 'production') {
+      return {
+        allowed: false,
+        reason: 'rate_limit_unavailable',
+        delay: 60_000,
+      };
+    }
     return { allowed: true };
   }
 }

@@ -4,13 +4,40 @@ Para vender a empresas y clínicas que exigen cumplimiento normativo, debes pode
 
 ---
 
+## Actualización: Retención multi-país (global única)
+
+Se adopta una política global conservadora para historiales clínicos:
+
+- **Historial clínico principal:** 20 años desde el último acto clínico.
+- **Auditoría:** 10 años.
+- **Métricas de seguridad:** 5 años.
+- **Operacionales de corto plazo (rate limits, reset tokens):** 30 días.
+- **Notificaciones internas:** 1 año.
+
+### Matriz de referencia legal por país (base operativa)
+
+| País | Base legal de referencia | Plazo base tomado |
+|------|---------------------------|-------------------|
+| México | Ley Federal de Protección de Datos Personales + NOM-004-SSA3-2012 | 5 años desde el último acto médico |
+| Brasil | LGPD + normas del Consejo Federal de Medicina | 20 años (expediente digital) |
+| Argentina | Ley 25.326 + Ley de Historia Clínica | 10 años |
+| Colombia | Ley 1581 + Resolución 1995 | 10 años |
+| Chile | Ley 20.584 y normativa sanitaria | 15 años |
+| Perú | Ley 29733 + normas MINSA | Variable por establecimiento |
+| Uruguay | Ley 18.331 + normativa sanitaria | 10 años |
+| Costa Rica | Ley 8968 + EDUS | Variable por servicio |
+
+Racional: con una política global única, se usa el estándar más exigente (20 años) para minimizar riesgo regulatorio entre países.
+
+---
+
 ## ¿Puedes responder sí?
 
 | Tema | ¿Hoy? | Comentario |
 |------|--------|------------|
-| **GDPR / LFPDPPP (México)** | Parcial | Bases cubiertas (consent, borrado de usuario/paciente); faltan exportación de datos del interesado y retención configurable documentada. |
-| **Retención de datos configurable** | No | No hay política ni job que borre/archive por antigüedad; no hay configuración por organización. |
-| **Exportación de evidencias** | Parcial | Los logs de auditoría se pueden consultar por API (por usuario, por acción, todos); no hay “exportar a CSV/JSON” ni paquete de evidencias listo. |
+| **GDPR / LFPDPPP (México)** | Parcial–Sí (base) | Consentimiento en registro (términos + política de privacidad), exportación `GET /api/users/me/export`, solicitud de supresión en Configuración, auditoría y registro de accesos al expediente. |
+| **Retención de datos configurable** | Parcial | Política global 20 años documentada; `retainUntil` se actualiza al crear/editar sesiones; falta configuración por país en UI. |
+| **Exportación de evidencias** | Sí (base) | Export de auditoría y expediente por paciente (`/compliance/patients/:id/portable-export`); export de cuenta en Configuración. |
 | **Auditoría de decisiones** | Sí | Acciones sensibles registradas en `audit_log`; bloqueos (phishing, login, etc.) con mensaje claro y trazabilidad. |
 | **SLA y uptime claros** | Fuera de producto | Depende de contrato y de Cloudflare/operador; no está en la app. |
 
@@ -33,11 +60,11 @@ Resumen: **auditoría de decisiones** ya se puede afirmar; **GDPR/LFPDPPP** y **
 
 | Requisito | Estado | Dónde |
 |-----------|--------|-------|
-| Consentimiento / términos | Parcial | `termsAccepted`, `termsAcceptedAt` en usuarios; falta flujo explícito de “acepto política de privacidad” si lo exigen por separado. |
-| Derecho de acceso | Parcial | El usuario puede ver su perfil y datos en la app; no hay endpoint tipo “dame todos los datos que tienes de mí” en un solo lugar. |
-| Portabilidad / exportación | No | No hay endpoint “exportar mis datos” (JSON/CSV) para el titular. |
-| Supresión | Parcial | Borrado de usuario (super_admin) y de paciente; no hay flujo único “borrar toda mi cuenta y datos asociados” documentado como “derecho al olvido”. |
-| Retención documentada | No | No hay política de retención en producto ni jobs de borrado por antigüedad. |
+| Consentimiento / términos | Sí | `termsAccepted`, `privacyPolicyAccepted` en registro público; consentimiento de pacientes versionado. |
+| Derecho de acceso | Sí | Perfil en app + `GET /api/users/me/export` y sección Configuración → Privacidad y datos. |
+| Portabilidad / exportación | Sí | Export JSON de cuenta; export clínico por paciente. |
+| Supresión | Parcial | Borrado de usuario/paciente; solicitud ARCO/supresión registrada en auditoría (`DATA_RIGHTS_DELETION_REQUEST`). |
+| Retención documentada | Sí | `docs/RETENTION_POLICY_GLOBAL.md`, `retention-policy.ts`; `retainUntil` en sesiones/pacientes. |
 | Seguridad y registro | Sí | Audit log, permisos, clinicId; medidas descritas en PRODUCCION_CONFIG y ARQUITECTURA_SAAS_SEGURIDAD. |
 
 **Recomendación:** Añadir (1) endpoint **GET /api/me/export** (o similar) que devuelva todos los datos del usuario autenticado (perfil, sesiones, créditos, etc.) en JSON; (2) flujo o documento de “solicitud de supresión” (borrado de cuenta + datos asociados) y cumplir en plazo; (3) documento de **política de retención** (cuánto se guarda cada tipo de dato y por qué). Con eso puedes responder mucho mejor a GDPR/LFPDPPP.
@@ -73,9 +100,10 @@ Resumen: **auditoría de decisiones** ya se puede afirmar; **GDPR/LFPDPPP** y **
 
 - **Sí** hay registro de decisiones: `audit_log` con userId, action, resourceType, resourceId, details, ipAddress, userAgent, createdAt, clinicId.
 - **Sí** hay API de lectura: GET `/api/audit-logs/user/:userId`, `/api/audit-logs/action/:action`, `/api/audit-logs/all` (super_admin); devuelven JSON.
-- **No** hay endpoint tipo “exportar auditoría en CSV” ni “descargar paquete de evidencias (ZIP/JSON)” desde la UI.
+- **Sí** hay endpoint de export para auditoría y compliance (JSON/CSV) con filtros.
+- **No** hay aún paquete ZIP multi-fuente desde UI (mejora futura).
 
-**Recomendación:** Añadir endpoint **GET /api/audit-logs/export** (o similar) con filtros (rango de fechas, usuario, clínica, acción) que devuelva **CSV** o **JSON** descargable (y solo para roles con `view_audit_log` / super_admin). Opcional: “paquete de evidencias” con metadatos (quién exportó, cuándo, filtros). Con eso puedes afirmar “exportación de evidencias para auditoría y cumplimiento”.
+**Implementado base:** endpoint **GET /api/audit-logs/export** y **GET /api/compliance/evidence/export** con filtros y formato CSV/JSON para trazabilidad.
 
 ---
 

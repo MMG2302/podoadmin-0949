@@ -59,7 +59,7 @@ async function verifyRecaptcha(
       success: data.success === true && (data.score || 0) >= 0.5, // Score mínimo 0.5 para v3
       error: data['error-codes']?.[0],
     };
-  } catch {
+  } catch (error) {
     return { success: false, error: 'Error de conexión con reCAPTCHA' };
   }
 }
@@ -85,7 +85,7 @@ async function verifyHcaptcha(
       success: data.success === true,
       error: data['error-codes']?.[0],
     };
-  } catch {
+  } catch (error) {
     return { success: false, error: 'Error de conexión con hCaptcha' };
   }
 }
@@ -111,15 +111,36 @@ async function verifyTurnstile(
       success: data.success === true,
       error: data['error-codes']?.[0],
     };
-  } catch {
+  } catch (error) {
     return { success: false, error: 'Error de conexión con Turnstile' };
   }
 }
 
 /**
- * Obtiene la configuración de CAPTCHA desde variables de entorno
+ * Entorno de despliegue (Cloudflare Worker: NODE_ENV=production en prod).
  */
+export function isProductionDeploy(): boolean {
+  return process.env.NODE_ENV === 'production';
+}
+
+/**
+ * CAPTCHA activo en este entorno.
+ * - Producción: siempre (requiere CAPTCHA_* configurado).
+ * - Desarrollo/local: desactivado salvo CAPTCHA_FORCE_IN_DEV=1 para pruebas.
+ */
+export function isCaptchaEnabled(): boolean {
+  if (isProductionDeploy()) return true;
+  return process.env.CAPTCHA_FORCE_IN_DEV === '1';
+}
+
+/** true cuando estamos en dev/staging sin CAPTCHA (comportamiento por defecto). */
+export function isCaptchaExplicitlyDisabledInDev(): boolean {
+  return !isCaptchaEnabled();
+}
+
 export function getCaptchaConfig(): CaptchaConfig | null {
+  if (!isCaptchaEnabled()) return null;
+
   const provider = process.env.CAPTCHA_PROVIDER as 'recaptcha' | 'hcaptcha' | 'turnstile' | undefined;
   const siteKey = process.env.CAPTCHA_SITE_KEY;
   const secretKey = process.env.CAPTCHA_SECRET_KEY;

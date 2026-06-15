@@ -3,20 +3,19 @@ import { generateTokenPair, verifyRefreshToken, type JWTPayload } from '../utils
 import { requireAuth } from '../middleware/auth';
 import { requireRole } from '../middleware/authorization';
 import { formatCookie, getAccessTokenCookieOptions, getRefreshTokenCookieOptions, createDeleteCookie, isProduction } from '../utils/cookies';
-import { checkRateLimitD1, recordFailedAttemptD1, clearFailedAttemptsD1, getFailedAttemptCountD1 } from '../utils/rate-limit-d1';
+import { checkRateLimitD1, recordFailedAttemptD1, clearFailedAttemptsD1, getFailedAttemptCountD1, checkLoginIPRateLimitD1, recordLoginIPFailedAttemptD1 } from '../utils/rate-limit-d1';
 import { sendFailedLoginNotification, shouldSendNotification } from '../utils/email-notifications';
-import { checkAndRecordActionRateLimit } from '../utils/action-rate-limit';
-import { validateData, loginSchema, verifyEmailSchema, forgotPasswordSchema, resetPasswordSchema } from '../utils/validation';
+import { validateData, loginSchema, registerSchema, verifyEmailSchema, forgotPasswordSchema, resetPasswordSchema } from '../utils/validation';
+import { escapeHtml, sanitizeEmail, sanitizePathParam } from '../utils/sanitization';
 import { getClientIP, createRateLimitIdentifier, isIPWhitelisted, getIPWhitelist } from '../utils/ip-tracking';
 import { getSafeUserAgent } from '../utils/request-headers';
 import type { User } from '../../web/contexts/auth-context';
 import { getUserByIdFromDB } from '../utils/user-db';
-import { canUserAccess, RETENTION } from '../utils/user-retention';
+import { RETENTION } from '../utils/user-retention';
+import { isAdministrativelyBlocked, resolveSystemAccess } from '../utils/access-control';
+import { requireNonProductionDev } from '../middleware/dev-only';
 
 const authRoutes = new Hono();
-const LOGIN_IP_PER_MINUTE_LIMIT = 20;
-const LOGIN_IP_PER_MINUTE_WINDOW_MS = 60 * 1000;
-const LOGIN_IP_IDENTIFIER_PREFIX = 'ip:';
 
 /**
  * POST /api/auth/login
@@ -55,54 +54,46 @@ authRoutes.post('/login', async (c) => {
     const ipWhitelist = getIPWhitelist();
     const isWhitelisted = isIPWhitelisted(clientIP, ipWhitelist);
     
-    // Usar email + IP para proteger credenciales específicas y una clave por IP para frenar credential stuffing.
+    // Usar email + IP como identificador para mayor seguridad
+    // Si la IP está en whitelist, solo usar email
     const identifier = isWhitelisted ? emailLower : createRateLimitIdentifier(emailLower, clientIP);
-    const ipOnlyIdentifier = `${LOGIN_IP_IDENTIFIER_PREFIX}${clientIP}`;
 
     // Verificar rate limit antes de procesar (skip si IP está en whitelist)
-    let credentialRateLimitCheck = { allowed: true as boolean };
-    let ipRateLimitCheck = { allowed: true as boolean };
-    let credentialAttemptCount = 0;
-    let ipAttemptCount = 0;
+    let rateLimitCheck = { allowed: true as boolean };
+    let attemptCount = 0;
     if (!isWhitelisted) {
-      // Límite global por IP y por minuto (ráfagas).
-      const ipBurstRateLimit = await checkAndRecordActionRateLimit(
-        'login_ip_minute',
-        clientIP,
-        LOGIN_IP_PER_MINUTE_LIMIT,
-        LOGIN_IP_PER_MINUTE_WINDOW_MS
-      );
-      if (!ipBurstRateLimit.allowed) {
+      const ipRateLimit = await checkLoginIPRateLimitD1(clientIP);
+      if (!ipRateLimit.allowed) {
+        const delaySeconds = ipRateLimit.retryAfterSeconds ?? Math.ceil((ipRateLimit.delay ?? 60_000) / 1000);
+        const delayMinutes = Math.ceil(delaySeconds / 60);
         return c.json(
           {
-            error: 'Demasiados intentos desde tu IP',
-            message: 'Se detectó una ráfaga de intentos de inicio de sesión. Espera un momento antes de volver a intentar.',
-            retryAfter: ipBurstRateLimit.retryAfterSeconds ?? 60,
+            error: 'Demasiados intentos',
+            message: `Demasiados intentos fallidos desde esta red. Por favor, espera ${delayMinutes > 1 ? `${delayMinutes} minutos` : `${delaySeconds} segundos`} antes de intentar nuevamente.`,
+            retryAfter: delaySeconds,
+            isIPBlocked: true,
           },
           429
         );
       }
 
-      credentialRateLimitCheck = await checkRateLimitD1(identifier);
-      ipRateLimitCheck = await checkRateLimitD1(ipOnlyIdentifier);
-      credentialAttemptCount = await getFailedAttemptCountD1(identifier);
-      ipAttemptCount = await getFailedAttemptCountD1(ipOnlyIdentifier);
+      rateLimitCheck = await checkRateLimitD1(identifier);
+      attemptCount = await getFailedAttemptCountD1(identifier);
     }
 
     // Verificar CAPTCHA si hay muchos intentos fallidos
-    const effectiveAttemptCount = Math.max(credentialAttemptCount, ipAttemptCount);
-    if (!isWhitelisted && effectiveAttemptCount >= 3) {
+    if (!isWhitelisted && attemptCount >= 3) {
       const { getCaptchaConfig, verifyCaptcha, shouldShowCaptcha } = await import('../utils/captcha');
       const captchaConfig = getCaptchaConfig();
       
-      if (captchaConfig && shouldShowCaptcha(effectiveAttemptCount, 3)) {
+      if (captchaConfig && shouldShowCaptcha(attemptCount, 3)) {
         if (!captchaToken) {
           return c.json(
             {
               error: 'CAPTCHA requerido',
               message: 'Por favor, completa el CAPTCHA para continuar',
               requiresCaptcha: true,
-              attemptCount: effectiveAttemptCount,
+              attemptCount,
             },
             400
           );
@@ -123,7 +114,7 @@ authRoutes.post('/login', async (c) => {
               error: 'CAPTCHA inválido',
               message: 'El CAPTCHA no se pudo verificar. Por favor, intenta nuevamente.',
               requiresCaptcha: true,
-              attemptCount: effectiveAttemptCount,
+              attemptCount,
             },
             400
           );
@@ -139,27 +130,21 @@ authRoutes.post('/login', async (c) => {
       }
     }
 
-    const activeRateLimitCheck =
-      !credentialRateLimitCheck.allowed && !ipRateLimitCheck.allowed
-        ? ((credentialRateLimitCheck.delay || 0) >= (ipRateLimitCheck.delay || 0) ? credentialRateLimitCheck : ipRateLimitCheck)
-        : !credentialRateLimitCheck.allowed
-        ? credentialRateLimitCheck
-        : ipRateLimitCheck;
-    if (!activeRateLimitCheck.allowed) {
-      const delayMs = activeRateLimitCheck.delay || 0;
+    if (!rateLimitCheck.allowed) {
+      const delayMs = rateLimitCheck.delay || 0;
       const delaySeconds = Math.ceil(delayMs / 1000);
       const delayMinutes = Math.ceil(delayMs / 60000);
 
       // Si está bloqueado por 15 minutos
-      if (activeRateLimitCheck.blockedUntil) {
-        const blockedUntilDate = new Date(activeRateLimitCheck.blockedUntil);
+      if (rateLimitCheck.blockedUntil) {
+        const blockedUntilDate = new Date(rateLimitCheck.blockedUntil);
         return c.json(
           {
-            error: 'Inicio de sesión temporalmente bloqueado',
-            message: `Demasiados intentos fallidos desde esta cuenta o IP. El acceso queda bloqueado hasta ${blockedUntilDate.toLocaleTimeString()}.`,
+            error: 'Cuenta temporalmente bloqueada',
+            message: `Demasiados intentos fallidos. Tu cuenta está bloqueada hasta ${blockedUntilDate.toLocaleTimeString()}. Por favor, intenta más tarde.`,
             retryAfter: delaySeconds,
-            blockedUntil: activeRateLimitCheck.blockedUntil,
-            attemptCount: effectiveAttemptCount,
+            blockedUntil: rateLimitCheck.blockedUntil,
+            attemptCount,
             isBlocked: true,
             blockDurationMinutes: 15,
           },
@@ -171,9 +156,9 @@ authRoutes.post('/login', async (c) => {
       return c.json(
         {
           error: 'Demasiados intentos',
-          message: `Demasiados intentos fallidos desde esta cuenta o IP. Por favor, espera ${delayMinutes > 1 ? `${delayMinutes} minutos` : `${delaySeconds} segundos`} antes de intentar nuevamente.`,
+          message: `Demasiados intentos fallidos. Por favor, espera ${delayMinutes > 1 ? `${delayMinutes} minutos` : `${delaySeconds} segundos`} antes de intentar nuevamente.`,
           retryAfter: delaySeconds,
-          attemptCount: effectiveAttemptCount,
+          attemptCount,
         },
         429 // Too Many Requests
       );
@@ -222,14 +207,13 @@ authRoutes.post('/login', async (c) => {
 
     if (!matchedUser || !passwordValid) {
       // Registrar intento fallido (skip si IP está en whitelist)
-      let failedAttemptCount = 0;
-      let failedIpAttemptCount = 0;
+      let failedAttempt = { count: 0 };
+      let attemptCount = 0;
       
       if (!isWhitelisted) {
-        const failedAttempt = await recordFailedAttemptD1(identifier);
-        const failedIpAttempt = await recordFailedAttemptD1(ipOnlyIdentifier);
-        failedAttemptCount = failedAttempt.count;
-        failedIpAttemptCount = failedIpAttempt.count;
+        failedAttempt = await recordFailedAttemptD1(identifier);
+        await recordLoginIPFailedAttemptD1(clientIP);
+        attemptCount = failedAttempt.count;
       }
 
       // Registrar métrica de seguridad
@@ -237,7 +221,7 @@ authRoutes.post('/login', async (c) => {
       await recordSecurityMetric({
         metricType: 'failed_login',
         ipAddress: clientIP,
-        details: { email: emailLower, attemptCount: failedAttemptCount, ipAttemptCount: failedIpAttemptCount },
+        details: { email: emailLower, attemptCount },
       });
 
       // Registrar evento de auditoría
@@ -248,17 +232,17 @@ authRoutes.post('/login', async (c) => {
         resourceType: 'authentication',
         ipAddress: clientIP,
         userAgent: getSafeUserAgent(c),
-        details: { email: emailLower, attemptCount: failedAttemptCount, ipAttemptCount: failedIpAttemptCount },
+        details: { email: emailLower, attemptCount },
       });
 
       // Enviar notificación por email si es necesario
-      if (shouldSendNotification(failedAttemptCount)) {
-        const isBlocked = failedAttemptCount >= 10;
-        await sendFailedLoginNotification(emailLower, failedAttemptCount, isBlocked);
+      if (shouldSendNotification(attemptCount)) {
+        const isBlocked = attemptCount >= 10;
+        await sendFailedLoginNotification(emailLower, attemptCount, isBlocked);
       }
 
       // Notificación in-app para super_admin cuando se alcanzan exactamente 10 intentos (evitar spam)
-      if (failedAttemptCount === 10) {
+      if (attemptCount === 10) {
         try {
           const { database } = await import('../database');
           const schema = await import('../database/schema');
@@ -270,8 +254,8 @@ authRoutes.post('/login', async (c) => {
             .where(eq(createdUsers.role, 'super_admin'));
           const now = new Date().toISOString();
           const title = '⚠️ Alerta de seguridad: 10+ intentos de login fallidos';
-          const message = `Se han registrado ${failedAttemptCount} intentos fallidos de inicio de sesión para el correo ${emailLower}. La cuenta está bloqueada temporalmente (15 min).`;
-          const metadata = JSON.stringify({ email: emailLower, attemptCount: failedAttemptCount, blocked: true });
+          const message = `Se han registrado ${attemptCount} intentos fallidos de inicio de sesión para el correo ${emailLower}. La cuenta está bloqueada temporalmente (15 min).`;
+          const metadata = JSON.stringify({ email: emailLower, attemptCount, blocked: true });
           for (const row of superAdminRows) {
             const notifId = `notif_${crypto.randomUUID().replace(/-/g, '')}`;
             await database.insert(notificationsTable).values({
@@ -292,13 +276,12 @@ authRoutes.post('/login', async (c) => {
 
       // Calcular delay para el siguiente intento (solo si no está whitelisted)
       let nextDelay = 0;
-      const nextEffectiveAttemptCount = Math.max(failedAttemptCount, failedIpAttemptCount);
-      if (!isWhitelisted && nextEffectiveAttemptCount > 0) {
-        nextDelay = nextEffectiveAttemptCount >= 10
+      if (!isWhitelisted && attemptCount > 0) {
+        nextDelay = attemptCount >= 10
           ? 15 * 60 // 15 minutos
-          : nextEffectiveAttemptCount >= 5
+          : attemptCount >= 5
           ? 30 // 30 segundos
-          : nextEffectiveAttemptCount >= 3
+          : attemptCount >= 3
           ? 5 // 5 segundos
           : 0;
       }
@@ -306,15 +289,13 @@ authRoutes.post('/login', async (c) => {
       // Determinar si se requiere CAPTCHA
       const { getCaptchaConfig, shouldShowCaptcha } = await import('../utils/captcha');
       const captchaConfig = getCaptchaConfig();
-      const requiresCaptcha = captchaConfig && shouldShowCaptcha(nextEffectiveAttemptCount, 3);
+      const requiresCaptcha = captchaConfig && shouldShowCaptcha(attemptCount, 3);
 
       return c.json(
         {
           error: 'Credenciales inválidas',
           message: 'Email o contraseña incorrectos',
-          attemptCount: isWhitelisted ? 0 : nextEffectiveAttemptCount, // No mostrar count si whitelisted
-          credentialAttemptCount: isWhitelisted ? 0 : failedAttemptCount,
-          ipAttemptCount: isWhitelisted ? 0 : failedIpAttemptCount,
+          attemptCount: isWhitelisted ? 0 : attemptCount, // No mostrar count si whitelisted
           retryAfter: nextDelay,
           requiresCaptcha,
         },
@@ -322,9 +303,10 @@ authRoutes.post('/login', async (c) => {
       );
     }
 
-    // Verificar que el email esté verificado (para usuarios registrados públicamente)
+    // Verificar email solo en producción (dev: registro sin correo de verificación)
     if (dbUser && dbUser.registrationSource === 'public') {
-      if (!dbUser.emailVerified) {
+      const { isEmailVerificationRequired } = await import('../utils/email-verification');
+      if (isEmailVerificationRequired() && !dbUser.emailVerified) {
         return c.json(
           {
             error: 'Email no verificado',
@@ -369,29 +351,27 @@ authRoutes.post('/login', async (c) => {
         403
       );
     }
-    if (matchedUser.user.isEnabled === false) {
+    if (isAdministrativelyBlocked(matchedUser.user.isEnabled, dbUser?.disabledAt ?? null)) {
       const disabledAt = dbUser?.disabledAt ?? null;
-      if (!canUserAccess(disabledAt)) {
-        let daysLeftText = '';
-        if (disabledAt != null) {
-          const MS_PER_DAY = 24 * 60 * 60 * 1000;
-          const elapsedDays = (Date.now() - disabledAt) / MS_PER_DAY;
-          const daysLeft = Math.max(0, Math.round(RETENTION.DELETION_AFTER_DAYS - elapsedDays));
-          if (daysLeft > 0) {
-            daysLeftText = ` Tu cuenta será dada de baja de forma permanente en aproximadamente ${daysLeft} día(s).`;
-          }
+      let daysLeftText = '';
+      if (disabledAt != null) {
+        const MS_PER_DAY = 24 * 60 * 60 * 1000;
+        const elapsedDays = (Date.now() - disabledAt) / MS_PER_DAY;
+        const daysLeft = Math.max(0, Math.round(RETENTION.DELETION_AFTER_DAYS - elapsedDays));
+        if (daysLeft > 0) {
+          daysLeftText = ` Tu cuenta será dada de baja de forma permanente en aproximadamente ${daysLeft} día(s).`;
         }
-        return c.json(
-          {
-            error: 'Cuenta deshabilitada',
-            message:
-              'Tu cuenta está deshabilitada y no puedes acceder a la aplicación.' +
-              daysLeftText +
-              ' Si crees que se trata de un error, contacta con el administrador o con PodoAdmin.',
-          },
-          403
-        );
       }
+      return c.json(
+        {
+          error: 'Cuenta deshabilitada',
+          message:
+            'Tu cuenta está deshabilitada y no puedes acceder a la aplicación.' +
+            daysLeftText +
+            ' Si crees que se trata de un error, contacta con el administrador o con PodoAdmin.',
+        },
+        403
+      );
     }
 
     // Verificar 2FA si está habilitado
@@ -493,6 +473,22 @@ authRoutes.post('/login', async (c) => {
 
     // Créditos del usuario están en DB; el endpoint /credits/me crea la fila si no existe
 
+    const { tryGrantIpTrialForUser } = await import('../utils/ip-trial-service');
+    await tryGrantIpTrialForUser(
+      matchedUser.user.id,
+      matchedUser.user.role,
+      matchedUser.user.clinicId,
+      clientIP
+    );
+
+    const access = await resolveSystemAccess(matchedUser.user.id, matchedUser.user.role);
+
+    const { checkIpTrialEligibility } = await import('../utils/ip-trial-service');
+    const trialEligibility =
+      matchedUser.user.role === 'clinic_admin' || matchedUser.user.role === 'podiatrist'
+        ? await checkIpTrialEligibility(clientIP, matchedUser.user.role)
+        : undefined;
+
     // NO devolver tokens en el body por seguridad (están en cookies HTTP-only)
     return c.json({
       success: true,
@@ -504,7 +500,11 @@ authRoutes.post('/login', async (c) => {
         clinicId: matchedUser.user.clinicId,
         assignedPodiatristIds: matchedUser.user.assignedPodiatristIds,
         mustChangePassword: matchedUser.user.mustChangePassword,
+        systemAccess: access.granted,
+        accessReason: access.reason,
+        accessMessage: access.granted ? undefined : access.message,
       },
+      trialEligibility,
     });
   } catch (error) {
     console.error('Error en login:', error);
@@ -590,12 +590,18 @@ authRoutes.get('/verify', requireAuth, async (c) => {
       403
     );
   }
-  if (dbUser.isEnabled === false && !canUserAccess(dbUser.disabledAt)) {
+  if (isAdministrativelyBlocked(dbUser.isEnabled, dbUser.disabledAt)) {
     return c.json(
       { error: 'Cuenta no disponible', message: 'Tu cuenta no está disponible' },
       403
     );
   }
+
+  const clientIP = getClientIP(c.req.raw.headers);
+  const { tryGrantIpTrialForUser } = await import('../utils/ip-trial-service');
+  await tryGrantIpTrialForUser(dbUser.userId, dbUser.role, dbUser.clinicId, clientIP);
+
+  const access = await resolveSystemAccess(dbUser.userId, dbUser.role);
 
   return c.json({
     success: true,
@@ -607,6 +613,8 @@ authRoutes.get('/verify', requireAuth, async (c) => {
       clinicId: dbUser.clinicId || undefined,
       assignedPodiatristIds: dbUser.assignedPodiatristIds ?? undefined,
       mustChangePassword: dbUser.mustChangePassword ?? false,
+      systemAccess: access.granted,
+      accessReason: access.reason,
     },
   });
 });
@@ -728,7 +736,7 @@ authRoutes.post('/refresh', async (c) => {
         403
       );
     }
-    if (dbUser.isEnabled === false && !canUserAccess(dbUser.disabledAt)) {
+    if (isAdministrativelyBlocked(dbUser.isEnabled, dbUser.disabledAt)) {
       return c.json(
         { error: 'Cuenta no disponible', message: 'Tu cuenta no está disponible' },
         403
@@ -881,6 +889,27 @@ authRoutes.post('/forgot-password', async (c) => {
  */
 authRoutes.post('/reset-password', async (c) => {
   try {
+    const clientIP = getClientIP(c.req.raw.headers);
+    const { checkAndRecordActionRateLimit } = await import('../utils/action-rate-limit');
+    const rateLimit = await checkAndRecordActionRateLimit(
+      'reset_password',
+      clientIP,
+      10,
+      60 * 60 * 1000
+    ); // 10 intentos por hora por IP
+
+    if (!rateLimit.allowed) {
+      c.header('Retry-After', String(rateLimit.retryAfterSeconds ?? 3600));
+      return c.json(
+        {
+          error: 'Demasiadas solicitudes',
+          message: 'Has superado el límite de intentos. Espera un momento e inténtalo de nuevo.',
+          retryAfter: rateLimit.retryAfterSeconds,
+        },
+        429
+      );
+    }
+
     const rawBody = await c.req.json().catch(() => ({}));
     const validation = validateData(resetPasswordSchema, rawBody);
 
@@ -1062,7 +1091,8 @@ authRoutes.get('/password-reset-requests', requireAuth, requireRole('super_admin
  */
 authRoutes.post('/password-reset-requests/:id/approve', requireAuth, requireRole('super_admin', 'admin'), async (c) => {
   try {
-    const requestId = c.req.param('id');
+    const requestId = sanitizePathParam(c.req.param('id'), 64);
+    if (!requestId) return c.json({ error: 'ID de solicitud inválido' }, 400);
     const reviewer = c.get('user');
 
     const { database } = await import('../database');
@@ -1092,11 +1122,23 @@ authRoutes.post('/password-reset-requests/:id/approve', requireAuth, requireRole
     const { createPasswordResetToken } = await import('../utils/password-reset');
     const token = await createPasswordResetToken(reqRow.userId);
 
-    const baseUrl = process.env.VITE_BASE_URL || process.env.ALLOWED_ORIGINS?.split(',')[0]?.trim() || 'http://localhost:5173';
+    const baseUrl = process.env.APP_BASE_URL || process.env.VITE_BASE_URL || process.env.ALLOWED_ORIGINS?.split(',')[0]?.trim() || 'http://localhost:5173';
     const resetUrl = baseUrl.startsWith('http') ? `${baseUrl}/reset-password?token=${token}` : `https://${baseUrl}/reset-password?token=${token}`;
 
-    const { sendPasswordResetEmail } = await import('../utils/email-service');
-    await sendPasswordResetEmail(userRow.email, userRow.name, resetUrl);
+    const { sendPasswordResetEmail, isEmailProviderConfigured } = await import('../utils/email-service');
+    const emailSent = await sendPasswordResetEmail(userRow.email, userRow.name, resetUrl);
+
+    if (!emailSent && process.env.NODE_ENV === 'production') {
+      return c.json(
+        {
+          error: 'Email no configurado',
+          message:
+            'No se pudo enviar el correo (falta RESEND_API_KEY o SENDGRID_API_KEY). Copia el enlace y envíalo manualmente al usuario.',
+          resetUrl,
+        },
+        503
+      );
+    }
 
     await database
       .update(passwordResetRequests)
@@ -1114,13 +1156,20 @@ authRoutes.post('/password-reset-requests/:id/approve', requireAuth, requireRole
       resourceType: 'authentication',
       ipAddress: getClientIP(c.req.raw.headers),
       userAgent: getSafeUserAgent(c),
-      details: { requestId, targetEmail: userRow.email },
+      details: { requestId, targetEmail: userRow.email, emailSent },
     });
+
+    const emailNote = emailSent
+      ? 'Se ha enviado el enlace al correo del usuario.'
+      : isEmailProviderConfigured()
+        ? 'No se pudo enviar el correo automáticamente.'
+        : 'Modo desarrollo: email simulado (Mock).';
 
     return c.json({
       success: true,
-      message: 'Solicitud aprobada. Se ha enviado el enlace al correo del usuario. También puedes copiarlo y enviarlo manualmente.',
+      message: `Solicitud aprobada. ${emailNote} También puedes copiar el enlace y enviarlo manualmente.`,
       resetUrl,
+      emailSent,
     });
   } catch (error) {
     console.error('Error aprobando solicitud:', error);
@@ -1134,13 +1183,14 @@ authRoutes.post('/password-reset-requests/:id/approve', requireAuth, requireRole
  */
 authRoutes.post('/password-reset-requests/:id/reject', requireAuth, requireRole('super_admin', 'admin'), async (c) => {
   try {
-    const requestId = c.req.param('id');
+    const requestId = sanitizePathParam(c.req.param('id'), 64);
+    if (!requestId) return c.json({ error: 'ID de solicitud inválido' }, 400);
     const reviewer = c.get('user');
     const rawBody = await c.req.json().catch(() => ({}));
     const reason = (rawBody as { reason?: string }).reason || '';
 
     const { database } = await import('../database');
-    const { passwordResetRequests } = await import('../database/schema');
+    const { passwordResetRequests, createdUsers } = await import('../database/schema');
     const { eq } = await import('drizzle-orm');
 
     const [reqRow] = await database
@@ -1152,6 +1202,8 @@ authRoutes.post('/password-reset-requests/:id/reject', requireAuth, requireRole(
     if (!reqRow || reqRow.status !== 'pending') {
       return c.json({ error: 'Solicitud no encontrada o ya procesada' }, 404);
     }
+
+    const [userRow] = await database.select().from(createdUsers).where(eq(createdUsers.id, reqRow.userId)).limit(1);
 
     await database
       .update(passwordResetRequests)
@@ -1180,6 +1232,278 @@ authRoutes.post('/password-reset-requests/:id/reject', requireAuth, requireRole(
   } catch (error) {
     console.error('Error rechazando solicitud:', error);
     return c.json({ error: 'Error interno', message: 'Error al rechazar la solicitud' }, 500);
+  }
+});
+
+/** Respuesta genérica de registro (no revela si el email ya existe). */
+const REGISTER_GENERIC_SUCCESS = {
+  success: true,
+  message:
+    'Si el email no está registrado, recibirás un correo de verificación. Por favor, revisa tu bandeja de entrada.',
+} as const;
+
+function getAppBaseUrl(): string {
+  const base =
+    process.env.APP_BASE_URL || process.env.VITE_BASE_URL || process.env.ALLOWED_ORIGINS?.split(',')[0]?.trim() || 'http://localhost:5173';
+  return base.startsWith('http') ? base.replace(/\/$/, '') : `https://${base.replace(/\/$/, '')}`;
+}
+
+/**
+ * POST /api/auth/register
+ * Registro público: rate limit por IP, CAPTCHA, verificación de email obligatoria.
+ */
+authRoutes.post('/register', async (c) => {
+  const clientIP = getClientIP(c.req.raw.headers);
+  const genericResponse = () => c.json(REGISTER_GENERIC_SUCCESS);
+
+  try {
+    const rawBody = await c.req.json().catch(() => ({}));
+    const validation = validateData(registerSchema, rawBody);
+
+    if (!validation.success) {
+      await import('../utils/registration-rate-limit').then((m) =>
+        m.recordFailedRegistration(clientIP, false)
+      );
+      return c.json(
+        { error: 'Datos inválidos', message: validation.error, issues: validation.issues },
+        400
+      );
+    }
+
+    const { email, password, name, termsAccepted, privacyPolicyAccepted, captchaToken, clinicCode } = validation.data;
+    const emailLower = email.toLowerCase().trim();
+
+    const { checkPublicRegistrationIpTrialPolicy } = await import('../utils/ip-trial-service');
+    const ipTrialPolicy = await checkPublicRegistrationIpTrialPolicy({
+      clientIp: clientIP,
+      role: 'podiatrist',
+      joiningExistingClinic: Boolean(clinicCode?.trim()),
+    });
+    if (!ipTrialPolicy.allowed) {
+      const { recordFailedRegistration } = await import('../utils/registration-rate-limit');
+      await recordFailedRegistration(clientIP, true);
+      const { recordSecurityMetric } = await import('../utils/security-metrics');
+      await recordSecurityMetric({
+        metricType: 'registration_ip_trial_blocked',
+        ipAddress: clientIP,
+        details: { reason: ipTrialPolicy.reason },
+      });
+      return c.json(
+        {
+          error: 'Prueba gratuita no disponible',
+          code: ipTrialPolicy.reason ?? 'ip_trial_blocked',
+          message:
+            ipTrialPolicy.message ??
+            'Esta conexión ya utilizó el periodo de prueba gratuito.',
+        },
+        403
+      );
+    }
+
+    const { checkRegistrationRateLimit } = await import('../utils/registration-rate-limit');
+    const rateLimit = await checkRegistrationRateLimit(clientIP);
+    if (!rateLimit.allowed) {
+      const retryAfter = rateLimit.delay
+        ? Math.ceil(rateLimit.delay / 1000)
+        : rateLimit.blockedUntil
+          ? Math.ceil((rateLimit.blockedUntil - Date.now()) / 1000)
+          : 3600;
+      c.header('Retry-After', String(retryAfter));
+      return c.json(
+        {
+          error: 'Demasiados intentos',
+          message: rateLimit.reason || 'Has superado el límite de registros. Intenta más tarde.',
+          retryAfter,
+        },
+        429
+      );
+    }
+
+    const { getCaptchaConfig, verifyCaptcha } = await import('../utils/captcha');
+    const captchaConfig = getCaptchaConfig();
+    if (captchaConfig) {
+      if (!captchaToken) {
+        return c.json(
+          { error: 'CAPTCHA requerido', message: 'Completa el CAPTCHA para registrarte.' },
+          400
+        );
+      }
+      const captchaResult = await verifyCaptcha(captchaToken, captchaConfig);
+      if (!captchaResult.success) {
+        const { recordFailedRegistration } = await import('../utils/registration-rate-limit');
+        await recordFailedRegistration(clientIP, true);
+        const { recordSecurityMetric } = await import('../utils/security-metrics');
+        await recordSecurityMetric({
+          metricType: 'captcha_failed',
+          ipAddress: clientIP,
+          details: { context: 'register', error: captchaResult.error },
+        });
+        return c.json(
+          { error: 'CAPTCHA inválido', message: 'No se pudo verificar el CAPTCHA. Intenta de nuevo.' },
+          400
+        );
+      }
+    } else if (process.env.NODE_ENV === 'production') {
+      return c.json(
+        {
+          error: 'Registro no disponible',
+          message: 'El registro público requiere CAPTCHA configurado (CAPTCHA_PROVIDER, CAPTCHA_SITE_KEY, CAPTCHA_SECRET_KEY).',
+        },
+        503
+      );
+    }
+
+    const { validateEmailDomain } = await import('../utils/email-domains');
+    const domainCheck = validateEmailDomain(emailLower);
+    if (!domainCheck.valid) {
+      return c.json({ error: 'Email no permitido', message: domainCheck.error }, 400);
+    }
+
+    const { validatePasswordStrength } = await import('../utils/password');
+    const pwdCheck = validatePasswordStrength(password);
+    if (!pwdCheck.valid) {
+      return c.json(
+        { error: 'Contraseña débil', message: pwdCheck.errors.join('. ') },
+        400
+      );
+    }
+
+    const { getUserByEmailFromDB } = await import('../utils/user-db');
+    const existing = await getUserByEmailFromDB(emailLower);
+    if (existing) {
+      const { recordFailedRegistration } = await import('../utils/registration-rate-limit');
+      await recordFailedRegistration(clientIP, true);
+      const { logAuditEvent } = await import('../utils/audit-log');
+      await logAuditEvent({
+        userId: 'anonymous',
+        action: 'REGISTER_DUPLICATE_EMAIL',
+        resourceType: 'authentication',
+        ipAddress: clientIP,
+        userAgent: getSafeUserAgent(c),
+        details: { email: emailLower },
+      });
+      return c.json(
+        {
+          error: 'Email ya registrado',
+          code: 'email_already_registered',
+          message:
+            'Este correo ya tiene una cuenta en PodoAdmin. Inicia sesión o recupera tu contraseña si la olvidaste.',
+        },
+        409
+      );
+    }
+
+    let clinicId: string | null = null;
+    if (clinicCode?.trim()) {
+      const { database } = await import('../database');
+      const { clinics: clinicsTable } = await import('../database/schema');
+      const { eq } = await import('drizzle-orm');
+      const [clinicRow] = await database
+        .select({ clinicId: clinicsTable.clinicId })
+        .from(clinicsTable)
+        .where(eq(clinicsTable.clinicCode, clinicCode.trim()))
+        .limit(1);
+      if (!clinicRow) {
+        const { recordFailedRegistration } = await import('../utils/registration-rate-limit');
+        await recordFailedRegistration(clientIP, true);
+        return c.json(
+          { error: 'Código de clínica inválido', message: 'El código de clínica no existe.' },
+          400
+        );
+      }
+      clinicId = clinicRow.clinicId;
+    }
+
+    const id = `user_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
+    const now = new Date().toISOString();
+    const { hashPassword } = await import('../utils/password');
+    const hashedPwd = await hashPassword(password);
+
+    const { database } = await import('../database');
+    const { createdUsers } = await import('../database/schema');
+
+    const emailVerificationRequired = (await import('../utils/email-verification')).isEmailVerificationRequired();
+
+    await database.insert(createdUsers).values({
+      id,
+      userId: id,
+      email: emailLower,
+      name,
+      role: 'podiatrist',
+      clinicId,
+      password: hashedPwd,
+      createdAt: now,
+      updatedAt: now,
+      createdBy: 'public_register',
+      isBlocked: false,
+      isBanned: false,
+      isEnabled: false,
+      emailVerified: !emailVerificationRequired,
+      termsAccepted: termsAccepted === true,
+      termsAcceptedAt: termsAccepted ? now : null,
+      privacyPolicyAccepted: privacyPolicyAccepted === true,
+      privacyPolicyAcceptedAt: privacyPolicyAccepted ? now : null,
+      registrationSource: 'public',
+      assignedPodiatristIds: null,
+      googleId: null,
+      appleId: null,
+      oauthProvider: null,
+      avatarUrl: null,
+      mustChangePassword: false,
+    } as typeof createdUsers.$inferInsert);
+
+    let emailSent = false;
+    if (emailVerificationRequired) {
+      const { createVerificationToken } = await import('../utils/email-verification');
+      const token = await createVerificationToken(id);
+      const verificationUrl = `${getAppBaseUrl()}/verify-email?token=${encodeURIComponent(token)}`;
+
+      const { sendVerificationEmail } = await import('../utils/email-service');
+      emailSent = await sendVerificationEmail(emailLower, name, verificationUrl);
+    } else {
+      console.info('[register:dev] Cuenta creada con email auto-verificado (sin envío de correo):', emailLower);
+    }
+
+    const { recordSuccessfulRegistration } = await import('../utils/registration-rate-limit');
+    await recordSuccessfulRegistration(clientIP);
+
+    const { logAuditEvent } = await import('../utils/audit-log');
+    await logAuditEvent({
+      userId: id,
+      action: 'REGISTER_PUBLIC',
+      resourceType: 'user',
+      resourceId: id,
+      ipAddress: clientIP,
+      userAgent: getSafeUserAgent(c),
+      details: { email: emailLower, clinicId, emailSent, termsAccepted },
+    });
+
+    const { recordSecurityMetric } = await import('../utils/security-metrics');
+    await recordSecurityMetric({
+      metricType: 'registration_success',
+      userId: id,
+      ipAddress: clientIP,
+      details: { email: emailLower, emailSent },
+    });
+
+    if (!emailSent && emailVerificationRequired && process.env.NODE_ENV === 'production') {
+      console.error('[register] Usuario creado pero email de verificación no enviado:', emailLower);
+    }
+
+    if (emailVerificationRequired) {
+      return genericResponse();
+    }
+
+    return c.json({
+      success: true,
+      message: 'Cuenta creada. Inicia sesión y activa la prueba en Facturación (SMS + tarjeta).',
+      emailVerificationSkipped: true,
+    });
+  } catch (error) {
+    console.error('Error en registro público:', error);
+    const { recordFailedRegistration } = await import('../utils/registration-rate-limit');
+    await recordFailedRegistration(clientIP, true);
+    return c.json({ error: 'Error interno', message: 'No se pudo completar el registro' }, 500);
   }
 });
 
@@ -1240,7 +1564,6 @@ authRoutes.post('/verify-email', async (c) => {
       .update(createdUsers)
       .set({
         emailVerified: true,
-        isEnabled: true,
         updatedAt: new Date().toISOString(),
       })
       .where(eq(createdUsers.id, userId));
@@ -1279,9 +1602,23 @@ authRoutes.post('/verify-email', async (c) => {
       details: { email: user.email },
     });
 
+    const verifyClientIP = getClientIP(c.req.raw.headers);
+    if (user.role === 'clinic_admin' || user.role === 'podiatrist') {
+      const { tryGrantIpTrialForUser } = await import('../utils/ip-trial-service');
+      await tryGrantIpTrialForUser(user.userId, user.role, user.clinicId, verifyClientIP);
+    }
+
+    const { checkIpTrialEligibility } = await import('../utils/ip-trial-service');
+    const trialEligibility =
+      user.role === 'clinic_admin' || user.role === 'podiatrist'
+        ? await checkIpTrialEligibility(verifyClientIP, user.role)
+        : undefined;
+
     return c.json({
       success: true,
-      message: 'Email verificado correctamente. Ya puedes iniciar sesión.',
+      message:
+        'Email verificado correctamente. Inicia sesión y completa el pago en Facturación o espera la aprobación de un super administrador.',
+      trialEligibility,
       user: {
         id: user.userId,
         email: user.email,
@@ -1317,6 +1654,7 @@ authRoutes.post('/verify-email', async (c) => {
  * Body: { "ipAddress": "opcional" } - Si no se proporciona, limpia la IP del request
  */
 if (process.env.NODE_ENV !== 'production') {
+  authRoutes.use('/clear-ip-block', requireNonProductionDev);
   authRoutes.post('/clear-ip-block', async (c) => {
     try {
       const rawBody = await c.req.json().catch(() => ({}));
@@ -1371,5 +1709,131 @@ if (process.env.NODE_ENV !== 'production') {
     }
   });
 }
+
+/**
+ * GET /api/auth/google/url
+ */
+authRoutes.get('/google/url', async (c) => {
+  const { buildGoogleAuthUrl, isGoogleOAuthConfigured } = await import('../utils/google-oauth');
+  if (!isGoogleOAuthConfigured()) {
+    return c.json({ success: false, configured: false, error: 'Google OAuth no configurado' });
+  }
+  const state = crypto.randomUUID();
+  const url = buildGoogleAuthUrl(state);
+  return c.json({ success: true, configured: true, url, state });
+});
+
+/**
+ * POST /api/auth/google/callback
+ * Body: { code: string }
+ */
+authRoutes.post('/google/callback', async (c) => {
+  try {
+    const { exchangeGoogleCode, fetchGoogleUserInfo, isGoogleOAuthConfigured } = await import('../utils/google-oauth');
+    if (!isGoogleOAuthConfigured()) {
+      return c.json({ error: 'Google OAuth no configurado' }, 503);
+    }
+
+    const body = await c.req.json().catch(() => ({}));
+    const code = typeof body.code === 'string' ? body.code : '';
+    if (!code) return c.json({ error: 'Código requerido' }, 400);
+
+    const tokens = await exchangeGoogleCode(code);
+    const googleUser = await fetchGoogleUserInfo(tokens.access_token);
+    if (!googleUser.email_verified) {
+      return c.json({ error: 'Email de Google no verificado' }, 400);
+    }
+
+    const emailLower = googleUser.email.toLowerCase().trim();
+    const { database } = await import('../database');
+    const { createdUsers } = await import('../database/schema');
+    const { eq, or } = await import('drizzle-orm');
+
+    let rows = await database
+      .select()
+      .from(createdUsers)
+      .where(or(eq(createdUsers.googleId, googleUser.sub), eq(createdUsers.email, emailLower)))
+      .limit(1);
+
+    let row = rows[0];
+    if (!row) {
+      return c.json(
+        {
+          error: 'user_not_found',
+          message: 'No hay cuenta con este correo de Google. Solicita acceso a tu clínica o regístrate.',
+        },
+        404
+      );
+    }
+
+    const now = new Date().toISOString();
+    if (!row.googleId) {
+      await database
+        .update(createdUsers)
+        .set({
+          googleId: googleUser.sub,
+          oauthProvider: 'google',
+          avatarUrl: googleUser.picture ?? row.avatarUrl,
+          emailVerified: true,
+          updatedAt: now,
+        })
+        .where(eq(createdUsers.id, row.id));
+      row = { ...row, googleId: googleUser.sub, oauthProvider: 'google' };
+    }
+
+    if (row.isBlocked || row.isBanned) {
+      return c.json({ error: 'account_disabled', message: 'Cuenta no disponible' }, 403);
+    }
+    if (isAdministrativelyBlocked(row.isEnabled, row.disabledAt)) {
+      return c.json({ error: 'account_disabled', message: 'Cuenta en período de baja' }, 403);
+    }
+
+    const { accessToken, refreshToken } = await generateTokenPair({
+      userId: row.userId,
+      email: row.email,
+      role: row.role,
+      clinicId: row.clinicId ?? undefined,
+    });
+
+    const isProd = isProduction({ NODE_ENV: process.env.NODE_ENV }, c.req.raw.headers);
+    const accessCookie = formatCookie('access-token', accessToken, getAccessTokenCookieOptions(isProd));
+    const refreshCookie = formatCookie('refresh-token', refreshToken, getRefreshTokenCookieOptions(isProd));
+    c.header('Set-Cookie', [accessCookie, refreshCookie].join(', '));
+
+    const googleClientIP = getClientIP(c.req.raw.headers);
+    const { tryGrantIpTrialForUser } = await import('../utils/ip-trial-service');
+    await tryGrantIpTrialForUser(row.userId, row.role, row.clinicId, googleClientIP);
+
+    const access = await resolveSystemAccess(row.userId, row.role);
+
+    const { logAuditEvent } = await import('../utils/audit-log');
+    await logAuditEvent({
+      userId: row.userId,
+      action: 'LOGIN_GOOGLE',
+      resourceType: 'authentication',
+      ipAddress: getClientIP(c.req.raw.headers),
+      userAgent: getSafeUserAgent(c),
+      clinicId: row.clinicId ?? undefined,
+      details: { email: emailLower },
+    });
+
+    return c.json({
+      success: true,
+      user: {
+        id: row.userId,
+        email: row.email,
+        name: row.name,
+        role: row.role,
+        clinicId: row.clinicId ?? undefined,
+        avatarUrl: googleUser.picture ?? row.avatarUrl,
+        systemAccess: access.granted,
+        accessReason: access.reason,
+      },
+    });
+  } catch (error) {
+    console.error('Google OAuth error:', error);
+    return c.json({ error: 'Error en autenticación con Google' }, 500);
+  }
+});
 
 export default authRoutes;

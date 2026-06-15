@@ -1,56 +1,52 @@
-# Comandos para correr el sistema (copiar y pegar)
+# Comandos para correr el sistema
 
-Ruta del proyecto:
+Raíz del proyecto (ajusta la ruta si clonaste en otro sitio):
+
 ```
-c:\Users\mvs92\OneDrive\Escritorio\clinic\podoadmin-0949
+C:\proyectos\podoadmin-0949
 ```
 
 ---
 
-## Terminal 1 – Configuración y servidor de desarrollo
-
-Abre una terminal, ve a la carpeta del proyecto y ejecuta en este orden (uno por uno o el bloque completo):
+## Desarrollo local
 
 ```powershell
-cd c:\Users\mvs92\OneDrive\Escritorio\clinic\podoadmin-0949
-bun run cf-typegen
-bun run db:generate
-bun run db:migrate:remote
-bun run db:seed:remote
-bun dev
+cd C:\proyectos\podoadmin-0949
+npm install
+npm run dev
 ```
 
-Deja esta terminal abierta con `bun dev` corriendo.
+Abre http://localhost:5173
 
 ---
 
-## Terminal 2 – Túnel (para ver desde celular/exterior)
-
-Abre **otra** terminal, ve a la misma carpeta y ejecuta:
+## Migraciones (primera vez o tras pull)
 
 ```powershell
-cd c:\Users\mvs92\OneDrive\Escritorio\clinic\podoadmin-0949
-bun run tunnel
+cd C:\proyectos\podoadmin-0949
+npm run db:migrate
 ```
-
-Copia la URL que aparezca (tipo `https://xxxx.trycloudflare.com`) y ábrela en el navegador o en el celular.
 
 ---
 
-## Resumen rápido (solo comandos)
+## Reset local con datos mock
 
-**Terminal 1:**
-```
-cd c:\Users\mvs92\OneDrive\Escritorio\clinic\podoadmin-0949
-bun run cf-typegen
-bun run db:generate
-bun run db:migrate:remote
-bun run db:seed:remote
-bun dev
+```powershell
+cd C:\proyectos\podoadmin-0949
+npm run db:reset:local
+npm run dev
 ```
 
-**Terminal 2:**
+Ver cuentas de prueba en `docs/DEV_MOCK_RESET.md`.
+
+---
+
+## Super admin propio (opcional)
+
+```powershell
+cd C:\proyectos\podoadmin-0949
+npm run db:create-super-admin "tu@email.com" "TuPasswordSegura" "Tu Nombre"
+npx wrangler d1 execute DB --local --file=scripts/super-admin.sql
 ```
-cd c:\Users\mvs92\OneDrive\Escritorio\clinic\podoadmin-0949
-bun run tunnel
-```
+
+`scripts/super-admin.sql` no se commitea (está en `.gitignore`).

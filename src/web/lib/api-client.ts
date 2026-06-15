@@ -13,8 +13,6 @@ export interface ApiResponse<T = any> {
   data?: T;
   error?: string;
   message?: string;
-  /** Presente en errores HTTP de la API (JSON o cabecera X-Request-Id) para cruzar con logs del Worker */
-  requestId?: string;
   // Campos adicionales que pueden venir en respuestas de error (ej: rate limiting)
   retryAfter?: number;
   blockedUntil?: number;
@@ -155,8 +153,13 @@ export async function apiRequest<T = any>(
   const isStateChanging = stateChangingMethods.includes(method);
   const isLogin = endpoint === '/auth/login' && method === 'POST';
   const isRefresh = endpoint === '/auth/refresh' && method === 'POST';
+  const isPublicAuth =
+    (endpoint === '/auth/register' && method === 'POST') ||
+    (endpoint === '/auth/verify-email' && method === 'POST') ||
+    (endpoint === '/auth/forgot-password' && method === 'POST') ||
+    (endpoint === '/auth/reset-password' && method === 'POST');
 
-  if (isStateChanging && !isLogin && !isRefresh) {
+  if (isStateChanging && !isLogin && !isRefresh && !isPublicAuth) {
     const csrfToken = await ensureCsrfToken();
     if (csrfToken) {
       headers['X-CSRF-Token'] = csrfToken;
@@ -179,10 +182,6 @@ export async function apiRequest<T = any>(
     } catch {
       // Body vacío o no JSON: data queda {}
     }
-
-    const headerRequestId = response.headers.get('X-Request-Id') ?? undefined;
-    const bodyRequestId = typeof data?.requestId === 'string' ? data.requestId : undefined;
-    const resolvedRequestId = bodyRequestId || headerRequestId;
 
     // Si el access token expiró (401), intentar renovar con refresh token
     if (response.status === 401 && !isLogin && !isRefresh && endpoint !== '/auth/refresh') {
@@ -216,15 +215,10 @@ export async function apiRequest<T = any>(
         const retryData = await retryResponse.json();
         
         if (!retryResponse.ok) {
-          const rid =
-            (typeof retryData?.requestId === 'string' ? retryData.requestId : undefined) ||
-            retryResponse.headers.get('X-Request-Id') ||
-            undefined;
           return {
             success: false,
             error: retryData.error || 'Error en la solicitud',
             message: retryData.message,
-            requestId: rid,
             retryAfter: retryData.retryAfter,
             blockedUntil: retryData.blockedUntil,
             attemptCount: retryData.attemptCount,
@@ -239,12 +233,19 @@ export async function apiRequest<T = any>(
       }
     }
 
+    if (response.status === 402 && (data.error === 'subscription_inactive' || data.error === 'access_not_granted')) {
+      window.dispatchEvent(
+        new CustomEvent('subscription:inactive', {
+          detail: { billingPath: data.billingPath || '/billing' },
+        })
+      );
+    }
+
     if (!response.ok) {
       return {
         success: false,
         error: data.error || 'Error en la solicitud',
         message: data.message,
-        requestId: resolvedRequestId,
         data, // Incluir body completo para que el frontend pueda leer data.message
         // Pasar campos de rate limiting para login
         retryAfter: data.retryAfter,

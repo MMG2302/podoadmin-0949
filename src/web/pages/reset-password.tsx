@@ -72,8 +72,8 @@ const ResetPassword = () => {
       } else {
         setError(response.message || response.error || t.auth.resetPasswordErrorReset);
       }
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : t.auth.resetPasswordErrorConnection);
+    } catch (err: any) {
+      setError(err?.message || t.auth.resetPasswordErrorConnection);
     } finally {
       setIsLoading(false);
     }

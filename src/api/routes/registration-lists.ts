@@ -1,4 +1,5 @@
 import { Hono } from 'hono';
+import { resolveRegistrationListIsEnabled } from '../utils/access-control';
 import { eq, desc, and } from 'drizzle-orm';
 import { requireAuth } from '../middleware/auth';
 import { requireRole } from '../middleware/authorization';
@@ -10,17 +11,33 @@ import {
   notifications as notificationsTable,
   clinics as clinicsTable,
   clinicCredits as clinicCreditsTable,
-  userCredits as userCreditsTable,
 } from '../database/schema';
 import { hashPassword } from '../utils/password';
 import { logAuditEvent } from '../utils/audit-log';
 import { getClientIP } from '../utils/ip-tracking';
 import { getSafeUserAgent } from '../utils/request-headers';
+import { sanitizePathParam } from '../utils/sanitization';
+import {
+  validateData,
+  validateQuery,
+  createRegistrationListSchema,
+  updateRegistrationListSchema,
+  createRegistrationEntrySchema,
+  registrationListStatusQuerySchema,
+} from '../utils/validation';
 
 const registrationListsRoutes = new Hono();
 registrationListsRoutes.use('*', requireAuth);
 
 const generateId = (prefix: string) => `${prefix}_${crypto.randomUUID().replace(/-/g, '')}`;
+
+function parseListId(c: { req: { param: (name: string) => string } }): string | null {
+  return sanitizePathParam(c.req.param('id'), 64);
+}
+
+function parseEntryId(c: { req: { param: (name: string) => string } }): string | null {
+  return sanitizePathParam(c.req.param('entryId'), 64);
+}
 
 function isSupportRole(role: string) {
   return role === 'super_admin' || role === 'admin';
@@ -34,7 +51,11 @@ function isSupportRole(role: string) {
 registrationListsRoutes.get('/', async (c) => {
   try {
     const user = c.get('user');
-    const statusFilter = c.req.query('status'); // draft | pending | approved | rejected
+    const statusResult = validateQuery(registrationListStatusQuerySchema, c.req.query());
+    if (!statusResult.success) {
+      return c.json({ error: 'Parámetros inválidos', message: statusResult.error, issues: statusResult.issues }, 400);
+    }
+    const statusFilter = statusResult.data.status;
 
     let rows;
     if (user.role === 'super_admin') {
@@ -109,8 +130,12 @@ registrationListsRoutes.get('/', async (c) => {
 registrationListsRoutes.post('/', requireRole('super_admin', 'admin'), async (c) => {
   try {
     const user = c.get('user');
-    const body = (await c.req.json().catch(() => ({}))) as { name?: string };
-    const name = (body.name || 'Nueva lista').trim().slice(0, 200);
+    const rawBody = await c.req.json().catch(() => ({}));
+    const validation = validateData(createRegistrationListSchema, rawBody);
+    if (!validation.success) {
+      return c.json({ error: 'Datos inválidos', message: validation.error, issues: validation.issues }, 400);
+    }
+    const name = validation.data.name || 'Nueva lista';
 
     const id = generateId('reglist');
     const now = new Date().toISOString();
@@ -151,7 +176,8 @@ registrationListsRoutes.post('/', requireRole('super_admin', 'admin'), async (c)
 registrationListsRoutes.get('/:id', async (c) => {
   try {
     const user = c.get('user');
-    const listId = c.req.param('id');
+    const listId = parseListId(c);
+    if (!listId) return c.json({ error: 'ID de lista inválido' }, 400);
 
     const [list] = await database
       .select()
@@ -208,8 +234,13 @@ registrationListsRoutes.get('/:id', async (c) => {
 registrationListsRoutes.patch('/:id', requireRole('super_admin', 'admin'), async (c) => {
   try {
     const user = c.get('user');
-    const listId = c.req.param('id');
-    const body = (await c.req.json().catch(() => ({}))) as { name?: string };
+    const listId = parseListId(c);
+    if (!listId) return c.json({ error: 'ID de lista inválido' }, 400);
+    const rawBody = await c.req.json().catch(() => ({}));
+    const validation = validateData(updateRegistrationListSchema, rawBody);
+    if (!validation.success) {
+      return c.json({ error: 'Datos inválidos', message: validation.error, issues: validation.issues }, 400);
+    }
 
     const [list] = await database
       .select()
@@ -225,7 +256,7 @@ registrationListsRoutes.patch('/:id', requireRole('super_admin', 'admin'), async
       return c.json({ error: 'Solo se pueden editar listas en borrador' }, 400);
     }
 
-    const name = body.name ? String(body.name).trim().slice(0, 200) : list.name;
+    const name = validation.data.name;
     const now = new Date().toISOString();
 
     await database
@@ -249,7 +280,8 @@ registrationListsRoutes.patch('/:id', requireRole('super_admin', 'admin'), async
 registrationListsRoutes.delete('/:id', requireRole('super_admin', 'admin'), async (c) => {
   try {
     const user = c.get('user');
-    const listId = c.req.param('id');
+    const listId = parseListId(c);
+    if (!listId) return c.json({ error: 'ID de lista inválido' }, 400);
 
     const [list] = await database
       .select()
@@ -291,22 +323,15 @@ registrationListsRoutes.delete('/:id', requireRole('super_admin', 'admin'), asyn
 registrationListsRoutes.post('/:id/entries', requireRole('super_admin', 'admin'), async (c) => {
   try {
     const user = c.get('user');
-    const listId = c.req.param('id');
-    const body = (await c.req.json().catch(() => ({}))) as {
-      name?: string;
-      email?: string;
-      role?: string;
-      clinicId?: string;
-      clinicMode?: string;
-      podiatristLimit?: number | string | null;
-      notes?: string;
-    };
-
-    const name = (body.name || '').trim().slice(0, 200);
-    const email = (body.email || '').trim().toLowerCase().slice(0, 255);
-    if (!name || !email) {
-      return c.json({ error: 'Nombre y email son requeridos' }, 400);
+    const listId = parseListId(c);
+    if (!listId) return c.json({ error: 'ID de lista inválido' }, 400);
+    const rawBody = await c.req.json().catch(() => ({}));
+    const validation = validateData(createRegistrationEntrySchema, rawBody);
+    if (!validation.success) {
+      return c.json({ error: 'Datos inválidos', message: validation.error, issues: validation.issues }, 400);
     }
+    const body = validation.data;
+    const { name, email } = body;
 
     const [list] = await database
       .select()
@@ -323,7 +348,7 @@ registrationListsRoutes.post('/:id/entries', requireRole('super_admin', 'admin')
     }
 
     const validRoles = ['podiatrist', 'clinic_admin'];
-    const role = validRoles.includes((body.role || '').toLowerCase()) ? body.role!.toLowerCase() : 'podiatrist';
+    const role = validRoles.includes(body.role) ? body.role : 'podiatrist';
 
     let podiatristLimit: number | null = null;
     if (role === 'clinic_admin' && body.podiatristLimit != null && body.podiatristLimit !== '') {
@@ -382,8 +407,10 @@ registrationListsRoutes.post('/:id/entries', requireRole('super_admin', 'admin')
 registrationListsRoutes.delete('/:id/entries/:entryId', requireRole('super_admin', 'admin'), async (c) => {
   try {
     const user = c.get('user');
-    const listId = c.req.param('id');
-    const entryId = c.req.param('entryId');
+    const listId = parseListId(c);
+    if (!listId) return c.json({ error: 'ID de lista inválido' }, 400);
+    const entryId = parseEntryId(c);
+    if (!entryId) return c.json({ error: 'ID de entrada inválido' }, 400);
 
     const [list] = await database
       .select()
@@ -417,7 +444,8 @@ registrationListsRoutes.delete('/:id/entries/:entryId', requireRole('super_admin
 registrationListsRoutes.post('/:id/submit', requireRole('super_admin', 'admin'), async (c) => {
   try {
     const user = c.get('user');
-    const listId = c.req.param('id');
+    const listId = parseListId(c);
+    if (!listId) return c.json({ error: 'ID de lista inválido' }, 400);
 
     const [list] = await database
       .select()
@@ -497,7 +525,8 @@ registrationListsRoutes.post('/:id/submit', requireRole('super_admin', 'admin'),
 registrationListsRoutes.get('/:id/csv', async (c) => {
   try {
     const user = c.get('user');
-    const listId = c.req.param('id');
+    const listId = parseListId(c);
+    if (!listId) return c.json({ error: 'ID de lista inválido' }, 400);
 
     const [list] = await database
       .select()
@@ -543,7 +572,8 @@ registrationListsRoutes.get('/:id/csv', async (c) => {
 registrationListsRoutes.post('/:id/csv', async (c) => {
   try {
     const user = c.get('user');
-    const listId = c.req.param('id');
+    const listId = parseListId(c);
+    if (!listId) return c.json({ error: 'ID de lista inválido' }, 400);
     const body = (await c.req.json().catch(() => ({}))) as { entryIds?: string[] };
     const entryIds = Array.isArray(body.entryIds) ? body.entryIds.filter((id) => typeof id === 'string') : [];
 
@@ -610,7 +640,8 @@ function generateTempPassword(): string {
 registrationListsRoutes.post('/:id/approve', requireRole('super_admin'), async (c) => {
   try {
     const user = c.get('user');
-    const listId = c.req.param('id');
+    const listId = parseListId(c);
+    if (!listId) return c.json({ error: 'ID de lista inválido' }, 400);
 
     const [list] = await database
       .select()
@@ -680,10 +711,11 @@ registrationListsRoutes.post('/:id/approve', requireRole('super_admin'), async (
           const nextCodeNum = codeNums.length > 0 ? Math.max(...codeNums) + 1 : 1;
           const clinicCode = `C${String(nextCodeNum).padStart(3, '0')}`;
 
+          const { defaultPodiatristLimitForNewClinic } = await import('../utils/billing-pricing');
           const pl =
             role === 'clinic_admin' && e.podiatristLimit != null && e.podiatristLimit >= 1
               ? Math.min(999, Math.floor(e.podiatristLimit))
-              : null;
+              : defaultPodiatristLimitForNewClinic();
 
           await database.insert(clinicsTable).values({
             clinicId: newClinicId,
@@ -737,7 +769,7 @@ registrationListsRoutes.post('/:id/approve', requireRole('super_admin'), async (
           createdBy: user.userId,
           isBlocked: false,
           isBanned: false,
-          isEnabled: true,
+          isEnabled: resolveRegistrationListIsEnabled(role),
           emailVerified: false,
           termsAccepted: false,
           termsAcceptedAt: null,
@@ -750,14 +782,7 @@ registrationListsRoutes.post('/:id/approve', requireRole('super_admin'), async (
           mustChangePassword: true,
         } as Record<string, unknown>);
 
-        if (role === 'receptionist') {
-          await database.insert(userCreditsTable).values({
-            userId: id,
-            totalCredits: 0,
-            usedCredits: 0,
-            createdAt: now,
-            updatedAt: now,
-          });
+        if (clinicIdToSet && role === 'podiatrist') {
         }
 
         await logAuditEvent({
@@ -818,7 +843,8 @@ registrationListsRoutes.post('/:id/approve', requireRole('super_admin'), async (
 registrationListsRoutes.post('/:id/reject', requireRole('super_admin'), async (c) => {
   try {
     const user = c.get('user');
-    const listId = c.req.param('id');
+    const listId = parseListId(c);
+    if (!listId) return c.json({ error: 'ID de lista inválido' }, 400);
     const body = (await c.req.json().catch(() => ({}))) as { reason?: string };
 
     const [list] = await database

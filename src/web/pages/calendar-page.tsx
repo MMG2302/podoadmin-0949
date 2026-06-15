@@ -6,11 +6,7 @@ import { useAuth } from "../contexts/auth-context";
 import { usePermissions } from "../hooks/use-permissions";
 import { useRefreshOnFocus } from "../hooks/use-refresh-on-focus";
 import { api } from "../lib/api-client";
-import { 
-  ClinicalSession, 
-  Patient,
-  Appointment,
-} from "../lib/storage";
+import type { ClinicalSession, Patient, Appointment } from "../types/clinical";
 
 type ViewMode = "month" | "week" | "day";
 
@@ -77,19 +73,62 @@ const CalendarPage = () => {
   const [editingAppointment, setEditingAppointment] = useState<Appointment | null>(null);
   const [isSubmittingAppointment, setIsSubmittingAppointment] = useState(false);
   const [appointmentSubmitError, setAppointmentSubmitError] = useState("");
+  const [agendaMetrics, setAgendaMetrics] = useState<{
+    scheduled: number;
+    noShow: number;
+    completed: number;
+    noShowRate: number;
+    completionRate: number;
+  } | null>(null);
+  const [waitlist, setWaitlist] = useState<
+    Array<{
+      id: string;
+      pendingPatientName?: string | null;
+      pendingPatientPhone?: string | null;
+      podiatristId: string;
+      preferredDate?: string | null;
+      reason?: string | null;
+    }>
+  >([]);
 
-  // Cargar sesiones, pacientes y citas desde API
   const loadCalendarData = useCallback(async () => {
     if (!user?.id) return;
-    const [sessRes, patRes, aptRes] = await Promise.all([
+    const [sessRes, patRes, aptRes, metricsRes, waitRes] = await Promise.all([
       api.get<{ success?: boolean; sessions?: ClinicalSession[] }>("/sessions"),
       api.get<{ success?: boolean; patients?: Patient[] }>("/patients"),
       api.get<{ success?: boolean; appointments?: Appointment[] }>("/appointments"),
+      api.get<{ success?: boolean; metrics?: typeof agendaMetrics }>("/clinical/appointments/metrics"),
+      api.get<{ success?: boolean; waitlist?: typeof waitlist }>("/clinical/waitlist"),
     ]);
     if (sessRes.success && Array.isArray(sessRes.data?.sessions)) setAllSessions(sessRes.data.sessions);
     if (patRes.success && Array.isArray(patRes.data?.patients)) setAllPatients(patRes.data.patients);
     if (aptRes.success && Array.isArray(aptRes.data?.appointments)) setAllAppointments(aptRes.data.appointments);
+    if (metricsRes.success && metricsRes.data?.metrics) setAgendaMetrics(metricsRes.data.metrics);
+    if (waitRes.success && waitRes.data?.waitlist) setWaitlist(waitRes.data.waitlist);
   }, [user?.id]);
+
+  const updateCheckIn = async (
+    apptId: string,
+    checkInStatus: "none" | "waiting" | "in_room" | "seen",
+    e?: React.MouseEvent
+  ) => {
+    e?.stopPropagation();
+    const res = await api.patch<{ success?: boolean }>(`/clinical/appointments/${apptId}/check-in`, {
+      checkInStatus,
+    });
+    if (res.success) {
+      setAllAppointments((prev) =>
+        prev.map((a) => (a.id === apptId ? { ...a, checkInStatus } : a))
+      );
+    }
+  };
+
+  const checkInLabel = (s?: string) => {
+    if (s === "waiting") return "En espera";
+    if (s === "in_room") return "En consulta";
+    if (s === "seen") return "Atendido";
+    return "Sin check-in";
+  };
 
   useEffect(() => {
     loadCalendarData();
@@ -133,7 +172,7 @@ const CalendarPage = () => {
       pendingPatientName: a.pendingPatientName,
       pendingPatientPhone: a.pendingPatientPhone,
     }));
-  }, [allAppointments, allPatients, isClinicAdmin, isReceptionist, podiatristFilter, clinicPodiatrists, t.calendar.unknown]);
+  }, [allAppointments, allPatients, isClinicAdmin, isReceptionist, podiatristFilter, clinicPodiatrists]);
 
   // Calendar navigation
   const navigatePrev = () => {
@@ -183,9 +222,10 @@ const CalendarPage = () => {
     const month = currentDate.getMonth();
     
     const firstDay = new Date(year, month, 1);
-
+    const lastDay = new Date(year, month + 1, 0);
+    
     // Start from Monday (adjust if first day is Sunday)
-    const startDate = new Date(firstDay);
+    let startDate = new Date(firstDay);
     const dayOfWeek = startDate.getDay();
     const diff = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
     startDate.setDate(startDate.getDate() - diff);
@@ -436,32 +476,7 @@ const isSelected = (date: Date) => {
         setAppointmentForm(emptyAppointmentForm);
         setEditingAppointment(null);
         setRefreshTrigger((prev) => prev + 1);
-        if (previousPodiatristId !== newPodiatristId && newPodiatristId) {
-          const assignedPodiatrist = allUsers.find((u) => u.id === newPodiatristId);
-          const patient = patientId ? getPatientById(patientId) : null;
-          const formattedDate = new Date(`${appointmentForm.date}T${appointmentForm.time}`).toLocaleDateString(locale, {
-            weekday: "long", day: "numeric", month: "long", year: "numeric",
-          });
-          const formattedTime = appointmentForm.time;
-          if (assignedPodiatrist) {
-            api.post("/notifications", {
-              userId: assignedPodiatrist.id,
-              type: "appointment",
-              title: t.calendar.formTitleEdit,
-              message: patientId && patient
-                ? `Se te ha reasignado una cita con ${patient.firstName} ${patient.lastName} el ${formattedDate} a las ${formattedTime}`
-                : `Se te ha reasignado una cita programada el ${formattedDate} a las ${formattedTime}${appointmentForm.notes ? ` - ${appointmentForm.notes}` : ""}`,
-              metadata: {
-                appointmentDate: appointmentForm.date,
-                reason: appointmentForm.notes || undefined,
-                fromUserId: user?.id,
-                fromUserName: user?.name,
-                patientId: patientId || undefined,
-                patientName: patient ? `${patient.firstName} ${patient.lastName}` : undefined,
-              },
-            }).catch(() => {});
-          }
-        }
+        // Notificación al podólogo: la envía el servidor al reasignar la cita (PUT /appointments)
       } else {
         const res = await api.post<{ success?: boolean; appointment?: Appointment; message?: string; code?: string }>("/appointments", body);
         if (!res.success) {
@@ -480,30 +495,7 @@ const isSelected = (date: Date) => {
         setEditingAppointment(null);
         setRefreshTrigger((prev) => prev + 1);
 
-        const assignedPodiatrist = allUsers.find((u) => u.id === appointmentForm.podiatristId);
-        const patient = patientId ? getPatientById(patientId) : null;
-        const formattedDate = new Date(`${appointmentForm.date}T${appointmentForm.time}`).toLocaleDateString(locale, {
-          weekday: "long", day: "numeric", month: "long", year: "numeric",
-        });
-        const formattedTime = appointmentForm.time;
-        if (assignedPodiatrist) {
-          api.post("/notifications", {
-            userId: assignedPodiatrist.id,
-            type: "appointment",
-            title: t.calendar.formTitleNew,
-            message: patientId && patient
-              ? `Tienes una nueva cita con ${patient.firstName} ${patient.lastName} el ${formattedDate} a las ${formattedTime}`
-              : `Tienes una nueva cita programada el ${formattedDate} a las ${formattedTime}${appointmentForm.notes ? ` - ${appointmentForm.notes}` : ""}`,
-            metadata: {
-              appointmentDate: appointmentForm.date,
-              reason: appointmentForm.notes || undefined,
-              fromUserId: user?.id,
-              fromUserName: user?.name,
-              patientId: patientId || undefined,
-              patientName: patient ? `${patient.firstName} ${patient.lastName}` : undefined,
-            },
-          }).catch(() => {});
-        }
+        // Notificación al podólogo: la envía el servidor al crear la cita (POST /appointments)
       }
     } catch (err) {
       const msg = err instanceof Error ? err.message : t.calendar.errorSaveFailed;
@@ -624,6 +616,43 @@ const isSelected = (date: Date) => {
               </div>
             </div>
           </div>
+
+          {agendaMetrics && (
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
+              <div className="bg-white rounded-xl border p-3">
+                <p className="text-xs text-gray-500">Programadas</p>
+                <p className="text-xl font-semibold">{agendaMetrics.scheduled}</p>
+              </div>
+              <div className="bg-white rounded-xl border p-3">
+                <p className="text-xs text-gray-500">Completadas</p>
+                <p className="text-xl font-semibold">{agendaMetrics.completed}</p>
+                <p className="text-[10px] text-gray-400">{agendaMetrics.completionRate}%</p>
+              </div>
+              <div className="bg-white rounded-xl border p-3">
+                <p className="text-xs text-gray-500">No-show</p>
+                <p className="text-xl font-semibold">{agendaMetrics.noShow}</p>
+                <p className="text-[10px] text-gray-400">{agendaMetrics.noShowRate}%</p>
+              </div>
+              <div className="bg-white rounded-xl border p-3">
+                <p className="text-xs text-gray-500">Lista de espera</p>
+                <p className="text-xl font-semibold">{waitlist.length}</p>
+              </div>
+            </div>
+          )}
+
+          {waitlist.length > 0 && (
+            <div className="bg-amber-50 border border-amber-100 rounded-xl p-4 mb-4">
+              <h3 className="text-sm font-semibold text-amber-900 mb-2">Lista de espera</h3>
+              <ul className="space-y-1 text-sm text-amber-900">
+                {waitlist.slice(0, 5).map((w) => (
+                  <li key={w.id}>
+                    {w.pendingPatientName || "Paciente"} · {w.pendingPatientPhone || "sin tel."}
+                    {w.preferredDate ? ` · pref. ${w.preferredDate}` : ""}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
 
           {/* Calendar Grid - overflow-x-auto en móvil para grid de 7 columnas */}
           <div className="bg-white rounded-xl border border-gray-100 overflow-x-auto overscroll-contain">
@@ -996,6 +1025,24 @@ const isSelected = (date: Date) => {
                       <p className="text-xs text-gray-500">
                         Podólogo: {appt.podiatristName}
                       </p>
+                      {(isClinicAdmin || isReceptionist || isPodiatrist) && (
+                        <select
+                          className="mt-2 w-full text-xs border rounded px-2 py-1"
+                          value={appt.checkInStatus || "none"}
+                          onClick={(e) => e.stopPropagation()}
+                          onChange={(e) =>
+                            updateCheckIn(
+                              appt.id,
+                              e.target.value as "none" | "waiting" | "in_room" | "seen"
+                            )
+                          }
+                        >
+                          <option value="none">{checkInLabel("none")}</option>
+                          <option value="waiting">{checkInLabel("waiting")}</option>
+                          <option value="in_room">{checkInLabel("in_room")}</option>
+                          <option value="seen">{checkInLabel("seen")}</option>
+                        </select>
+                      )}
                       {appt.notes && (
                         <p className="text-xs text-gray-400 mt-1 line-clamp-2">{appt.notes}</p>
                       )}

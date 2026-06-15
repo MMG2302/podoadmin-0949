@@ -94,7 +94,7 @@ export async function enable2FA(
       createdAt: now,
       updatedAt: now,
     });
-  } catch {
+  } catch (error) {
     // Si ya existe, actualizar
     await database
       .update(twoFactorAuth)

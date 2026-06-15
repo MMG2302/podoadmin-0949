@@ -8,6 +8,7 @@ import { patients as patientsTable, clinicalSessions as sessionsTable, appointme
 import { canUserAccess } from '../utils/user-retention';
 import { eq, inArray } from 'drizzle-orm';
 import { logAuditEvent } from '../utils/audit-log';
+import { notifyPatientReassignment } from '../utils/notifications-service';
 import { getClientIP } from '../utils/ip-tracking';
 import { getSafeUserAgent } from '../utils/request-headers';
 import {
@@ -182,6 +183,22 @@ patientsRoutes.post(
         userAgent: getSafeUserAgent(c),
         clinicId: user.clinicId ?? undefined,
       });
+
+      const patientFullName = `${patient.firstName} ${patient.lastName}`.trim();
+      const adminNameRow = await database
+        .select({ name: createdUsersTable.name })
+        .from(createdUsersTable)
+        .where(eq(createdUsersTable.userId, user.userId))
+        .limit(1);
+      const clinicAdminName = adminNameRow[0]?.name ?? user.email;
+      await notifyPatientReassignment({
+        clinicAdminUserId: user.userId,
+        clinicAdminName,
+        previousPodiatristUserId: previousPodiatristId,
+        newPodiatristUserId: newOwnerUserId,
+        patientId,
+        patientFullName: patientFullName || patientId,
+      }).catch((err) => console.error('Error enviando notificaciones de reasignación:', err));
 
       const updatedPatient = (
         await database.select().from(patientsTable).where(eq(patientsTable.id, patientId)).limit(1)
@@ -428,6 +445,7 @@ patientsRoutes.post(
         dateOfBirth: body.dateOfBirth,
         gender: body.gender,
         idNumber,
+        curp: body.curp?.trim() ? body.curp.trim().toUpperCase() : null,
         phone: body.phone,
         email: body.email || null,
         address: body.address || null,
@@ -556,6 +574,9 @@ patientsRoutes.put(
       if (body.dateOfBirth !== undefined) updateData.dateOfBirth = body.dateOfBirth;
       if (body.gender !== undefined) updateData.gender = body.gender;
       if (body.idNumber !== undefined) updateData.idNumber = body.idNumber;
+      if (body.curp !== undefined) {
+        updateData.curp = body.curp?.trim() ? body.curp.trim().toUpperCase() : null;
+      }
       if (body.phone !== undefined) updateData.phone = body.phone;
       if (body.email !== undefined) updateData.email = body.email || null;
       if (body.address !== undefined) updateData.address = body.address || null;
@@ -628,6 +649,31 @@ patientsRoutes.delete(
       }
 
       const existing = existingRows[0];
+
+      const { hasActiveLegalHold } = await import('../utils/legal-hold');
+      if (await hasActiveLegalHold('patient', patientId) || existing.legalHold) {
+        return c.json(
+          {
+            error: 'legal_hold_active',
+            message:
+              'Este expediente tiene un bloqueo legal activo (legal hold). No puede eliminarse hasta que un administrador levante el bloqueo.',
+          },
+          409
+        );
+      }
+
+      const { isPatientProtectedFromDeletion } = await import('../utils/clinical-retention-purge');
+      const retentionBlock = await isPatientProtectedFromDeletion(patientId);
+      if (retentionBlock === 'retention_period_active') {
+        return c.json(
+          {
+            error: 'retention_period_active',
+            message:
+              'Este expediente aún está dentro del plazo legal de conservación (NOM-004 / política global). No puede eliminarse hasta que expire retain_until.',
+          },
+          409
+        );
+      }
 
       // Reglas de borrado:
       // - receptionist: no puede eliminar pacientes

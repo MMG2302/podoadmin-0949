@@ -27,7 +27,16 @@ const ALLOWED_API_FIRST_SEGMENTS: ReadonlySet<string> = new Set([
   'messages',
   'support',
   'registration-lists',
+  'integrations',
+  'whatsapp-messages',
+  'compliance',
   'system',
+  'subscriptions',
+  'prescriptions',
+  'clinical',
+  'lab-attachments',
+  'whatsapp-campaigns',
+  'stripe',
 ]);
 
 /** Caracteres permitidos en un segmento de path (evita encoding raro o inyección). */

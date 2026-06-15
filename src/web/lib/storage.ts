@@ -58,63 +58,21 @@ const safeStorage = {
   },
 };
 
-// Types for all data structures
-export interface Patient {
-  id: string;
-  folio: string; // Unique medical record number - format: CLINIC_CODE-YEAR-SEQUENCE
-  firstName: string;
-  lastName: string;
-  dateOfBirth: string;
-  gender: "male" | "female" | "other";
-  idNumber: string;
-  phone: string;
-  email: string;
-  address: string;
-  city: string;
-  postalCode: string;
-  medicalHistory: {
-    allergies: string[];
-    medications: string[];
-    conditions: string[];
-  };
-  consent: {
-    given: boolean;
-    date: string | null;
-    consentedToVersion?: number | null;
-  };
-  createdAt: string;
-  updatedAt: string;
-  createdBy: string;
-}
+// Tipos clínicos: D1/API es la fuente de verdad (ver src/web/types/clinical.ts)
+export type {
+  Patient,
+  ClinicalSession,
+  AppointmentReason,
+} from "../types/clinical";
+import type { Patient, ClinicalSession } from "../types/clinical";
 
-export type AppointmentReason = 
-  | "routine_checkup"
-  | "treatment_continuation"
-  | "post_procedure_review"
-  | "new_symptoms"
-  | "follow_up"
-  | "other";
-
-export interface ClinicalSession {
-  id: string;
-  patientId: string;
-  sessionDate: string;
-  status: "draft" | "completed";
-  clinicalNotes: string;
-  anamnesis: string;
-  physicalExamination: string;
-  diagnosis: string;
-  treatmentPlan: string;
-  images: string[]; // base64 encoded webp images
-  createdAt: string;
-  updatedAt: string;
-  completedAt: string | null;
-  createdBy: string;
-  creditReservedAt: string | null;
-  // Follow-up fields
-  nextAppointmentDate: string | null;
-  followUpNotes: string | null;
-  appointmentReason: AppointmentReason | null;
+let deprecatedClinicalStorageWarned = false;
+function warnDeprecatedClinicalStorage(): void {
+  if (deprecatedClinicalStorageWarned) return;
+  deprecatedClinicalStorageWarned = true;
+  console.warn(
+    "[PodoAdmin] localStorage para pacientes/sesiones está obsoleto. Usa la API (/patients, /sessions)."
+  );
 }
 
 export interface CreditTransaction {
@@ -201,11 +159,15 @@ export const generateId = (): string => {
   return `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 };
 
-// Patients CRUD
-export const getPatients = (): Patient[] => getItem<Patient[]>(KEYS.PATIENTS, []);
+// Patients CRUD (obsoleto — usar API)
+export const getPatients = (): Patient[] => {
+  warnDeprecatedClinicalStorage();
+  return [];
+};
 
-export const getPatientById = (id: string): Patient | undefined => {
-  return getPatients().find((p) => p.id === id);
+export const getPatientById = (_id: string): Patient | undefined => {
+  warnDeprecatedClinicalStorage();
+  return undefined;
 };
 
 // Generate unique folio for patient
@@ -271,15 +233,20 @@ export const deletePatient = (id: string): boolean => {
   return true;
 };
 
-// Sessions CRUD
-export const getSessions = (): ClinicalSession[] => getItem<ClinicalSession[]>(KEYS.SESSIONS, []);
-
-export const getSessionById = (id: string): ClinicalSession | undefined => {
-  return getSessions().find((s) => s.id === id);
+// Sessions CRUD (obsoleto — usar API)
+export const getSessions = (): ClinicalSession[] => {
+  warnDeprecatedClinicalStorage();
+  return [];
 };
 
-export const getSessionsByPatient = (patientId: string): ClinicalSession[] => {
-  return getSessions().filter((s) => s.patientId === patientId);
+export const getSessionById = (_id: string): ClinicalSession | undefined => {
+  warnDeprecatedClinicalStorage();
+  return undefined;
+};
+
+export const getSessionsByPatient = (_patientId: string): ClinicalSession[] => {
+  warnDeprecatedClinicalStorage();
+  return [];
 };
 
 export const saveSession = (session: Omit<ClinicalSession, "id" | "createdAt" | "updatedAt">): ClinicalSession => {
@@ -1428,211 +1395,9 @@ export const getUserStatus = (userId: string): { isBlocked: boolean; isEnabled: 
   };
 };
 
-// Mock users para autenticación (deben coincidir con auth-context.tsx)
-const MOCK_USERS = [
-  {
-    email: "admin@podoadmin.com",
-    password: "admin123",
-    user: {
-      id: "user_super_admin",
-      email: "admin@podoadmin.com",
-      name: "Super Admin",
-      role: "super_admin" as const,
-      clinicId: undefined,
-    },
-  },
-  {
-    email: "support@podoadmin.com",
-    password: "support123",
-    user: {
-      id: "user_admin",
-      email: "support@podoadmin.com",
-      name: "Admin Support",
-      role: "admin" as const,
-      clinicId: undefined,
-    },
-  },
-  {
-    email: "maria.fernandez@premium.com",
-    password: "manager123",
-    user: {
-      id: "user_clinic_admin_001",
-      email: "maria.fernandez@premium.com",
-      name: "María Fernández",
-      role: "clinic_admin" as const,
-      clinicId: "clinic_001",
-    },
-  },
-  {
-    email: "doctor1@premium.com",
-    password: "doctor123",
-    user: {
-      id: "user_podiatrist_001",
-      email: "doctor1@premium.com",
-      name: "Dr. Juan Pérez",
-      role: "podiatrist" as const,
-      clinicId: "clinic_001",
-    },
-  },
-  {
-    email: "doctor2@premium.com",
-    password: "doctor123",
-    user: {
-      id: "user_podiatrist_002",
-      email: "doctor2@premium.com",
-      name: "Dra. Ana Martínez",
-      role: "podiatrist" as const,
-      clinicId: "clinic_001",
-    },
-  },
-  {
-    email: "doctor3@premium.com",
-    password: "doctor123",
-    user: {
-      id: "user_podiatrist_003",
-      email: "doctor3@premium.com",
-      name: "Dr. Carlos López",
-      role: "podiatrist" as const,
-      clinicId: "clinic_001",
-    },
-  },
-  {
-    email: "juan.garcia@centromedico.com",
-    password: "manager123",
-    user: {
-      id: "user_clinic_admin_002",
-      email: "juan.garcia@centromedico.com",
-      name: "Juan García",
-      role: "clinic_admin" as const,
-      clinicId: "clinic_002",
-    },
-  },
-  {
-    email: "doctor1@centromedico.com",
-    password: "doctor123",
-    user: {
-      id: "user_podiatrist_004",
-      email: "doctor1@centromedico.com",
-      name: "Dra. Laura Sánchez",
-      role: "podiatrist" as const,
-      clinicId: "clinic_002",
-    },
-  },
-  {
-    email: "doctor2@centromedico.com",
-    password: "doctor123",
-    user: {
-      id: "user_podiatrist_005",
-      email: "doctor2@centromedico.com",
-      name: "Dr. Miguel Torres",
-      role: "podiatrist" as const,
-      clinicId: "clinic_002",
-    },
-  },
-  {
-    email: "doctor3@centromedico.com",
-    password: "doctor123",
-    user: {
-      id: "user_podiatrist_006",
-      email: "doctor3@centromedico.com",
-      name: "Dra. Elena Ruiz",
-      role: "podiatrist" as const,
-      clinicId: "clinic_002",
-    },
-  },
-  {
-    email: "sofia.rodriguez@integralplus.com",
-    password: "manager123",
-    user: {
-      id: "user_clinic_admin_003",
-      email: "sofia.rodriguez@integralplus.com",
-      name: "Sofía Rodríguez",
-      role: "clinic_admin" as const,
-      clinicId: "clinic_003",
-    },
-  },
-  {
-    email: "doctor1@integralplus.com",
-    password: "doctor123",
-    user: {
-      id: "user_podiatrist_007",
-      email: "doctor1@integralplus.com",
-      name: "Dr. Roberto Díaz",
-      role: "podiatrist" as const,
-      clinicId: "clinic_003",
-    },
-  },
-  {
-    email: "doctor2@integralplus.com",
-    password: "doctor123",
-    user: {
-      id: "user_podiatrist_008",
-      email: "doctor2@integralplus.com",
-      name: "Dra. Carmen Vega",
-      role: "podiatrist" as const,
-      clinicId: "clinic_003",
-    },
-  },
-  {
-    email: "doctor3@integralplus.com",
-    password: "doctor123",
-    user: {
-      id: "user_podiatrist_009",
-      email: "doctor3@integralplus.com",
-      name: "Dr. Fernando Morales",
-      role: "podiatrist" as const,
-      clinicId: "clinic_003",
-    },
-  },
-  {
-    email: "pablo.hernandez@gmail.com",
-    password: "doctor123",
-    user: {
-      id: "user_podiatrist_010",
-      email: "pablo.hernandez@gmail.com",
-      name: "Dr. Pablo Hernández",
-      role: "podiatrist" as const,
-      clinicId: undefined,
-    },
-  },
-  {
-    email: "lucia.santos@outlook.com",
-    password: "doctor123",
-    user: {
-      id: "user_podiatrist_011",
-      email: "lucia.santos@outlook.com",
-      name: "Dra. Lucía Santos",
-      role: "podiatrist" as const,
-      clinicId: undefined,
-    },
-  },
-  {
-    email: "andres.molina@yahoo.es",
-    password: "doctor123",
-    user: {
-      id: "user_podiatrist_012",
-      email: "andres.molina@yahoo.es",
-      name: "Dr. Andrés Molina",
-      role: "podiatrist" as const,
-      clinicId: undefined,
-    },
-  },
-  {
-    email: "beatriz.ortiz@hotmail.com",
-    password: "doctor123",
-    user: {
-      id: "user_podiatrist_013",
-      email: "beatriz.ortiz@hotmail.com",
-      name: "Dra. Beatriz Ortiz",
-      role: "podiatrist" as const,
-      clinicId: undefined,
-    },
-  },
-];
-
 /**
- * Obtiene todos los usuarios con credenciales (mock + creados)
- * Esta función es usada por el servidor para autenticación
+ * Usuarios creados en localStorage (legacy). Login real: API + D1.
+ * Credenciales de prueba: npm run db:seed:local y TEST_CREDENTIALS.md
  */
 export const getAllUsersWithCredentials = (): Array<{
   email: string;
@@ -1664,7 +1429,7 @@ export const getAllUsersWithCredentials = (): Array<{
     },
   }));
   
-  return [...MOCK_USERS, ...createdUsersFormatted];
+  return createdUsersFormatted;
 };
 
 // ============================================

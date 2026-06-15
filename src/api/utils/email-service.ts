@@ -178,31 +178,63 @@ class MockEmailService implements EmailService {
 }
 
 /**
+ * True si hay un proveedor real (no Mock).
+ * AWS SES requiere implementación completa; solo cuenta si hay credenciales y se usa otro proveedor preferido.
+ */
+export function isEmailProviderConfigured(): boolean {
+  if (process.env.RESEND_API_KEY?.trim()) return true;
+  if (process.env.SENDGRID_API_KEY?.trim()) return true;
+  // AWS SES: credenciales presentes pero envío aún no implementado (ver AWSEmailService)
+  return false;
+}
+
+function isProduction(): boolean {
+  return process.env.NODE_ENV === 'production';
+}
+
+/**
  * Obtiene el servicio de email configurado
  */
-function getEmailService(): EmailService {
-  // Prioridad: Resend > SendGrid > AWS SES > Mock
+function getEmailService(): EmailService | null {
+  // Prioridad: Resend > SendGrid > AWS SES
   if (process.env.RESEND_API_KEY) {
     return new ResendEmailService();
   }
-  
+
   if (process.env.SENDGRID_API_KEY) {
     return new SendGridEmailService();
   }
-  
+
   if (process.env.AWS_ACCESS_KEY_ID && process.env.AWS_SECRET_ACCESS_KEY) {
-    return new AWSEmailService();
+    if (!isProduction()) {
+      return new AWSEmailService();
+    }
+    console.error('[email] AWS SES no está implementado en producción. Usa Resend o SendGrid.');
+    return null;
   }
 
-  // En desarrollo, usar mock
+  if (isProduction()) {
+    return null;
+  }
+
   return new MockEmailService();
 }
 
 /**
- * Envía un email usando el servicio configurado
+ * Envía un email usando el servicio configurado.
+ * En producción sin proveedor configurado: no envía y devuelve false (evita Mock silencioso).
  */
 export async function sendEmail(options: EmailOptions): Promise<boolean> {
   const service = getEmailService();
+  if (!service) {
+    console.error(
+      '[email] Producción sin RESEND_API_KEY, SENDGRID_API_KEY ni AWS SES. Email no enviado:',
+      options.subject,
+      '→',
+      options.to
+    );
+    return false;
+  }
   return service.sendEmail(options);
 }
 
@@ -330,4 +362,55 @@ export async function sendPasswordResetEmail(
     subject,
     html,
   });
+}
+
+/**
+ * Envía email de verificación de cuenta (registro público)
+ */
+export async function sendVerificationEmail(
+  email: string,
+  name: string,
+  verificationUrl: string
+): Promise<boolean> {
+  const subject = 'Verifica tu cuenta en PodoAdmin';
+  const safeName = escapeHtml(name);
+
+  const html = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8">
+      <style>
+        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        .header { background-color: #1a1a1a; color: white; padding: 20px; text-align: center; }
+        .content { padding: 20px; background-color: #f9fafb; }
+        .button { display: inline-block; padding: 12px 24px; background-color: #1a1a1a; color: white; text-decoration: none; border-radius: 6px; margin: 20px 0; }
+        .footer { text-align: center; padding: 20px; color: #6b7280; font-size: 12px; }
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <div class="header">
+          <h1>Verifica tu email</h1>
+        </div>
+        <div class="content">
+          <p>Hola ${safeName},</p>
+          <p>Gracias por registrarte en PodoAdmin. Haz clic en el botón para activar tu cuenta:</p>
+          <p style="text-align: center;">
+            <a href="${verificationUrl}" class="button">Verificar mi cuenta</a>
+          </p>
+          <p>O copia este enlace en tu navegador:</p>
+          <p style="word-break: break-all; color: #6b7280;">${verificationUrl}</p>
+          <p><strong>Este enlace expira en 24 horas.</strong></p>
+        </div>
+        <div class="footer">
+          <p>Si no creaste esta cuenta, ignora este mensaje.</p>
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
+
+  return sendEmail({ to: email, subject, html });
 }

@@ -149,6 +149,13 @@ export const createPatientSchema = z.object({
     .max(20, 'Código postal demasiado largo')
     .transform((val) => escapeHtml(val))
     .optional(),
+  curp: z
+    .union([z.string(), z.literal(''), z.undefined()])
+    .transform((val) => {
+      const s = typeof val === 'string' ? val.trim().toUpperCase() : '';
+      return s ? escapeHtml(s) : undefined;
+    })
+    .optional(),
   medicalHistory: z.object({
     allergies: z.array(z.string().transform((val) => escapeHtml(val))).optional(),
     medications: z.array(z.string().transform((val) => escapeHtml(val))).optional(),
@@ -202,6 +209,11 @@ export const registerSchema = z.object({
     .boolean()
     .refine((val) => val === true, {
       message: 'Debes aceptar los términos y condiciones',
+    }),
+  privacyPolicyAccepted: z
+    .boolean()
+    .refine((val) => val === true, {
+      message: 'Debes aceptar la política de privacidad',
     }),
   captchaToken: z.string().optional(), // CAPTCHA token (opcional si no está configurado)
   clinicCode: z.string().max(100).optional(), // Código de clínica (opcional)
@@ -258,6 +270,109 @@ export const resetPasswordSchema = z.object({
       message: 'Contraseña contiene caracteres no permitidos',
     }),
 });
+
+const roleEnum = z.enum(['super_admin', 'clinic_admin', 'admin', 'podiatrist', 'receptionist']);
+
+/** Query: filtro opcional por rol en listados de usuarios */
+export const roleFilterQuerySchema = z.object({
+  role: roleEnum.optional(),
+});
+
+/** Query: listado de sesiones */
+export const sessionsListQuerySchema = z.object({
+  patient: z.string().max(128).optional(),
+});
+
+/** Query: listado de citas */
+export const appointmentsListQuerySchema = z.object({
+  clinicId: z.string().max(128).optional(),
+  podiatristId: z.string().max(128).optional(),
+  date: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, 'Fecha inválida (YYYY-MM-DD)')
+    .optional(),
+});
+
+/** Query: listas de registro pendientes */
+export const registrationListStatusQuerySchema = z.object({
+  status: z.enum(['draft', 'submitted', 'approved', 'rejected']).optional(),
+});
+
+export const createRegistrationListSchema = z.object({
+  name: z.string().min(1).max(255).transform((val) => escapeHtml(val)).optional(),
+});
+
+export const updateRegistrationListSchema = z.object({
+  name: z.string().min(1).max(255).transform((val) => escapeHtml(val)).optional(),
+});
+
+export const createRegistrationEntrySchema = z.object({
+  name: z.string().min(1).max(255).transform((val) => escapeHtml(val)),
+  email: z
+    .string()
+    .min(1)
+    .email('Email inválido')
+    .max(255)
+    .transform((val) => sanitizeEmail(val) || val),
+  role: z.enum(['podiatrist', 'clinic_admin']).optional(),
+  clinicId: z.string().max(128).optional(),
+  clinicMode: z.string().max(64).optional(),
+  podiatristLimit: z.union([z.number(), z.string()]).optional(),
+  notes: z.string().max(500).optional(),
+});
+
+const sessionFieldsSchema = {
+  patientId: z.string().min(1).max(128),
+  sessionDate: z.string().min(1).max(32),
+  status: z.enum(['draft', 'completed']).optional(),
+  clinicalNotes: z.string().max(50000).optional(),
+  anamnesis: z.string().max(50000).optional(),
+  physicalExamination: z.string().max(50000).optional(),
+  diagnosis: z.string().max(10000).optional(),
+  treatmentPlan: z.string().max(10000).optional(),
+  images: z.array(z.string()).max(20).optional(),
+  completedAt: z.string().max(64).optional().nullable(),
+  nextAppointmentDate: z.string().max(32).optional().nullable(),
+  followUpNotes: z.string().max(5000).optional().nullable(),
+  appointmentReason: z.string().max(2000).optional().nullable(),
+};
+
+export const createSessionSchema = z.object(sessionFieldsSchema);
+
+export const updateSessionSchema = z
+  .object({
+    ...sessionFieldsSchema,
+    patientId: sessionFieldsSchema.patientId.optional(),
+    sessionDate: sessionFieldsSchema.sessionDate.optional(),
+  })
+  .partial();
+
+export const createAppointmentSchema = z.object({
+  patientId: z.string().max(128).optional(),
+  podiatristId: z.string().max(128).optional(),
+  date: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, 'Fecha inválida')
+    .optional(),
+  time: z.string().max(16).optional(),
+  duration: z.number().int().min(5).max(480).optional(),
+  notes: z.string().max(5000).optional(),
+  clinicId: z.string().max(128).optional(),
+  pendingPatientName: z.string().max(255).optional(),
+  pendingPatientPhone: z.string().max(50).optional(),
+});
+
+export const updateAppointmentSchema = createAppointmentSchema.partial();
+
+/**
+ * Valida parámetros de query string (Hono c.req.query()).
+ */
+export function validateQuery<T>(
+  schema: z.ZodSchema<T>,
+  query: Record<string, string>
+): { success: true; data: T } | { success: false; error: string; issues: z.ZodIssue[] } {
+  return validateData(schema, query);
+}
 
 /**
  * Valida datos usando un schema de Zod

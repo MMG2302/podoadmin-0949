@@ -44,6 +44,7 @@ export interface Translations {
     enterCredentials: string;
     emailLabel: string;
     emailPlaceholder: string;
+    emailHint: string;
     passwordLabel: string;
     passwordPlaceholder: string;
     loginButton: string;
@@ -63,6 +64,9 @@ export interface Translations {
     registerSubtitle: string;
     nameLabel: string;
     namePlaceholder: string;
+    clinicCodeLabel: string;
+    clinicCodePlaceholder: string;
+    clinicCodeHint: string;
     passwordRequirements: string;
     passwordMinLength: string;
     passwordMustContain: string;
@@ -72,6 +76,8 @@ export interface Translations {
     passwordSpecial: string;
     termsAccept: string;
     termsLink: string;
+    privacyAccept: string;
+    privacyLink: string;
     registerButton: string;
     registering: string;
     alreadyHaveAccount: string;
@@ -80,7 +86,9 @@ export interface Translations {
     contactAdminForAccount: string;
     registrationSuccess: string;
     registrationSuccessMessage: string;
+    registrationSuccessDevMessage: string;
     checkEmail: string;
+    emailAlreadyRegistered: string;
     // Email Verification
     verifyEmail: string;
     verifyEmailTitle: string;
@@ -93,6 +101,8 @@ export interface Translations {
     // CAPTCHA
     captchaRequired: string;
     captchaError: string;
+    captchaNotConfigured: string;
+    captchaDisabledInDev: string;
     // OAuth
     orContinueWith: string;
     loginWithGoogle: string;
@@ -213,6 +223,44 @@ export interface Translations {
       content: string;
     };
   };
+
+  privacy: {
+    title: string;
+    lastUpdated: string;
+    backToRegister: string;
+    section1: { title: string; content: string };
+    section2: { title: string; content: string };
+    section3: { title: string; content: string };
+    section4: { title: string; content: string };
+    section5: { title: string; intro: string; item1: string; item2: string; item3: string; item4: string };
+    section6: { title: string; content: string };
+    section7: { title: string; content: string };
+    section8: { title: string; content: string };
+  };
+
+  compliance: {
+    title: string;
+    subtitle: string;
+    exportTitle: string;
+    exportDesc: string;
+    exportButton: string;
+    deletionTitle: string;
+    deletionDesc: string;
+    deletionButton: string;
+    deletionSuccess: string;
+    privacyLink: string;
+    retentionTitle: string;
+    retentionNote: string;
+    legalHoldTitle: string;
+    legalHoldDesc: string;
+    holdResourceType: string;
+    holdResourceId: string;
+    holdReason: string;
+    holdCreate: string;
+    holdCreated: string;
+    holdRelease: string;
+    holdsEmpty: string;
+  };
   
   // Navigation
   nav: {
@@ -226,6 +274,7 @@ export interface Translations {
     systemDiagnostics: string;
     profile: string;
     clinicManagement: string;
+    whatsappMessages: string;
   };
   
   // Dashboard
@@ -258,6 +307,8 @@ export interface Translations {
     female: string;
     other: string;
     idNumber: string;
+    curp: string;
+    curpHint: string;
     phone: string;
     email: string;
     address: string;
@@ -446,6 +497,92 @@ export interface Translations {
     sent: string;
   };
 
+  /** WhatsApp Business (configuración y mensajes) */
+  whatsapp: {
+    title: string;
+    subtitle: string;
+    loading: string;
+    setupTitle: string;
+    setupStep1Prefix: string;
+    setupStep1Link: string;
+    setupStep1Suffix: string;
+    setupStep2: string;
+    setupStep3: string;
+    setupStep4Prefix: string;
+    setupStep4Link: string;
+    setupStep4Suffix: string;
+    setupStep5: string;
+    statusLabel: string;
+    statusConnected: string;
+    statusError: string;
+    statusPending: string;
+    phoneNumberIdLabel: string;
+    phoneNumberIdPlaceholder: string;
+    wabaIdLabel: string;
+    wabaIdPlaceholder: string;
+    accessTokenLabel: string;
+    accessTokenRequired: string;
+    accessTokenKeepCurrent: string;
+    accessTokenPlaceholderSaved: string;
+    accessTokenPlaceholderNew: string;
+    hideTokenField: string;
+    changeToken: string;
+    publicPhoneLabel: string;
+    publicPhonePlaceholder: string;
+    remindersSection: string;
+    remindersAuto: string;
+    reminderDaysBefore: string;
+    reminderHoursBefore: string;
+    reminderHourBefore: string;
+    reminderDayOne: string;
+    reminderDayMany: string;
+    reminderSelectHour: string;
+    reminderAddHour: string;
+    reminderRemoveHour: string;
+    reminderHoursHint: string;
+    reminderScheduleHint: string;
+    reminderDaysHelp: string;
+    reminderHoursHelp: string;
+    reminderDaysRequired: string;
+    reminder48h: string;
+    reminder24h: string;
+    templateNameLabel: string;
+    templateNamePlaceholder: string;
+    templateHint: string;
+    defaultExtraNoteLabel: string;
+    defaultExtraNotePlaceholder: string;
+    defaultExtraNoteHint: string;
+    templateLanguageLabel: string;
+    templateLanguagePlaceholder: string;
+    integrationActive: string;
+    save: string;
+    saving: string;
+    testConnection: string;
+    testing: string;
+    disconnect: string;
+    guidesFooter: string;
+    guidesCloudApi: string;
+    guidesSystemUsers: string;
+    consentNote: string;
+    purposeTitle: string;
+    purposeDescription: string;
+    errorApiUnavailable: string;
+    errorLoad: string;
+    errorPhoneRequired: string;
+    errorTokenRequired: string;
+    errorTemplateRequired: string;
+    errorSave: string;
+    errorTest: string;
+    errorTestFailed: string;
+    errorDisconnect: string;
+    disconnectConfirm: string;
+    successSaved: string;
+    successSavedWarning: string;
+    successTest: string;
+    successTestWithPhone: string;
+    successDisconnected: string;
+  };
+
   /** Estado del sistema / guía de incidencias (solo super_admin en UI) */
   systemDiagnostics: {
     title: string;
@@ -486,6 +623,9 @@ export interface Translations {
     adminDesc: string;
     podiatristDesc: string;
     receptionistDesc: string;
+    superAdminAssignWarning: string;
+    superAdminAssignConfirmPrompt: string;
+    superAdminAssignConfirmed: string;
   };
   
   // Errors
@@ -621,6 +761,7 @@ export const translations: Record<Language, Translations> = {
       enterCredentials: "Ingresa tus credenciales para acceder al sistema",
       emailLabel: "Correo electrónico",
       emailPlaceholder: "correo@ejemplo.com",
+      emailHint: "Será tu usuario de acceso. Te enviaremos un correo para verificar la cuenta.",
       passwordLabel: "Contraseña",
       passwordPlaceholder: "••••••••",
       loginButton: "Iniciar sesión",
@@ -638,6 +779,10 @@ export const translations: Record<Language, Translations> = {
       registerSubtitle: "Completa el formulario para registrarte en PodoAdmin",
       nameLabel: "Nombre completo",
       namePlaceholder: "Juan Pérez",
+      clinicCodeLabel: "Código de clínica (opcional)",
+      clinicCodePlaceholder: "Ej. PREM",
+      clinicCodeHint:
+        "Déjalo vacío si eres podólogo independiente. Si tu clínica te dio un código, escríbelo aquí para unirte a ella.",
       passwordRequirements: "Requisitos de contraseña",
       passwordMinLength: "Mínimo 12 caracteres",
       passwordMustContain: "Debe contener:",
@@ -647,6 +792,8 @@ export const translations: Record<Language, Translations> = {
       passwordSpecial: "Al menos un carácter especial",
       termsAccept: "Acepto los términos y condiciones",
       termsLink: "Ver términos",
+      privacyAccept: "Acepto la",
+      privacyLink: "Política de Privacidad",
       registerButton: "Crear cuenta",
       registering: "Creando cuenta...",
       alreadyHaveAccount: "¿Ya tienes una cuenta?",
@@ -655,7 +802,11 @@ export const translations: Record<Language, Translations> = {
       contactAdminForAccount: "Contacta al administrador para crear una cuenta.",
       registrationSuccess: "¡Registro exitoso!",
       registrationSuccessMessage: "Hemos enviado un email de verificación. Por favor, revisa tu bandeja de entrada.",
+      registrationSuccessDevMessage:
+        "Cuenta creada en entorno de desarrollo. El email quedó verificado automáticamente; ya puedes iniciar sesión.",
       checkEmail: "Revisa tu correo electrónico",
+      emailAlreadyRegistered:
+        "Este correo ya está registrado. Inicia sesión con tu cuenta o usa otro email.",
       // Email Verification
       verifyEmail: "Verificar email",
       verifyEmailTitle: "Verifica tu email",
@@ -668,6 +819,10 @@ export const translations: Record<Language, Translations> = {
       // CAPTCHA
       captchaRequired: "Por favor, completa el CAPTCHA",
       captchaError: "Error al verificar CAPTCHA",
+      captchaNotConfigured:
+        "Entorno de desarrollo: el CAPTCHA no está configurado. El registro funciona sin verificación antibot.",
+      captchaDisabledInDev:
+        "Entorno de desarrollo: el CAPTCHA está desactivado automáticamente. En producción será obligatorio.",
       // OAuth
       orContinueWith: "O continúa con",
       loginWithGoogle: "Google",
@@ -722,6 +877,7 @@ export const translations: Record<Language, Translations> = {
       systemDiagnostics: "Estado del sistema",
       profile: "Perfil",
       clinicManagement: "Gestión de Clínica",
+      whatsappMessages: "Mensajes WhatsApp",
     },
     dashboard: {
       title: "Panel principal",
@@ -750,6 +906,8 @@ export const translations: Record<Language, Translations> = {
       female: "Femenino",
       other: "Otro",
       idNumber: "DNI/NIE",
+      curp: "CURP (México)",
+      curpHint: "Opcional. Clave Única de Registro de Población (NOM-004 / identificación en México).",
       phone: "Teléfono",
       email: "Correo electrónico",
       address: "Dirección",
@@ -927,6 +1085,97 @@ export const translations: Record<Language, Translations> = {
       from: "De",
       sent: "Enviado",
     },
+    whatsapp: {
+      title: "WhatsApp Business",
+      subtitle:
+        "Conecta tu número de negocio de Meta para recordatorios de citas por WhatsApp. Los datos se guardan cifrados. Solo tú (podólogo o administrador de clínica) puedes configurar esta sección.",
+      loading: "Cargando configuración de WhatsApp…",
+      setupTitle: "Cómo configurar WhatsApp (token de larga duración)",
+      setupStep1Prefix: "Entra a",
+      setupStep1Link: "Business Settings → Usuarios del sistema",
+      setupStep1Suffix: "y crea un usuario del sistema.",
+      setupStep2: "Asigna tu app de Meta y tu cuenta de WhatsApp Business (WABA) como activos.",
+      setupStep3:
+        "Genera un token para ese usuario y concédele permisos de WhatsApp (mensajería/administración según tu flujo).",
+      setupStep4Prefix: "Desde",
+      setupStep4Link: "Meta for Developers",
+      setupStep4Suffix: "copia también Phone Number ID y WABA ID.",
+      setupStep5: "Pega los datos en este formulario, guarda y pulsa «Probar conexión».",
+      statusLabel: "Estado:",
+      statusConnected: "conectado",
+      statusError: "error",
+      statusPending: "pendiente",
+      phoneNumberIdLabel: "Phone Number ID (Meta) *",
+      phoneNumberIdPlaceholder: "Ej: 123456789012345",
+      wabaIdLabel: "WhatsApp Business Account ID (opcional)",
+      wabaIdPlaceholder: "WABA ID",
+      accessTokenLabel: "Token de acceso permanente",
+      accessTokenRequired: "*",
+      accessTokenKeepCurrent: "(dejar vacío para mantener el actual)",
+      accessTokenPlaceholderSaved: "•••••••• (guardado)",
+      accessTokenPlaceholderNew: "Token desde Meta Business Suite",
+      hideTokenField: "Ocultar campo de token",
+      changeToken: "Cambiar token",
+      publicPhoneLabel: "Teléfono público (opcional)",
+      publicPhonePlaceholder: "+34600111222",
+      remindersSection: "Recordatorios de citas",
+      remindersAuto: "Activar recordatorios automáticos por WhatsApp (solo pacientes con teléfono)",
+      reminderDaysBefore: "Días antes de la cita",
+      reminderHoursBefore: "Horas antes de la cita",
+      reminderHourBefore: "{hours} h antes",
+      reminderDayOne: "{days} día antes",
+      reminderDayMany: "{days} días antes",
+      reminderSelectHour: "Antelación del recordatorio",
+      reminderAddHour: "+ Añadir otro horario",
+      reminderRemoveHour: "Quitar",
+      reminderHoursHint: "Puedes añadir hasta 8 avisos por horas. Los días (5, 2 y 1) son independientes.",
+      reminderScheduleHint: "Activa los recordatorios automáticos arriba para editar el calendario de avisos.",
+      reminderDaysHelp: "Pulsa cada opción para activarla o desactivarla (debe quedar al menos una).",
+      reminderHoursHelp: "Elige en cada desplegable cuántas horas antes avisar al paciente.",
+      reminderDaysRequired: "Selecciona al menos un día de recordatorio.",
+      reminder48h: "48 h antes",
+      reminder24h: "24 h antes",
+      templateNameLabel: "Nombre plantilla Meta (recordatorio)",
+      templateNamePlaceholder: "ej: appointment_reminder",
+      templateHint:
+        "Debe estar aprobada en Meta Business Manager con 4 variables: {{1}} nombre, {{2}} fecha, {{3}} hora, {{4}} notas/extras.",
+      defaultExtraNoteLabel: "Nota o mensaje extra por defecto",
+      defaultExtraNotePlaceholder: "Ej: Trae estudios previos. Estacionamiento en calle lateral.",
+      defaultExtraNoteHint:
+        "Se envía como 4.º parámetro de la plantilla en recordatorios automáticos y manuales (si no escribes otra nota al enviar). Máximo 500 caracteres.",
+      templateLanguageLabel: "Idioma plantilla",
+      templateLanguagePlaceholder: "es",
+      integrationActive: "Integración activa (envíos habilitados cuando el cron esté activo)",
+      save: "Guardar configuración",
+      saving: "Guardando…",
+      testConnection: "Probar conexión",
+      testing: "Probando…",
+      disconnect: "Desconectar",
+      guidesFooter: "Guías oficiales:",
+      guidesCloudApi: "Meta WhatsApp Cloud API",
+      guidesSystemUsers: "System Users (token de larga duración)",
+      consentNote: "Los pacientes deben haber dado consentimiento para mensajes por WhatsApp.",
+      purposeTitle: "¿Para qué sirve esta sección?",
+      purposeDescription:
+        "Aquí conectas tu cuenta de WhatsApp Business (Meta) para enviar recordatorios de citas a tus pacientes. Guardas el token y la plantilla aprobada; luego, desde «Mensajes WhatsApp», puedes enviar recordatorios y ver si se entregaron o fallaron.",
+      errorApiUnavailable:
+        "No se pudo contactar el servicio de WhatsApp en el servidor. Recarga la página (Ctrl+F5). Si persiste, reinicia el servidor de desarrollo.",
+      errorLoad: "No se pudo cargar la configuración",
+      errorPhoneRequired: "El Phone Number ID de Meta es obligatorio.",
+      errorTokenRequired: "El token de acceso permanente de Meta es obligatorio.",
+      errorTemplateRequired: "Indica el nombre de la plantilla aprobada en Meta para recordatorios.",
+      errorSave: "Error al guardar",
+      errorTest: "Error al probar conexión",
+      errorTestFailed: "La prueba de conexión falló",
+      errorDisconnect: "Error al desconectar",
+      disconnectConfirm:
+        "¿Eliminar la configuración de WhatsApp? Los recordatorios automáticos dejarán de enviarse.",
+      successSaved: "Configuración de WhatsApp guardada correctamente.",
+      successSavedWarning: "Guardado. Advertencia de conexión: {warning}",
+      successTest: "Conexión correcta con Meta.",
+      successTestWithPhone: "Conexión correcta ({phone})",
+      successDisconnected: "WhatsApp desconectado.",
+    },
     systemDiagnostics: {
       title: "Estado del sistema",
       subtitle: "Comprueba el worker, la base de datos y la URL de salud pública; guía breve ante incidencias.",
@@ -968,6 +1217,10 @@ export const translations: Record<Language, Translations> = {
       adminDesc: "Ajustes de créditos y soporte técnico",
       podiatristDesc: "Gestión de pacientes y sesiones clínicas",
       receptionistDesc: "Crear pacientes, citas y gestionar calendario de los podólogos asignados",
+      superAdminAssignWarning:
+        "Vas a otorgar el rol de Super Administrador. Tendrá acceso total al sistema, usuarios y configuración.",
+      superAdminAssignConfirmPrompt: "Confirma esta acción para evitar asignaciones por error.",
+      superAdminAssignConfirmed: "Rol de Super Administrador confirmado.",
     },
     errors: {
       generic: "Ha ocurrido un error",
@@ -1085,7 +1338,7 @@ export const translations: Record<Language, Translations> = {
       },
       section5: {
         title: "5. Privacidad y Protección de Datos",
-        content: "El manejo de datos personales y de pacientes se rige por nuestra Política de Privacidad. Usted es responsable de cumplir con todas las leyes de protección de datos aplicables, incluyendo pero no limitado al RGPD (Reglamento General de Protección de Datos) y otras regulaciones locales de privacidad.",
+        content: "El manejo de datos personales y de pacientes se rige por nuestra Política de Privacidad. Usted es responsable de cumplir con las leyes aplicables en su país, incluyendo la LFPDPPP (México), LGPD (Brasil), leyes de Habeas Data (Colombia), Ley 25.326 (Argentina), RGPD/GDPR (Unión Europea) y la NOM-004-SSA3-2012 para expediente clínico en México.",
       },
       section6: {
         title: "6. Créditos y Facturación",
@@ -1119,6 +1372,77 @@ export const translations: Record<Language, Translations> = {
         title: "13. Contacto",
         content: "Si tiene preguntas sobre estos Términos y Condiciones, puede contactarnos a través de los canales de soporte proporcionados en la plataforma.",
       },
+    },
+    privacy: {
+      title: "Política de Privacidad",
+      lastUpdated: "Última actualización",
+      backToRegister: "Volver al registro",
+      section1: {
+        title: "1. Responsable del tratamiento",
+        content:
+          "PodoAdmin actúa como encargado de plataforma tecnológica. El profesional o clínica que utiliza el servicio es responsable del tratamiento de los datos de salud de sus pacientes conforme a la normativa local (LFPDPPP, LGPD, Habeas Data, GDPR, entre otras).",
+      },
+      section2: {
+        title: "2. Datos que tratamos",
+        content:
+          "Datos de cuenta (nombre, email), datos clínicos de pacientes (identificación, historial, sesiones, consentimientos), registros de auditoría, accesos al expediente y metadatos técnicos (IP, dispositivo) para seguridad.",
+      },
+      section3: {
+        title: "3. Finalidad y base legal",
+        content:
+          "Prestación del servicio de gestión clínica podológica, cumplimiento de obligaciones legales de conservación de expediente (p. ej. NOM-004-SSA3-2012 en México), seguridad, facturación y soporte. El consentimiento del titular y el interés legítimo del responsable del tratamiento aplican según el marco de cada país.",
+      },
+      section4: {
+        title: "4. Conservación",
+        content:
+          "Aplicamos una política global conservadora: historial clínico hasta 20 años desde el último acto clínico (cubre requisitos de México, Brasil, Chile y otros países de Latinoamérica). Auditoría hasta 10 años. Datos operativos de corto plazo según categoría documentada en docs/RETENTION_POLICY_GLOBAL.md.",
+      },
+      section5: {
+        title: "5. Derechos del titular (ARCO / LGPD / GDPR)",
+        intro: "Puede ejercer, según su legislación:",
+        item1: "Acceso y portabilidad: exportar sus datos desde Configuración.",
+        item2: "Rectificación: actualizar perfil o solicitar corrección al responsable del tratamiento.",
+        item3: "Cancelación/supresión: solicitar borrado cuando legalmente proceda (Configuración → Privacidad).",
+        item4: "Oposición y limitación: contactar soporte; puede prevalecer la obligación legal de conservar el expediente clínico.",
+      },
+      section6: {
+        title: "6. Seguridad",
+        content:
+          "Cifrado en tránsito (HTTPS), control de acceso por roles, registro de auditoría, registro de accesos al expediente, autenticación segura y copias de seguridad según configuración de despliegue.",
+      },
+      section7: {
+        title: "7. Transferencias",
+        content:
+          "Los datos pueden procesarse en infraestructura cloud (p. ej. Cloudflare). El responsable del tratamiento debe informar a sus pacientes si aplica transferencia internacional conforme a su país.",
+      },
+      section8: {
+        title: "8. Contacto",
+        content: "Para ejercer derechos o consultas de privacidad, use el canal de soporte de la plataforma o la sección Privacidad y datos en Configuración.",
+      },
+    },
+    compliance: {
+      title: "Privacidad y datos",
+      subtitle: "Ejercicio de derechos ARCO, LGPD y GDPR sobre tu cuenta",
+      exportTitle: "Exportar mis datos",
+      exportDesc: "Descarga un archivo JSON con tu perfil, clínica, suscripción y últimos registros de auditoría.",
+      exportButton: "Descargar mis datos",
+      deletionTitle: "Solicitar supresión de cuenta",
+      deletionDesc:
+        "Registra una solicitud de baja y supresión. Se evaluará conforme a LFPDPPP, LGPD, GDPR y obligaciones de conservación del expediente clínico.",
+      deletionButton: "Solicitar supresión",
+      deletionSuccess: "Solicitud registrada. El equipo de soporte se pondrá en contacto si es necesario.",
+      privacyLink: "Ver Política de Privacidad",
+      retentionTitle: "Política de retención",
+      retentionNote: "Expediente clínico: conservación global de hasta 20 años desde el último acto clínico.",
+      legalHoldTitle: "Bloqueos legales (legal hold)",
+      legalHoldDesc: "Impide el borrado de expedientes bajo litigio, auditoría o requerimiento de autoridad.",
+      holdResourceType: "Tipo de recurso",
+      holdResourceId: "ID del recurso",
+      holdReason: "Motivo",
+      holdCreate: "Crear bloqueo",
+      holdCreated: "Bloqueo legal creado",
+      holdRelease: "Liberar",
+      holdsEmpty: "No hay bloqueos legales activos",
     },
   },
   
@@ -1163,6 +1487,7 @@ export const translations: Record<Language, Translations> = {
       enterCredentials: "Enter your credentials to access the system",
       emailLabel: "Email",
       emailPlaceholder: "email@example.com",
+      emailHint: "This will be your login. We'll send a verification email to this address.",
       passwordLabel: "Password",
       passwordPlaceholder: "••••••••",
       loginButton: "Log in",
@@ -1182,6 +1507,10 @@ export const translations: Record<Language, Translations> = {
       registerSubtitle: "Complete the form to register in PodoAdmin",
       nameLabel: "Full name",
       namePlaceholder: "John Doe",
+      clinicCodeLabel: "Clinic code (optional)",
+      clinicCodePlaceholder: "e.g. PREM",
+      clinicCodeHint:
+        "Leave empty if you are an independent podiatrist. If your clinic gave you a code, enter it to join that clinic.",
       passwordRequirements: "Password requirements",
       passwordMinLength: "Minimum 12 characters",
       passwordMustContain: "Must contain:",
@@ -1191,6 +1520,8 @@ export const translations: Record<Language, Translations> = {
       passwordSpecial: "At least one special character",
       termsAccept: "I accept the terms and conditions",
       termsLink: "View terms",
+      privacyAccept: "I accept the",
+      privacyLink: "Privacy Policy",
       registerButton: "Create account",
       registering: "Creating account...",
       alreadyHaveAccount: "Already have an account?",
@@ -1199,7 +1530,11 @@ export const translations: Record<Language, Translations> = {
       contactAdminForAccount: "Contact the administrator to create an account.",
       registrationSuccess: "Registration successful!",
       registrationSuccessMessage: "We've sent a verification email. Please check your inbox.",
+      registrationSuccessDevMessage:
+        "Account created in development. Email was auto-verified; you can sign in now.",
       checkEmail: "Check your email",
+      emailAlreadyRegistered:
+        "This email is already registered. Sign in with your account or use a different email.",
       // Email Verification
       verifyEmail: "Verify email",
       verifyEmailTitle: "Verify your email",
@@ -1212,6 +1547,10 @@ export const translations: Record<Language, Translations> = {
       // CAPTCHA
       captchaRequired: "Please complete the CAPTCHA",
       captchaError: "CAPTCHA verification error",
+      captchaNotConfigured:
+        "Development environment: CAPTCHA is not configured. Registration works without antibot verification.",
+      captchaDisabledInDev:
+        "Development environment: CAPTCHA is automatically disabled. It will be required in production.",
       // OAuth
       orContinueWith: "Or continue with",
       loginWithGoogle: "Google",
@@ -1266,6 +1605,7 @@ export const translations: Record<Language, Translations> = {
       systemDiagnostics: "System status",
       profile: "Profile",
       clinicManagement: "Clinic Management",
+      whatsappMessages: "WhatsApp Messages",
     },
     dashboard: {
       title: "Dashboard",
@@ -1294,6 +1634,8 @@ export const translations: Record<Language, Translations> = {
       female: "Female",
       other: "Other",
       idNumber: "ID Number",
+      curp: "CURP (Mexico)",
+      curpHint: "Optional. Unique Population Registry Code (Mexico, NOM-004).",
       phone: "Phone",
       email: "Email",
       address: "Address",
@@ -1471,6 +1813,95 @@ export const translations: Record<Language, Translations> = {
       from: "From",
       sent: "Sent",
     },
+    whatsapp: {
+      title: "WhatsApp Business",
+      subtitle:
+        "Connect your Meta business number for appointment reminders via WhatsApp. Data is stored encrypted. Only you (podiatrist or clinic admin) can configure this section.",
+      loading: "Loading WhatsApp settings…",
+      setupTitle: "How to set up WhatsApp (long-lived token)",
+      setupStep1Prefix: "Go to",
+      setupStep1Link: "Business Settings → System users",
+      setupStep1Suffix: "and create a system user.",
+      setupStep2: "Assign your Meta app and WhatsApp Business Account (WABA) as assets.",
+      setupStep3: "Generate a token for that user and grant WhatsApp permissions (messaging/admin as needed).",
+      setupStep4Prefix: "From",
+      setupStep4Link: "Meta for Developers",
+      setupStep4Suffix: "also copy Phone Number ID and WABA ID.",
+      setupStep5: "Paste the values in this form, save, and click “Test connection”.",
+      statusLabel: "Status:",
+      statusConnected: "connected",
+      statusError: "error",
+      statusPending: "pending",
+      phoneNumberIdLabel: "Phone Number ID (Meta) *",
+      phoneNumberIdPlaceholder: "E.g.: 123456789012345",
+      wabaIdLabel: "WhatsApp Business Account ID (optional)",
+      wabaIdPlaceholder: "WABA ID",
+      accessTokenLabel: "Permanent access token",
+      accessTokenRequired: "*",
+      accessTokenKeepCurrent: "(leave empty to keep current)",
+      accessTokenPlaceholderSaved: "•••••••• (saved)",
+      accessTokenPlaceholderNew: "Token from Meta Business Suite",
+      hideTokenField: "Hide token field",
+      changeToken: "Change token",
+      publicPhoneLabel: "Public phone (optional)",
+      publicPhonePlaceholder: "+34600111222",
+      remindersSection: "Appointment reminders",
+      remindersAuto: "Enable automatic WhatsApp reminders (patients with phone only)",
+      reminderDaysBefore: "Days before appointment",
+      reminderHoursBefore: "Hours before appointment",
+      reminderHourBefore: "{hours} h before",
+      reminderDayOne: "{days} day before",
+      reminderDayMany: "{days} days before",
+      reminderSelectHour: "Reminder lead time",
+      reminderAddHour: "+ Add another time",
+      reminderRemoveHour: "Remove",
+      reminderHoursHint: "Up to 8 hour-based reminders. Day reminders (5, 2, 1) are separate.",
+      reminderScheduleHint: "Turn on automatic reminders above to edit this schedule.",
+      reminderDaysHelp: "Click each option to turn it on or off (at least one required).",
+      reminderHoursHelp: "Use each dropdown to choose how many hours before to notify.",
+      reminderDaysRequired: "Select at least one day for reminders.",
+      reminder48h: "48 h before",
+      reminder24h: "24 h before",
+      templateNameLabel: "Meta template name (reminder)",
+      templateNamePlaceholder: "e.g. appointment_reminder",
+      templateHint:
+        "Must be approved in Meta Business Manager with 4 variables: {{1}} name, {{2}} date, {{3}} time, {{4}} notes/extras.",
+      defaultExtraNoteLabel: "Default note or extra message",
+      defaultExtraNotePlaceholder: "E.g.: Bring previous studies. Parking on side street.",
+      defaultExtraNoteHint:
+        "Sent as the 4th template parameter in automatic and manual reminders (unless you enter another note when sending). Max 500 characters.",
+      templateLanguageLabel: "Template language",
+      templateLanguagePlaceholder: "en",
+      integrationActive: "Integration active (sends enabled when cron is active)",
+      save: "Save settings",
+      saving: "Saving…",
+      testConnection: "Test connection",
+      testing: "Testing…",
+      disconnect: "Disconnect",
+      guidesFooter: "Official guides:",
+      guidesCloudApi: "Meta WhatsApp Cloud API",
+      guidesSystemUsers: "System Users (long-lived token)",
+      consentNote: "Patients must have consented to WhatsApp messages.",
+      purposeTitle: "What is this section for?",
+      purposeDescription:
+        "Connect your WhatsApp Business account (Meta) to send appointment reminders to patients. Save your token and approved template; then use «WhatsApp Messages» to send reminders and see delivery status.",
+      errorApiUnavailable:
+        "Could not reach the WhatsApp service on the server. Reload the page (Ctrl+F5). If it persists, restart the dev server.",
+      errorLoad: "Could not load settings",
+      errorPhoneRequired: "Meta Phone Number ID is required.",
+      errorTokenRequired: "Meta permanent access token is required.",
+      errorTemplateRequired: "Enter the approved Meta template name for reminders.",
+      errorSave: "Error saving",
+      errorTest: "Error testing connection",
+      errorTestFailed: "Connection test failed",
+      errorDisconnect: "Error disconnecting",
+      disconnectConfirm: "Remove WhatsApp settings? Automatic reminders will stop.",
+      successSaved: "WhatsApp settings saved successfully.",
+      successSavedWarning: "Saved. Connection warning: {warning}",
+      successTest: "Connection successful with Meta.",
+      successTestWithPhone: "Connection successful ({phone})",
+      successDisconnected: "WhatsApp disconnected.",
+    },
     systemDiagnostics: {
       title: "System status",
       subtitle: "Check the worker, database, and public health URL; short guide when something fails.",
@@ -1512,6 +1943,10 @@ export const translations: Record<Language, Translations> = {
       adminDesc: "Credit adjustments and technical support",
       podiatristDesc: "Patient and clinical session management",
       receptionistDesc: "Create patients, appointments and manage calendar for assigned podiatrists",
+      superAdminAssignWarning:
+        "You are about to grant Super Admin access. This person will have full control of the system, users, and settings.",
+      superAdminAssignConfirmPrompt: "Confirm this action to avoid accidental assignments.",
+      superAdminAssignConfirmed: "Super Admin role confirmed.",
     },
     errors: {
       generic: "An error occurred",
@@ -1629,7 +2064,7 @@ export const translations: Record<Language, Translations> = {
       },
       section5: {
         title: "5. Privacy and Data Protection",
-        content: "The handling of personal and patient data is governed by our Privacy Policy. You are responsible for complying with all applicable data protection laws, including but not limited to GDPR (General Data Protection Regulation) and other local privacy regulations.",
+        content: "The handling of personal and patient data is governed by our Privacy Policy. You are responsible for complying with applicable laws in your country, including LFPDPPP (Mexico), LGPD (Brazil), Habeas Data (Colombia), Law 25.326 (Argentina), GDPR, and NOM-004-SSA3-2012 for clinical records in Mexico.",
       },
       section6: {
         title: "6. Credits and Billing",
@@ -1663,6 +2098,74 @@ export const translations: Record<Language, Translations> = {
         title: "13. Contact",
         content: "If you have questions about these Terms and Conditions, you can contact us through the support channels provided on the platform.",
       },
+    },
+    privacy: {
+      title: "Privacy Policy",
+      lastUpdated: "Last updated",
+      backToRegister: "Back to registration",
+      section1: {
+        title: "1. Data controller",
+        content:
+          "PodoAdmin is the technology platform provider. The professional or clinic using the service is the data controller for patient health data under local law (LFPDPPP, LGPD, Habeas Data, GDPR, etc.).",
+      },
+      section2: {
+        title: "2. Data we process",
+        content:
+          "Account data, patient clinical data, audit logs, medical record access logs, and technical metadata for security.",
+      },
+      section3: {
+        title: "3. Purpose and legal basis",
+        content:
+          "Clinical podiatry management, legal retention of medical records (e.g. NOM-004 in Mexico), security, billing and support.",
+      },
+      section4: {
+        title: "4. Retention",
+        content:
+          "Global conservative policy: clinical records up to 20 years from the last clinical act. Audit logs up to 10 years.",
+      },
+      section5: {
+        title: "5. Data subject rights",
+        intro: "You may exercise, under applicable law:",
+        item1: "Access and portability: export your data from Settings.",
+        item2: "Rectification: update your profile or request correction.",
+        item3: "Erasure: request deletion when legally permitted.",
+        item4: "Objection/limitation: contact support; clinical record retention duties may apply.",
+      },
+      section6: {
+        title: "6. Security",
+        content: "HTTPS, role-based access, audit logging, record access tracking, and secure authentication.",
+      },
+      section7: {
+        title: "7. Transfers",
+        content: "Data may be processed on cloud infrastructure. The controller must inform patients about international transfers when required.",
+      },
+      section8: {
+        title: "8. Contact",
+        content: "Use platform support or Settings → Privacy and data.",
+      },
+    },
+    compliance: {
+      title: "Privacy and data",
+      subtitle: "ARCO, LGPD and GDPR rights for your account",
+      exportTitle: "Export my data",
+      exportDesc: "Download a JSON file with your profile, clinic, subscription and recent audit logs.",
+      exportButton: "Download my data",
+      deletionTitle: "Request account erasure",
+      deletionDesc: "Submit a deletion request evaluated under LFPDPPP, LGPD, GDPR and clinical retention duties.",
+      deletionButton: "Request erasure",
+      deletionSuccess: "Request registered. Support will contact you if needed.",
+      privacyLink: "View Privacy Policy",
+      retentionTitle: "Retention policy",
+      retentionNote: "Clinical records: up to 20 years from the last clinical act.",
+      legalHoldTitle: "Legal holds",
+      legalHoldDesc: "Prevents deletion of records under litigation, audit or authority request.",
+      holdResourceType: "Resource type",
+      holdResourceId: "Resource ID",
+      holdReason: "Reason",
+      holdCreate: "Create hold",
+      holdCreated: "Legal hold created",
+      holdRelease: "Release",
+      holdsEmpty: "No active legal holds",
     },
   },
   
@@ -1707,6 +2210,7 @@ export const translations: Record<Language, Translations> = {
       enterCredentials: "Digite suas credenciais para acessar o sistema",
       emailLabel: "E-mail",
       emailPlaceholder: "email@exemplo.com",
+      emailHint: "Será o seu utilizador de acesso. Enviaremos um e-mail para verificar a conta.",
       passwordLabel: "Senha",
       passwordPlaceholder: "••••••••",
       loginButton: "Entrar",
@@ -1726,6 +2230,10 @@ export const translations: Record<Language, Translations> = {
       registerSubtitle: "Preencha o formulário para se registrar no PodoAdmin",
       nameLabel: "Nome completo",
       namePlaceholder: "João Silva",
+      clinicCodeLabel: "Código da clínica (opcional)",
+      clinicCodePlaceholder: "Ex. PREM",
+      clinicCodeHint:
+        "Deixe vazio se for podologista independente. Se a clínica lhe deu um código, escreva-o aqui para se associar.",
       passwordRequirements: "Requisitos de senha",
       passwordMinLength: "Mínimo 12 caracteres",
       passwordMustContain: "Deve conter:",
@@ -1735,6 +2243,8 @@ export const translations: Record<Language, Translations> = {
       passwordSpecial: "Pelo menos um caractere especial",
       termsAccept: "Aceito os termos e condições",
       termsLink: "Ver termos",
+      privacyAccept: "Aceito a",
+      privacyLink: "Política de Privacidade",
       registerButton: "Criar conta",
       registering: "Criando conta...",
       alreadyHaveAccount: "Já tem uma conta?",
@@ -1743,7 +2253,11 @@ export const translations: Record<Language, Translations> = {
       contactAdminForAccount: "Contacte o administrador para criar uma conta.",
       registrationSuccess: "Registro bem-sucedido!",
       registrationSuccessMessage: "Enviamos um email de verificação. Por favor, verifique sua caixa de entrada.",
+      registrationSuccessDevMessage:
+        "Conta criada em desenvolvimento. O email foi verificado automaticamente; já pode iniciar sessão.",
       checkEmail: "Verifique seu e-mail",
+      emailAlreadyRegistered:
+        "Este e-mail já está registrado. Inicie sessão com sua conta ou use outro e-mail.",
       // Email Verification
       verifyEmail: "Verificar e-mail",
       verifyEmailTitle: "Verifique seu e-mail",
@@ -1756,6 +2270,10 @@ export const translations: Record<Language, Translations> = {
       // CAPTCHA
       captchaRequired: "Por favor, complete o CAPTCHA",
       captchaError: "Erro ao verificar CAPTCHA",
+      captchaNotConfigured:
+        "Ambiente de desenvolvimento: o CAPTCHA não está configurado. O registo funciona sem verificação antibot.",
+      captchaDisabledInDev:
+        "Ambiente de desenvolvimento: CAPTCHA desativado automaticamente. Em produção será obrigatório.",
       // OAuth
       orContinueWith: "Ou continue com",
       loginWithGoogle: "Google",
@@ -1810,6 +2328,7 @@ export const translations: Record<Language, Translations> = {
       systemDiagnostics: "Estado do sistema",
       profile: "Perfil",
       clinicManagement: "Gestão da Clínica",
+      whatsappMessages: "Mensagens WhatsApp",
     },
     dashboard: {
       title: "Painel",
@@ -1838,6 +2357,8 @@ export const translations: Record<Language, Translations> = {
       female: "Feminino",
       other: "Outro",
       idNumber: "CPF/RG",
+      curp: "CURP (México)",
+      curpHint: "Opcional. Identificação mexicana (NOM-004).",
       phone: "Telefone",
       email: "E-mail",
       address: "Endereço",
@@ -2013,6 +2534,95 @@ export const translations: Record<Language, Translations> = {
       from: "De",
       sent: "Enviado",
     },
+    whatsapp: {
+      title: "WhatsApp Business",
+      subtitle:
+        "Conecte seu número comercial da Meta para lembretes de consultas por WhatsApp. Os dados são armazenados criptografados. Apenas você (podólogo ou administrador da clínica) pode configurar esta seção.",
+      loading: "Carregando configuração do WhatsApp…",
+      setupTitle: "Como configurar o WhatsApp (token de longa duração)",
+      setupStep1Prefix: "Acesse",
+      setupStep1Link: "Business Settings → Usuários do sistema",
+      setupStep1Suffix: "e crie um usuário do sistema.",
+      setupStep2: "Atribua seu app Meta e sua conta WhatsApp Business (WABA) como ativos.",
+      setupStep3: "Gere um token para esse usuário e conceda permissões de WhatsApp (mensagens/admin conforme seu fluxo).",
+      setupStep4Prefix: "Em",
+      setupStep4Link: "Meta for Developers",
+      setupStep4Suffix: "copie também Phone Number ID e WABA ID.",
+      setupStep5: "Cole os dados neste formulário, salve e clique em «Testar conexão».",
+      statusLabel: "Estado:",
+      statusConnected: "conectado",
+      statusError: "erro",
+      statusPending: "pendente",
+      phoneNumberIdLabel: "Phone Number ID (Meta) *",
+      phoneNumberIdPlaceholder: "Ex.: 123456789012345",
+      wabaIdLabel: "WhatsApp Business Account ID (opcional)",
+      wabaIdPlaceholder: "WABA ID",
+      accessTokenLabel: "Token de acesso permanente",
+      accessTokenRequired: "*",
+      accessTokenKeepCurrent: "(deixe vazio para manter o atual)",
+      accessTokenPlaceholderSaved: "•••••••• (salvo)",
+      accessTokenPlaceholderNew: "Token do Meta Business Suite",
+      hideTokenField: "Ocultar campo de token",
+      changeToken: "Alterar token",
+      publicPhoneLabel: "Telefone público (opcional)",
+      publicPhonePlaceholder: "+5511999999999",
+      remindersSection: "Lembretes de consultas",
+      remindersAuto: "Ativar lembretes automáticos por WhatsApp (apenas pacientes com telefone)",
+      reminderDaysBefore: "Dias antes da consulta",
+      reminderHoursBefore: "Horas antes da consulta",
+      reminderHourBefore: "{hours} h antes",
+      reminderDayOne: "{days} dia antes",
+      reminderDayMany: "{days} dias antes",
+      reminderSelectHour: "Antecedência do lembrete",
+      reminderAddHour: "+ Adicionar outro horário",
+      reminderRemoveHour: "Remover",
+      reminderHoursHint: "Até 8 lembretes por horas. Os dias (5, 2, 1) são independentes.",
+      reminderScheduleHint: "Ative os lembretes automáticos acima para editar o calendário.",
+      reminderDaysHelp: "Clique em cada opção para ativar ou desativar (mínimo uma).",
+      reminderHoursHelp: "Use cada lista para escolher quantas horas antes avisar.",
+      reminderDaysRequired: "Selecione pelo menos um dia de lembrete.",
+      reminder48h: "48 h antes",
+      reminder24h: "24 h antes",
+      templateNameLabel: "Nome do modelo Meta (lembrete)",
+      templateNamePlaceholder: "ex.: appointment_reminder",
+      templateHint:
+        "Deve estar aprovado no Meta Business Manager com 4 variáveis: {{1}} nome, {{2}} data, {{3}} hora, {{4}} notas/extras.",
+      defaultExtraNoteLabel: "Nota ou mensagem extra padrão",
+      defaultExtraNotePlaceholder: "Ex.: Traga exames anteriores. Estacionamento na rua lateral.",
+      defaultExtraNoteHint:
+        "Enviado como 4.º parâmetro do modelo em lembretes automáticos e manuais (se não escrever outra nota ao enviar). Máximo 500 caracteres.",
+      templateLanguageLabel: "Idioma do modelo",
+      templateLanguagePlaceholder: "pt",
+      integrationActive: "Integração ativa (envios habilitados quando o cron estiver ativo)",
+      save: "Salvar configuração",
+      saving: "Salvando…",
+      testConnection: "Testar conexão",
+      testing: "Testando…",
+      disconnect: "Desconectar",
+      guidesFooter: "Guias oficiais:",
+      guidesCloudApi: "Meta WhatsApp Cloud API",
+      guidesSystemUsers: "System Users (token de longa duração)",
+      consentNote: "Os pacientes devem ter consentido mensagens por WhatsApp.",
+      purposeTitle: "Para que serve esta seção?",
+      purposeDescription:
+        "Aqui você conecta sua conta WhatsApp Business (Meta) para enviar lembretes de consultas. Salve o token e o modelo aprovado; depois use «Mensagens WhatsApp» para enviar e ver o status.",
+      errorApiUnavailable:
+        "Não foi possível contactar o serviço WhatsApp no servidor. Recarregue a página (Ctrl+F5). Se persistir, reinicie o servidor de desenvolvimento.",
+      errorLoad: "Não foi possível carregar a configuração",
+      errorPhoneRequired: "O Phone Number ID da Meta é obrigatório.",
+      errorTokenRequired: "O token de acesso permanente da Meta é obrigatório.",
+      errorTemplateRequired: "Indique o nome do modelo aprovado na Meta para lembretes.",
+      errorSave: "Erro ao salvar",
+      errorTest: "Erro ao testar conexão",
+      errorTestFailed: "O teste de conexão falhou",
+      errorDisconnect: "Erro ao desconectar",
+      disconnectConfirm: "Remover a configuração do WhatsApp? Os lembretes automáticos deixarão de ser enviados.",
+      successSaved: "Configuração do WhatsApp salva com sucesso.",
+      successSavedWarning: "Salvo. Aviso de conexão: {warning}",
+      successTest: "Conexão correta com a Meta.",
+      successTestWithPhone: "Conexão correta ({phone})",
+      successDisconnected: "WhatsApp desconectado.",
+    },
     systemDiagnostics: {
       title: "Estado do sistema",
       subtitle: "Verifique o worker, a base de dados e o URL de saúde pública; guia breve em caso de incidentes.",
@@ -2054,6 +2664,10 @@ export const translations: Record<Language, Translations> = {
       adminDesc: "Ajustes de créditos e suporte técnico",
       podiatristDesc: "Gestão de pacientes e sessões clínicas",
       receptionistDesc: "Criar pacientes, agendamentos e gerir calendário dos podólogos atribuídos",
+      superAdminAssignWarning:
+        "Você está prestes a conceder o papel de Super Administrador. Esta pessoa terá acesso total ao sistema, usuários e configurações.",
+      superAdminAssignConfirmPrompt: "Confirme esta ação para evitar atribuições por engano.",
+      superAdminAssignConfirmed: "Papel de Super Administrador confirmado.",
     },
     errors: {
       generic: "Ocorreu um erro",
@@ -2206,6 +2820,49 @@ export const translations: Record<Language, Translations> = {
         content: "Se você tiver perguntas sobre estes Termos e Condições, pode entrar em contato conosco através dos canais de suporte fornecidos na plataforma.",
       },
     },
+    privacy: {
+      title: "Política de Privacidade",
+      lastUpdated: "Última atualização",
+      backToRegister: "Voltar ao registro",
+      section1: { title: "1. Controlador", content: "O profissional ou clínica é responsável pelos dados de saúde conforme LGPD e demais leis locais." },
+      section2: { title: "2. Dados tratados", content: "Dados de conta, clínicos, auditoria e metadados de segurança." },
+      section3: { title: "3. Finalidade", content: "Gestão clínica, retenção legal de prontuários, segurança e suporte." },
+      section4: { title: "4. Retenção", content: "Prontuário clínico: até 20 anos desde o último ato clínico. Auditoria: 10 anos." },
+      section5: {
+        title: "5. Direitos do titular",
+        intro: "Conforme LGPD e leis locais:",
+        item1: "Acesso e portabilidade em Configurações.",
+        item2: "Retificação do perfil.",
+        item3: "Eliminação quando legalmente permitido.",
+        item4: "Oposição: contatar suporte; pode prevalecer retenção legal.",
+      },
+      section6: { title: "6. Segurança", content: "HTTPS, controle de acesso, auditoria e autenticação segura." },
+      section7: { title: "7. Transferências", content: "Dados podem ser processados em nuvem; informe pacientes se necessário." },
+      section8: { title: "8. Contato", content: "Suporte da plataforma ou Configurações → Privacidade e dados." },
+    },
+    compliance: {
+      title: "Privacidade e dados",
+      subtitle: "Direitos LGPD e GDPR da sua conta",
+      exportTitle: "Exportar meus dados",
+      exportDesc: "Baixe JSON com perfil, clínica e auditoria recente.",
+      exportButton: "Baixar meus dados",
+      deletionTitle: "Solicitar exclusão",
+      deletionDesc: "Registre pedido de exclusão conforme LGPD e retenção clínica.",
+      deletionButton: "Solicitar exclusão",
+      deletionSuccess: "Solicitação registrada.",
+      privacyLink: "Ver Política de Privacidade",
+      retentionTitle: "Retenção",
+      retentionNote: "Prontuário: até 20 anos desde o último ato clínico.",
+      legalHoldTitle: "Bloqueios legais",
+      legalHoldDesc: "Impede exclusão sob litígio ou auditoria.",
+      holdResourceType: "Tipo de recurso",
+      holdResourceId: "ID do recurso",
+      holdReason: "Motivo",
+      holdCreate: "Criar bloqueio",
+      holdCreated: "Bloqueio criado",
+      holdRelease: "Liberar",
+      holdsEmpty: "Sem bloqueios ativos",
+    },
   },
   
   fr: {
@@ -2249,6 +2906,7 @@ export const translations: Record<Language, Translations> = {
       enterCredentials: "Entrez vos identifiants pour accéder au système",
       emailLabel: "E-mail",
       emailPlaceholder: "email@exemple.com",
+      emailHint: "Ce sera votre identifiant de connexion. Nous enverrons un e-mail de vérification à cette adresse.",
       passwordLabel: "Mot de passe",
       passwordPlaceholder: "••••••••",
       loginButton: "Se connecter",
@@ -2268,6 +2926,10 @@ export const translations: Record<Language, Translations> = {
       registerSubtitle: "Remplissez le formulaire pour vous inscrire à PodoAdmin",
       nameLabel: "Nom complet",
       namePlaceholder: "Jean Dupont",
+      clinicCodeLabel: "Code clinique (facultatif)",
+      clinicCodePlaceholder: "Ex. PREM",
+      clinicCodeHint:
+        "Laissez vide si vous êtes podologue indépendant. Si votre clinique vous a donné un code, saisissez-le pour la rejoindre.",
       passwordRequirements: "Exigences du mot de passe",
       passwordMinLength: "Minimum 12 caractères",
       passwordMustContain: "Doit contenir:",
@@ -2277,6 +2939,8 @@ export const translations: Record<Language, Translations> = {
       passwordSpecial: "Au moins un caractère spécial",
       termsAccept: "J'accepte les termes et conditions",
       termsLink: "Voir les termes",
+      privacyAccept: "J'accepte la",
+      privacyLink: "Politique de Confidentialité",
       registerButton: "Créer un compte",
       registering: "Création du compte...",
       alreadyHaveAccount: "Vous avez déjà un compte?",
@@ -2285,7 +2949,11 @@ export const translations: Record<Language, Translations> = {
       contactAdminForAccount: "Contactez l'administrateur pour créer un compte.",
       registrationSuccess: "Inscription réussie!",
       registrationSuccessMessage: "Nous avons envoyé un email de vérification. Veuillez vérifier votre boîte de réception.",
+      registrationSuccessDevMessage:
+        "Compte créé en développement. L'email a été vérifié automatiquement ; vous pouvez vous connecter.",
       checkEmail: "Vérifiez votre e-mail",
+      emailAlreadyRegistered:
+        "Cet e-mail est déjà enregistré. Connectez-vous avec votre compte ou utilisez un autre e-mail.",
       // Email Verification
       verifyEmail: "Vérifier l'e-mail",
       verifyEmailTitle: "Vérifiez votre e-mail",
@@ -2298,6 +2966,10 @@ export const translations: Record<Language, Translations> = {
       // CAPTCHA
       captchaRequired: "Veuillez compléter le CAPTCHA",
       captchaError: "Erreur de vérification CAPTCHA",
+      captchaNotConfigured:
+        "Environnement de développement : le CAPTCHA n'est pas configuré. L'inscription fonctionne sans vérification antibot.",
+      captchaDisabledInDev:
+        "Environnement de développement : CAPTCHA désactivé automatiquement. Obligatoire en production.",
       // OAuth
       orContinueWith: "Ou continuer avec",
       loginWithGoogle: "Google",
@@ -2352,6 +3024,7 @@ export const translations: Record<Language, Translations> = {
       systemDiagnostics: "État du système",
       profile: "Profil",
       clinicManagement: "Gestion de Clinique",
+      whatsappMessages: "Messages WhatsApp",
     },
     dashboard: {
       title: "Tableau de bord",
@@ -2380,6 +3053,8 @@ export const translations: Record<Language, Translations> = {
       female: "Féminin",
       other: "Autre",
       idNumber: "Numéro d'identité",
+      curp: "CURP (Mexique)",
+      curpHint: "Optionnel. Code d'identification mexicain (NOM-004).",
       phone: "Téléphone",
       email: "E-mail",
       address: "Adresse",
@@ -2557,6 +3232,95 @@ export const translations: Record<Language, Translations> = {
       from: "De",
       sent: "Envoyé",
     },
+    whatsapp: {
+      title: "WhatsApp Business",
+      subtitle:
+        "Connectez votre numéro Meta pour les rappels de rendez-vous par WhatsApp. Les données sont chiffrées. Seuls vous (podologue ou admin de clinique) pouvez configurer cette section.",
+      loading: "Chargement de la configuration WhatsApp…",
+      setupTitle: "Configurer WhatsApp (jeton longue durée)",
+      setupStep1Prefix: "Accédez à",
+      setupStep1Link: "Business Settings → Utilisateurs système",
+      setupStep1Suffix: "et créez un utilisateur système.",
+      setupStep2: "Assignez votre app Meta et votre compte WhatsApp Business (WABA) comme actifs.",
+      setupStep3: "Générez un jeton pour cet utilisateur et accordez les permissions WhatsApp.",
+      setupStep4Prefix: "Depuis",
+      setupStep4Link: "Meta for Developers",
+      setupStep4Suffix: "copiez aussi Phone Number ID et WABA ID.",
+      setupStep5: "Collez les données dans ce formulaire, enregistrez et cliquez sur « Tester la connexion ».",
+      statusLabel: "État :",
+      statusConnected: "connecté",
+      statusError: "erreur",
+      statusPending: "en attente",
+      phoneNumberIdLabel: "Phone Number ID (Meta) *",
+      phoneNumberIdPlaceholder: "Ex. : 123456789012345",
+      wabaIdLabel: "WhatsApp Business Account ID (optionnel)",
+      wabaIdPlaceholder: "WABA ID",
+      accessTokenLabel: "Jeton d'accès permanent",
+      accessTokenRequired: "*",
+      accessTokenKeepCurrent: "(laisser vide pour conserver l'actuel)",
+      accessTokenPlaceholderSaved: "•••••••• (enregistré)",
+      accessTokenPlaceholderNew: "Jeton depuis Meta Business Suite",
+      hideTokenField: "Masquer le champ jeton",
+      changeToken: "Changer le jeton",
+      publicPhoneLabel: "Téléphone public (optionnel)",
+      publicPhonePlaceholder: "+33600111222",
+      remindersSection: "Rappels de rendez-vous",
+      remindersAuto: "Activer les rappels automatiques WhatsApp (patients avec téléphone uniquement)",
+      reminderDaysBefore: "Jours avant le rendez-vous",
+      reminderHoursBefore: "Heures avant le rendez-vous",
+      reminderHourBefore: "{hours} h avant",
+      reminderDayOne: "{days} jour avant",
+      reminderDayMany: "{days} jours avant",
+      reminderSelectHour: "Délai du rappel",
+      reminderAddHour: "+ Ajouter un horaire",
+      reminderRemoveHour: "Retirer",
+      reminderHoursHint: "Jusqu'à 8 rappels par heures. Les jours (5, 2, 1) sont indépendants.",
+      reminderScheduleHint: "Activez les rappels automatiques ci-dessus pour modifier le calendrier.",
+      reminderDaysHelp: "Cliquez sur chaque option pour l'activer ou la désactiver (au moins une).",
+      reminderHoursHelp: "Choisissez dans chaque liste combien d'heures avant prévenir.",
+      reminderDaysRequired: "Sélectionnez au moins un jour de rappel.",
+      reminder48h: "48 h avant",
+      reminder24h: "24 h avant",
+      templateNameLabel: "Nom du modèle Meta (rappel)",
+      templateNamePlaceholder: "ex. : appointment_reminder",
+      templateHint:
+        "Doit être approuvé dans Meta Business Manager avec 4 variables : {{1}} nom, {{2}} date, {{3}} heure, {{4}} notes/extras.",
+      defaultExtraNoteLabel: "Note ou message extra par défaut",
+      defaultExtraNotePlaceholder: "Ex. : Apportez vos examens. Parking rue latérale.",
+      defaultExtraNoteHint:
+        "Envoyé comme 4e paramètre du modèle (sauf autre note à l'envoi). Max 500 caractères.",
+      templateLanguageLabel: "Langue du modèle",
+      templateLanguagePlaceholder: "fr",
+      integrationActive: "Intégration active (envois activés quand le cron est actif)",
+      save: "Enregistrer",
+      saving: "Enregistrement…",
+      testConnection: "Tester la connexion",
+      testing: "Test…",
+      disconnect: "Déconnecter",
+      guidesFooter: "Guides officiels :",
+      guidesCloudApi: "Meta WhatsApp Cloud API",
+      guidesSystemUsers: "System Users (jeton longue durée)",
+      consentNote: "Les patients doivent avoir consenti aux messages WhatsApp.",
+      purposeTitle: "À quoi sert cette section ?",
+      purposeDescription:
+        "Connectez votre compte WhatsApp Business (Meta) pour envoyer des rappels de rendez-vous. Enregistrez le jeton et le modèle approuvé ; puis utilisez « Messages WhatsApp » pour envoyer et voir le statut.",
+      errorApiUnavailable:
+        "Impossible de joindre le service WhatsApp sur le serveur. Rechargez la page (Ctrl+F5). Si cela persiste, redémarrez le serveur de développement.",
+      errorLoad: "Impossible de charger la configuration",
+      errorPhoneRequired: "Le Phone Number ID Meta est obligatoire.",
+      errorTokenRequired: "Le jeton d'accès permanent Meta est obligatoire.",
+      errorTemplateRequired: "Indiquez le nom du modèle Meta approuvé pour les rappels.",
+      errorSave: "Erreur lors de l'enregistrement",
+      errorTest: "Erreur lors du test de connexion",
+      errorTestFailed: "Le test de connexion a échoué",
+      errorDisconnect: "Erreur lors de la déconnexion",
+      disconnectConfirm: "Supprimer la configuration WhatsApp ? Les rappels automatiques s'arrêteront.",
+      successSaved: "Configuration WhatsApp enregistrée.",
+      successSavedWarning: "Enregistré. Avertissement connexion : {warning}",
+      successTest: "Connexion réussie avec Meta.",
+      successTestWithPhone: "Connexion réussie ({phone})",
+      successDisconnected: "WhatsApp déconnecté.",
+    },
     systemDiagnostics: {
       title: "État du système",
       subtitle: "Vérifiez le worker, la base de données et l'URL de santé publique ; guide rapide en cas d'incident.",
@@ -2598,6 +3362,10 @@ export const translations: Record<Language, Translations> = {
       adminDesc: "Ajustements de crédits et support technique",
       podiatristDesc: "Gestion des patients et des séances cliniques",
       receptionistDesc: "Créer des patients, rendez-vous et gérer le calendrier des podologues assignés",
+      superAdminAssignWarning:
+        "Vous allez accorder le rôle de Super Administrateur. Cette personne aura un contrôle total du système, des utilisateurs et des paramètres.",
+      superAdminAssignConfirmPrompt: "Confirmez cette action pour éviter les attributions par erreur.",
+      superAdminAssignConfirmed: "Rôle de Super Administrateur confirmé.",
     },
     errors: {
       generic: "Une erreur s'est produite",
@@ -2749,6 +3517,49 @@ export const translations: Record<Language, Translations> = {
         title: "13. Contact",
         content: "Si vous avez des questions concernant ces Termes et Conditions, vous pouvez nous contacter via les canaux de support fournis sur la plateforme.",
       },
+    },
+    privacy: {
+      title: "Politique de Confidentialité",
+      lastUpdated: "Dernière mise à jour",
+      backToRegister: "Retour à l'inscription",
+      section1: { title: "1. Responsable", content: "Le professionnel ou la clinique est responsable des données de santé selon le RGPD et les lois locales." },
+      section2: { title: "2. Données traitées", content: "Compte, données cliniques, journaux d'audit et métadonnées de sécurité." },
+      section3: { title: "3. Finalité", content: "Gestion clinique, conservation légale des dossiers, sécurité et support." },
+      section4: { title: "4. Conservation", content: "Dossier clinique : jusqu'à 20 ans après le dernier acte. Audit : 10 ans." },
+      section5: {
+        title: "5. Droits des personnes",
+        intro: "Selon le RGPD et lois locales :",
+        item1: "Accès et portabilité dans Paramètres.",
+        item2: "Rectification du profil.",
+        item3: "Effacement lorsque légalement permis.",
+        item4: "Opposition : contacter le support ; la conservation médicale peut prévaloir.",
+      },
+      section6: { title: "6. Sécurité", content: "HTTPS, contrôle d'accès, audit et authentification." },
+      section7: { title: "7. Transferts", content: "Données pouvant être traitées dans le cloud." },
+      section8: { title: "8. Contact", content: "Support ou Paramètres → Confidentialité et données." },
+    },
+    compliance: {
+      title: "Confidentialité et données",
+      subtitle: "Droits RGPD et ARCO pour votre compte",
+      exportTitle: "Exporter mes données",
+      exportDesc: "Télécharger JSON avec profil, clinique et audit récent.",
+      exportButton: "Télécharger mes données",
+      deletionTitle: "Demander la suppression",
+      deletionDesc: "Demande évaluée selon RGPD et conservation clinique.",
+      deletionButton: "Demander la suppression",
+      deletionSuccess: "Demande enregistrée.",
+      privacyLink: "Voir la Politique de Confidentialité",
+      retentionTitle: "Conservation",
+      retentionNote: "Dossier clinique : jusqu'à 20 ans après le dernier acte.",
+      legalHoldTitle: "Blocages légaux",
+      legalHoldDesc: "Empêche la suppression en cas de litige ou audit.",
+      holdResourceType: "Type de ressource",
+      holdResourceId: "ID de ressource",
+      holdReason: "Motif",
+      holdCreate: "Créer blocage",
+      holdCreated: "Blocage créé",
+      holdRelease: "Libérer",
+      holdsEmpty: "Aucun blocage actif",
     },
   },
 };

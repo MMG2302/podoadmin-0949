@@ -1,4 +1,7 @@
 import { Hono } from 'hono';
+import { requireAuth } from '../middleware/auth';
+import { requireRole } from '../middleware/authorization';
+import { requireNonProductionDev } from '../middleware/dev-only';
 import { escapeHtml, containsXssPayload, sanitizeString, validateAndSanitizeString } from '../utils/sanitization';
 
 /**
@@ -6,6 +9,10 @@ import { escapeHtml, containsXssPayload, sanitizeString, validateAndSanitizeStri
  * Útil para verificar que el escapado HTML funciona correctamente
  */
 const testXssRoutes = new Hono();
+
+testXssRoutes.use('*', requireNonProductionDev);
+testXssRoutes.use('*', requireAuth);
+testXssRoutes.use('*', requireRole('super_admin'));
 
 /**
  * POST /api/test-xss

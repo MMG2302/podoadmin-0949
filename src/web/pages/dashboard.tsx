@@ -1,23 +1,27 @@
 import { useEffect, useState } from "react";
-import { Route, Switch, Link } from "wouter";
-import { Users, Stethoscope, Building2, UserCircle, CalendarCheck, Settings, UserPlus, Building, Calendar, FileText, Activity } from "lucide-react";
+import { Route, Switch, Link, Redirect, useLocation } from "wouter";
+import { Users, Stethoscope, Building2, UserCircle, CalendarCheck, Settings, UserPlus, Building, Calendar, FileText, Shield } from "lucide-react";
 import { MainLayout } from "../components/layout/main-layout";
 import { RoleDashboardBento } from "../components/ui/bento-grid";
 import { useLanguage } from "../contexts/language-context";
-import { useAuth } from "../contexts/auth-context";
+import { useAuth, getPostLoginPath, hasActiveSystemAccess, isClinicalAppPath } from "../contexts/auth-context";
 import { usePermissions } from "../hooks/use-permissions";
 import { api } from "../lib/api-client";
 import PatientsPage from "./patients-page";
 import SessionsPage from "./sessions-page";
 import SettingsPage from "./settings-page";
 import AuditLogPage from "./audit-log-page";
+import SecurityMetricsPage from "./security-metrics-page";
 import UsersManagementPage from "./users-page";
 import ClinicManagementPage from "./clinic-page";
 import NotificationsPage from "./notifications-page";
 import CalendarPage from "./calendar-page";
 import MessagesPage from "./messages-page";
 import SupportPage from "./support-page";
-import SystemDiagnosticsPage from "./system-diagnostics-page";
+import WhatsAppMessagesPage from "./whatsapp-messages-page";
+import ClinicalToolsPage from "./clinical-tools-page";
+import WhatsAppCampaignsPage from "./whatsapp-campaigns-page";
+import BillingPage from "./billing-page";
 
 // Super Admin Dashboard - focused on Users, Settings
 const SuperAdminDashboard = () => {
@@ -47,8 +51,8 @@ const SuperAdminDashboard = () => {
         ]}
         actionItems={[
           { Icon: Users, name: t.nav.users, description: "Gestionar usuarios y clínicas", href: "/users" },
-          { Icon: Activity, name: t.nav.systemDiagnostics, description: t.systemDiagnostics.subtitle, href: "/system" },
           { Icon: Settings, name: t.settings.title, description: "Configuración del sistema", href: "/settings" },
+          { Icon: Shield, name: t.nav.securityMetrics, description: "Métricas y alertas de seguridad", href: "/security-metrics" },
         ]}
       >
         {/* Users Overview - full width */}
@@ -323,7 +327,7 @@ const ReceptionistDashboard = () => {
 
 // Dashboard Home - routes to appropriate dashboard based on role
 const DashboardHome = () => {
-  const { isSuperAdmin, isClinicAdmin, isAdmin, isReceptionist } = usePermissions();
+  const { isSuperAdmin, isClinicAdmin, isAdmin, isPodiatrist, isReceptionist } = usePermissions();
 
   if (isSuperAdmin) return <SuperAdminDashboard />;
   if (isClinicAdmin) return <ClinicAdminDashboard />;
@@ -333,7 +337,13 @@ const DashboardHome = () => {
 };
 
 const Dashboard = () => {
+  const { user } = useAuth();
+  const [location] = useLocation();
   const { isSuperAdmin, isClinicAdmin, isAdmin, isPodiatrist, isReceptionist } = usePermissions();
+
+  if (user && !hasActiveSystemAccess(user) && isClinicalAppPath(location)) {
+    return <Redirect to={getPostLoginPath(user)} />;
+  }
 
   return (
     <Switch>
@@ -344,7 +354,7 @@ const Dashboard = () => {
       {isSuperAdmin && <Route path="/messages" component={MessagesPage} />}
       {isSuperAdmin && <Route path="/support" component={SupportPage} />}
       {isSuperAdmin && <Route path="/audit-log" component={AuditLogPage} />}
-      {isSuperAdmin && <Route path="/system" component={SystemDiagnosticsPage} />}
+      {isSuperAdmin && <Route path="/security-metrics" component={SecurityMetricsPage} />}
       
       {/* Admin routes */}
       {isAdmin && <Route path="/users" component={UsersManagementPage} />}
@@ -356,6 +366,10 @@ const Dashboard = () => {
       {isClinicAdmin && <Route path="/sessions" component={SessionsPage} />}
       {isClinicAdmin && <Route path="/sessions/:id" component={SessionsPage} />}
       {isClinicAdmin && <Route path="/calendar" component={CalendarPage} />}
+      {isClinicAdmin && <Route path="/whatsapp-messages" component={WhatsAppMessagesPage} />}
+      {isClinicAdmin && <Route path="/whatsapp-campaigns" component={WhatsAppCampaignsPage} />}
+      {isClinicAdmin && <Route path="/clinical-tools" component={ClinicalToolsPage} />}
+      {isClinicAdmin && <Route path="/billing" component={BillingPage} />}
       
       {/* Receptionist routes - pacientes y calendario, sin sesiones */}
       {isReceptionist && <Route path="/patients" component={PatientsPage} />}
@@ -368,6 +382,10 @@ const Dashboard = () => {
       {isPodiatrist && <Route path="/sessions" component={SessionsPage} />}
       {isPodiatrist && <Route path="/sessions/:id" component={SessionsPage} />}
       {isPodiatrist && <Route path="/calendar" component={CalendarPage} />}
+      {isPodiatrist && <Route path="/whatsapp-messages" component={WhatsAppMessagesPage} />}
+      {isPodiatrist && <Route path="/whatsapp-campaigns" component={WhatsAppCampaignsPage} />}
+      {isPodiatrist && <Route path="/clinical-tools" component={ClinicalToolsPage} />}
+      {isPodiatrist && <Route path="/billing" component={BillingPage} />}
       
       {/* Common routes */}
       <Route path="/settings" component={SettingsPage} />

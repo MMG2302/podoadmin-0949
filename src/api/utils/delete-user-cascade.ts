@@ -84,6 +84,16 @@ export async function deleteUserCascade(userId: string, userRecordId: string): P
     const patientIds = userPatients.map((p) => p.id);
 
     if (patientIds.length > 0) {
+      const { isPatientProtectedFromDeletion } = await import('./clinical-retention-purge');
+      for (const pid of patientIds) {
+        const blockReason = await isPatientProtectedFromDeletion(pid);
+        if (blockReason) {
+          return {
+            deleted: false,
+            error: blockReason,
+          };
+        }
+      }
       await database.delete(appointments).where(inArray(appointments.patientId, patientIds));
       await database.delete(clinicalSessions).where(inArray(clinicalSessions.patientId, patientIds));
       await database.delete(patients).where(eq(patients.createdBy, userId));

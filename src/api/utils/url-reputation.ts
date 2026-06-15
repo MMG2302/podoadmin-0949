@@ -22,7 +22,7 @@ export function extractUrlsFromText(text: string | null | undefined): string[] {
   let m: RegExpExecArray | null;
   const re = new RegExp(URL_IN_TEXT.source, 'gi');
   while ((m = re.exec(text)) !== null) {
-    const u = m[0].replace(/[.,;:!?)]+$/, '').slice(0, MAX_URL_LENGTH);
+    let u = m[0].replace(/[.,;:!?)]+$/, '').slice(0, MAX_URL_LENGTH);
     if (!seen.has(u)) {
       seen.add(u);
       urls.push(u);
@@ -72,13 +72,23 @@ export async function checkUrlsWithSafeBrowsing(urls: string[]): Promise<SafeBro
     clearTimeout(timeoutId);
     if (!res.ok) {
       const errText = await res.text();
-      return { unsafe: [], error: `Safe Browsing API ${res.status}: ${errText.slice(0, 200)}` };
+      const error = `Safe Browsing API ${res.status}: ${errText.slice(0, 200)}`;
+      console.error('[safe-browsing]', error);
+      // Producción: no permitir mensajes con URLs si no se pudo verificar (evita bypass y reintentos ciegos)
+      if (process.env.NODE_ENV === 'production') {
+        return { unsafe: urls, error };
+      }
+      return { unsafe: [], error };
     }
     const data = (await res.json()) as { matches?: Array<{ threat: { url: string } }> };
     const unsafe = (data.matches ?? []).map((m) => m.threat?.url).filter(Boolean) as string[];
     return { unsafe };
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e);
+    console.error('[safe-browsing]', message);
+    if (process.env.NODE_ENV === 'production') {
+      return { unsafe: urls, error: message };
+    }
     return { unsafe: [], error: message };
   }
 }

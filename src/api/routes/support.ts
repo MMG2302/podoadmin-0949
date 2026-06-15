@@ -6,6 +6,7 @@ import { supportConversations, supportMessages, createdUsers, notifications as n
 import { logAuditEvent } from '../utils/audit-log';
 import { getClientIP } from '../utils/ip-tracking';
 import { getSafeUserAgent } from '../utils/request-headers';
+import { sanitizePathParam } from '../utils/sanitization';
 
 const supportRoutes = new Hono();
 supportRoutes.use('*', requireAuth);
@@ -170,7 +171,8 @@ supportRoutes.get('/conversations', async (c) => {
 supportRoutes.get('/conversations/:id', async (c) => {
   try {
     const user = c.get('user');
-    const convId = c.req.param('id');
+    const convId = sanitizePathParam(c.req.param('id'), 64);
+    if (!convId) return c.json({ error: 'ID de conversación inválido' }, 400);
     const isAdmin = isSupportRole(user.role || '');
 
     const [conv] = await database
@@ -224,7 +226,8 @@ supportRoutes.get('/conversations/:id', async (c) => {
 supportRoutes.post('/conversations/:id/messages', async (c) => {
   try {
     const user = c.get('user');
-    const convId = c.req.param('id');
+    const convId = sanitizePathParam(c.req.param('id'), 64);
+    if (!convId) return c.json({ error: 'ID de conversación inválido' }, 400);
     const isAdmin = isSupportRole(user.role || '');
     const body = (await c.req.json().catch(() => ({}))) as { body?: string };
     const messageBody = (body.body || '').trim().slice(0, 5000);
@@ -332,7 +335,8 @@ supportRoutes.post('/conversations/:id/messages', async (c) => {
 supportRoutes.patch('/conversations/:id', async (c) => {
   try {
     const user = c.get('user');
-    const convId = c.req.param('id');
+    const convId = sanitizePathParam(c.req.param('id'), 64);
+    if (!convId) return c.json({ error: 'ID de conversación inválido' }, 400);
     const isAdmin = isSupportRole(user.role || '');
     const body = (await c.req.json().catch(() => ({}))) as { markRead?: boolean; status?: 'open' | 'closed' };
 

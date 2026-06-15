@@ -11,24 +11,20 @@ import { useRefreshOnFocus } from "../hooks/use-refresh-on-focus";
 const canCreatePrescriptions = (role: string | undefined): boolean => {
   return role === "podiatrist" || role === "clinic_admin";
 };
-import {
-  exportPatientData,
-  addAuditLog,
-  getClinicLogo,
-  getProfessionalLogo,
-  getClinicById,
-  getProfessionalLicense,
-  getProfessionalInfo,
-  getProfessionalCredentials,
-  getPrescriptionsBySession,
-  savePrescription,
-  ClinicalSession,
-  Patient,
-  AppointmentReason,
-  Prescription,
-} from "../lib/storage";
+import type { ClinicalSession, Patient, AppointmentReason } from "../types/clinical";
+import type { Prescription } from "../types/prescription";
+import { postAuditLog } from "../lib/audit-client";
 import { api } from "../lib/api-client";
 import { compressImageForSession } from "../lib/image-compress";
+import {
+  SessionChecklistPanel,
+  SessionPatientSignature,
+} from "../components/sessions/session-clinical-extras";
+import {
+  applySessionTemplateFields,
+  sessionFormHasClinicalContent,
+  type SessionTemplate,
+} from "../lib/session-templates";
 
 interface SessionFormData {
   patientId: string;
@@ -73,10 +69,6 @@ const SessionsPage = () => {
   const { isSuperAdmin, isPodiatrist, isClinicAdmin } = usePermissions();
   const [location, setLocation] = useLocation();
 
-  useEffect(() => {
-    if (isClinicAdmin) setLocation("/");
-  }, [isClinicAdmin, setLocation]);
-
   // Leer siempre la query y el path reales del navegador (wouter no incluye la query en location)
   const searchParams =
     typeof window !== "undefined"
@@ -101,6 +93,8 @@ const SessionsPage = () => {
   const [statusFilter, setStatusFilter] = useState<"all" | "draft" | "completed">("all");
   const [showForm, setShowForm] = useState(false);
   const [editingSession, setEditingSession] = useState<ClinicalSession | null>(null);
+  const [sessionTemplates, setSessionTemplates] = useState<SessionTemplate[]>([]);
+  const [sessionPrescriptions, setSessionPrescriptions] = useState<Prescription[]>([]);
 
   const loadPatients = useCallback(async () => {
     try {
@@ -126,6 +120,32 @@ const SessionsPage = () => {
     }
   }, []);
 
+  const loadSessionTemplates = useCallback(async () => {
+    try {
+      const response = await api.get<{ success?: boolean; templates?: SessionTemplate[] }>(
+        "/clinical/templates"
+      );
+      if (response.success && response.data?.templates) {
+        setSessionTemplates(response.data.templates);
+      } else {
+        setSessionTemplates([]);
+      }
+    } catch {
+      setSessionTemplates([]);
+    }
+  }, []);
+
+  const loadSessionPrescriptions = useCallback(async (session: ClinicalSession) => {
+    const res = await api.get<{ success?: boolean; prescriptions?: Prescription[] }>(
+      `/prescriptions/session/${session.id}`
+    );
+    if (res.success && Array.isArray(res.data?.prescriptions)) {
+      setSessionPrescriptions(res.data.prescriptions);
+    } else {
+      setSessionPrescriptions([]);
+    }
+  }, []);
+
   const refreshData = useCallback(() => {
     void loadPatients();
     void loadSessions();
@@ -137,8 +157,11 @@ const SessionsPage = () => {
   }, [user?.id, loadPatients]);
 
   useEffect(() => {
-    if (showForm) loadPatients();
-  }, [showForm, loadPatients]);
+    if (showForm) {
+      loadPatients();
+      loadSessionTemplates();
+    }
+  }, [showForm, loadPatients, loadSessionTemplates]);
 
   useRefreshOnFocus(refreshData);
 
@@ -146,24 +169,58 @@ const SessionsPage = () => {
 
   const isPatientCompleteForSessions = (p: Patient | undefined) => {
     if (!p) return false;
-    return (
-      !!String(p.firstName).trim() &&
-      !!String(p.lastName).trim() &&
-      !!String(p.dateOfBirth).trim() &&
-      !!String(p.gender).trim() &&
-      !!String(p.idNumber).trim()
-    );
+    const fn = (p as any).firstName ?? (p as any).first_name ?? "";
+    const ln = (p as any).lastName ?? (p as any).last_name ?? "";
+    const dob = (p as any).dateOfBirth ?? (p as any).date_of_birth ?? "";
+    const g = (p as any).gender ?? "";
+    const idn = (p as any).idNumber ?? (p as any).id_number ?? "";
+    return !!String(fn).trim() && !!String(ln).trim() && !!String(dob).trim() &&
+      !!String(g).trim() && !!String(idn).trim();
   };
 
   const [formData, setFormData] = useState<SessionFormData>(
     filterPatientId ? { ...emptyForm, patientId: filterPatientId } : emptyForm
   );
+  const [selectedTemplateId, setSelectedTemplateId] = useState("");
   const [selectedSession, setSelectedSession] = useState<ClinicalSession | null>(null);
   const [graceError, setGraceError] = useState<string | null>(null);
+
+  const closeSessionForm = () => {
+    setShowForm(false);
+    setEditingSession(null);
+    setFormData(emptyForm);
+    setSelectedTemplateId("");
+  };
+
+  const applySelectedTemplate = () => {
+    if (!selectedTemplateId) return;
+    const template = sessionTemplates.find((t) => t.id === selectedTemplateId);
+    if (!template) return;
+
+    const currentClinical = {
+      anamnesis: formData.anamnesis,
+      physicalExamination: formData.physicalExamination,
+      diagnosis: formData.diagnosis,
+      treatmentPlan: formData.treatmentPlan,
+    };
+
+    if (
+      sessionFormHasClinicalContent(currentClinical) &&
+      !window.confirm(
+        "¿Cargar esta plantilla? Se reemplazarán anamnesis, exploración, diagnóstico y plan de tratamiento."
+      )
+    ) {
+      return;
+    }
+
+    const applied = applySessionTemplateFields(template.fields, currentClinical);
+    setFormData((prev) => ({ ...prev, ...applied }));
+  };
 
   const handleRescheduleNextAppointment = (session: ClinicalSession) => {
     // Open the session edit form so user can edit the next appointment date
     setEditingSession(session);
+    setSelectedTemplateId("");
     setFormData({
       patientId: session.patientId,
       sessionDate: session.sessionDate,
@@ -178,7 +235,7 @@ const SessionsPage = () => {
       appointmentReason: session.appointmentReason || "",
     });
     setShowForm(true);
-    
+
     // Scroll to the form
     setTimeout(() => {
       const form = document.querySelector('[data-session-form]');
@@ -205,7 +262,13 @@ const SessionsPage = () => {
       // Clear selected session if no id in URL
       setSelectedSession(null);
     }
-  }, [sessionIdFromUrl, sessions]);
+  }, [sessionIdFromUrl, sessions, loadSessionPrescriptions]);
+
+  useEffect(() => {
+    if (isClinicAdmin) {
+      setLocation("/");
+    }
+  }, [isClinicAdmin, setLocation]);
 
   // Detect print attempts from session form
   useEffect(() => {
@@ -226,17 +289,6 @@ const SessionsPage = () => {
           timestamp: new Date().toISOString(),
           message: "Intento de impresión desde formulario de sesión - Incumplimiento con el servicio otorgado",
           violationType: "print_from_form",
-        },
-      });
-      
-      // Send notification
-      api.post("/notifications", {
-        userId: user?.id || "",
-        type: "system",
-        title: "Incumplimiento detectado",
-        message: "Está incumpliendo con el servicio otorgado. No se permite imprimir desde el formulario de sesión.",
-        metadata: {
-          patientId: formData.patientId || undefined,
         },
       });
       
@@ -311,7 +363,6 @@ const SessionsPage = () => {
     nextVisitDate: "",
     notes: "",
   });
-  const [sessionPrescriptions, setSessionPrescriptions] = useState<Prescription[]>([]);
 
   const filteredSessions = useMemo(() => {
     let filtered = sessions;
@@ -327,7 +378,7 @@ const SessionsPage = () => {
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
       filtered = filtered.filter((s) => {
-        const patient = patients.find((x) => x.id === s.patientId);
+        const patient = getPatientById(s.patientId);
         return (
           patient?.firstName.toLowerCase().includes(query) ||
           patient?.lastName.toLowerCase().includes(query) ||
@@ -337,26 +388,10 @@ const SessionsPage = () => {
     }
     
     return filtered.sort((a, b) => new Date(b.sessionDate).getTime() - new Date(a.sessionDate).getTime());
-  }, [sessions, patients, searchQuery, statusFilter, filterPatientId]);
+  }, [sessions, searchQuery, statusFilter, filterPatientId]);
 
   const [imageUploadError, setImageUploadError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-
-  if (isClinicAdmin) {
-    return (
-      <MainLayout title={t.sessions?.title || "Sesiones Clínicas"}>
-        <div className="flex items-center justify-center h-64">
-          <div className="text-center">
-            <svg className="w-16 h-16 text-gray-300 mx-auto mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-            </svg>
-            <p className="text-gray-500 text-lg">No tienes acceso a esta sección</p>
-            <p className="text-gray-400 text-sm mt-2">Los administradores de clínica no pueden acceder a sesiones clínicas.</p>
-          </div>
-        </div>
-      </MainLayout>
-    );
-  }
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
@@ -427,7 +462,6 @@ const SessionsPage = () => {
       images: formData.images,
       completedAt: asDraft ? null : new Date().toISOString(),
       createdBy: user?.id || "",
-      creditReservedAt: null,
       nextAppointmentDate: formData.nextAppointmentDate || null,
       followUpNotes: formData.followUpNotes || null,
       appointmentReason: formData.appointmentReason || null,
@@ -448,31 +482,25 @@ const SessionsPage = () => {
           setSessions((prev) => prev.map((s) => (s.id === updated.id ? updated : s)));
 
           const patient = getPatientById(editingSession.patientId);
-          addAuditLog({
-            userId: user?.id || "",
-            userName: user?.name || "",
+          void postAuditLog({
             action: asDraft ? "UPDATE_DRAFT" : "COMPLETE",
-            entityType: "session",
-            entityId: editingSession.id,
-            details: JSON.stringify({
+            resourceType: "session",
+            resourceId: editingSession.id,
+            details: {
               sessionId: editingSession.id,
               patientId: editingSession.patientId,
               patientName: patient ? `${patient.firstName} ${patient.lastName}` : "",
               status: asDraft ? "draft" : "completed",
-            }),
+            },
           });
         } else {
           alert(response.error || response.data?.message || "No se pudo actualizar la sesión.");
           return;
         }
       } else {
-        // Solo reservar crédito al completar; los borradores no consumen créditos
         const response = await api.post<{ success: boolean; session: ClinicalSession }>(
           "/sessions",
-          {
-            ...sessionData,
-            creditReservedAt: null,
-          }
+          sessionData
         );
 
         if (response.success && response.data?.success) {
@@ -480,21 +508,19 @@ const SessionsPage = () => {
           setSessions((prev) => [newSession, ...prev]);
 
           const patient = getPatientById(newSession.patientId);
-          addAuditLog({
-            userId: user?.id || "",
-            userName: user?.name || "",
+          void postAuditLog({
             action: "CREATE",
-            entityType: "session",
-            entityId: newSession.id,
-            details: JSON.stringify({
+            resourceType: "session",
+            resourceId: newSession.id,
+            details: {
               sessionId: newSession.id,
               patientId: newSession.patientId,
               patientName: patient ? `${patient.firstName} ${patient.lastName}` : "",
               status: asDraft ? "draft" : "completed",
-            }),
+            },
           });
         } else {
-          const errData = response.data as { error?: string; message?: string } | undefined;
+          const errData = response.data as any;
           const errorCode = response.error || errData?.error;
 
           if (errorCode === "usuario_en_periodo_gracia") {
@@ -510,9 +536,7 @@ const SessionsPage = () => {
         }
       }
 
-      setShowForm(false);
-      setEditingSession(null);
-      setFormData(emptyForm);
+      closeSessionForm();
     } catch (error) {
       console.error("Error guardando sesión:", error);
       alert("Ha ocurrido un error al guardar la sesión.");
@@ -523,6 +547,7 @@ const SessionsPage = () => {
     if (session.status === "completed") return;
     
     setEditingSession(session);
+    setSelectedTemplateId("");
     setFormData({
       patientId: session.patientId,
       sessionDate: session.sessionDate,
@@ -555,17 +580,15 @@ const SessionsPage = () => {
         const patient = getPatientById(session.patientId);
         setSessions((prev) => prev.filter((s) => s.id !== session.id));
         
-        addAuditLog({
-          userId: user?.id || "",
-          userName: user?.name || "",
+        void postAuditLog({
           action: "DELETE",
-          entityType: "session",
-          entityId: session.id,
-          details: JSON.stringify({
+          resourceType: "session",
+          resourceId: session.id,
+          details: {
             sessionId: session.id,
             patientId: session.patientId,
             patientName: patient ? `${patient.firstName} ${patient.lastName}` : "",
-          }),
+          },
         });
       } else {
         alert(response.error || response.data?.message || "No se pudo eliminar la sesión.");
@@ -576,18 +599,19 @@ const SessionsPage = () => {
     }
   };
 
-  const handleExport = (session: ClinicalSession) => {
-    // Only podiatrists can export
+  const handleExport = async (session: ClinicalSession) => {
     if (!isPodiatrist) {
       alert("Solo los podólogos pueden exportar historias clínicas.");
       return;
     }
-    
-    // No credit consumption on export - credits are only consumed when completing the session
-    const data = exportPatientData(session.patientId);
-    if (!data) return;
-    
-    const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+    const res = await api.get<{ success?: boolean; export?: unknown }>(
+      `/compliance/patients/${session.patientId}/portable-export`
+    );
+    if (!res.success || !res.data?.export) {
+      alert(res.error || "No se pudo exportar la historia clínica");
+      return;
+    }
+    const blob = new Blob([JSON.stringify(res.data.export, null, 2)], { type: "application/json" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
@@ -596,47 +620,32 @@ const SessionsPage = () => {
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
-    
     const patient = getPatientById(session.patientId);
-    addAuditLog({
-      userId: user?.id || "",
-      userName: user?.name || "",
+    void postAuditLog({
       action: "EXPORT",
-      entityType: "session",
-      entityId: session.id,
-      details: JSON.stringify({
+      resourceType: "session",
+      resourceId: session.id,
+      details: {
         sessionId: session.id,
         patientId: session.patientId,
         patientName: patient ? `${patient.firstName} ${patient.lastName}` : "",
         exportType: "json",
-        podiatristId: user?.id,
-      }),
+      },
     });
   };
 
-  // Carga el logo para el usuario actual, priorizando backend (DB) y usando storage como respaldo
   const loadLogoForCurrentUser = async (): Promise<string | undefined> => {
     if (user?.clinicId) {
-      try {
-        const res = await api.get<{ success?: boolean; logo?: string | null }>(
-          `/clinics/${user.clinicId}/logo`
-        );
-        if (res.success && res.data?.logo) return res.data.logo;
-      } catch {
-        // si falla backend, intentamos storage local
-      }
-      return getClinicLogo(user.clinicId);
+      const res = await api.get<{ success?: boolean; logo?: string | null }>(
+        `/clinics/${user.clinicId}/logo`
+      );
+      if (res.success && res.data?.logo) return res.data.logo;
     }
     if (user?.id) {
-      try {
-        const res = await api.get<{ success?: boolean; logo?: string | null }>(
-          `/professionals/logo/${user.id}`
-        );
-        if (res.success && res.data?.logo) return res.data.logo;
-      } catch {
-        // fallback a storage local
-      }
-      return getProfessionalLogo(user.id);
+      const res = await api.get<{ success?: boolean; logo?: string | null }>(
+        `/professionals/logo/${user.id}`
+      );
+      if (res.success && res.data?.logo) return res.data.logo;
     }
     return undefined;
   };
@@ -644,24 +653,42 @@ const SessionsPage = () => {
   const handlePrint = async (session: ClinicalSession) => {
     const patient = getPatientById(session.patientId);
     if (!patient) return;
+
+    void api.post("/compliance/record-access", { patientId: patient.id, action: "print" });
     
     // Get clinic logo and full info based on user's clinic membership
     const clinicLogo = await loadLogoForCurrentUser();
-    const clinic = user?.clinicId ? getClinicById(user.clinicId) : null;
-    
-    // Get professional license
+    type ClinicRow = {
+      clinicName?: string;
+      legalName?: string;
+      rfc?: string;
+      clues?: string;
+      cofeprisRegistration?: string;
+      phone?: string;
+      email?: string;
+      address?: string;
+      city?: string;
+      postalCode?: string;
+      licenseNumber?: string;
+    };
+    type ProfRow = { name?: string; phone?: string; email?: string; address?: string; city?: string; postalCode?: string; licenseNumber?: string; professionalLicense?: string; license?: string };
+    let clinic: ClinicRow | null = null;
+    if (user?.clinicId) {
+      const cr = await api.get<{ success?: boolean; clinic?: ClinicRow }>(`/clinics/${user.clinicId}`);
+      if (cr.success && cr.data?.clinic) clinic = cr.data.clinic;
+    }
+    let profInfo: ProfRow | null = null;
     let podiatristLicense: string | null = null;
     if (user?.id) {
-      podiatristLicense = getProfessionalLicense(user.id);
-      // For independent podiatrists, also check professionalInfo
-      if (!podiatristLicense && !user?.clinicId) {
-        const profInfo = getProfessionalInfo(user.id);
-        podiatristLicense = profInfo?.professionalLicense || null;
+      const pr = await api.get<{ success?: boolean; professional?: ProfRow; license?: string }>(`/professionals/${user.id}`);
+      if (pr.success) {
+        profInfo = pr.data?.professional ?? (pr.data as ProfRow);
+        podiatristLicense = pr.data?.license || profInfo?.professionalLicense || profInfo?.license || null;
       }
     }
     
     // Build clinic contact info for header
-    const clinicName = clinic?.clinicName || "";
+    const clinicName = clinic?.legalName || clinic?.clinicName || "";
     const clinicPhone = clinic?.phone || "";
     const clinicEmail = clinic?.email || "";
     const clinicAddress = clinic?.address 
@@ -672,7 +699,6 @@ const SessionsPage = () => {
     
     // For independent doctors, get their professional info
     const isIndependent = !clinic;
-    const profInfo = isIndependent && user?.id ? getProfessionalInfo(user.id) : null;
     
     const printWindow = window.open("", "_blank");
     if (!printWindow) return;
@@ -730,6 +756,9 @@ const SessionsPage = () => {
                    ` : ''}`
                 : `<h1>${clinicName}</h1>
                    ${clinicLicenseNumber ? `<p style="margin: 0; color: #555; font-size: 12px;">Reg. Sanitario: ${clinicLicenseNumber}</p>` : ''}
+                   ${clinic?.rfc ? `<p style="margin: 0; color: #555; font-size: 11px;">RFC: ${clinic.rfc}</p>` : ''}
+                   ${clinic?.clues ? `<p style="margin: 0; color: #555; font-size: 11px;">CLUES: ${clinic.clues}</p>` : ''}
+                   ${clinic?.cofeprisRegistration ? `<p style="margin: 0; color: #555; font-size: 11px;">COFEPRIS: ${clinic.cofeprisRegistration}</p>` : ''}
                    ${hasClinicInfo ? `
                      <div class="clinic-contact">
                        ${clinicPhone ? `<div>Tel: ${clinicPhone}</div>` : ''}
@@ -756,6 +785,7 @@ const SessionsPage = () => {
           </div>
           <div class="patient-grid">
             <p><span class="label">DNI/NIE:</span> ${patient.idNumber}</p>
+            ${patient.curp ? `<p><span class="label">CURP:</span> ${patient.curp}</p>` : ''}
             <p><span class="label">Fecha de nacimiento:</span> ${new Date(patient.dateOfBirth).toLocaleDateString("es-ES")}</p>
             <p><span class="label">Teléfono:</span> ${patient.phone}</p>
             <p><span class="label">Email:</span> ${patient.email || "—"}</p>
@@ -800,18 +830,16 @@ const SessionsPage = () => {
     printWindow.document.close();
     printWindow.print();
     
-    addAuditLog({
-      userId: user?.id || "",
-      userName: user?.name || "",
+    void postAuditLog({
       action: "PRINT",
-      entityType: "session",
-      entityId: session.id,
-      details: JSON.stringify({
+      resourceType: "session",
+      resourceId: session.id,
+      details: {
         sessionId: session.id,
         patientId: session.patientId,
         patientName: `${patient.firstName} ${patient.lastName}`,
         printType: "clinical_history",
-      }),
+      },
     });
   };
 
@@ -827,66 +855,53 @@ const SessionsPage = () => {
     const patient = getPatientById(patientId);
     return patient ? `${patient.firstName} ${patient.lastName}` : "Paciente desconocido";
   };
-  
-  // Load prescriptions when session is selected
-  const loadSessionPrescriptions = (session: ClinicalSession) => {
-    const prescriptions = getPrescriptionsBySession(session.id);
-    setSessionPrescriptions(prescriptions);
-  };
-  
-  // Create prescription handler - Only podiatrists can create prescriptions
-  const handleCreatePrescription = () => {
+
+  const handleCreatePrescription = async () => {
     if (!selectedSession || !user) return;
-    
-    // Verify user is a podiatrist before allowing prescription creation
     if (!canCreatePrescriptions(user.role)) return;
-    
+
     const patient = getPatientById(selectedSession.patientId);
     if (!patient) return;
-    
-    // Get professional license
+
     let license: string | null = null;
-    if (user.id) {
-      license = getProfessionalLicense(user.id);
-      if (!license && !user.clinicId) {
-        const profInfo = getProfessionalInfo(user.id);
-        license = profInfo?.professionalLicense || null;
-      }
+    const profRes = await api.get<{ license?: string; professionalLicense?: string }>(
+      `/professionals/${user.id}`
+    );
+    if (profRes.success && profRes.data) {
+      license = profRes.data.license || profRes.data.professionalLicense || null;
     }
-    
-    const newPrescription = savePrescription({
+
+    const res = await api.post<{ success?: boolean; prescription?: Prescription }>("/prescriptions", {
       sessionId: selectedSession.id,
-      patientId: patient.id,
       patientName: `${patient.firstName} ${patient.lastName}`,
       patientDob: patient.dateOfBirth,
       patientDni: patient.idNumber,
-      podiatristId: user.id,
       podiatristName: user.name,
       podiatristLicense: license,
-      prescriptionDate: new Date().toISOString().split("T")[0],
       prescriptionText: prescriptionData.prescriptionText,
       medications: prescriptionData.medications,
       nextVisitDate: prescriptionData.nextVisitDate || null,
       notes: prescriptionData.notes,
-      createdBy: user.id,
     });
-    
-    setSessionPrescriptions(prev => [...prev, newPrescription]);
+
+    if (!res.success || !res.data?.prescription) {
+      alert(res.error || "No se pudo crear la receta");
+      return;
+    }
+
+    setSessionPrescriptions((prev) => [...prev, res.data!.prescription!]);
     setPrescriptionData({ prescriptionText: "", medications: "", nextVisitDate: "", notes: "" });
     setShowPrescriptionForm(false);
-    
-    addAuditLog({
-      userId: user.id,
-      userName: user.name,
+
+    void postAuditLog({
       action: "CREATE",
-      entityType: "prescription",
-      entityId: newPrescription.id,
-      details: JSON.stringify({
-        prescriptionId: newPrescription.id,
+      resourceType: "prescription",
+      resourceId: res.data.prescription.id,
+      details: {
+        prescriptionId: res.data.prescription.id,
         sessionId: selectedSession.id,
         patientId: patient.id,
-        patientName: `${patient.firstName} ${patient.lastName}`,
-      }),
+      },
     });
   };
   
@@ -894,15 +909,37 @@ const SessionsPage = () => {
   const handlePrintPrescription = async (prescription: Prescription) => {
     // Get clinic/professional info
     const clinicLogo = await loadLogoForCurrentUser();
-    const clinic = user?.clinicId ? getClinicById(user.clinicId) : null;
-    
-    const isIndependent = !clinic;
-    const profInfo = isIndependent && user?.id ? getProfessionalInfo(user.id) : null;
-    
-    // For clinic podiatrists (subalterns): use clinic data for name/phone/email/address
-    // but use their own credentials (cedula, registro)
-    const credentials = user?.id && user?.clinicId ? getProfessionalCredentials(user.id) : null;
-    
+    type ClinicRow = {
+      clinicName?: string;
+      legalName?: string;
+      rfc?: string;
+      clues?: string;
+      cofeprisRegistration?: string;
+      phone?: string;
+      email?: string;
+      address?: string;
+      city?: string;
+      postalCode?: string;
+      licenseNumber?: string;
+    };
+    type ProfRow = { name?: string; phone?: string; email?: string; address?: string; city?: string; postalCode?: string; licenseNumber?: string; professionalLicense?: string };
+    let clinic: ClinicRow | null = null;
+    if (user?.clinicId) {
+      const cr = await api.get<{ success?: boolean; clinic?: ClinicRow }>(`/clinics/${user.clinicId}`);
+      if (cr.success && cr.data?.clinic) clinic = cr.data.clinic;
+    }
+    let profInfo: ProfRow | null = null;
+    if (user?.id && !clinic) {
+      const pr = await api.get<{ success?: boolean; professional?: ProfRow }>(`/professionals/${user.id}`);
+      if (pr.success && pr.data?.professional) profInfo = pr.data.professional;
+    }
+    let credentials: { cedula?: string; registro?: string } | null = null;
+    if (user?.id && user?.clinicId) {
+      const cred = await api.get<{ success?: boolean; credentials?: { cedula?: string; registro?: string } }>(
+        `/professionals/${user.id}/credentials`
+      );
+      if (cred.success && cred.data?.credentials) credentials = cred.data.credentials;
+    }
     const clinicName = clinic?.clinicName || profInfo?.name || user?.name || "";
     const clinicPhone = clinic?.phone || profInfo?.phone || "";
     const clinicEmail = clinic?.email || profInfo?.email || "";
@@ -1033,21 +1070,35 @@ const SessionsPage = () => {
     printWindow.document.close();
     printWindow.print();
     
-    addAuditLog({
-      userId: user?.id || "",
-      userName: user?.name || "",
+    void postAuditLog({
       action: "PRINT",
-      entityType: "prescription",
-      entityId: prescription.id,
-      details: JSON.stringify({
+      resourceType: "prescription",
+      resourceId: prescription.id,
+      details: {
         prescriptionId: prescription.id,
         prescriptionFolio: prescription.folio,
         patientId: prescription.patientId,
         patientName: prescription.patientName,
         printType: "prescription",
-      }),
+      },
     });
   };
+
+  if (isClinicAdmin) {
+    return (
+      <MainLayout title={t.sessions?.title || "Sesiones Clínicas"}>
+        <div className="flex items-center justify-center h-64">
+          <div className="text-center">
+            <svg className="w-16 h-16 text-gray-300 mx-auto mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+            </svg>
+            <p className="text-gray-500 text-lg">No tienes acceso a esta sección</p>
+            <p className="text-gray-400 text-sm mt-2">Los administradores de clínica no pueden acceder a sesiones clínicas.</p>
+          </div>
+        </div>
+      </MainLayout>
+    );
+  }
 
   return (
     <MainLayout title={t.sessions.title}>
@@ -1180,6 +1231,17 @@ const SessionsPage = () => {
                     <p className="text-sm text-gray-400 italic">No hay recetas para esta sesión</p>
                   )}
                 </div>
+              )}
+
+              {canCreatePrescriptions(user?.role) && (
+                <>
+                  <SessionChecklistPanel sessionId={selectedSession.id} />
+                  <SessionPatientSignature
+                    sessionId={selectedSession.id}
+                    patientId={selectedSession.patientId}
+                    consentVersion={1}
+                  />
+                </>
               )}
               
               <div className="flex gap-3 pt-4 border-t border-gray-100">
@@ -1322,11 +1384,7 @@ const SessionsPage = () => {
                 {editingSession ? t.sessions.editSession : t.sessions.newSession}
               </h3>
               <button
-                onClick={() => {
-                  setShowForm(false);
-                  setEditingSession(null);
-                  setFormData(emptyForm);
-                }}
+                onClick={closeSessionForm}
                 className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
               >
                 <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -1396,6 +1454,50 @@ const SessionsPage = () => {
                     className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:border-[#1a1a1a] focus:ring-1 focus:ring-[#1a1a1a]"
                   />
                 </div>
+              </div>
+
+              <div className="rounded-lg border border-gray-200 bg-gray-50 p-4 space-y-3">
+                <div className="flex flex-wrap items-end gap-2">
+                  <div className="flex-1 min-w-[200px]">
+                    <label className="block text-sm font-medium text-[#1a1a1a] mb-1">
+                      Plantilla de sesión
+                    </label>
+                    <select
+                      value={selectedTemplateId}
+                      onChange={(e) => setSelectedTemplateId(e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:border-[#1a1a1a] focus:ring-1 focus:ring-[#1a1a1a] bg-white"
+                    >
+                      <option value="">Sin plantilla</option>
+                      {sessionTemplates.map((tpl) => (
+                        <option key={tpl.id} value={tpl.id}>
+                          {tpl.name}
+                          {tpl.isShared ? " (compartida)" : ""}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={applySelectedTemplate}
+                    disabled={!selectedTemplateId}
+                    className="px-4 py-2 bg-[#1a1a1a] text-white rounded-lg text-sm disabled:opacity-40"
+                  >
+                    Cargar plantilla
+                  </button>
+                </div>
+                {sessionTemplates.length === 0 ? (
+                  <p className="text-xs text-gray-500">
+                    No hay plantillas. Créalas en{" "}
+                    <a href="/clinical-tools" className="underline text-[#1a1a1a]">
+                      Herramientas clínicas
+                    </a>
+                    .
+                  </p>
+                ) : (
+                  <p className="text-xs text-gray-500">
+                    Rellena anamnesis, exploración, diagnóstico y plan con el contenido guardado en la plantilla.
+                  </p>
+                )}
               </div>
 
               <div>
@@ -1612,11 +1714,7 @@ const SessionsPage = () => {
                     <div className="flex gap-3">
                       <button
                         type="button"
-                        onClick={() => {
-                          setShowForm(false);
-                          setEditingSession(null);
-                          setFormData(emptyForm);
-                        }}
+                        onClick={closeSessionForm}
                         className="flex-1 py-3 bg-gray-100 text-[#1a1a1a] rounded-lg hover:bg-gray-200 transition-colors font-medium"
                       >
                         {t.common.cancel}

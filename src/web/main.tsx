@@ -63,18 +63,42 @@ if (!Array.prototype.includes) {
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { Router } from "wouter";
-import { getThemeSettings } from "@/lib/storage";
+import { getThemeSettings } from "@/lib/ui-preferences";
+import { initSentry } from "@/lib/sentry";
 import "./styles.css";
 import App from "./app.tsx";
+import { LanguageProvider } from "./contexts/language-context";
 
 // Aplicar tema guardado antes del primer render (evita flash)
 const { mode } = getThemeSettings();
 document.documentElement.classList.toggle("dark", mode === "dark");
 
-createRoot(document.getElementById("root")!).render(
-        <StrictMode>
-                <Router>
-                        <App />
-                </Router>
-        </StrictMode>,
-);
+/** Elimina service workers y cachés PWA heredados (sin modo offline). */
+async function removeLegacyOfflineSupport() {
+  if ("serviceWorker" in navigator) {
+    const registrations = await navigator.serviceWorker.getRegistrations();
+    await Promise.all(registrations.map((reg) => reg.unregister()));
+  }
+  if ("caches" in window) {
+    const keys = await caches.keys();
+    await Promise.all(
+      keys.filter((key) => key.startsWith("podoadmin")).map((key) => caches.delete(key))
+    );
+  }
+}
+
+async function bootstrap() {
+  await initSentry();
+  await removeLegacyOfflineSupport();
+  createRoot(document.getElementById("root")!).render(
+    <StrictMode>
+      <LanguageProvider>
+        <Router>
+          <App />
+        </Router>
+      </LanguageProvider>
+    </StrictMode>,
+  );
+}
+
+bootstrap();

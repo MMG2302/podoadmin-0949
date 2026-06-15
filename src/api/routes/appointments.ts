@@ -3,10 +3,18 @@ import { eq, and, ne } from 'drizzle-orm';
 import { requireAuth } from '../middleware/auth';
 import { requirePermission } from '../middleware/authorization';
 import { sanitizePathParam } from '../utils/sanitization';
+import {
+  validateData,
+  validateQuery,
+  createAppointmentSchema,
+  updateAppointmentSchema,
+  appointmentsListQuerySchema,
+} from '../utils/validation';
 import { database } from '../database';
 import { appointments as appointmentsTable, createdUsers as createdUsersTable } from '../database/schema';
 import { canUserAccess } from '../utils/user-retention';
 import { logAuditEvent } from '../utils/audit-log';
+import { notifyPodiatristAboutAppointment } from '../utils/notifications-service';
 import { getClientIP } from '../utils/ip-tracking';
 import { getSafeUserAgent } from '../utils/request-headers';
 import {
@@ -55,6 +63,7 @@ function mapDbToAppointment(row: DbAppointment) {
     updatedAt: row.updatedAt,
     pendingPatientName: row.pendingPatientName ?? undefined,
     pendingPatientPhone: row.pendingPatientPhone ?? undefined,
+    checkInStatus: (row.checkInStatus as 'none' | 'waiting' | 'in_room' | 'seen') ?? 'none',
   };
 }
 
@@ -125,9 +134,11 @@ appointmentsRoutes.get('/', requirePermission('view_patients'), async (c) => {
     if (isClinicAdminWithoutClinic(user)) {
       return c.json({ error: 'Acceso denegado', message: 'Cuenta de administrador de clínica sin clínica asignada' }, 403);
     }
-    const clinicId = c.req.query('clinicId');
-    const podiatristId = c.req.query('podiatristId');
-    const date = c.req.query('date');
+    const queryResult = validateQuery(appointmentsListQuerySchema, c.req.query());
+    if (!queryResult.success) {
+      return c.json({ error: 'Parámetros inválidos', message: queryResult.error, issues: queryResult.issues }, 400);
+    }
+    const { clinicId, podiatristId, date } = queryResult.data;
 
     if (user.role === 'clinic_admin' && clinicId && clinicId !== user.clinicId) {
       return c.json({ error: 'Acceso denegado', message: 'No puedes consultar otra clínica' }, 403);
@@ -219,17 +230,12 @@ appointmentsRoutes.post('/', requirePermission('manage_appointments'), async (c)
         );
       }
     }
-    const body = (await c.req.json().catch(() => ({}))) as {
-      patientId?: string | null;
-      podiatristId?: string;
-      date?: string;
-      time?: string;
-      duration?: number;
-      notes?: string;
-      clinicId?: string;
-      pendingPatientName?: string;
-      pendingPatientPhone?: string;
-    };
+    const rawBody = await c.req.json().catch(() => ({}));
+    const validation = validateData(createAppointmentSchema, rawBody);
+    if (!validation.success) {
+      return c.json({ error: 'Datos inválidos', message: validation.error, issues: validation.issues }, 400);
+    }
+    const body = validation.data;
     const podiatristRaw = body.podiatristId || user.userId;
     const podiatristRow = await getCreatedUserByIdOrUserId(String(podiatristRaw));
     if (!podiatristRow || podiatristRow.role !== 'podiatrist') {
@@ -257,7 +263,7 @@ appointmentsRoutes.post('/', requirePermission('manage_appointments'), async (c)
     const time = body.time || '09:00';
     const duration = typeof body.duration === 'number' ? body.duration : 30;
     const notes = buildNotes(body.notes ?? '', duration);
-    const clinicId =
+    let clinicId =
       user.role === 'clinic_admin'
         ? user.clinicId ?? null
         : body.clinicId ?? user.clinicId ?? podiatristRow.clinicId ?? null;
@@ -305,6 +311,24 @@ appointmentsRoutes.post('/', requirePermission('manage_appointments'), async (c)
     });
 
     const [row] = await database.select().from(appointmentsTable).where(eq(appointmentsTable.id, id)).limit(1);
+
+    if (podiatristUserId !== user.userId) {
+      const actorName =
+        (await database.select({ name: createdUsersTable.name }).from(createdUsersTable).where(eq(createdUsersTable.userId, user.userId)).limit(1))[0]
+          ?.name ?? user.email;
+      const notesText = parseNotes(notes).text;
+      await notifyPodiatristAboutAppointment({
+        podiatristUserId,
+        actorUserId: user.userId,
+        actorName,
+        patientId: body.patientId ?? null,
+        date,
+        time,
+        notes: notesText,
+        isReassignment: false,
+      }).catch((err) => console.error('Error enviando notificación de cita:', err));
+    }
+
     return c.json({ success: true, appointment: mapDbToAppointment(row!) });
   } catch (err) {
     console.error('Error creando cita:', err);
@@ -321,21 +345,17 @@ appointmentsRoutes.put('/:id', requirePermission('manage_appointments'), async (
     const user = c.get('user')!;
     const id = sanitizePathParam(c.req.param('id'), 64);
     if (!id) return c.json({ error: 'ID de cita inválido' }, 400);
-    const body = (await c.req.json().catch(() => ({}))) as {
-      patientId?: string | null;
-      podiatristId?: string;
-      date?: string;
-      time?: string;
-      duration?: number;
-      notes?: string;
-      status?: string;
-      pendingPatientName?: string;
-      pendingPatientPhone?: string;
-    };
+    const rawBody = await c.req.json().catch(() => ({}));
+    const validation = validateData(updateAppointmentSchema, rawBody);
+    if (!validation.success) {
+      return c.json({ error: 'Datos inválidos', message: validation.error, issues: validation.issues }, 400);
+    }
+    const body = validation.data;
 
     const rows = await database.select().from(appointmentsTable).where(eq(appointmentsTable.id, id)).limit(1);
     if (!rows.length) return c.json({ error: 'Cita no encontrada' }, 404);
     const row = rows[0];
+    const previousPodiatristId = row.createdBy;
 
     const denyPut = await getSessionAccessDeniedReason(user, row);
     if (denyPut) return c.json({ error: 'Acceso denegado', message: 'No tienes permiso para modificar esta cita' }, 403);
@@ -406,6 +426,24 @@ appointmentsRoutes.put('/:id', requirePermission('manage_appointments'), async (
     });
 
     const [updated] = await database.select().from(appointmentsTable).where(eq(appointmentsTable.id, id)).limit(1);
+
+    if (effectivePodiatristId !== previousPodiatristId) {
+      const actorName =
+        (await database.select({ name: createdUsersTable.name }).from(createdUsersTable).where(eq(createdUsersTable.userId, user.userId)).limit(1))[0]
+          ?.name ?? user.email;
+      const notesText = parseNotes(notes).text;
+      await notifyPodiatristAboutAppointment({
+        podiatristUserId: effectivePodiatristId,
+        actorUserId: user.userId,
+        actorName,
+        patientId: body.patientId !== undefined ? body.patientId : row.patientId,
+        date: effectiveDate,
+        time: effectiveTime,
+        notes: notesText,
+        isReassignment: true,
+      }).catch((err) => console.error('Error enviando notificación de reasignación de cita:', err));
+    }
+
     return c.json({ success: true, appointment: mapDbToAppointment(updated!) });
   } catch (err) {
     console.error('Error actualizando cita:', err);

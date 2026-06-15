@@ -8,6 +8,7 @@ import { logAuditEvent } from '../utils/audit-log';
 import { getClientIP } from '../utils/ip-tracking';
 import { getSafeUserAgent } from '../utils/request-headers';
 import { hashPassword } from '../utils/password';
+import { sanitizePathParam } from '../utils/sanitization';
 
 const receptionistsRoutes = new Hono();
 
@@ -98,6 +99,9 @@ receptionistsRoutes.post('/', async (c) => {
     createdAt: now,
     updatedAt: now,
     createdBy: user.userId,
+    isBlocked: false,
+    isBanned: false,
+    isEnabled: true,
     mustChangePassword: true,
   } as any);
   await database.insert(userCredits).values({
@@ -128,7 +132,8 @@ receptionistsRoutes.post('/', async (c) => {
  */
 receptionistsRoutes.get('/assigned-podiatrists/:receptionistId', async (c) => {
   const user = c.get('user');
-  const receptionistId = c.req.param('receptionistId');
+  const receptionistId = sanitizePathParam(c.req.param('receptionistId'), 128);
+  if (!receptionistId) return c.json({ error: 'ID de recepcionista inválido' }, 400);
   if (!user) return c.json({ error: 'No autorizado' }, 401);
   const row = await getCreatedUserByIdOrUserId(receptionistId);
   if (!row || row.role !== 'receptionist') return c.json({ error: 'Recepcionista no encontrada' }, 404);
@@ -159,7 +164,8 @@ receptionistsRoutes.get('/assigned-podiatrists/:receptionistId', async (c) => {
  */
 receptionistsRoutes.patch('/:receptionistId/assigned-podiatrists', async (c) => {
   const user = c.get('user');
-  const receptionistId = c.req.param('receptionistId');
+  const receptionistId = sanitizePathParam(c.req.param('receptionistId'), 128);
+  if (!receptionistId) return c.json({ error: 'ID de recepcionista inválido' }, 400);
   if (!user) return c.json({ error: 'No autorizado' }, 401);
   const row = await getCreatedUserByIdOrUserId(receptionistId);
   if (!row || row.role !== 'receptionist') return c.json({ error: 'Recepcionista no encontrada' }, 404);

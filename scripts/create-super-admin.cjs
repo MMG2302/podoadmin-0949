@@ -13,6 +13,8 @@
  *   Local:  bunx wrangler d1 execute DB --local --file=scripts/super-admin.sql
  *   Remoto: bunx wrangler d1 execute DB --remote --file=scripts/super-admin.sql
  * Sin este paso no tendrás acceso (el script solo crea el archivo).
+ *
+ * El archivo generado está en .gitignore (no commitear: contiene hash de contraseña).
  */
 
 const bcrypt = require('bcryptjs');

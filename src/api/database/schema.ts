@@ -1,4 +1,4 @@
-import { sqliteTable, text, integer } from 'drizzle-orm/sqlite-core';
+import { sqliteTable, text, integer, real } from 'drizzle-orm/sqlite-core';
 
 /**
  * Schema de base de datos para migración desde localStorage
@@ -14,13 +14,19 @@ export const patients = sqliteTable('patients', {
   dateOfBirth: text('date_of_birth').notNull(),
   gender: text('gender').notNull(), // 'male' | 'female' | 'other'
   idNumber: text('id_number').notNull(),
+  curp: text('curp'),
   phone: text('phone').notNull(),
   email: text('email'),
   address: text('address'),
   city: text('city'),
   postalCode: text('postal_code'),
+  clinicalAlertsJson: text('clinical_alerts_json').notNull().default('[]'),
   medicalHistory: text('medical_history').notNull(), // JSON string
   consent: text('consent').notNull(), // JSON string
+  retentionCategory: text('retention_category').notNull().default('clinical_record'),
+  lastClinicalActAt: integer('last_clinical_act_at'), // timestamp ms del último acto médico
+  retainUntil: integer('retain_until'), // timestamp ms de expiración legal
+  legalHold: integer('legal_hold', { mode: 'boolean' }).notNull().default(false),
   createdAt: text('created_at').notNull(),
   updatedAt: text('updated_at').notNull(),
   createdBy: text('created_by').notNull(),
@@ -36,6 +42,10 @@ export const clinicalSessions = sqliteTable('clinical_sessions', {
   diagnosis: text('diagnosis'),
   treatment: text('treatment'),
   notes: text('notes'),
+  retentionCategory: text('retention_category').notNull().default('clinical_record'),
+  lastClinicalActAt: integer('last_clinical_act_at'),
+  retainUntil: integer('retain_until'),
+  legalHold: integer('legal_hold', { mode: 'boolean' }).notNull().default(false),
   creditsUsed: integer('credits_used').notNull().default(0),
   createdBy: text('created_by').notNull(),
   createdAt: text('created_at').notNull(),
@@ -61,6 +71,8 @@ export const createdUsers = sqliteTable('created_users', {
   emailVerified: integer('email_verified', { mode: 'boolean' }).notNull().default(false),
   termsAccepted: integer('terms_accepted', { mode: 'boolean' }).notNull().default(false),
   termsAcceptedAt: text('terms_accepted_at'),
+  privacyPolicyAccepted: integer('privacy_policy_accepted', { mode: 'boolean' }).notNull().default(false),
+  privacyPolicyAcceptedAt: text('privacy_policy_accepted_at'),
   registrationSource: text('registration_source'), // 'admin' | 'public' | 'google' | 'apple'
   // Campos OAuth
   googleId: text('google_id'), // ID único de Google
@@ -112,7 +124,12 @@ export const clinics = sqliteTable('clinics', {
   consentTextVersion: integer('consent_text_version').notNull().default(0),
   infoUpdatedAt: text('info_updated_at'), // Última modificación de datos; bloqueo 15 días
   logoUpdatedAt: text('logo_updated_at'), // Última modificación de logo; bloqueo 15 días
-  podiatristLimit: integer('podiatrist_limit'), // null = sin límite; super_admin lo define según lo que pague la clínica
+  podiatristLimit: integer('podiatrist_limit'), // null = límite plan estándar (8); super_admin puede ampliar
+  legalName: text('legal_name'),
+  rfc: text('rfc'),
+  clues: text('clues'),
+  establishmentType: text('establishment_type').default('private_office'),
+  cofeprisRegistration: text('cofepris_registration'),
   createdAt: text('created_at').notNull(),
 });
 
@@ -144,12 +161,17 @@ export const appointments = sqliteTable('appointments', {
   reason: text('reason').notNull(),
   status: text('status').notNull(), // 'scheduled' | 'completed' | 'cancelled' | 'no_show'
   notes: text('notes'),
+  retentionCategory: text('retention_category').notNull().default('clinical_record'),
+  lastClinicalActAt: integer('last_clinical_act_at'),
+  retainUntil: integer('retain_until'),
+  legalHold: integer('legal_hold', { mode: 'boolean' }).notNull().default(false),
   createdBy: text('created_by').notNull(),
   createdAt: text('created_at').notNull(),
   updatedAt: text('updated_at').notNull(),
   clinicId: text('clinic_id'),
   pendingPatientName: text('pending_patient_name'),
   pendingPatientPhone: text('pending_patient_phone'),
+  checkInStatus: text('check_in_status').default('none'), // none | waiting | in_room | seen
 });
 
 // Tabla de log de auditoría
@@ -160,6 +182,9 @@ export const auditLog = sqliteTable('audit_log', {
   resourceType: text('resource_type').notNull(),
   resourceId: text('resource_id'),
   details: text('details'), // JSON string
+  retentionCategory: text('retention_category').notNull().default('audit_evidence'),
+  retainUntil: integer('retain_until'),
+  legalHold: integer('legal_hold', { mode: 'boolean' }).notNull().default(false),
   ipAddress: text('ip_address'),
   userAgent: text('user_agent'),
   createdAt: text('created_at').notNull(),
@@ -175,6 +200,9 @@ export const notifications = sqliteTable('notifications', {
   message: text('message').notNull(),
   read: integer('read', { mode: 'boolean' }).notNull().default(false),
   metadata: text('metadata'), // JSON
+  retentionCategory: text('retention_category').notNull().default('operational_short_term'),
+  retainUntil: integer('retain_until'),
+  legalHold: integer('legal_hold', { mode: 'boolean' }).notNull().default(false),
   createdAt: text('created_at').notNull(),
 });
 
@@ -227,6 +255,9 @@ export const securityMetrics = sqliteTable('security_metrics', {
   userId: text('user_id'),
   ipAddress: text('ip_address'),
   details: text('details'), // JSON string con detalles adicionales
+  retentionCategory: text('retention_category').notNull().default('security_event'),
+  retainUntil: integer('retain_until'),
+  legalHold: integer('legal_hold', { mode: 'boolean' }).notNull().default(false),
   createdAt: text('created_at').notNull(),
   clinicId: text('clinic_id'),
 });
@@ -305,6 +336,9 @@ export const supportConversations = sqliteTable('support_conversations', {
   userId: text('user_id').notNull().references(() => createdUsers.id),
   subject: text('subject').notNull(),
   status: text('status').notNull().default('open'), // open | closed
+  retentionCategory: text('retention_category').notNull().default('support_record'),
+  retainUntil: integer('retain_until'),
+  legalHold: integer('legal_hold', { mode: 'boolean' }).notNull().default(false),
   createdAt: text('created_at').notNull(),
   updatedAt: text('updated_at').notNull(),
 });
@@ -315,8 +349,36 @@ export const supportMessages = sqliteTable('support_messages', {
   conversationId: text('conversation_id').notNull().references(() => supportConversations.id, { onDelete: 'cascade' }),
   senderId: text('sender_id').notNull(),
   body: text('body').notNull(),
+  retentionCategory: text('retention_category').notNull().default('support_record'),
+  retainUntil: integer('retain_until'),
+  legalHold: integer('legal_hold', { mode: 'boolean' }).notNull().default(false),
   createdAt: text('created_at').notNull(),
   readAt: text('read_at'),
+});
+
+// Excepciones de conservación por litigio/auditoría (bloqueo legal de borrado)
+export const clinicalEvolutionNotes = sqliteTable('clinical_evolution_notes', {
+  id: text('id').primaryKey(),
+  patientId: text('patient_id').notNull().references(() => patients.id),
+  sessionId: text('session_id').references(() => clinicalSessions.id),
+  entryDate: text('entry_date').notNull(),
+  note: text('note').notNull(),
+  professionalName: text('professional_name').notNull(),
+  professionalLicense: text('professional_license'),
+  createdBy: text('created_by').notNull(),
+  clinicId: text('clinic_id'),
+  createdAt: text('created_at').notNull(),
+});
+
+export const legalHolds = sqliteTable('legal_holds', {
+  id: text('id').primaryKey(),
+  resourceType: text('resource_type').notNull(), // patient | clinical_session | appointment | audit_log | support_conversation
+  resourceId: text('resource_id').notNull(),
+  reason: text('reason').notNull(),
+  createdBy: text('created_by').notNull(),
+  createdAt: text('created_at').notNull(),
+  expiresAt: integer('expires_at'),
+  active: integer('active', { mode: 'boolean' }).notNull().default(true),
 });
 
 // Listas de registro pendientes (vendedores/soporte -> super_admin para aprobación)
@@ -357,4 +419,261 @@ export const registrationRateLimit = sqliteTable('registration_rate_limit', {
   blockedUntil: integer('blocked_until'), // Timestamp opcional
   createdAt: text('created_at').notNull(),
   updatedAt: text('updated_at').notNull(),
+});
+
+/** WhatsApp Business API — configuración por usuario (podólogo / clinic_admin) */
+export const userWhatsappIntegrations = sqliteTable('user_whatsapp_integrations', {
+  userId: text('user_id').primaryKey().references(() => createdUsers.id, { onDelete: 'cascade' }),
+  clinicId: text('clinic_id'),
+  phoneNumberId: text('phone_number_id').notNull(),
+  wabaId: text('waba_id'),
+  businessPhoneE164: text('business_phone_e164'),
+  accessTokenEnc: text('access_token_enc').notNull(),
+  enabled: integer('enabled', { mode: 'boolean' }).notNull().default(false),
+  remindersEnabled: integer('reminders_enabled', { mode: 'boolean' }).notNull().default(true),
+  reminderHoursBefore: text('reminder_hours_before').notNull().default('[24,48]'),
+  reminderSchedule: text('reminder_schedule').notNull().default('{"daysBefore":[5,2,1],"hoursBefore":[24,12,2]}'),
+  templateName: text('template_name'),
+  templateLanguage: text('template_language').notNull().default('es'),
+  defaultExtraNote: text('default_extra_note'),
+  status: text('status').notNull().default('pending'), // pending | connected | error
+  lastError: text('last_error'),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+});
+
+// Eventos de mensajería WhatsApp (auditoría operativa de envíos por citas)
+export const whatsappMessageEvents = sqliteTable('whatsapp_message_events', {
+  id: text('id').primaryKey(),
+  userId: text('user_id').notNull().references(() => createdUsers.id),
+  clinicId: text('clinic_id'),
+  appointmentId: text('appointment_id').references(() => appointments.id),
+  patientId: text('patient_id').references(() => patients.id),
+  patientPhone: text('patient_phone'),
+  patientName: text('patient_name'),
+  messageType: text('message_type').notNull().default('appointment_reminder'), // reminder | manual | other
+  direction: text('direction').notNull().default('outbound'), // outbound | inbound
+  status: text('status').notNull().default('pending'), // pending | sent | delivered | read | failed
+  providerMessageId: text('provider_message_id'),
+  providerPayload: text('provider_payload'),
+  providerResponse: text('provider_response'),
+  errorMessage: text('error_message'),
+  extraNote: text('extra_note'),
+  createdAt: text('created_at').notNull(),
+});
+
+// Recetas médicas (backend)
+export const prescriptions = sqliteTable('prescriptions', {
+  id: text('id').primaryKey(),
+  sessionId: text('session_id').notNull().references(() => clinicalSessions.id),
+  patientId: text('patient_id').notNull().references(() => patients.id),
+  patientName: text('patient_name').notNull(),
+  patientDob: text('patient_dob').notNull(),
+  patientDni: text('patient_dni').notNull(),
+  podiatristId: text('podiatrist_id').notNull(),
+  podiatristName: text('podiatrist_name').notNull(),
+  podiatristLicense: text('podiatrist_license'),
+  prescriptionDate: text('prescription_date').notNull(),
+  prescriptionText: text('prescription_text').notNull(),
+  medications: text('medications').notNull().default(''),
+  nextVisitDate: text('next_visit_date'),
+  notes: text('notes').notNull().default(''),
+  folio: text('folio').notNull(),
+  createdAt: text('created_at').notNull(),
+  createdBy: text('created_by').notNull(),
+  clinicId: text('clinic_id'),
+});
+
+// Suscripción mensual por clínica o podólogo independiente
+export const subscriptions = sqliteTable('subscriptions', {
+  id: text('id').primaryKey(),
+  subjectType: text('subject_type').notNull(), // clinic | user
+  subjectId: text('subject_id').notNull(),
+  status: text('status').notNull().default('active'), // active | past_due | cancelled | trial
+  planId: text('plan_id').notNull().default('monthly_standard'),
+  currentPeriodStart: integer('current_period_start').notNull(),
+  currentPeriodEnd: integer('current_period_end').notNull(),
+  stripeCustomerId: text('stripe_customer_id'),
+  stripeSubscriptionId: text('stripe_subscription_id'),
+  billingInterval: text('billing_interval'), // month | year
+  podiatristTier: text('podiatrist_tier'), // standard | expanded (clínica)
+  podiatristCountBilled: integer('podiatrist_count_billed'),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+});
+
+export const sessionChecklists = sqliteTable('session_checklists', {
+  sessionId: text('session_id').primaryKey(),
+  itemsJson: text('items_json').notNull(),
+  completedAt: text('completed_at'),
+  updatedAt: text('updated_at').notNull(),
+});
+
+// Plantillas de sesión clínica
+export const sessionTemplates = sqliteTable('session_templates', {
+  id: text('id').primaryKey(),
+  name: text('name').notNull(),
+  category: text('category').notNull().default('general'),
+  fieldsJson: text('fields_json').notNull(),
+  createdBy: text('created_by').notNull(),
+  clinicId: text('clinic_id'),
+  isShared: integer('is_shared', { mode: 'boolean' }).notNull().default(false),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+});
+
+export const patientReferrals = sqliteTable('patient_referrals', {
+  id: text('id').primaryKey(),
+  patientId: text('patient_id').notNull().references(() => patients.id),
+  referredTo: text('referred_to').notNull(),
+  reason: text('reason').notNull(),
+  status: text('status').notNull().default('pending'),
+  notes: text('notes'),
+  createdBy: text('created_by').notNull(),
+  clinicId: text('clinic_id'),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+});
+
+export const inventoryItems = sqliteTable('inventory_items', {
+  id: text('id').primaryKey(),
+  name: text('name').notNull(),
+  unit: text('unit').notNull().default('unidad'),
+  clinicId: text('clinic_id'),
+  createdBy: text('created_by').notNull(),
+  createdAt: text('created_at').notNull(),
+});
+
+export const sessionInventoryUsage = sqliteTable('session_inventory_usage', {
+  id: text('id').primaryKey(),
+  sessionId: text('session_id').notNull().references(() => clinicalSessions.id),
+  itemId: text('item_id').notNull().references(() => inventoryItems.id),
+  quantity: real('quantity').notNull().default(1),
+  createdAt: text('created_at').notNull(),
+});
+
+export const appointmentWaitlist = sqliteTable('appointment_waitlist', {
+  id: text('id').primaryKey(),
+  patientId: text('patient_id').references(() => patients.id),
+  pendingPatientName: text('pending_patient_name'),
+  pendingPatientPhone: text('pending_patient_phone'),
+  podiatristId: text('podiatrist_id').notNull(),
+  preferredDate: text('preferred_date'),
+  reason: text('reason'),
+  status: text('status').notNull().default('waiting'),
+  clinicId: text('clinic_id'),
+  createdBy: text('created_by').notNull(),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+});
+
+export const patientConsentSignatures = sqliteTable('patient_consent_signatures', {
+  id: text('id').primaryKey(),
+  patientId: text('patient_id').notNull().references(() => patients.id),
+  sessionId: text('session_id').references(() => clinicalSessions.id),
+  consentVersion: integer('consent_version').notNull(),
+  signatureData: text('signature_data').notNull(),
+  signedAt: text('signed_at').notNull(),
+  signedByName: text('signed_by_name'),
+  deviceInfo: text('device_info'),
+  createdBy: text('created_by').notNull(),
+  clinicId: text('clinic_id'),
+});
+
+export const labAttachments = sqliteTable('lab_attachments', {
+  id: text('id').primaryKey(),
+  patientId: text('patient_id').notNull().references(() => patients.id),
+  sessionId: text('session_id').references(() => clinicalSessions.id),
+  title: text('title').notNull(),
+  fileKey: text('file_key').notNull(),
+  mimeType: text('mime_type').notNull(),
+  fileSize: integer('file_size').notNull().default(0),
+  notes: text('notes'),
+  createdBy: text('created_by').notNull(),
+  clinicId: text('clinic_id'),
+  createdAt: text('created_at').notNull(),
+});
+
+export const whatsappCampaigns = sqliteTable('whatsapp_campaigns', {
+  id: text('id').primaryKey(),
+  name: text('name').notNull(),
+  messageBody: text('message_body').notNull(),
+  filterJson: text('filter_json').notNull(),
+  status: text('status').notNull().default('draft'),
+  scheduledAt: text('scheduled_at'),
+  sentAt: text('sent_at'),
+  createdBy: text('created_by').notNull(),
+  clinicId: text('clinic_id'),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+});
+
+export const recordAccessLog = sqliteTable('record_access_log', {
+  id: text('id').primaryKey(),
+  userId: text('user_id').notNull(),
+  patientId: text('patient_id').notNull(),
+  action: text('action').notNull().default('view'),
+  ipAddress: text('ip_address'),
+  userAgent: text('user_agent'),
+  clinicId: text('clinic_id'),
+  createdAt: text('created_at').notNull(),
+});
+
+export const userMobileSync = sqliteTable('user_mobile_sync', {
+  userId: text('user_id').primaryKey().references(() => createdUsers.id, { onDelete: 'cascade' }),
+  lastSyncAt: integer('last_sync_at').notNull(),
+  deviceId: text('device_id'),
+  updatedAt: text('updated_at').notNull(),
+});
+
+export const appointmentReminderSent = sqliteTable('appointment_reminder_sent', {
+  id: text('id').primaryKey(),
+  appointmentId: text('appointment_id').notNull().references(() => appointments.id),
+  reminderKind: text('reminder_kind').notNull(),
+  sentAt: text('sent_at').notNull(),
+});
+
+/** Trial de 1 mes por IP (una vez por dirección, validada con ipquery.io). */
+export const ipTrialGrants = sqliteTable('ip_trial_grants', {
+  id: text('id').primaryKey(),
+  ipAddress: text('ip_address').notNull(),
+  userId: text('user_id').notNull(),
+  subjectType: text('subject_type').notNull(),
+  subjectId: text('subject_id').notNull(),
+  subscriptionId: text('subscription_id'),
+  countryCode: text('country_code'),
+  riskScore: integer('risk_score'),
+  ipqueryJson: text('ipquery_json'),
+  grantedAt: integer('granted_at').notNull(),
+  expiresAt: integer('expires_at').notNull(),
+  createdAt: text('created_at').notNull(),
+  status: text('status').notNull().default('active'),
+  revokedAt: integer('revoked_at'),
+  revokeReason: text('revoke_reason'),
+  phoneHash: text('phone_hash'),
+  cardFingerprint: text('card_fingerprint'),
+});
+
+/** Verificación SMS + tarjeta antes de activar trial. */
+export const trialUserVerifications = sqliteTable('trial_user_verifications', {
+  userId: text('user_id').primaryKey(),
+  phoneE164Hash: text('phone_e164_hash'),
+  phoneVerifiedAt: integer('phone_verified_at'),
+  cardFingerprint: text('card_fingerprint'),
+  cardVerifiedAt: integer('card_verified_at'),
+  stripePaymentMethodId: text('stripe_payment_method_id'),
+  stripeCustomerId: text('stripe_customer_id'),
+  activationIp: text('activation_ip'),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+});
+
+export const trialSmsOtp = sqliteTable('trial_sms_otp', {
+  id: text('id').primaryKey(),
+  userId: text('user_id').notNull(),
+  phoneE164Hash: text('phone_e164_hash').notNull(),
+  codeHash: text('code_hash').notNull(),
+  expiresAt: integer('expires_at').notNull(),
+  attempts: integer('attempts').notNull().default(0),
+  createdAt: text('created_at').notNull(),
 });

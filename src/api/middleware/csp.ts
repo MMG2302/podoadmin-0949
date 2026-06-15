@@ -1,4 +1,5 @@
 import { createMiddleware } from 'hono/factory';
+import { getCaptchaCspSources } from '../utils/csp-captcha';
 
 /**
  * Configuración de Content Security Policy (CSP)
@@ -7,29 +8,38 @@ import { createMiddleware } from 'hono/factory';
 export const cspMiddleware = createMiddleware(async (c, next) => {
   await next();
 
-  // Construir CSP header
-  const cspDirectives = [
-    "default-src 'self'",
-    "script-src 'self' 'unsafe-inline' 'unsafe-eval'", // unsafe-inline y unsafe-eval para desarrollo
-    "style-src 'self' 'unsafe-inline'", // unsafe-inline para estilos inline
-    "img-src 'self' data: https:",
-    "font-src 'self' data:",
-    "connect-src 'self'",
-    "frame-ancestors 'none'", // Prevenir clickjacking
-    "base-uri 'self'",
-    "form-action 'self'",
-    "upgrade-insecure-requests", // Forzar HTTPS
-  ];
+  const captcha = getCaptchaCspSources();
+  const captchaScript = captcha.scriptSrc.length ? ` ${captcha.scriptSrc.join(' ')}` : '';
+  const captchaFrame = captcha.frameSrc.length ? ` ${captcha.frameSrc.join(' ')}` : '';
+  const captchaConnect = captcha.connectSrc.length ? ` ${captcha.connectSrc.join(' ')}` : '';
 
-  // En producción, hacer CSP más estricto y añadir HSTS
   const isProduction = process.env.NODE_ENV === 'production';
   const forwardedProto = c.req.header('x-forwarded-proto');
   const isHttps = isProduction && (forwardedProto === 'https' || forwardedProto === undefined);
 
-  if (isProduction) {
-    // Remover unsafe-inline y unsafe-eval en producción
-    cspDirectives[1] = "script-src 'self'";
-  }
+  const scriptSrc = isProduction
+    ? `script-src 'self'${captchaScript}`
+    : `script-src 'self' 'unsafe-inline' 'unsafe-eval'${captchaScript}`;
+
+  const connectSrc = isProduction
+    ? `connect-src 'self'${captchaConnect}`
+    : `connect-src 'self' http://localhost:* https://localhost:* ws://localhost:* wss://localhost:*${captchaConnect}`;
+
+  const frameSrc = captcha.frameSrc.length ? `frame-src 'self'${captchaFrame}` : "frame-src 'none'";
+
+  const cspDirectives = [
+    "default-src 'self'",
+    scriptSrc,
+    "style-src 'self' 'unsafe-inline'",
+    "img-src 'self' data: https:",
+    "font-src 'self' data:",
+    connectSrc,
+    frameSrc,
+    "frame-ancestors 'none'",
+    "base-uri 'self'",
+    "form-action 'self'",
+    ...(isHttps ? ['upgrade-insecure-requests'] : []),
+  ];
 
   const cspHeader = cspDirectives.join('; ');
 

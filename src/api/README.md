@@ -20,6 +20,16 @@ El sistema usa **middlewares de autorización** basados en:
 - **Roles**: `super_admin`, `clinic_admin`, `admin`, `podiatrist`
 - **Permisos**: Lista de permisos específicos por rol
 
+## Políticas de seguridad (`src/api/security/`)
+
+Para endpoints que el navegador puede llamar directamente (notificaciones, auditoría UI), usa las políticas centralizadas:
+
+- `notification-policy.ts` — quién puede notificar a quién y con qué tipo.
+- `client-audit-policy.ts` — lista blanca de acciones registrables desde el cliente.
+- Ver `src/api/security/README.md` para el detalle.
+
+Las notificaciones de **citas** y **reasignación de pacientes** se crean en el servidor al completar la operación (`notifications-service.ts`), no desde el frontend.
+
 ## Middlewares Disponibles
 
 ### `authMiddleware`

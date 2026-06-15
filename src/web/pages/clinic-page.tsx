@@ -5,7 +5,6 @@ import { useAuth, User } from "../contexts/auth-context";
 import { useRefreshOnFocus } from "../hooks/use-refresh-on-focus";
 import { api } from "../lib/api-client";
 import { 
-  addAuditLog,
   getAllProfessionalLicenses,
   Patient,
   ClinicalSession,
@@ -281,17 +280,11 @@ const ClinicPage = () => {
       sessionsThisMonth: sessionsThisMonth.length,
       podiatrists: clinicPodiatrists.length,
     };
-  }, [patientsWithPodiatrist, clinicSessions, clinicPodiatrists]);
+  }, [patientsWithPodiatrist, clinicSessions, clinicPodiatrists, podiatristStats]);
 
   // Handle patient reassignment (persiste en DB vía API)
   const handleReassign = async (patientId: string, newPodiatristId: string) => {
-    const patient = patientsWithPodiatrist.find(p => p.id === patientId);
-    const previousPodiatristId = patient?.createdBy || "";
-    const previousPodiatrist = clinicPodiatrists.find(p => p.id === previousPodiatristId);
-    const newPodiatrist = clinicPodiatrists.find(p => p.id === newPodiatristId);
-    const patientFullName = `${patient?.firstName} ${patient?.lastName}`;
-
-    // Persistir reasignación en backend/DB
+    // Persistir reasignación en backend/DB (auditoría y notificaciones en el servidor)
     const reassignRes = await api.post<{ success?: boolean; patient?: PatientApi | null; error?: string; message?: string }>(
       `/patients/${patientId}/reassign`,
       { newPodiatristId }
@@ -309,55 +302,6 @@ const ClinicPage = () => {
     ]);
     if (patientsRes.success && Array.isArray(patientsRes.data?.patients)) setAllPatients(patientsRes.data.patients);
     if (sessionsRes.success && Array.isArray(sessionsRes.data?.sessions)) setAllSessions(sessionsRes.data.sessions);
-    
-    addAuditLog({
-      userId: currentUser?.id || "",
-      userName: currentUser?.name || "",
-      action: "REASSIGN",
-      entityType: "reassignment",
-      entityId: patientId,
-      details: JSON.stringify({
-        action: "patient_reassignment",
-        patientId: patientId,
-        patientName: patientFullName,
-        previousPodiatrist: previousPodiatrist?.name || "sin asignar",
-        previousPodiatristId: previousPodiatristId || null,
-        newPodiatrist: newPodiatrist?.name,
-        newPodiatristId: newPodiatristId,
-        fromPodiatrist: previousPodiatrist?.name || "sin asignar",
-        toPodiatrist: newPodiatrist?.name,
-      }),
-    });
-
-    const reassignmentDate = new Date().toISOString();
-    const commonMetadata = {
-      patientId: patientId,
-      patientName: patientFullName,
-      fromUserId: previousPodiatristId,
-      fromUserName: previousPodiatrist?.name || "",
-      toUserId: newPodiatristId,
-      toUserName: newPodiatrist?.name || "",
-      reassignedById: currentUser?.id,
-      reassignedByName: currentUser?.name,
-      clinicAdminId: currentUser?.id,
-      clinicAdminName: currentUser?.name,
-      reassignmentDate: reassignmentDate,
-    };
-
-    const notifications: Array<{ userId: string; type: string; title: string; message: string; metadata: typeof commonMetadata }> = [
-      { userId: currentUser?.id || "", type: "reassignment", title: "Reasignación realizada", message: `Has reasignado al paciente ${patientFullName} del Dr. ${previousPodiatrist?.name || "sin asignar"} al Dr. ${newPodiatrist?.name}.`, metadata: commonMetadata },
-      { userId: newPodiatristId, type: "reassignment", title: "Nuevo paciente asignado", message: `El paciente ${patientFullName} te ha sido asignado desde el Dr. ${previousPodiatrist?.name || "sin asignar"} por ${currentUser?.name}.`, metadata: commonMetadata },
-    ];
-    if (previousPodiatristId && previousPodiatristId !== newPodiatristId) {
-      notifications.push({ userId: previousPodiatristId, type: "reassignment", title: "Paciente reasignado", message: `El paciente ${patientFullName} ha sido reasignado de ti al Dr. ${newPodiatrist?.name} por ${currentUser?.name}.`, metadata: commonMetadata });
-    }
-    await Promise.all(
-      notifications.map((n) =>
-        api.post("/notifications", n).catch(() => {
-          // Silenciar error por ahora; la auditoría principal se hace en backend
-        })
-      )
-    );
   };
 
   // Recepcionistas de la clínica (desde API / users)

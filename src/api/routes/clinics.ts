@@ -51,7 +51,7 @@ clinicsRoutes.get('/', requireRole('super_admin', 'admin'), async (c) => {
     const rows = await database.select().from(clinicsTable).orderBy(clinicsTable.clinicName);
     // Contar podólogos por clínica (solo para super_admin)
     const clinicIds = rows.map((r) => r.clinicId);
-    const podiatristCounts: Record<string, number> = {};
+    let podiatristCounts: Record<string, number> = {};
     if (clinicIds.length > 0) {
       const podiatristRows = await database
         .select({ clinicId: createdUsersTable.clinicId })
@@ -136,8 +136,12 @@ clinicsRoutes.post('/', requireRole('super_admin'), async (c) => {
       return c.json({ error: 'Datos inválidos', message: 'Ya existe una clínica con este código' }, 400);
     }
 
+    const { defaultPodiatristLimitForNewClinic } = await import('../utils/billing-pricing');
     const now = new Date().toISOString();
-    const pl = podiatristLimit != null && !Number.isNaN(Number(podiatristLimit)) ? Math.max(0, Math.floor(Number(podiatristLimit))) : null;
+    const pl =
+      podiatristLimit != null && !Number.isNaN(Number(podiatristLimit))
+        ? Math.max(0, Math.floor(Number(podiatristLimit)))
+        : defaultPodiatristLimitForNewClinic();
     await database.insert(clinicsTable).values({
       clinicId,
       clinicName,
@@ -239,6 +243,11 @@ clinicsRoutes.get('/:clinicId', async (c) => {
       city: row.city ?? '',
       postalCode: row.postalCode ?? '',
       licenseNumber: row.licenseNumber ?? '',
+      legalName: row.legalName ?? '',
+      rfc: row.rfc ?? '',
+      clues: row.clues ?? '',
+      establishmentType: row.establishmentType ?? 'private_office',
+      cofeprisRegistration: row.cofeprisRegistration ?? '',
       website: row.website ?? '',
       consentText: row.consentText ?? '',
       consentTextVersion: row.consentTextVersion ?? 0,
@@ -263,7 +272,7 @@ clinicsRoutes.patch('/:clinicId', async (c) => {
   if (!user || !canEditClinic(user, clinicId)) {
     return c.json({ error: 'Acceso denegado' }, 403);
   }
-  const clinicRows = await database.select().from(clinicsTable).where(eq(clinicsTable.clinicId, clinicId)).limit(1);
+  let clinicRows = await database.select().from(clinicsTable).where(eq(clinicsTable.clinicId, clinicId)).limit(1);
   if (!clinicRows[0]) return c.json({ error: 'Clínica no encontrada' }, 404);
   if (!canBypassCooldown(user) && isWithinCooldown(clinicRows[0].infoUpdatedAt)) {
     const nextAt = getNextAllowedAt(clinicRows[0].infoUpdatedAt);
@@ -276,7 +285,7 @@ clinicsRoutes.patch('/:clinicId', async (c) => {
   }
   const body = await c.req.json().catch(() => ({})) as Record<string, unknown>;
   const updates: Record<string, unknown> = {};
-  const allowed = ['clinicName', 'clinicCode', 'phone', 'email', 'address', 'city', 'postalCode', 'licenseNumber', 'website', 'consentText'];
+  const allowed = ['clinicName', 'clinicCode', 'phone', 'email', 'address', 'city', 'postalCode', 'licenseNumber', 'website', 'consentText', 'legalName', 'rfc', 'clues', 'establishmentType', 'cofeprisRegistration'];
   for (const k of allowed) {
     if (body[k] !== undefined) updates[k] = body[k];
   }
@@ -355,6 +364,11 @@ clinicsRoutes.patch('/:clinicId', async (c) => {
       city: updated.city ?? '',
       postalCode: updated.postalCode ?? '',
       licenseNumber: updated.licenseNumber ?? '',
+      legalName: updated.legalName ?? '',
+      rfc: updated.rfc ?? '',
+      clues: updated.clues ?? '',
+      establishmentType: updated.establishmentType ?? 'private_office',
+      cofeprisRegistration: updated.cofeprisRegistration ?? '',
       website: updated.website ?? '',
       consentText: updated.consentText ?? '',
       consentTextVersion: updated.consentTextVersion ?? 0,

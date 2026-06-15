@@ -14,7 +14,29 @@ export interface User {
   isBanned?: boolean; // Cuenta baneada permanentemente
   disabledAt?: number; // Timestamp cuando se deshabilitó (ciclo: 1 mes grace → bloqueo → 7 meses borrado)
   mustChangePassword?: boolean; // Contraseña temporal: obligar cambio en primer login
+  systemAccess?: boolean; // Acceso al sistema (super_admin habilitó o Stripe activo)
+  accessReason?: 'platform_admin' | 'admin_enabled' | 'stripe_paid' | 'ip_trial' | 'dev_trial' | null;
+  accessBadge?: {
+    label: string;
+    tone: 'green' | 'amber' | 'red' | 'orange' | 'blue' | 'gray' | 'yellow';
+  };
 }
+
+import {
+  getPostLoginPath,
+  hasActiveSystemAccess,
+  isAllowedWithoutSystemAccess,
+  isClinicalAppPath,
+  normalizeUserSystemAccess,
+} from "../lib/system-access";
+
+export {
+  getPostLoginPath,
+  hasActiveSystemAccess,
+  isAllowedWithoutSystemAccess,
+  isClinicalAppPath,
+  normalizeUserSystemAccess,
+} from "../lib/system-access";
 
 interface AuthContextType {
   user: User | null;
@@ -23,6 +45,7 @@ interface AuthContextType {
   login: (email: string, password: string) => Promise<{ 
     success: boolean; 
     error?: string;
+    redirectPath?: string;
     retryAfter?: number;
     blockedUntil?: number;
     attemptCount?: number;
@@ -82,8 +105,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         const response = await api.get<{ user: User }>("/auth/verify");
 
         if (response.success && response.data?.user) {
-          setUser(response.data.user);
-          localStorage.setItem("podoadmin_user", JSON.stringify(response.data.user));
+          const userData = normalizeUserSystemAccess(response.data.user);
+          setUser(userData);
+          localStorage.setItem("podoadmin_user", JSON.stringify(userData));
         } else {
           setUser(null);
           localStorage.removeItem("podoadmin_user");
@@ -124,7 +148,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       });
 
       if (response.success && response.data) {
-        const userData = { ...response.data.user, mustChangePassword: response.data.user?.mustChangePassword ?? false };
+        const userData = normalizeUserSystemAccess({
+          ...response.data.user,
+          mustChangePassword: response.data.user?.mustChangePassword ?? false,
+          accessReason: response.data.user?.accessReason ?? null,
+        } as User);
         setUser(userData);
         localStorage.setItem("podoadmin_user", JSON.stringify(userData));
         try {
@@ -132,7 +160,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         } catch (error) {
           console.warn("No se pudo obtener token CSRF después de login:", error);
         }
-        return { success: true };
+        return { success: true, redirectPath: getPostLoginPath(userData) };
       }
 
       const retryAfter = response.retryAfter;
@@ -175,7 +203,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const updateUser = useCallback((updates: Partial<User>) => {
     setUser((prev) => {
       if (!prev) return null;
-      const updated = { ...prev, ...updates };
+      const updated = normalizeUserSystemAccess({ ...prev, ...updates });
       localStorage.setItem("podoadmin_user", JSON.stringify(updated));
       return updated;
     });

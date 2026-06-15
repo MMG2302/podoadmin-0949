@@ -9,6 +9,12 @@ import { eq, and } from 'drizzle-orm';
 const TOKEN_EXPIRY_HOURS = 24;
 const TOKEN_LENGTH = 32;
 
+/** En producción es obligatoria; en dev se omite salvo EMAIL_VERIFICATION_FORCE_IN_DEV=1. */
+export function isEmailVerificationRequired(): boolean {
+  if (process.env.NODE_ENV === 'production') return true;
+  return process.env.EMAIL_VERIFICATION_FORCE_IN_DEV === '1';
+}
+
 /**
  * Genera un token único para verificación de email
  */

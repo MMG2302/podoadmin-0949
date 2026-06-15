@@ -4,27 +4,21 @@ import { MainLayout } from "../components/layout/main-layout";
 import { useLanguage } from "../contexts/language-context";
 import { useAuth, User, UserRole } from "../contexts/auth-context";
 import { usePermissions } from "../hooks/use-permissions";
-import { 
-  getPatients, 
-  getSessions, 
-  addAuditLog,
-  exportPatientData,
-} from "../lib/storage";
+import { postAuditLog } from "../lib/audit-client";
+import type { Patient } from "../types/clinical";
 import { api } from "../lib/api-client";
+import {
+  fetchClinicalStats,
+  fetchUserClinicalProfile,
+  transferClinicalHistory,
+  downloadUserClinicalExport,
+} from "../lib/clinical-api";
+import type { ClinicalStatsMap } from "../types/clinical";
 
 interface UserWithData extends User {
   patientCount: number;
   sessionCount: number;
 }
-
-/** Orden de columnas "rol" en la tabla de usuarios */
-const USER_TABLE_ROLE_ORDER: Record<string, number> = {
-  super_admin: 0,
-  clinic_admin: 1,
-  admin: 2,
-  receptionist: 3,
-  podiatrist: 4,
-};
 
 interface ClinicOption {
   clinicId: string;
@@ -267,7 +261,7 @@ const BulkImportModal = ({
   isOpen,
   onClose,
   onImportComplete,
-  clinics: _clinics = [],
+  clinics = [],
   isSuperAdmin,
   currentUserClinicId,
 }: {
@@ -278,6 +272,7 @@ const BulkImportModal = ({
   isSuperAdmin: boolean;
   currentUserClinicId?: string;
 }) => {
+  const [file, setFile] = useState<File | null>(null);
   const [defaultPassword, setDefaultPassword] = useState("");
   const [parsedRows, setParsedRows] = useState<Array<{ name: string; email: string; password: string; role: UserRole; clinicMode: string; clinicId: string; podiatristLimit?: number | null }>>([]);
   const [parseError, setParseError] = useState<string | null>(null);
@@ -286,6 +281,7 @@ const BulkImportModal = ({
   const [importDone, setImportDone] = useState(false);
 
   const resetState = () => {
+    setFile(null);
     setDefaultPassword("");
     setParsedRows([]);
     setParseError(null);
@@ -366,7 +362,7 @@ const BulkImportModal = ({
           const row = rows[i];
           const name = (row[nameIdx] ?? "").trim();
           const email = (row[emailIdx] ?? "").trim();
-          const password = (row[passIdx] ?? "").trim();
+          let password = (row[passIdx] ?? "").trim();
           const roleRaw = (row[roleIdx] ?? "").trim().toLowerCase();
           const role = (validRoles.includes(roleRaw) ? roleRaw : "podiatrist") as UserRole;
           const clinicMode = clinicModeIdx >= 0 ? (row[clinicModeIdx] ?? "").trim().toLowerCase() : "existing";
@@ -390,6 +386,7 @@ const BulkImportModal = ({
           });
         }
         setParsedRows(parsed);
+        setFile(f);
       } catch (err) {
         setParseError(err instanceof Error ? err.message : "Error al leer el archivo");
       }
@@ -591,12 +588,15 @@ const EditUserModal = ({
   clinics?: ClinicOption[];
 }) => {
   const { t } = useLanguage();
+  const { user: currentUser } = useAuth();
+  const isEditorSuperAdmin = currentUser?.role === "super_admin";
   const [formData, setFormData] = useState({
     name: "",
     email: "",
     role: "podiatrist" as UserRole,
     clinicId: "",
   });
+  const [superAdminRoleConfirmed, setSuperAdminRoleConfirmed] = useState(false);
 
   useEffect(() => {
     if (user) {
@@ -606,68 +606,134 @@ const EditUserModal = ({
         role: user.role,
         clinicId: user.clinicId || "",
       });
+      setSuperAdminRoleConfirmed(user.role === "super_admin");
     }
   }, [user]);
 
   if (!isOpen || !user) return null;
 
+  const isPromotingToSuperAdmin =
+    isEditorSuperAdmin && formData.role === "super_admin" && user.role !== "super_admin";
+  const needsSuperAdminConfirmation = isPromotingToSuperAdmin && !superAdminRoleConfirmed;
+
+  const handleRoleChange = (newRole: UserRole) => {
+    setFormData({ ...formData, role: newRole });
+    if (newRole !== "super_admin" || user.role === "super_admin") {
+      setSuperAdminRoleConfirmed(newRole === "super_admin");
+    } else if (isEditorSuperAdmin) {
+      setSuperAdminRoleConfirmed(false);
+    }
+  };
+
+  const handleConfirmSuperAdminRole = () => {
+    setSuperAdminRoleConfirmed(true);
+  };
+
+  const handleCancelSuperAdminRole = () => {
+    setFormData({ ...formData, role: user.role });
+    setSuperAdminRoleConfirmed(user.role === "super_admin");
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (needsSuperAdminConfirmation) return;
     onSave(user.id, formData);
     onClose();
   };
 
   const needsClinic = formData.role === "podiatrist" || formData.role === "clinic_admin";
 
+  const labelCls = "block text-sm font-medium text-[#1a1a1a] dark:text-gray-100 mb-1";
+  const fieldCls =
+    "w-full px-4 py-2.5 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 text-[#1a1a1a] dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:border-[#1a1a1a] dark:focus:border-gray-400 focus:ring-1 focus:ring-[#1a1a1a] dark:focus:ring-gray-400 outline-none transition-colors";
+  const selectCls = `${fieldCls} [&_option]:bg-white [&_option]:text-[#1a1a1a] dark:[&_option]:bg-gray-800 dark:[&_option]:text-white`;
+
   return (
     <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl w-full max-w-md shadow-xl">
-        <div className="p-6 border-b border-gray-100">
-          <h3 className="text-lg font-semibold text-[#1a1a1a]">Editar usuario</h3>
+      <div className="bg-white dark:bg-gray-900 rounded-2xl w-full max-w-md shadow-xl dark:shadow-black/40">
+        <div className="p-6 border-b border-gray-100 dark:border-gray-700">
+          <h3 className="text-lg font-semibold text-[#1a1a1a] dark:text-white">Editar usuario</h3>
         </div>
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
           <div>
-            <label className="block text-sm font-medium text-[#1a1a1a] mb-1">Nombre</label>
+            <label className={labelCls}>Nombre</label>
             <input
               type="text"
               value={formData.name}
               onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-              className="w-full px-4 py-2.5 rounded-lg border border-gray-200 focus:border-[#1a1a1a] focus:ring-1 focus:ring-[#1a1a1a] outline-none transition-colors"
+              className={fieldCls}
               required
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-[#1a1a1a] mb-1">Email</label>
+            <label className={labelCls}>Email</label>
             <input
               type="email"
               value={formData.email}
               onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-              className="w-full px-4 py-2.5 rounded-lg border border-gray-200 focus:border-[#1a1a1a] focus:ring-1 focus:ring-[#1a1a1a] outline-none transition-colors"
+              className={fieldCls}
               pattern="[a-zA-Z0-9._%+\\-]+@[a-zA-Z0-9.\\-]+\\.[a-zA-Z]{2,}"
               title={t.errors.invalidEmail}
               required
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-[#1a1a1a] mb-1">Rol</label>
+            <label className={labelCls}>Rol</label>
             <select
               value={formData.role}
-              onChange={(e) => setFormData({ ...formData, role: e.target.value as UserRole })}
-              className="w-full px-4 py-2.5 rounded-lg border border-gray-200 focus:border-[#1a1a1a] focus:ring-1 focus:ring-[#1a1a1a] outline-none transition-colors"
+              onChange={(e) => handleRoleChange(e.target.value as UserRole)}
+              className={selectCls}
             >
               <option value="podiatrist">Podólogo</option>
               <option value="clinic_admin">Administrador de Clínica</option>
               <option value="admin">Soporte</option>
-              <option value="super_admin">Super Administrador</option>
+              {isEditorSuperAdmin && (
+                <option value="super_admin">Super Administrador</option>
+              )}
             </select>
+            {isPromotingToSuperAdmin && (
+              <div
+                className="mt-3 rounded-lg border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-950/50 p-4 text-sm"
+                role="alert"
+              >
+                <p className="font-medium text-amber-950 dark:text-amber-100">
+                  {t.roles.superAdminAssignWarning}
+                </p>
+                <p className="mt-1 text-amber-900/90 dark:text-amber-200/90">
+                  {t.roles.superAdminAssignConfirmPrompt}
+                </p>
+                {superAdminRoleConfirmed ? (
+                  <p className="mt-3 text-xs font-medium text-green-700 dark:text-green-400">
+                    ✓ {t.roles.superAdminAssignConfirmed}
+                  </p>
+                ) : (
+                  <div className="mt-3 flex gap-2">
+                    <button
+                      type="button"
+                      onClick={handleConfirmSuperAdminRole}
+                      className="flex-1 px-3 py-2 rounded-lg bg-amber-600 hover:bg-amber-700 text-white font-medium transition-colors"
+                    >
+                      {t.common.confirm}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleCancelSuperAdminRole}
+                      className="flex-1 px-3 py-2 rounded-lg border border-amber-400 dark:border-amber-600 text-amber-950 dark:text-amber-100 font-medium hover:bg-amber-100 dark:hover:bg-amber-900/50 transition-colors"
+                    >
+                      {t.common.cancel}
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
           {needsClinic && (
             <div>
-              <label className="block text-sm font-medium text-[#1a1a1a] mb-1">Clínica</label>
+              <label className={labelCls}>Clínica</label>
               <select
                 value={formData.clinicId}
                 onChange={(e) => setFormData({ ...formData, clinicId: e.target.value })}
-                className="w-full px-4 py-2.5 rounded-lg border border-gray-200 focus:border-[#1a1a1a] focus:ring-1 focus:ring-[#1a1a1a] outline-none transition-colors"
+                className={selectCls}
               >
                 <option value="">— Sin clínica —</option>
                 {clinics.map((c) => (
@@ -682,13 +748,14 @@ const EditUserModal = ({
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 px-4 py-2.5 border border-gray-200 rounded-lg text-[#1a1a1a] font-medium hover:bg-gray-50 transition-colors"
+              className="flex-1 px-4 py-2.5 border border-gray-200 dark:border-gray-600 rounded-lg text-[#1a1a1a] dark:text-gray-100 font-medium hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
             >
               {t.common.cancel}
             </button>
             <button
               type="submit"
-              className="flex-1 px-4 py-2.5 bg-[#1a1a1a] text-white rounded-lg font-medium hover:bg-[#2a2a2a] transition-colors"
+              disabled={needsSuperAdminConfirmation}
+              className="flex-1 px-4 py-2.5 bg-[#1a1a1a] dark:bg-white text-white dark:text-[#1a1a1a] rounded-lg font-medium hover:bg-[#2a2a2a] dark:hover:bg-gray-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {t.common.save}
             </button>
@@ -703,14 +770,17 @@ const EditUserModal = ({
 const TransferHistoryModal = ({ 
   isOpen, 
   onClose, 
-  allUsers
+  allUsers,
+  clinicalStats,
+  onTransferred,
 }: { 
   isOpen: boolean; 
   onClose: () => void; 
   allUsers: User[];
+  clinicalStats: ClinicalStatsMap;
+  onTransferred: () => void;
 }) => {
   const { t } = useLanguage();
-  const { user: currentUser } = useAuth();
   const [sourceUserId, setSourceUserId] = useState("");
   const [targetUserId, setTargetUserId] = useState("");
   const [isTransferring, setIsTransferring] = useState(false);
@@ -718,8 +788,7 @@ const TransferHistoryModal = ({
 
   if (!isOpen) return null;
 
-  const sourceUser = allUsers.find(u => u.id === sourceUserId);
-  const sourcePatients = getPatients().filter(p => p.createdBy === sourceUserId);
+  const sourcePatientCount = clinicalStats[sourceUserId]?.patientCount ?? 0;
 
   const handleTransfer = async () => {
     if (!sourceUserId || !targetUserId || sourceUserId === targetUserId) return;
@@ -727,60 +796,24 @@ const TransferHistoryModal = ({
     setIsTransferring(true);
     
     try {
-      // Get all patients and sessions for source user
-      const patients = getPatients();
-      const sessions = getSessions();
+      const transferResult = await transferClinicalHistory(sourceUserId, targetUserId);
       
-      const sourcePatientIds = patients
-        .filter(p => p.createdBy === sourceUserId)
-        .map(p => p.id);
-      
-      // Update patients to new owner
-      const updatedPatients = patients.map(p => {
-        if (p.createdBy === sourceUserId) {
-          return { ...p, createdBy: targetUserId, updatedAt: new Date().toISOString() };
-        }
-        return p;
-      });
-      
-      // Update sessions to new owner
-      const updatedSessions = sessions.map(s => {
-        if (s.createdBy === sourceUserId) {
-          return { ...s, createdBy: targetUserId, updatedAt: new Date().toISOString() };
-        }
-        return s;
-      });
-      
-      // Save to localStorage
-      localStorage.setItem("podoadmin_patients", JSON.stringify(updatedPatients));
-      localStorage.setItem("podoadmin_sessions", JSON.stringify(updatedSessions));
-      
-      // Add audit log
-      const targetUser = allUsers.find(u => u.id === targetUserId);
-      addAuditLog({
-        userId: currentUser?.id || "",
-        userName: currentUser?.name || "",
-        action: "TRANSFER",
-        entityType: "clinical_history",
-        entityId: sourceUserId,
-        details: JSON.stringify({
-          action: "clinical_history_transfer",
-          sourceUserId: sourceUserId,
-          sourceUserName: sourceUser?.name,
-          targetUserId: targetUserId,
-          targetUserName: targetUser?.name,
-          patientsTransferred: sourcePatientIds.length,
-        }),
-      });
-      
-      setResult({
-        success: true,
-        message: `Se han transferido ${sourcePatientIds.length} pacientes correctamente.`
-      });
+      if (transferResult.success) {
+        onTransferred();
+        setResult({
+          success: true,
+          message: transferResult.message ?? `Se han transferido ${transferResult.patientsTransferred ?? 0} paciente(s) correctamente.`,
+        });
+      } else {
+        setResult({
+          success: false,
+          message: transferResult.error ?? "Error al transferir los datos.",
+        });
+      }
     } catch {
       setResult({
         success: false,
-        message: "Error al transferir los datos."
+        message: "Error al transferir los datos.",
       });
     } finally {
       setIsTransferring(false);
@@ -819,7 +852,7 @@ const TransferHistoryModal = ({
               {sourceUserId && (
                 <div className="bg-gray-50 rounded-lg p-3">
                   <p className="text-sm text-gray-500">
-                    <span className="font-medium text-[#1a1a1a]">{sourcePatients.length}</span> pacientes para transferir
+                    <span className="font-medium text-[#1a1a1a]">{sourcePatientCount}</span> pacientes para transferir
                   </p>
                 </div>
               )}
@@ -892,11 +925,25 @@ const UserProfileModal = ({
   user: User | null;
 }) => {
   const { t } = useLanguage();
-  
+  const [profile, setProfile] = useState<{ patientCount: number; sessionCount: number; patients: Patient[] } | null>(null);
+  const [profileLoading, setProfileLoading] = useState(false);
+
+  useEffect(() => {
+    if (!isOpen || !user?.id) {
+      setProfile(null);
+      return;
+    }
+    setProfileLoading(true);
+    fetchUserClinicalProfile(user.id)
+      .then((data) => setProfile(data))
+      .finally(() => setProfileLoading(false));
+  }, [isOpen, user?.id]);
+
   if (!isOpen || !user) return null;
-  
-  const patients = getPatients().filter(p => p.createdBy === user.id);
-  const sessions = getSessions().filter(s => s.createdBy === user.id);
+
+  const patients = profile?.patients ?? [];
+  const patientCount = profile?.patientCount ?? 0;
+  const sessionCount = profile?.sessionCount ?? 0;
 
   const roleLabel = {
     super_admin: t.roles.superAdmin,
@@ -931,22 +978,26 @@ const UserProfileModal = ({
         </div>
         
         <div className="p-6 space-y-6">
+          {profileLoading ? (
+            <p className="text-sm text-gray-500">Cargando datos clínicos...</p>
+          ) : (
+          <>
           {/* Stats */}
           <div className="grid grid-cols-2 gap-4">
             <div className="bg-gray-50 rounded-lg p-4">
               <p className="text-sm text-gray-500">Pacientes</p>
-              <p className="text-2xl font-semibold text-[#1a1a1a]">{patients.length}</p>
+              <p className="text-2xl font-semibold text-[#1a1a1a]">{patientCount}</p>
             </div>
             <div className="bg-gray-50 rounded-lg p-4">
               <p className="text-sm text-gray-500">Sesiones</p>
-              <p className="text-2xl font-semibold text-[#1a1a1a]">{sessions.length}</p>
+              <p className="text-2xl font-semibold text-[#1a1a1a]">{sessionCount}</p>
             </div>
           </div>
 
           {/* Patients list */}
           {patients.length > 0 && (
             <div>
-              <h4 className="text-sm font-semibold text-[#1a1a1a] mb-3">Pacientes ({patients.length})</h4>
+              <h4 className="text-sm font-semibold text-[#1a1a1a] mb-3">Pacientes ({patientCount})</h4>
               <div className="bg-gray-50 rounded-lg divide-y divide-gray-100 max-h-48 overflow-y-auto form-modal-scroll">
                 {patients.slice(0, 10).map((patient) => (
                   <div key={patient.id} className="p-3 flex items-center justify-between">
@@ -954,13 +1005,15 @@ const UserProfileModal = ({
                     <span className="text-xs text-gray-500">{patient.email}</span>
                   </div>
                 ))}
-                {patients.length > 10 && (
+                {patientCount > 10 && (
                   <div className="p-3 text-center">
-                    <span className="text-xs text-gray-500">...y {patients.length - 10} más</span>
+                    <span className="text-xs text-gray-500">...y {patientCount - 10} más</span>
                   </div>
                 )}
               </div>
             </div>
+          )}
+          </>
           )}
 
         </div>
@@ -1014,6 +1067,7 @@ const UsersPage = () => {
   }>>([]);
   const [clinicLimitEdits, setClinicLimitEdits] = useState<Record<string, string>>({});
   const [clinicLimitSaving, setClinicLimitSaving] = useState<string | null>(null);
+  const [clinicalStats, setClinicalStats] = useState<ClinicalStatsMap>({});
   const [pendingRegistrationLists, setPendingRegistrationLists] = useState<Array<{
     id: string;
     name: string;
@@ -1045,6 +1099,16 @@ const UsersPage = () => {
   useEffect(() => {
     loadUsers();
   }, [loadUsers]);
+
+  const loadClinicalStats = useCallback(async () => {
+    if (!currentUser || !["super_admin", "admin", "clinic_admin"].includes(currentUser.role)) return;
+    const stats = await fetchClinicalStats();
+    setClinicalStats(stats);
+  }, [currentUser]);
+
+  useEffect(() => {
+    loadClinicalStats();
+  }, [loadClinicalStats]);
 
   const loadClinics = useCallback(async () => {
     if (!isSuperAdmin && currentUser?.role !== "admin") return;
@@ -1160,15 +1224,12 @@ const UsersPage = () => {
 
   const pendingPasswordResets = passwordResetRequests.filter((r) => r.status === "pending");
 
-  // Enhance users with additional data
-  const usersWithData: UserWithData[] = allUsers.map(u => {
-    const patients = getPatients().filter(p => p.createdBy === u.id);
-    const sessions = getSessions().filter(s => s.createdBy === u.id);
-    
+  const usersWithData: UserWithData[] = allUsers.map((u) => {
+    const counts = clinicalStats[u.id] ?? { patientCount: 0, sessionCount: 0 };
     return {
       ...u,
-      patientCount: patients.length,
-      sessionCount: sessions.length,
+      patientCount: counts.patientCount,
+      sessionCount: counts.sessionCount,
     };
   });
 
@@ -1198,6 +1259,8 @@ const UsersPage = () => {
     return m;
   }, [clinicsForLimits]);
 
+  // Orden de rol para ordenar (clínica/subalternos: clinic_admin primero, luego podiatrist, etc.)
+  const roleOrder: Record<string, number> = { super_admin: 0, clinic_admin: 1, admin: 2, receptionist: 3, podiatrist: 4 };
   const statusOrder = (u: User): number => {
     if (u.isBanned) return 4;
     if (u.isBlocked) return 3;
@@ -1218,7 +1281,7 @@ const UsersPage = () => {
           cmp = (a.email || "").localeCompare(b.email || "", undefined, { sensitivity: "base" });
           break;
         case "role":
-          cmp = (USER_TABLE_ROLE_ORDER[a.role] ?? 99) - (USER_TABLE_ROLE_ORDER[b.role] ?? 99);
+          cmp = (roleOrder[a.role] ?? 99) - (roleOrder[b.role] ?? 99);
           if (cmp === 0) cmp = (a.name || "").localeCompare(b.name || "", undefined, { sensitivity: "base" });
           break;
         case "status":
@@ -1273,8 +1336,30 @@ const UsersPage = () => {
     </th>
   );
 
-  // Función auxiliar para obtener el estado visual de un usuario
+  // Etiqueta de estado (suscripción, trial, baja admin, etc.)
   const getUserStatusBadge = (user: User) => {
+    const toneClasses: Record<
+      NonNullable<User['accessBadge']>['tone'],
+      string
+    > = {
+      green: 'bg-green-100 text-green-700',
+      blue: 'bg-sky-100 text-sky-700',
+      amber: 'bg-amber-100 text-amber-700',
+      yellow: 'bg-yellow-100 text-yellow-700',
+      orange: 'bg-orange-100 text-orange-700',
+      red: 'bg-red-100 text-red-700',
+      gray: 'bg-gray-100 text-gray-600',
+    };
+
+    if (user.accessBadge) {
+      const cls = toneClasses[user.accessBadge.tone] ?? toneClasses.gray;
+      return (
+        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${cls}`}>
+          {user.accessBadge.label}
+        </span>
+      );
+    }
+
     if (user.isBanned) {
       return (
         <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-700">
@@ -1295,17 +1380,11 @@ const UsersPage = () => {
         </span>
       );
     }
-    if (user.isEnabled === false) {
-      const disabledAt = user.disabledAt ?? 0;
-      let daysSinceDisabled = disabledAt ? (Date.now() - disabledAt) / (24 * 60 * 60 * 1000) : 0;
-
-      // Mock visual para probar exactamente el límite de 30 días
-      if (import.meta.env.DEV && user.email === "pablo.hernandez@gmail.com") {
-        daysSinceDisabled = 30;
-      }
-
+    if (user.isEnabled === false && user.disabledAt != null) {
+      const disabledAt = user.disabledAt;
+      const daysSinceDisabled = (Date.now() - disabledAt) / (24 * 60 * 60 * 1000);
       const isGracePeriod = daysSinceDisabled < 30;
-      const graceDays = Math.floor(daysSinceDisabled);
+      const graceDays = Math.max(0, Math.floor(daysSinceDisabled));
       const graceLabel = `Período de gracia (${graceDays} día${graceDays === 1 ? "" : "s"})`;
       return (
         <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${isGracePeriod ? "bg-amber-100 text-amber-700" : "bg-yellow-100 text-yellow-700"}`}>
@@ -1313,6 +1392,13 @@ const UsersPage = () => {
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
           {isGracePeriod ? graceLabel : "Deshabilitado"}
+        </span>
+      );
+    }
+    if (user.isEnabled === false && (user.role === "clinic_admin" || user.role === "podiatrist")) {
+      return (
+        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-700">
+          Pendiente pago
         </span>
       );
     }
@@ -1367,8 +1453,7 @@ const UsersPage = () => {
 
         if (!response.success || !response.data?.success) {
           const msg = response.data?.message || response.error || "Error al crear usuario";
-          const issues = (response.data as { issues?: Array<{ message?: string; path?: (string | number)[] }> })
-            ?.issues;
+          const issues = (response.data as any)?.issues as Array<{ message?: string; path?: (string | number)[] }> | undefined;
           const details = issues?.length ? issues.map((i) => i.message || i.path?.join(".")).join(". ") : "";
           alert(details ? `${msg}\n\nDetalles: ${details}` : msg);
           return;
@@ -1400,19 +1485,17 @@ const UsersPage = () => {
           setClinics((prev) => [...prev, { clinicId: createdClinic!.clinicId, clinicName: createdClinic!.clinicName, clinicCode: createdClinic!.clinicCode }]);
         }
 
-        addAuditLog({
-          userId: currentUser?.id || "",
-          userName: currentUser?.name || "",
+        void postAuditLog({
           action: "CREATE",
-          entityType: "user",
-          entityId: newUser.id,
-          details: JSON.stringify({
+          resourceType: "user",
+          resourceId: newUser.id,
+          details: {
             action: "user_create",
             newUserName: newUser.name,
             newUserEmail: newUser.email,
             newUserRole: newUser.role,
             newUserClinicId: newUser.clinicId,
-          }),
+          },
         });
         alert("Usuario creado exitosamente. El usuario puede iniciar sesión inmediatamente.");
       } catch (error) {
@@ -1434,13 +1517,11 @@ const UsersPage = () => {
         const response = await api.put<{ success?: boolean; user?: User }>(`/users/${userId}`, payload);
         if (response.success && response.data?.user) {
           setAllUsers((prev) => prev.map((u) => (u.id === userId ? response.data!.user! : u)));
-          addAuditLog({
-            userId: currentUser?.id || "",
-            userName: currentUser?.name || "",
+          void postAuditLog({
             action: "UPDATE",
-            entityType: "user",
-            entityId: userId,
-            details: JSON.stringify({ action: "user_update", targetUserId: userId, targetUserName: updates.name }),
+            resourceType: "user",
+            resourceId: userId,
+            details: { action: "user_update", targetUserId: userId, targetUserName: updates.name },
           });
         } else {
           alert(response.error || response.data?.message || "Error al actualizar usuario");
@@ -1482,7 +1563,7 @@ const UsersPage = () => {
       } else {
         alert(r.error || r.data?.message || "Error al aprobar");
       }
-    } catch {
+    } catch (e) {
       alert("Error al aprobar la solicitud");
     }
   };
@@ -1497,59 +1578,16 @@ const UsersPage = () => {
       } else {
         alert(r.error || r.data?.message || "Error al rechazar");
       }
-    } catch {
+    } catch (e) {
       alert("Error al rechazar la solicitud");
     }
   };
 
-  const handleExportUserData = (user: User) => {
-    const patients = getPatients().filter(p => p.createdBy === user.id);
-    const sessions = getSessions().filter(s => s.createdBy === user.id);
-    
-    const exportData = {
-      exportedAt: new Date().toISOString(),
-      exportedBy: currentUser?.name,
-      user: {
-        id: user.id,
-        name: user.name,
-        email: user.email,
-        role: user.role,
-        clinicId: user.clinicId,
-      },
-      patients: patients.map(p => ({
-        ...exportPatientData(p.id),
-      })),
-      statistics: {
-        totalPatients: patients.length,
-        totalSessions: sessions.length,
-      },
-    };
-    
-    const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `user_${user.id}_clinical_history.json`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-    
-    addAuditLog({
-      userId: currentUser?.id || "",
-      userName: currentUser?.name || "",
-      action: "EXPORT",
-      entityType: "user_data",
-      entityId: user.id,
-      details: JSON.stringify({
-        action: "user_clinical_history_export",
-        targetUserId: user.id,
-        targetUserName: user.name,
-        patientsExported: patients.length,
-        sessionsExported: sessions.length,
-        exportType: "json",
-      }),
-    });
+  const handleExportUserData = async (user: User) => {
+    const ok = await downloadUserClinicalExport(user.id, `user_${user.id}_clinical_history.json`);
+    if (!ok) {
+      alert("No se pudo exportar el historial clínico.");
+    }
   };
 
   const handleBlockUser = (user: User) => {
@@ -1565,18 +1603,16 @@ const UsersPage = () => {
             prev.map((u) => (u.id === user.id ? { ...u, isBlocked: true } : u))
           );
 
-          addAuditLog({
-            userId: currentUser?.id || "",
-            userName: currentUser?.name || "",
+          void postAuditLog({
             action: "BLOCK_USER",
-            entityType: "user",
-            entityId: user.id,
-            details: JSON.stringify({
+            resourceType: "user",
+            resourceId: user.id,
+            details: {
               action: "block_user",
               targetUserId: user.id,
               targetUserName: user.name,
               targetUserEmail: user.email,
-            }),
+            },
           });
         } else {
           alert(response.error || response.data?.message || "Error al bloquear el usuario.");
@@ -1601,18 +1637,16 @@ const UsersPage = () => {
             prev.map((u) => (u.id === user.id ? { ...u, isBlocked: false } : u))
           );
 
-          addAuditLog({
-            userId: currentUser?.id || "",
-            userName: currentUser?.name || "",
+          void postAuditLog({
             action: "UNBLOCK_USER",
-            entityType: "user",
-            entityId: user.id,
-            details: JSON.stringify({
+            resourceType: "user",
+            resourceId: user.id,
+            details: {
               action: "unblock_user",
               targetUserId: user.id,
               targetUserName: user.name,
               targetUserEmail: user.email,
-            }),
+            },
           });
         } else {
           alert(response.error || response.data?.message || "Error al desbloquear el usuario.");
@@ -1633,24 +1667,18 @@ const UsersPage = () => {
       const response = await api.post<{ success: boolean; message?: string }>(`/users/${user.id}/enable`);
       
       if (response.success && response.data?.success) {
-        setAllUsers((prev) =>
-          prev.map((u) =>
-            u.id === user.id ? { ...u, isEnabled: true, isBlocked: false, disabledAt: undefined } : u
-          )
-        );
+        await loadUsers();
 
-        addAuditLog({
-          userId: currentUser?.id || "",
-          userName: currentUser?.name || "",
+        void postAuditLog({
           action: "ENABLE_USER",
-          entityType: "user",
-          entityId: user.id,
-          details: JSON.stringify({
+          resourceType: "user",
+          resourceId: user.id,
+          details: {
             action: "enable_user",
             targetUserId: user.id,
             targetUserName: user.name,
             targetUserEmail: user.email,
-          }),
+          },
         });
       } else {
         alert(response.error || response.data?.message || "Error al habilitar el usuario");
@@ -1665,29 +1693,23 @@ const UsersPage = () => {
     if (!window.confirm(`¿Estás seguro de que deseas deshabilitar la cuenta de ${user.name}?\n\nEl usuario no podrá iniciar sesión hasta que sea habilitado nuevamente.`)) {
       return;
     }
-    
+
     try {
       const response = await api.post<{ success: boolean; message?: string }>(`/users/${user.id}/disable`);
-      
-      if (response.success && response.data?.success) {
-        setAllUsers((prev) =>
-          prev.map((u) =>
-            u.id === user.id ? { ...u, isEnabled: false, disabledAt: Date.now() } : u
-          )
-        );
 
-        addAuditLog({
-          userId: currentUser?.id || "",
-          userName: currentUser?.name || "",
+      if (response.success && response.data?.success) {
+        await loadUsers();
+
+        void postAuditLog({
           action: "DISABLE_USER",
-          entityType: "user",
-          entityId: user.id,
-          details: JSON.stringify({
+          resourceType: "user",
+          resourceId: user.id,
+          details: {
             action: "disable_user",
             targetUserId: user.id,
             targetUserName: user.name,
             targetUserEmail: user.email,
-          }),
+          },
         });
       } else {
         alert(response.error || response.data?.message || "Error al deshabilitar el usuario");
@@ -1713,18 +1735,16 @@ const UsersPage = () => {
             )
           );
 
-          addAuditLog({
-            userId: currentUser?.id || "",
-            userName: currentUser?.name || "",
+          void postAuditLog({
             action: "BAN_USER",
-            entityType: "user",
-            entityId: user.id,
-            details: JSON.stringify({
+            resourceType: "user",
+            resourceId: user.id,
+            details: {
               action: "ban_user",
               targetUserId: user.id,
               targetUserName: user.name,
               targetUserEmail: user.email,
-            }),
+            },
           });
         } else {
           alert(response.error || response.data?.message || "Error al banear el usuario.");
@@ -1751,18 +1771,16 @@ const UsersPage = () => {
             )
           );
 
-          addAuditLog({
-            userId: currentUser?.id || "",
-            userName: currentUser?.name || "",
+          void postAuditLog({
             action: "UNBAN_USER",
-            entityType: "user",
-            entityId: user.id,
-            details: JSON.stringify({
+            resourceType: "user",
+            resourceId: user.id,
+            details: {
               action: "unban_user",
               targetUserId: user.id,
               targetUserName: user.name,
               targetUserEmail: user.email,
-            }),
+            },
           });
         } else {
           alert(response.error || response.data?.message || "Error al desbanear el usuario.");
@@ -1789,18 +1807,16 @@ const UsersPage = () => {
         if (response.success && response.data?.success) {
           setAllUsers((prev) => prev.filter((u) => u.id !== user.id));
 
-          addAuditLog({
-            userId: currentUser?.id || "",
-            userName: currentUser?.name || "",
+          void postAuditLog({
             action: "DELETE_USER",
-            entityType: "user",
-            entityId: user.id,
-            details: JSON.stringify({
+            resourceType: "user",
+            resourceId: user.id,
+            details: {
               action: "delete_user",
               targetUserId: user.id,
               targetUserName: user.name,
               targetUserEmail: user.email,
-            }),
+            },
           });
         } else {
           alert(response.error || response.data?.message || "Error al eliminar el usuario.");
@@ -2441,6 +2457,8 @@ const UsersPage = () => {
         isOpen={showTransferModal}
         onClose={() => setShowTransferModal(false)}
         allUsers={allUsers}
+        clinicalStats={clinicalStats}
+        onTransferred={loadClinicalStats}
       />
       
       <UserProfileModal

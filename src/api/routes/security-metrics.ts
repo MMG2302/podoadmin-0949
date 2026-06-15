@@ -5,8 +5,9 @@ import {
   getMetricsByType,
   getMetricsByTimeRange,
   getSecurityStats,
-  type SecurityMetricType,
 } from '../utils/security-metrics';
+import { validateQuery, securityMetricTypeSchema, timeRangeQuerySchema, limitQuerySchema } from '../utils/validation';
+import { sanitizePathParam } from '../utils/sanitization';
 
 const metricsRoutes = new Hono();
 
@@ -22,10 +23,16 @@ metricsRoutes.use('*', requireRole('super_admin'));
  */
 metricsRoutes.get('/stats', async (c) => {
   try {
-    const startTime = c.req.query('startTime');
-    const endTime = c.req.query('endTime');
+    const rangeResult = validateQuery(
+      timeRangeQuerySchema.pick({ startTime: true, endTime: true }),
+      c.req.query()
+    );
+    if (!rangeResult.success) {
+      return c.json({ error: 'Parámetros inválidos', message: rangeResult.error, issues: rangeResult.issues }, 400);
+    }
+    const { startTime, endTime } = rangeResult.data;
 
-    const stats = await getSecurityStats(startTime || undefined, endTime || undefined);
+    const stats = await getSecurityStats(startTime, endTime);
 
     return c.json({
       success: true,
@@ -43,10 +50,20 @@ metricsRoutes.get('/stats', async (c) => {
  */
 metricsRoutes.get('/by-type/:type', async (c) => {
   try {
-    const type = c.req.param('type') as SecurityMetricType;
-    const limit = parseInt(c.req.query('limit') || '100');
+    const typeParam = sanitizePathParam(c.req.param('type'), 64);
+    if (!typeParam) {
+      return c.json({ error: 'Tipo inválido', message: 'Parámetro type no válido' }, 400);
+    }
+    const typeResult = securityMetricTypeSchema.safeParse(typeParam);
+    if (!typeResult.success) {
+      return c.json({ error: 'Tipo inválido', message: 'Tipo de métrica no reconocido' }, 400);
+    }
+    const limitResult = validateQuery(limitQuerySchema, c.req.query());
+    if (!limitResult.success) {
+      return c.json({ error: 'Parámetros inválidos', message: limitResult.error, issues: limitResult.issues }, 400);
+    }
 
-    const metrics = await getMetricsByType(type, limit);
+    const metrics = await getMetricsByType(typeResult.data, limitResult.data.limit);
 
     return c.json({
       success: true,
@@ -65,9 +82,11 @@ metricsRoutes.get('/by-type/:type', async (c) => {
  */
 metricsRoutes.get('/by-time-range', async (c) => {
   try {
-    const startTime = c.req.query('startTime');
-    const endTime = c.req.query('endTime');
-    const limit = parseInt(c.req.query('limit') || '500');
+    const rangeResult = validateQuery(timeRangeQuerySchema, c.req.query());
+    if (!rangeResult.success) {
+      return c.json({ error: 'Parámetros inválidos', message: rangeResult.error, issues: rangeResult.issues }, 400);
+    }
+    const { startTime, endTime, limit } = rangeResult.data;
 
     if (!startTime || !endTime) {
       return c.json(

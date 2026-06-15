@@ -1,17 +1,17 @@
-import { database } from '../database';
+﻿import { database } from '../database';
 import { createdUsers } from '../database/schema';
 import { eq, or } from 'drizzle-orm';
 import type { JWTPayload } from './jwt';
 
 /**
- * Administrador de clínica debe tener clinicId; si no, no debe ver datos de ninguna clínica.
+ * Administrador de cl├¡nica debe tener clinicId; si no, no debe ver datos de ninguna cl├¡nica.
  */
 export function isClinicAdminWithoutClinic(user: JWTPayload): boolean {
   return user.role === 'clinic_admin' && !user.clinicId;
 }
 
 /**
- * IDs de podólogos (createdUsers.userId) asignados a una recepcionista.
+ * IDs de pod├│logos (createdUsers.userId) asignados a una recepcionista.
  * El JWT lleva `userId` = columna `created_users.user_id`, no la PK `id`.
  */
 export async function getAssignedPodiatristUserIds(receptionistJwtUserId: string): Promise<string[]> {
@@ -72,7 +72,7 @@ export async function getPatientAccessDeniedReason(
   return null;
 }
 
-/** Igual que reglas de visibilidad de sesión por fila (createdBy + clinicId). */
+/** Igual que reglas de visibilidad de sesi├│n por fila (createdBy + clinicId). */
 export async function getSessionAccessDeniedReason(
   user: JWTPayload,
   session: { createdBy: string; clinicId: string | null }

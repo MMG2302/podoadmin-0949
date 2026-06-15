@@ -19,5 +19,5 @@ export default defineConfig({
                 hmr: {
                         overlay: false, // Evita que el overlay bloquee la UI cuando hay errores del Worker
                 },
-        }
+        },
 });

@@ -29,12 +29,13 @@ export async function sendFailedLoginNotification(
 /**
  * Determina si se debe enviar una notificación basado en el número de intentos
  */
+/** Umbrales alineados con rate limiting progresivo de login (3, 5, 10). */
+export const LOGIN_NOTIFICATION_THRESHOLDS = [3, 5, 10] as const;
+
+/**
+ * Solo notificar en umbrales críticos (máx. 3 emails por oleada de intentos).
+ * No re-notificar tras el bloqueo para evitar abuso de cuota del proveedor de email.
+ */
 export function shouldSendNotification(attemptCount: number): boolean {
-  // Enviar notificación en puntos críticos
-  return (
-    attemptCount === 3 || // Primer umbral
-    attemptCount === 5 || // Segundo umbral
-    attemptCount === 10 || // Bloqueo
-    attemptCount > 10 // Intentos adicionales después del bloqueo
-  );
+  return (LOGIN_NOTIFICATION_THRESHOLDS as readonly number[]).includes(attemptCount);
 }

@@ -1,6 +1,6 @@
 import { database } from '../database';
 import { tokenBlacklist } from '../database/schema';
-import { eq, lt } from 'drizzle-orm';
+import { eq, and, lt } from 'drizzle-orm';
 
 /**
  * Utilidades para manejar blacklist de tokens

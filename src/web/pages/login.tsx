@@ -1,13 +1,9 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "../contexts/auth-context";
 import { useLanguage } from "../contexts/language-context";
-import { LanguageSwitcher } from "../components/language-switcher";
+import { AuthPublicToolbar } from "../components/auth/auth-public-toolbar";
 import { useLocation } from "wouter";
-
-/** Quita espacios, tabs y saltos para evitar cadenas “partidas” al pegar o escribir. */
-function stripWhitespace(value: string): string {
-  return value.replace(/\s/g, "");
-}
+import { authPage as ap } from "../lib/auth-page-styles";
 
 const Login = () => {
   const { login } = useAuth();
@@ -29,13 +25,14 @@ const Login = () => {
   const [officialDomain, setOfficialDomain] = useState<string | null>(null);
   const [supportEmail, setSupportEmail] = useState<string | null>(null);
   const [originMismatch, setOriginMismatch] = useState(false);
+  const [googleOAuthEnabled, setGoogleOAuthEnabled] = useState(false);
 
   // Obtener dominio oficial y email de soporte
   useEffect(() => {
     let cancelled = false;
     fetch("/api/public/config", { credentials: "include" })
       .then((res) => (res.ok ? res.json() : null))
-      .then((data: { officialDomain?: string | null; supportEmail?: string | null } | null) => {
+      .then((data: { officialDomain?: string | null; supportEmail?: string | null; googleOAuthEnabled?: boolean } | null) => {
         if (cancelled) return;
         const domain = data?.officialDomain;
         if (domain) {
@@ -48,6 +45,7 @@ const Login = () => {
           }
         }
         if (data?.supportEmail) setSupportEmail(data.supportEmail);
+        if (data?.googleOAuthEnabled) setGoogleOAuthEnabled(true);
       })
       .catch(() => {});
     return () => { cancelled = true; };
@@ -81,18 +79,35 @@ const Login = () => {
     return apiError;
   };
 
+  const handleGoogleLogin = async () => {
+    setError("");
+    setIsLoading(true);
+    try {
+      const res = await fetch("/api/auth/google/url", { credentials: "include" });
+      const data = await res.json();
+      if (data.url) {
+        window.location.href = data.url;
+        return;
+      }
+      setError("Google no está configurado en este entorno");
+    } catch {
+      setError("No se pudo conectar con Google");
+    }
+    setIsLoading(false);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
     setErrorDetails({});
     setIsLoading(true);
 
-    const result = await login(stripWhitespace(email), stripWhitespace(password));
+    const result = await login(email, password);
 
     if (result.success) {
-      // Defer navigation so auth state is committed and layout paints correctly on mobile
+      const dest = result.redirectPath ?? "/";
       requestAnimationFrame(() => {
-        requestAnimationFrame(() => setLocation("/"));
+        requestAnimationFrame(() => setLocation(dest));
       });
     } else {
       setError(getLoginErrorDisplay(result.error) || t.auth.invalidCredentials);
@@ -113,7 +128,7 @@ const Login = () => {
   };
 
   return (
-    <div className="min-h-screen bg-white flex">
+    <div className={`${ap.shell} flex`}>
       {/* Left Panel - Branding */}
       <div className="hidden lg:flex lg:w-1/2 bg-[#1a1a1a] relative overflow-hidden">
         <div className="absolute inset-0">
@@ -159,26 +174,23 @@ const Login = () => {
       </div>
 
       {/* Right Panel - Login Form */}
-      <div className="w-full lg:w-1/2 flex flex-col">
-        {/* Language switcher in header */}
-        <div className="flex justify-end p-4">
-          <LanguageSwitcher />
-        </div>
+      <div className={`${ap.formColumn} w-full lg:w-1/2`}>
+        <AuthPublicToolbar />
         
         <div className="flex-1 flex items-center justify-center p-8">
           <div className="w-full max-w-md">
             {/* Mobile Logo */}
             <div className="lg:hidden text-center mb-12">
-              <h1 className="text-[#1a1a1a] text-4xl font-light tracking-tight">
+              <h1 className={ap.mobileLogo}>
                 Podo<span className="font-bold">Admin</span>
               </h1>
             </div>
 
             <div className="mb-10">
-              <h2 className="text-[#1a1a1a] text-3xl font-semibold mb-2">
+              <h2 className={ap.heading}>
                 {t.auth.welcome}
               </h2>
-              <p className="text-gray-500">
+              <p className={ap.subheading}>
                 {t.auth.enterCredentials}
               </p>
             </div>
@@ -260,14 +272,14 @@ const Login = () => {
               )}
 
               <div>
-                <label className="block text-sm font-medium text-[#1a1a1a] mb-2">
+                <label className={ap.label}>
                   {t.auth.emailLabel}
                 </label>
                 <input
                   type="email"
                   value={email}
-                  onChange={(e) => setEmail(stripWhitespace(e.target.value))}
-                  className="w-full px-4 py-3.5 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:border-[#1a1a1a] focus:ring-1 focus:ring-[#1a1a1a] transition-all text-[#1a1a1a] placeholder:text-gray-400"
+                  onChange={(e) => setEmail(e.target.value)}
+                  className={ap.input}
                   placeholder={t.auth.emailPlaceholder}
                   required
                   autoComplete="email"
@@ -275,15 +287,15 @@ const Login = () => {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-[#1a1a1a] mb-2">
+                <label className={ap.label}>
                   {t.auth.passwordLabel}
                 </label>
                 <div className="relative">
                   <input
                     type={showPassword ? "text" : "password"}
                     value={password}
-                    onChange={(e) => setPassword(stripWhitespace(e.target.value))}
-                    className="w-full px-4 py-3.5 pr-11 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:border-[#1a1a1a] focus:ring-1 focus:ring-[#1a1a1a] transition-all text-[#1a1a1a] placeholder:text-gray-400"
+                    onChange={(e) => setPassword(e.target.value)}
+                    className={ap.inputWithIcon}
                     placeholder={t.auth.passwordPlaceholder}
                     required
                     autoComplete="current-password"
@@ -291,7 +303,7 @@ const Login = () => {
                   <button
                     type="button"
                     onClick={() => setShowPassword((v) => !v)}
-                    className="absolute inset-y-0 right-0 flex items-center px-3 text-gray-500 hover:text-[#1a1a1a]"
+                    className="absolute inset-y-0 right-0 flex items-center px-3 text-gray-500 dark:text-gray-400 hover:text-[#1a1a1a] dark:hover:text-white"
                     aria-label={showPassword ? "Ocultar contraseña" : "Mostrar contraseña"}
                   >
                     {showPassword ? (
@@ -320,17 +332,40 @@ const Login = () => {
                   <button
                     type="button"
                     onClick={() => setLocation("/forgot-password")}
-                    className="text-sm text-[#1a1a1a] hover:underline font-medium"
+                    className={`text-sm ${ap.link}`}
                   >
                     {t.auth.forgotPassword}
                   </button>
                 </div>
               </div>
 
+              {googleOAuthEnabled && (
+                <>
+                  <button
+                    type="button"
+                    onClick={handleGoogleLogin}
+                    disabled={isLoading || originMismatch}
+                    className={ap.googleBtn}
+                  >
+                    <svg className="w-5 h-5" viewBox="0 0 24 24" aria-hidden>
+                      <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                      <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                      <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"/>
+                      <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+                    </svg>
+                    {t.auth.loginWithGoogle}
+                  </button>
+                  <div className="relative py-2">
+                    <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-gray-200" /></div>
+                    <div className="relative flex justify-center text-xs uppercase"><span className={ap.dividerLine}>o</span></div>
+                  </div>
+                </>
+              )}
+
               <button
                 type="submit"
                 disabled={isLoading || originMismatch || (countdown !== null && countdown > 0)}
-                className="w-full py-3.5 bg-[#1a1a1a] text-white font-medium rounded-lg hover:bg-[#2a2a2a] focus:outline-none focus:ring-2 focus:ring-[#1a1a1a] focus:ring-offset-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed relative overflow-hidden group"
+                className={ap.primaryBtn}
               >
                 <span className={isLoading ? "opacity-0" : ""}>
                   {t.auth.loginButton}
@@ -346,11 +381,21 @@ const Login = () => {
               </button>
             </form>
 
-            <div className="mt-10 pt-8 border-t border-gray-100">
-              <p className="text-gray-500 text-sm text-center">
+            <div className="mt-10 pt-8 border-t border-gray-100 dark:border-gray-800 space-y-3">
+              <p className={`${ap.muted} text-center`}>
+                {t.auth.dontHaveAccount}{" "}
+                <button
+                  type="button"
+                  onClick={() => setLocation("/register")}
+                  className={ap.link}
+                >
+                  {t.auth.register}
+                </button>
+              </p>
+              <p className={`${ap.muted} text-center`}>
                 <a
                   href={`mailto:${supportEmail || "soporte@podoadmin.com"}?subject=${encodeURIComponent("Solicitud de cuenta - PodoAdmin")}`}
-                  className="text-[#1a1a1a] hover:underline font-medium"
+                  className={ap.link}
                 >
                   {t.auth.contactAdminForAccount}
                 </a>

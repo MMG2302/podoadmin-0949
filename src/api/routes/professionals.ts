@@ -246,7 +246,8 @@ professionalsRoutes.get('/logo/:userId', async (c) => {
  */
 professionalsRoutes.put('/logo/:userId', async (c) => {
   const user = c.get('user');
-  const userId = c.req.param('userId');
+  const userId = sanitizePathParam(c.req.param('userId'), 128);
+  if (!userId) return c.json({ error: 'ID de usuario inválido' }, 400);
   if (!user || !canAccessProfessional(user, userId)) {
     return c.json({ error: 'Acceso denegado' }, 403);
   }

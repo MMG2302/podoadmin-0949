@@ -65,11 +65,21 @@ export function getIPWhitelist(): string[] {
 }
 
 /**
- * Crea un identificador combinado de email e IP para rate limiting
+ * Crea un identificador combinado de email e IP para rate limiting de login
  */
 export function createRateLimitIdentifier(email: string, ip: string): string {
   const emailLower = email.toLowerCase().trim();
   return `${emailLower}:${ip}`;
+}
+
+/** Prefijo D1 para límite agregado de intentos fallidos de login por IP */
+export const LOGIN_IP_RATE_LIMIT_PREFIX = 'ip:login:';
+
+/**
+ * Identificador D1 para rate limit de login solo por IP (anti fuerza bruta distribuida)
+ */
+export function createLoginIPRateLimitIdentifier(ip: string): string {
+  return `${LOGIN_IP_RATE_LIMIT_PREFIX}${ip}`;
 }
 
 /**

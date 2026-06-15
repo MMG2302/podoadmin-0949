@@ -6,13 +6,19 @@ import {
   getAuditLogsByUser,
   getAuditLogsByAction,
   getAllAuditLogs,
+  getAuditLogsForExport,
   logAuditEvent,
   getRecentPrintViolationCount,
 } from '../utils/audit-log';
+import { validateClientAuditBody, sanitizeClientAuditForUser } from '../security/client-audit-policy';
+import { validateQuery, auditLogExportQuerySchema, limitQuerySchema, limitQuery500Schema } from '../utils/validation';
+import { sanitizePathParam } from '../utils/sanitization';
+import { createNotification } from '../utils/notifications-service';
+import { checkAndRecordActionRateLimit } from '../utils/action-rate-limit';
 import { getClientIP } from '../utils/ip-tracking';
 import { getSafeUserAgent } from '../utils/request-headers';
 import { database } from '../database';
-import { createdUsers, notifications as notificationsTable } from '../database/schema';
+import { createdUsers } from '../database/schema';
 
 const auditLogRoutes = new Hono();
 
@@ -54,40 +60,54 @@ auditLogRoutes.use('*', requireAuth);
 auditLogRoutes.post('/', async (c) => {
   try {
     const user = c.get('user');
-    const body = (await c.req.json().catch(() => ({}))) as {
-      action?: string;
-      resourceType?: string;
-      resourceId?: string;
-      details?: Record<string, unknown>;
-      clinicId?: string;
-    };
+    const rawBody = await c.req.json().catch(() => ({}));
 
-    const action = String(body.action ?? '').trim();
-    const resourceType = String(body.resourceType ?? '').trim();
-    const resourceId = body.resourceId ? String(body.resourceId) : undefined;
-
-    if (!action || !resourceType) {
-      return c.json({ error: 'action y resourceType son requeridos' }, 400);
+    const rateLimit = await checkAndRecordActionRateLimit('client_audit', user.userId, 20, 60_000);
+    if (!rateLimit.allowed) {
+      c.header('Retry-After', String(rateLimit.retryAfterSeconds ?? 60));
+      return c.json({ error: 'rate_limit', message: 'Demasiados eventos de auditoría en poco tiempo' }, 429);
     }
+
+    const validation = validateClientAuditBody(rawBody);
+    if (!validation.success) {
+      return c.json(
+        { error: 'Datos inválidos', message: validation.message, issues: validation.issues },
+        400
+      );
+    }
+
+    const sanitized = sanitizeClientAuditForUser(validation.data, user.userId, user.clinicId);
+    const { action, resourceType, resourceId, details, clinicId } = sanitized;
 
     await logAuditEvent({
       userId: user.userId,
       action,
       resourceType,
       resourceId,
-      details: body.details ?? undefined,
+      details,
       ipAddress: getClientIP(c.req.raw.headers),
       userAgent: getSafeUserAgent(c),
-      clinicId: body.clinicId ?? user.clinicId ?? undefined,
+      clinicId,
     });
 
     // Si es violación de impresión, comprobar si hay >= 5 en la última hora y notificar a super admins
     if (action === 'PRINT_VIOLATION_FORM') {
+      await createNotification({
+        userId: user.userId,
+        type: 'system',
+        title: 'Incumplimiento detectado',
+        message:
+          'Está incumpliendo con el servicio otorgado. No se permite imprimir desde el formulario de sesión.',
+        metadata: {
+          patientId: (details as { patientId?: string })?.patientId,
+          violationType: 'print_from_form',
+        },
+      });
       const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
       const count = await getRecentPrintViolationCount(user.userId, oneHourAgo);
       if (count >= 5) {
-        const details = (body.details ?? {}) as Record<string, unknown>;
-        const violatorName = (details.podiatristName as string) ?? user.userId;
+        const violationDetails = (details ?? {}) as Record<string, unknown>;
+        const violatorName = (violationDetails.podiatristName as string) ?? user.userId;
         // Seleccionar userId (no id): las notificaciones se filtran por JWT userId = createdUsers.userId
         const superAdminRows = await database
           .select({ userId: createdUsers.userId })
@@ -96,22 +116,17 @@ auditLogRoutes.post('/', async (c) => {
         const now = new Date().toISOString();
         const title = '⚠️ Alerta: Múltiples violaciones de impresión';
         const message = `El usuario ${violatorName} (${user.userId}) ha intentado imprimir desde el formulario 5 veces consecutivas en la última hora. Esto indica un incumplimiento repetido con el servicio otorgado.`;
-        const metadata = JSON.stringify({
-          fromUserId: user.userId,
-          fromUserName: violatorName,
-          reason: 'multiple_print_violations_alert',
-        });
         for (const row of superAdminRows) {
-          const notifId = `notif_${crypto.randomUUID().replace(/-/g, '')}`;
-          await database.insert(notificationsTable).values({
-            id: notifId,
+          await createNotification({
             userId: row.userId,
             type: 'system',
             title,
             message,
-            read: false,
-            metadata,
-            createdAt: now,
+            metadata: {
+              fromUserId: user.userId,
+              fromUserName: violatorName,
+              reason: 'multiple_print_violations_alert',
+            },
           });
         }
         await logAuditEvent({
@@ -146,8 +161,15 @@ auditLogRoutes.post('/', async (c) => {
 auditLogRoutes.get('/user/:userId', async (c) => {
   try {
     const user = c.get('user');
-    const userId = c.req.param('userId');
-    const limit = parseInt(c.req.query('limit') || '100');
+    const userId = sanitizePathParam(c.req.param('userId'), 128);
+    if (!userId) {
+      return c.json({ error: 'ID de usuario inválido', message: 'Parámetro userId no válido' }, 400);
+    }
+    const limitResult = validateQuery(limitQuerySchema, c.req.query());
+    if (!limitResult.success) {
+      return c.json({ error: 'Parámetros inválidos', message: limitResult.error, issues: limitResult.issues }, 400);
+    }
+    const limit = limitResult.data.limit;
 
     // Verificar permisos: solo super_admin o el mismo usuario
     if (user?.role !== 'super_admin' && user?.userId !== userId) {
@@ -181,8 +203,15 @@ auditLogRoutes.get(
   requireRole('super_admin'),
   async (c) => {
     try {
-      const action = c.req.param('action');
-      const limit = parseInt(c.req.query('limit') || '100');
+      const action = sanitizePathParam(c.req.param('action'), 64);
+      if (!action || !/^[A-Z0-9_]+$/.test(action)) {
+        return c.json({ error: 'Acción inválida', message: 'Parámetro action no válido' }, 400);
+      }
+      const limitResult = validateQuery(limitQuerySchema, c.req.query());
+      if (!limitResult.success) {
+        return c.json({ error: 'Parámetros inválidos', message: limitResult.error, issues: limitResult.issues }, 400);
+      }
+      const limit = limitResult.data.limit;
 
       const dbLogs = await getAuditLogsByAction(action, limit);
       const logs = dbLogs.map(mapDbLogToApiLog);
@@ -206,7 +235,11 @@ auditLogRoutes.get(
  */
 auditLogRoutes.get('/all', requireRole('super_admin'), async (c) => {
   try {
-    const limit = parseInt(c.req.query('limit') || '500');
+    const limitResult = validateQuery(limitQuery500Schema, c.req.query());
+    if (!limitResult.success) {
+      return c.json({ error: 'Parámetros inválidos', message: limitResult.error, issues: limitResult.issues }, 400);
+    }
+    const limit = limitResult.data.limit;
 
     const dbLogs = await getAllAuditLogs(limit);
     const logs = dbLogs.map(mapDbLogToApiLog);
@@ -229,13 +262,11 @@ auditLogRoutes.get('/all', requireRole('super_admin'), async (c) => {
  */
 auditLogRoutes.get('/export', requirePermission('view_audit_log'), async (c) => {
   try {
-    const format = (c.req.query('format') || 'json').toLowerCase() as 'csv' | 'json';
-    const from = c.req.query('from') || undefined;
-    const to = c.req.query('to') || undefined;
-    const userId = c.req.query('userId') || undefined;
-    const clinicId = c.req.query('clinicId') || undefined;
-    const action = c.req.query('action') || undefined;
-    const limit = Math.min(parseInt(c.req.query('limit') || '1000', 10) || 1000, 5000);
+    const queryResult = validateQuery(auditLogExportQuerySchema, c.req.query());
+    if (!queryResult.success) {
+      return c.json({ error: 'Parámetros inválidos', message: queryResult.error, issues: queryResult.issues }, 400);
+    }
+    const { format, from, to, userId, clinicId, action, limit } = queryResult.data;
 
     const logs = await getAuditLogsForExport({ from, to, userId, clinicId, action, limit });
 

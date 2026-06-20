@@ -7,6 +7,7 @@ import { AnimatedThemeToggler } from "../ui/animated-theme-toggler";
 import { Dock, DockIcon } from "../ui/dock";
 import { getSidebarSettings, saveSidebarSettings } from "../../lib/ui-preferences";
 import { useAuth, getPostLoginPath, hasActiveSystemAccess } from "../../contexts/auth-context";
+import { useMainWorkspaceWatermark } from "../../hooks/use-main-workspace-watermark";
 
 interface MainLayoutProps {
   children: ReactNode;
@@ -16,6 +17,7 @@ interface MainLayoutProps {
 export const MainLayout = ({ children, title }: MainLayoutProps) => {
   const [location, setLocation] = useLocation();
   const { user } = useAuth();
+  const watermark = useMainWorkspaceWatermark();
   const pendingAccess = user != null && !hasActiveSystemAccess(user);
   const [subscriptionBanner, setSubscriptionBanner] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -152,8 +154,32 @@ export const MainLayout = ({ children, title }: MainLayoutProps) => {
           </div>
         </header>
 
-        {/* Page content - scroll interno, fondo gris oscuro en dark mode */}
-        <main className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden p-3 sm:p-4 md:p-6 lg:p-8 pb-safe bg-gray-50 dark:bg-gray-950">
+        {/* Área principal: marca de agua fija al panel visible; solo el contenido hace scroll */}
+        <div className="relative flex-1 min-h-0 flex flex-col overflow-hidden bg-gray-50 dark:bg-gray-950">
+          {watermark.visible && watermark.image && (
+            <div
+              className="pointer-events-none absolute inset-0 z-0 overflow-hidden"
+              aria-hidden
+            >
+              <img
+                src={watermark.image}
+                alt=""
+                className="absolute object-contain select-none"
+                style={{
+                  left: `${watermark.positionX}%`,
+                  top: `${watermark.positionY}%`,
+                  transform: "translate(-50%, -50%)",
+                  opacity: watermark.opacity,
+                  width: `${watermark.size}%`,
+                  maxWidth: "90vw",
+                  maxHeight: "55vh",
+                  height: "auto",
+                }}
+                draggable={false}
+              />
+            </div>
+          )}
+          <main className="relative z-[1] flex-1 min-h-0 overflow-y-auto overflow-x-hidden p-3 sm:p-4 md:p-6 lg:p-8 pb-safe bg-transparent">
           {pendingAccess && !location.startsWith("/billing") && !location.startsWith("/support") && (
             <div className="mb-4 p-3 rounded-lg bg-amber-50 border border-amber-200 text-amber-900 text-sm flex flex-wrap items-center justify-between gap-2">
               <span>
@@ -181,7 +207,8 @@ export const MainLayout = ({ children, title }: MainLayoutProps) => {
             </div>
           )}
           {children}
-        </main>
+          </main>
+        </div>
       </div>
     </div>
   );

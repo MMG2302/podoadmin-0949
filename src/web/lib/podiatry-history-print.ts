@@ -6,6 +6,7 @@ import {
   getSectionLabel,
   isSectionActive,
 } from "../types/clinical-layout";
+import { buildCustomSectionPrintBlock } from "./custom-section-print";
 import {
   buildAnamnesisPrintBlock,
   buildDigitalAlterationsPrintHtml,
@@ -127,21 +128,7 @@ function buildCustomSectionsPrintHtml(
   const customs = getCustomSections(layout, "print");
   if (customs.length === 0) return "";
   return customs
-    .map((section) => {
-      const val = data?.[section.id];
-      if (section.kind === "custom_text") {
-        if (!val?.text?.trim()) return "";
-        return `<div class="section avoid-break">${h2(section.label)}<div class="block">${withBreaks(val.text)}</div></div>`;
-      }
-      const items = (section.checklistItems ?? [])
-        .map(
-          (item) =>
-            `<li>${val?.checks?.[item] ? "☑" : "☐"} ${esc(item)}</li>`
-        )
-        .join("");
-      if (!items) return "";
-      return `<div class="section avoid-break">${h2(section.label)}<ul class="checklist">${items}</ul></div>`;
-    })
+    .map((section) => buildCustomSectionPrintBlock(section, data?.[section.id]))
     .join("");
 }
 

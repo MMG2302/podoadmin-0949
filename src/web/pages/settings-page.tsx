@@ -3,12 +3,14 @@ import { MainLayout } from "../components/layout/main-layout";
 import { useLanguage } from "../contexts/language-context";
 import { useAuth } from "../contexts/auth-context";
 import { AnimatedThemeToggler } from "../components/ui/animated-theme-toggler";
+import { useDarkMode } from "../hooks/use-dark-mode";
 import { ProfessionalInfo, type Clinic } from "../lib/storage";
 import { api } from "../lib/api-client";
 import { WhatsAppSettingsSection } from "../components/settings/whatsapp-settings-section";
 import { ComplianceSettingsSection } from "../components/settings/compliance-settings-section";
 import { SettingsTabBar, type SettingsTabId } from "../components/settings/settings-tab-bar";
 import { ClinicalLayoutSettingsSection } from "../components/settings/clinical-layout-settings-section";
+import { WorkspaceWatermarkSettingsSection } from "../components/settings/workspace-watermark-settings-section";
 
 interface ClinicInfoForm {
   clinicName: string;
@@ -46,6 +48,7 @@ export async function getLogoForUser(userId: string, clinicId?: string): Promise
 const SettingsPage = () => {
   const { t, language, setLanguage, languageNames, availableLanguages } = useLanguage();
   const { user, getAllUsers } = useAuth();
+  const isDarkMode = useDarkMode();
   
   // Determine logo ownership based on role
   const canUploadLogo = user?.role === "clinic_admin";
@@ -642,9 +645,13 @@ const SettingsPage = () => {
           <h3 className="text-lg font-semibold text-[#1a1a1a] dark:text-white mb-4">{t.settings.theme}</h3>
           <div className="flex items-center gap-4">
             <AnimatedThemeToggler />
-            <span className="text-sm text-gray-500 dark:text-gray-400">{t.settings.darkMode}</span>
+            <span className="text-sm text-gray-500 dark:text-gray-400">
+              {isDarkMode ? t.settings.lightMode : t.settings.darkMode}
+            </span>
           </div>
         </div>
+
+        <WorkspaceWatermarkSettingsSection />
 
         {/* Language Settings */}
         <div className="bg-white dark:bg-[#1a1a1a] rounded-xl border border-gray-100 dark:border-white/10 p-6">

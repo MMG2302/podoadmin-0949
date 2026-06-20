@@ -465,7 +465,14 @@ const sessionFieldsSchema = {
       z.string().max(64),
       z.object({
         text: z.string().max(10000).optional(),
+        shortText: z.string().max(200).optional(),
         checks: z.record(z.string().max(120), z.boolean()).optional(),
+        triState: z.record(z.string().max(120), z.enum(['yes', 'no', 'na']).nullable()).optional(),
+        triStateNotes: z.record(z.string().max(120), z.string().max(500)).optional(),
+        selected: z.string().max(120).nullable().optional(),
+        number: z.number().finite().nullable().optional(),
+        conditionalYes: z.boolean().nullable().optional(),
+        tableRows: z.array(z.array(z.string().max(200)).max(6)).max(10).optional(),
       })
     )
     .optional(),

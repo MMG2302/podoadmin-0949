@@ -1,10 +1,11 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import { Moon, Sun } from "lucide-react";
 import { flushSync } from "react-dom";
 import { cn } from "@/lib/utils";
 import { getThemeSettings, saveThemeSettings } from "@/lib/ui-preferences";
+import { useDarkMode } from "@/hooks/use-dark-mode";
 
 interface AnimatedThemeTogglerProps extends React.ComponentPropsWithoutRef<"button"> {
   duration?: number;
@@ -15,32 +16,17 @@ export const AnimatedThemeToggler = ({
   duration = 400,
   ...props
 }: AnimatedThemeTogglerProps) => {
-  const [isDark, setIsDark] = useState(false);
+  const isDark = useDarkMode();
   const buttonRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     const settings = getThemeSettings();
     const dark = settings.mode === "dark";
-    setIsDark(dark);
     if (dark) {
       document.documentElement.classList.add("dark");
     } else {
       document.documentElement.classList.remove("dark");
     }
-  }, []);
-
-  useEffect(() => {
-    const updateTheme = () => {
-      setIsDark(document.documentElement.classList.contains("dark"));
-    };
-
-    const observer = new MutationObserver(updateTheme);
-    observer.observe(document.documentElement, {
-      attributes: true,
-      attributeFilter: ["class"],
-    });
-
-    return () => observer.disconnect();
   }, []);
 
   const toggleTheme = useCallback(async () => {
@@ -49,7 +35,6 @@ export const AnimatedThemeToggler = ({
     const newTheme = !isDark;
     const applyTheme = () => {
       flushSync(() => {
-        setIsDark(newTheme);
         document.documentElement.classList.toggle("dark", newTheme);
         const settings = getThemeSettings();
         saveThemeSettings({ ...settings, mode: newTheme ? "dark" : "light" });

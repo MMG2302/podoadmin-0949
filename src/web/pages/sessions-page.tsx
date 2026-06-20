@@ -48,6 +48,7 @@ import {
 import { useClinicalLayout } from "../hooks/use-clinical-layout";
 import { SessionCustomSectionsFields } from "../components/sessions/session-custom-sections-fields";
 import {
+  finalizeCustomSections,
   getPodiatryVisibleBlocks,
   getSectionLabel,
   isSectionActive,
@@ -513,6 +514,7 @@ const SessionsPage = () => {
     }
 
     const finalizedExam = finalizePodiatryExamination(formData.podiatryExam);
+    const finalizedCustomSections = finalizeCustomSections(formData.customSections, clinicalLayout);
 
     const sessionData = {
       patientId: formData.patientId,
@@ -530,7 +532,7 @@ const SessionsPage = () => {
       followUpNotes: formData.followUpNotes || null,
       appointmentReason: formData.appointmentReason || null,
       ...finalizedExam,
-      customSections: formData.customSections,
+      customSections: finalizedCustomSections,
     };
 
     try {

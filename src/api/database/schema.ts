@@ -142,6 +142,7 @@ export const clinics = sqliteTable('clinics', {
   establishmentType: text('establishment_type').default('private_office'),
   cofeprisRegistration: text('cofepris_registration'),
   clinicalLayoutJson: text('clinical_layout_json'),
+  workspaceWatermarkJson: text('workspace_watermark_json'),
   createdAt: text('created_at').notNull(),
 });
 
@@ -308,6 +309,7 @@ export const professionalInfo = sqliteTable('professional_info', {
   consentText: text('consent_text'), // Términos y condiciones / consentimiento informado (texto editable por podólogo)
   consentTextVersion: integer('consent_text_version').notNull().default(0),
   clinicalLayoutJson: text('clinical_layout_json'),
+  workspaceWatermarkJson: text('workspace_watermark_json'),
 });
 
 // Licencia profesional (todos los podólogos)

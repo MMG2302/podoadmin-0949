@@ -26,6 +26,11 @@ import { DEFAULT_SESSION_CHECKLIST, type ChecklistItem } from '../utils/session-
 import { sanitizePathParam } from '../utils/sanitization';
 import { mapDbSession } from '../utils/clinical-maps';
 import { resolveClinicalLayoutForUser, saveClinicalLayoutForUser } from '../utils/clinical-layout';
+import {
+  resolveWorkspaceWatermarkForUser,
+  saveWorkspaceWatermarkForUser,
+} from '../utils/workspace-watermark';
+import { validateLogoPayload } from '../utils/logo-upload';
 
 const clinicalRoutes = new Hono();
 clinicalRoutes.use('*', requireAuth, requireActiveSubscription);
@@ -487,13 +492,27 @@ clinicalRoutes.get('/layout', requireClinicalLayoutView(), async (c) => {
   });
 });
 
+const customSectionKindEnum = z.enum([
+  'builtin',
+  'custom_text',
+  'custom_short_text',
+  'custom_checklist',
+  'custom_yes_no_na',
+  'custom_single_choice',
+  'custom_multi_choice',
+  'custom_number',
+  'custom_scale',
+  'custom_conditional',
+  'custom_table',
+]);
+
 const clinicalLayoutSchema = z.object({
   layout: z.object({
     version: z.literal(1),
     sections: z.array(
       z.object({
         id: z.string().max(64),
-        kind: z.enum(['builtin', 'custom_text', 'custom_checklist']),
+        kind: customSectionKindEnum,
         builtinKey: z.string().max(64).optional(),
         label: z.string().max(120),
         hint: z.string().max(300).optional(),
@@ -502,6 +521,12 @@ const clinicalLayoutSchema = z.object({
         showInPrint: z.boolean(),
         order: z.number().int().min(0).max(999),
         checklistItems: z.array(z.string().max(120)).max(30).optional(),
+        options: z.array(z.string().max(120)).max(30).optional(),
+        unit: z.string().max(20).optional(),
+        scaleMax: z.number().int().min(5).max(10).optional(),
+        conditionalPrompt: z.string().max(200).optional(),
+        tableColumns: z.array(z.string().max(80)).max(6).optional(),
+        tableRowCount: z.number().int().min(1).max(10).optional(),
       })
     ).max(80),
   }),
@@ -521,6 +546,69 @@ clinicalRoutes.put('/layout', requireClinicalLayoutEdit(), async (c) => {
   return c.json({
     success: true,
     layout: resolved.layout,
+    scope: resolved.scope,
+    canEdit: resolved.canEdit,
+  });
+});
+
+// --- Marca de agua del área principal ---
+clinicalRoutes.get('/workspace-watermark', async (c) => {
+  const user = c.get('user')!;
+  const resolved = await resolveWorkspaceWatermarkForUser(user);
+  return c.json({
+    success: true,
+    config: resolved.config,
+    displayImage: resolved.displayImage,
+    scope: resolved.scope,
+    scopeId: resolved.scopeId,
+    canEdit: resolved.canEdit,
+  });
+});
+
+const workspaceWatermarkSchema = z.object({
+  config: z.object({
+    enabled: z.boolean(),
+    source: z.enum(['custom', 'clinic_logo']),
+    image: z.string().max(3_000_000).nullable().optional(),
+    opacity: z.number().min(0.03).max(0.3),
+    size: z.number().min(20).max(100),
+    positionX: z.number().min(0).max(100),
+    positionY: z.number().min(0).max(100),
+  }),
+});
+
+clinicalRoutes.put('/workspace-watermark', requireClinicalLayoutEdit(), async (c) => {
+  const user = c.get('user')!;
+  const parsed = workspaceWatermarkSchema.safeParse(await c.req.json().catch(() => ({})));
+  if (!parsed.success) return c.json({ error: 'Datos inválidos', issues: parsed.error.flatten() }, 400);
+
+  const config = parsed.data.config;
+  if (config.source === 'custom' && config.enabled && config.image) {
+    const validation = validateLogoPayload(config.image);
+    if (!validation.valid) {
+      return c.json({ error: validation.error, message: validation.message }, 400);
+    }
+    config.image = validation.sanitized;
+  }
+
+  const result = await saveWorkspaceWatermarkForUser(user, {
+    enabled: config.enabled,
+    source: config.source,
+    image: config.image ?? null,
+    opacity: config.opacity,
+    size: config.size,
+    positionX: config.positionX,
+    positionY: config.positionY,
+  });
+  if (!result.ok) {
+    return c.json({ error: 'forbidden', message: result.error }, 403);
+  }
+
+  const resolved = await resolveWorkspaceWatermarkForUser(user);
+  return c.json({
+    success: true,
+    config: resolved.config,
+    displayImage: resolved.displayImage,
     scope: resolved.scope,
     canEdit: resolved.canEdit,
   });

@@ -13,7 +13,9 @@ Abre http://localhost:5173 e inicia sesión con las cuentas de abajo.
 
 1. Borra `.wrangler/state/v3/d1` (base SQLite local).
 2. Aplica todas las migraciones (`db:migrate`).
-3. Carga seeds: usuarios, clínicas, 3 podólogos extra en Centro Médico (6 total), suscripciones de prueba.
+3. Carga seeds: usuarios, clínicas, 3 podólogos extra en Centro Médico (6 total), suscripciones de prueba, **3 pacientes demo y 2 sesiones** con exploración podológica.
+
+> **Importante:** el reset **borra** pacientes, sesiones y diseños clínicos guardados en la UI. Solo persisten los mocks del seed. Configuración de WhatsApp en plantillas va en `localStorage` del navegador.
 
 ## Cuentas de prueba
 

@@ -53,6 +53,17 @@ export const clinicalSessions = sqliteTable('clinical_sessions', {
   clinicId: text('clinic_id'),
 });
 
+/** Imágenes clínicas por sesión (una fila por foto; evita inflar el JSON de notes). */
+export const clinicalSessionImages = sqliteTable('clinical_session_images', {
+  id: text('id').primaryKey(),
+  sessionId: text('session_id')
+    .notNull()
+    .references(() => clinicalSessions.id, { onDelete: 'cascade' }),
+  sortOrder: integer('sort_order').notNull().default(0),
+  dataUri: text('data_uri').notNull(),
+  createdAt: text('created_at').notNull(),
+});
+
 // Tabla de usuarios creados
 export const createdUsers = sqliteTable('created_users', {
   id: text('id').primaryKey(),
@@ -130,6 +141,7 @@ export const clinics = sqliteTable('clinics', {
   clues: text('clues'),
   establishmentType: text('establishment_type').default('private_office'),
   cofeprisRegistration: text('cofepris_registration'),
+  clinicalLayoutJson: text('clinical_layout_json'),
   createdAt: text('created_at').notNull(),
 });
 
@@ -295,6 +307,7 @@ export const professionalInfo = sqliteTable('professional_info', {
   professionalLicense: text('professional_license').notNull().default(''),
   consentText: text('consent_text'), // Términos y condiciones / consentimiento informado (texto editable por podólogo)
   consentTextVersion: integer('consent_text_version').notNull().default(0),
+  clinicalLayoutJson: text('clinical_layout_json'),
 });
 
 // Licencia profesional (todos los podólogos)
@@ -538,6 +551,7 @@ export const patientReferrals = sqliteTable('patient_referrals', {
 export const inventoryItems = sqliteTable('inventory_items', {
   id: text('id').primaryKey(),
   name: text('name').notNull(),
+  quantity: real('quantity').notNull().default(0),
   unit: text('unit').notNull().default('unidad'),
   clinicId: text('clinic_id'),
   createdBy: text('created_by').notNull(),

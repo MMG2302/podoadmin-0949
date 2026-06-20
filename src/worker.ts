@@ -142,17 +142,21 @@ const workerHandler = {
   },
 };
 
-export default Sentry.withSentry(
-  (cfEnv) => {
-    const dsn = cfEnv.SENTRY_DSN?.trim() || process.env.SENTRY_DSN?.trim();
-    if (!dsn) return undefined;
-    const isProd = process.env.NODE_ENV === 'production';
-    return {
-      dsn,
-      environment: process.env.NODE_ENV || 'development',
-      tracesSampleRate: isProd ? 0.15 : 1.0,
-      sendDefaultPii: false,
-    };
-  },
-  workerHandler
-);
+const useSentryInWorker =
+  typeof process !== 'undefined' && process.env.NODE_ENV === 'production';
+
+export default useSentryInWorker
+  ? Sentry.withSentry(
+      (cfEnv) => {
+        const dsn = cfEnv.SENTRY_DSN?.trim() || process.env.SENTRY_DSN?.trim();
+        if (!dsn) return undefined;
+        return {
+          dsn,
+          environment: process.env.NODE_ENV || 'production',
+          tracesSampleRate: 0.15,
+          sendDefaultPii: false,
+        };
+      },
+      workerHandler
+    )
+  : workerHandler;

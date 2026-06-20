@@ -124,6 +124,35 @@ complianceRoutes.get('/evidence/summary', requireRole('super_admin', 'admin'), a
   });
 });
 
+complianceRoutes.get('/consent-signatures/session/:sessionId', requirePermission('view_sessions', 'manage_patients'), async (c) => {
+  const sessionId = sanitizePathParam(c.req.param('sessionId'), 64);
+  if (!sessionId) return c.json({ error: 'ID de sesión inválido' }, 400);
+
+  const rows = await database
+    .select()
+    .from(patientConsentSignatures)
+    .where(eq(patientConsentSignatures.sessionId, sessionId))
+    .orderBy(desc(patientConsentSignatures.signedAt))
+    .limit(1);
+
+  if (!rows.length) {
+    return c.json({ success: true, signature: null });
+  }
+
+  const row = rows[0];
+  return c.json({
+    success: true,
+    signature: {
+      id: row.id,
+      patientId: row.patientId,
+      sessionId: row.sessionId,
+      signedAt: row.signedAt,
+      signatureData: row.signatureData,
+      signedByName: row.signedByName,
+    },
+  });
+});
+
 complianceRoutes.post('/consent-signatures', requirePermission('manage_patients'), async (c) => {
   const user = c.get('user')!;
   const schema = z.object({

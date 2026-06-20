@@ -2,7 +2,11 @@ import { Hono } from 'hono';
 import { eq, desc } from 'drizzle-orm';
 import { z } from 'zod';
 import { requireAuth } from '../middleware/auth';
-import { requirePermission } from '../middleware/authorization';
+import {
+  requireClinicalLayoutEdit,
+  requireClinicalLayoutView,
+  requirePermission,
+} from '../middleware/authorization';
 import { requireActiveSubscription } from '../middleware/subscription';
 import { database } from '../database';
 import {
@@ -21,6 +25,7 @@ import {
 import { DEFAULT_SESSION_CHECKLIST, type ChecklistItem } from '../utils/session-checklist-defaults';
 import { sanitizePathParam } from '../utils/sanitization';
 import { mapDbSession } from '../utils/clinical-maps';
+import { resolveClinicalLayoutForUser, saveClinicalLayoutForUser } from '../utils/clinical-layout';
 
 const clinicalRoutes = new Hono();
 clinicalRoutes.use('*', requireAuth, requireActiveSubscription);
@@ -196,13 +201,18 @@ clinicalRoutes.get('/inventory', requirePermission('manage_sessions', 'view_sess
 
 clinicalRoutes.post('/inventory', requirePermission('manage_sessions'), async (c) => {
   const user = c.get('user')!;
-  const schema = z.object({ name: z.string().min(1).max(120), unit: z.string().max(32).optional() });
+  const schema = z.object({
+    name: z.string().min(1).max(120),
+    quantity: z.number().min(0).max(999999).optional(),
+    unit: z.string().max(32).optional(),
+  });
   const parsed = schema.safeParse(await c.req.json().catch(() => ({})));
   if (!parsed.success) return c.json({ error: 'Datos inválidos' }, 400);
   const id = crypto.randomUUID();
   await database.insert(inventoryItems).values({
     id,
     name: parsed.data.name,
+    quantity: parsed.data.quantity ?? 1,
     unit: parsed.data.unit ?? 'unidad',
     clinicId: user.clinicId ?? null,
     createdBy: user.userId,
@@ -461,6 +471,58 @@ ${clinicHeader}
     sessionCount: sessions.length,
     evolutionNoteCount: evolutionRows.length,
     html,
+  });
+});
+
+// --- Diseño de historia clínica (secciones activables / personalizadas) ---
+clinicalRoutes.get('/layout', requireClinicalLayoutView(), async (c) => {
+  const user = c.get('user')!;
+  const resolved = await resolveClinicalLayoutForUser(user);
+  return c.json({
+    success: true,
+    layout: resolved.layout,
+    scope: resolved.scope,
+    scopeId: resolved.scopeId,
+    canEdit: resolved.canEdit,
+  });
+});
+
+const clinicalLayoutSchema = z.object({
+  layout: z.object({
+    version: z.literal(1),
+    sections: z.array(
+      z.object({
+        id: z.string().max(64),
+        kind: z.enum(['builtin', 'custom_text', 'custom_checklist']),
+        builtinKey: z.string().max(64).optional(),
+        label: z.string().max(120),
+        hint: z.string().max(300).optional(),
+        enabled: z.boolean(),
+        showInSession: z.boolean(),
+        showInPrint: z.boolean(),
+        order: z.number().int().min(0).max(999),
+        checklistItems: z.array(z.string().max(120)).max(30).optional(),
+      })
+    ).max(80),
+  }),
+});
+
+clinicalRoutes.put('/layout', requireClinicalLayoutEdit(), async (c) => {
+  const user = c.get('user')!;
+  const parsed = clinicalLayoutSchema.safeParse(await c.req.json().catch(() => ({})));
+  if (!parsed.success) return c.json({ error: 'Datos inválidos', issues: parsed.error.flatten() }, 400);
+
+  const result = await saveClinicalLayoutForUser(user, parsed.data.layout);
+  if (!result.ok) {
+    return c.json({ error: 'forbidden', message: result.error }, 403);
+  }
+
+  const resolved = await resolveClinicalLayoutForUser(user);
+  return c.json({
+    success: true,
+    layout: resolved.layout,
+    scope: resolved.scope,
+    canEdit: resolved.canEdit,
   });
 });
 

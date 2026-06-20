@@ -13,8 +13,12 @@ type Tab = "templates" | "inventory" | "referrals";
 interface InventoryItem {
   id: string;
   name: string;
+  quantity: number;
   unit: string;
 }
+
+const formatInventoryQuantity = (qty: number): string =>
+  Number.isInteger(qty) ? String(qty) : qty.toLocaleString("es-ES", { maximumFractionDigits: 2 });
 
 interface Referral {
   id: string;
@@ -33,6 +37,8 @@ const ClinicalToolsPage = () => {
   const [referrals, setReferrals] = useState<Referral[]>([]);
   const [templateName, setTemplateName] = useState("");
   const [inventoryName, setInventoryName] = useState("");
+  const [inventoryQuantity, setInventoryQuantity] = useState("1");
+  const [inventoryUnit, setInventoryUnit] = useState("unidad");
   const [refPatientId, setRefPatientId] = useState("");
   const [refTo, setRefTo] = useState("");
   const [refReason, setRefReason] = useState("");
@@ -125,9 +131,20 @@ const ClinicalToolsPage = () => {
 
   const createInventory = async () => {
     if (!inventoryName.trim()) return;
-    const res = await api.post("/clinical/inventory", { name: inventoryName.trim() });
+    const quantity = Number.parseFloat(inventoryQuantity.replace(",", "."));
+    if (!Number.isFinite(quantity) || quantity < 0) {
+      setMessage("Indique una cantidad válida (0 o más).");
+      return;
+    }
+    const res = await api.post("/clinical/inventory", {
+      name: inventoryName.trim(),
+      quantity,
+      unit: inventoryUnit.trim() || "unidad",
+    });
     if (res.success) {
       setInventoryName("");
+      setInventoryQuantity("1");
+      setInventoryUnit("unidad");
       setMessage("Material registrado");
       loadAll();
     } else setMessage(res.error || "Error");
@@ -275,26 +292,45 @@ const ClinicalToolsPage = () => {
 
       {tab === "inventory" && (
         <div className="space-y-4">
-          <div className="flex gap-2">
+          <div className="flex flex-col sm:flex-row gap-2">
             <input
               value={inventoryName}
               onChange={(e) => setInventoryName(e.target.value)}
               placeholder="Nombre del material"
               className="flex-1 px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 text-[#1a1a1a] dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500"
             />
+            <input
+              type="number"
+              min={0}
+              step="any"
+              value={inventoryQuantity}
+              onChange={(e) => setInventoryQuantity(e.target.value)}
+              placeholder="Cantidad"
+              aria-label="Cantidad"
+              className="w-full sm:w-28 px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 text-[#1a1a1a] dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500"
+            />
+            <input
+              value={inventoryUnit}
+              onChange={(e) => setInventoryUnit(e.target.value)}
+              placeholder="Unidad"
+              aria-label="Unidad"
+              className="w-full sm:w-32 px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 text-[#1a1a1a] dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500"
+            />
             <button
               type="button"
               onClick={createInventory}
-              className="px-4 py-2 bg-[#1a1a1a] dark:bg-white dark:text-[#1a1a1a] text-white rounded-lg text-sm"
+              className="px-4 py-2 bg-[#1a1a1a] dark:bg-white dark:text-[#1a1a1a] text-white rounded-lg text-sm shrink-0"
             >
               Añadir
             </button>
           </div>
           <ul className="divide-y divide-gray-100 dark:divide-gray-800 bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800">
             {inventory.map((i) => (
-              <li key={i.id} className="p-4 text-[#1a1a1a] dark:text-white">
-                {i.name}{" "}
-                <span className="text-gray-400 dark:text-gray-500 text-sm">({i.unit})</span>
+              <li key={i.id} className="p-4 flex flex-wrap items-baseline justify-between gap-2 text-[#1a1a1a] dark:text-white">
+                <span className="font-medium">{i.name}</span>
+                <span className="text-sm text-gray-500 dark:text-gray-400">
+                  {formatInventoryQuantity(i.quantity ?? 0)} {i.unit}
+                </span>
               </li>
             ))}
             {inventory.length === 0 && (

@@ -7,6 +7,8 @@ import { ProfessionalInfo, type Clinic } from "../lib/storage";
 import { api } from "../lib/api-client";
 import { WhatsAppSettingsSection } from "../components/settings/whatsapp-settings-section";
 import { ComplianceSettingsSection } from "../components/settings/compliance-settings-section";
+import { SettingsTabBar, type SettingsTabId } from "../components/settings/settings-tab-bar";
+import { ClinicalLayoutSettingsSection } from "../components/settings/clinical-layout-settings-section";
 
 interface ClinicInfoForm {
   clinicName: string;
@@ -53,6 +55,16 @@ const SettingsPage = () => {
   const isReceptionist = user?.role === "receptionist";
   const canConfigureWhatsApp =
     user?.role === "podiatrist" || user?.role === "clinic_admin";
+  const showClinicalTab =
+    user?.role === "podiatrist" ||
+    user?.role === "clinic_admin" ||
+    user?.role === "receptionist";
+  const showClinicTab =
+    user?.role === "clinic_admin" ||
+    !!isPodiatristWithClinic ||
+    !!isPodiatristIndependent;
+
+  const [activeTab, setActiveTab] = useState<SettingsTabId>("general");
   
   const [userClinic, setUserClinic] = useState<Clinic | null>(null);
   const [saved, setSaved] = useState(false);
@@ -607,7 +619,24 @@ const SettingsPage = () => {
 
   return (
     <MainLayout title={t.settings.title} >
-      <div className="max-w-2xl space-y-8">
+      <div className={`${activeTab === "clinical" ? "max-w-5xl" : "max-w-2xl"} space-y-8`}>
+        <SettingsTabBar
+          active={activeTab}
+          onChange={setActiveTab}
+          tabs={[
+            { id: "general", label: "General" },
+            { id: "clinical", label: "Historia clínica", visible: showClinicalTab },
+            { id: "integrations", label: "Integraciones", visible: canConfigureWhatsApp },
+            { id: "clinic", label: "Clínica", visible: showClinicTab },
+          ]}
+        />
+
+        {activeTab === "clinical" && showClinicalTab && <ClinicalLayoutSettingsSection />}
+
+        {activeTab === "integrations" && canConfigureWhatsApp && <WhatsAppSettingsSection />}
+
+        {activeTab === "general" && (
+        <>
         {/* Theme - todos los usuarios */}
         <div className="bg-white dark:bg-[#1a1a1a] rounded-xl border border-gray-100 dark:border-white/10 p-6">
           <h3 className="text-lg font-semibold text-[#1a1a1a] dark:text-white mb-4">{t.settings.theme}</h3>
@@ -637,9 +666,6 @@ const SettingsPage = () => {
             ))}
           </div>
         </div>
-
-        {/* WhatsApp Business — solo podólogo y clinic_admin */}
-        {canConfigureWhatsApp && <WhatsAppSettingsSection />}
 
         {/* Profile Settings */}
         <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-100 dark:border-gray-800 p-6">
@@ -878,13 +904,43 @@ const SettingsPage = () => {
           );
         })()}
 
+        {/* Info for Super Admin and Admin - no clinic logo */}
+        {isAdminRole && (
+          <div className="bg-gray-50 rounded-xl border border-gray-100 p-6">
+            <div className="flex items-start gap-3">
+              <svg className="w-5 h-5 text-gray-400 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <div>
+                <p className="text-sm text-gray-600 font-medium">Logo de clínica</p>
+                <p className="text-sm text-gray-500 mt-1">
+                  Los logos de clínica son gestionados por los administradores de cada clínica. Como {user?.role === "super_admin" ? "Super Administrador" : "Administrador"}, no necesitas un logo personal.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Save Confirmation */}
+        {saved && (
+          <div className="flex items-center gap-2 text-green-600 font-medium">
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+            </svg>
+            {t.settings.settingsSaved}
+          </div>
+        )}
+        </>
+        )}
+
+        {activeTab === "clinic" && showClinicTab && (
+        <>
         {/* Clinic Logo Upload - Only for Clinic Admin and Podiatrist with clinic */}
         {(canUploadLogo || isPodiatristWithClinic) && (
           <div className="bg-white rounded-xl border border-gray-100 p-6">
             <h3 className="text-lg font-semibold text-[#1a1a1a] mb-2">Logo de la clínica</h3>
-            
+
             {isPodiatristWithClinic ? (
-              // Podiatrists can only view their clinic's logo (read-only)
               <div className="space-y-4">
                 <div className="bg-blue-50 border border-blue-100 rounded-lg p-4 flex items-start gap-3">
                   <svg className="w-5 h-5 text-blue-500 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -1897,34 +1953,9 @@ const SettingsPage = () => {
             </div>
           </div>
         )}
-        
-        {/* Info for Super Admin and Admin - no clinic logo */}
-        {isAdminRole && (
-          <div className="bg-gray-50 rounded-xl border border-gray-100 p-6">
-            <div className="flex items-start gap-3">
-              <svg className="w-5 h-5 text-gray-400 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-              <div>
-                <p className="text-sm text-gray-600 font-medium">Logo de clínica</p>
-                <p className="text-sm text-gray-500 mt-1">
-                  Los logos de clínica son gestionados por los administradores de cada clínica. Como {user?.role === "super_admin" ? "Super Administrador" : "Administrador"}, no necesitas un logo personal.
-                </p>
-              </div>
-            </div>
-          </div>
-        )}
 
         <ComplianceSettingsSection />
-
-        {/* Save Confirmation */}
-        {saved && (
-          <div className="flex items-center gap-2 text-green-600 font-medium">
-            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-            </svg>
-            {t.settings.settingsSaved}
-          </div>
+        </>
         )}
       </div>
     </MainLayout>

@@ -33,6 +33,8 @@ export interface Patient {
   createdAt: string;
   updatedAt: string;
   createdBy: string;
+  /** Presente cuando el API lo expone (campañas / filtros por clínica) */
+  clinicId?: string | null;
   clinicalAlerts?: ClinicalAlert[];
 }
 
@@ -62,6 +64,19 @@ export type AppointmentReason =
   | "follow_up"
   | "other";
 
+export type { CustomSectionsData } from "./clinical-layout";
+export type { OnychopathyEntry, OnychopathyId, PodiatryArchType, PodiatryFootType } from "./podiatry";
+import type { CustomSectionsData } from "./clinical-layout";
+import type {
+  DigitalAlterationEntry,
+  HelomaEntry,
+  LimbAssessmentEntry,
+  OnychopathyEntry,
+  PodiatryArchType,
+  PodiatryFootType,
+  SweatDisorderEntry,
+} from "./podiatry";
+
 export interface ClinicalSession {
   id: string;
   patientId: string;
@@ -72,6 +87,17 @@ export interface ClinicalSession {
   physicalExamination: string;
   diagnosis: string;
   treatmentPlan: string;
+  /** Morfología podológica (selector en sesión; prioridad en impresión) */
+  footType: PodiatryFootType | null;
+  archType: PodiatryArchType | null;
+  /** Exploración podológica estructurada */
+  sweatDisorders: SweatDisorderEntry[];
+  limbAssessment: LimbAssessmentEntry[];
+  helomas: HelomaEntry[];
+  digitalAlterations: DigitalAlterationEntry[];
+  onychopathies: OnychopathyEntry[];
+  /** Secciones personalizadas definidas en el diseñador clínico */
+  customSections?: CustomSectionsData;
   images: string[];
   createdAt: string;
   updatedAt: string;

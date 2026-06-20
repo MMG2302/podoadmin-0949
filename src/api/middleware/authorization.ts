@@ -128,6 +128,29 @@ export function requirePermission(...permissions: Permission[]) {
   });
 }
 
+/** Roles que pueden ver el diseño clínico (Configuración → Historia clínica). */
+const CLINICAL_LAYOUT_VIEW_ROLES: UserRole[] = [
+  'super_admin',
+  'clinic_admin',
+  'podiatrist',
+  'receptionist',
+];
+
+/** Roles que pueden intentar guardar diseño (la lógica de negocio valida el alcance). */
+const CLINICAL_LAYOUT_EDIT_ROLES: UserRole[] = [
+  'super_admin',
+  'clinic_admin',
+  'podiatrist',
+];
+
+export function requireClinicalLayoutView() {
+  return requireRole(...CLINICAL_LAYOUT_VIEW_ROLES);
+}
+
+export function requireClinicalLayoutEdit() {
+  return requireRole(...CLINICAL_LAYOUT_EDIT_ROLES);
+}
+
 /**
  * Middleware que verifica que el usuario pertenece a la misma clínica
  * Útil para operaciones que requieren acceso a datos de clínica

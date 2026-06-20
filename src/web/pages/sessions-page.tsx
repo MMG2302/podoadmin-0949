@@ -11,20 +11,48 @@ import { useRefreshOnFocus } from "../hooks/use-refresh-on-focus";
 const canCreatePrescriptions = (role: string | undefined): boolean => {
   return role === "podiatrist" || role === "clinic_admin";
 };
+const canManageClinicalSession = (role: string | undefined): boolean =>
+  role === "podiatrist" || role === "clinic_admin" || role === "super_admin";
 import type { ClinicalSession, Patient, AppointmentReason } from "../types/clinical";
+import {
+  normalizeDigitalAlterations,
+  normalizeHelomas,
+  normalizeLimbAssessment,
+  normalizeOnychopathies,
+  normalizeSweatDisorders,
+} from "../types/podiatry";
 import type { Prescription } from "../types/prescription";
 import { postAuditLog } from "../lib/audit-client";
 import { api } from "../lib/api-client";
 import { compressImageForSession } from "../lib/image-compress";
 import {
+  openPodiatryHistoryPrint,
+  type ClinicPrintInfo,
+  type ProfessionalPrintInfo,
+} from "../lib/podiatry-history-print";
+import {
   SessionChecklistPanel,
   SessionPatientSignature,
 } from "../components/sessions/session-clinical-extras";
+import {
+  PodiatryExaminationFields,
+  createDefaultPodiatryExamination,
+  finalizePodiatryExamination,
+  type PodiatryExaminationValue,
+} from "../components/sessions/podiatry-examination-fields";
 import {
   applySessionTemplateFields,
   sessionFormHasClinicalContent,
   type SessionTemplate,
 } from "../lib/session-templates";
+import { useClinicalLayout } from "../hooks/use-clinical-layout";
+import { SessionCustomSectionsFields } from "../components/sessions/session-custom-sections-fields";
+import {
+  getPodiatryVisibleBlocks,
+  getSectionLabel,
+  isSectionActive,
+  type CustomSectionsData,
+} from "../types/clinical-layout";
 
 interface SessionFormData {
   patientId: string;
@@ -34,10 +62,24 @@ interface SessionFormData {
   physicalExamination: string;
   diagnosis: string;
   treatmentPlan: string;
+  podiatryExam: PodiatryExaminationValue;
+  customSections: CustomSectionsData;
   images: string[];
   nextAppointmentDate: string;
   followUpNotes: string;
   appointmentReason: AppointmentReason | "";
+}
+
+function sessionToPodiatryExam(session: ClinicalSession): PodiatryExaminationValue {
+  return {
+    footType: session.footType ?? null,
+    archType: session.archType ?? null,
+    sweatDisorders: normalizeSweatDisorders(session.sweatDisorders),
+    limbAssessment: normalizeLimbAssessment(session.limbAssessment),
+    helomas: normalizeHelomas(session.helomas),
+    digitalAlterations: normalizeDigitalAlterations(session.digitalAlterations),
+    onychopathies: normalizeOnychopathies(session.onychopathies),
+  };
 }
 
 const emptyForm: SessionFormData = {
@@ -48,6 +90,8 @@ const emptyForm: SessionFormData = {
   physicalExamination: "",
   diagnosis: "",
   treatmentPlan: "",
+  podiatryExam: createDefaultPodiatryExamination(),
+  customSections: {},
   images: [],
   nextAppointmentDate: "",
   followUpNotes: "",
@@ -67,6 +111,13 @@ const SessionsPage = () => {
   const { t } = useLanguage();
   const { user } = useAuth();
   const { isSuperAdmin, isPodiatrist, isClinicAdmin } = usePermissions();
+  const { layout: clinicalLayout } = useClinicalLayout();
+  const podiatryVisibleBlocks = useMemo(
+    () => getPodiatryVisibleBlocks(clinicalLayout, "session"),
+    [clinicalLayout]
+  );
+  const showClinicalSection = (id: Parameters<typeof isSectionActive>[1]) =>
+    isSectionActive(clinicalLayout, id, "session");
   const [location, setLocation] = useLocation();
 
   // Leer siempre la query y el path reales del navegador (wouter no incluye la query en location)
@@ -145,6 +196,20 @@ const SessionsPage = () => {
       setSessionPrescriptions([]);
     }
   }, []);
+
+  const openSessionDetail = useCallback(
+    async (session: ClinicalSession) => {
+      const res = await api.get<{ success: boolean; session: ClinicalSession }>(
+        `/sessions/${session.id}`
+      );
+      const full =
+        res.success && res.data?.session ? res.data.session : session;
+      setSelectedSession(full);
+      setSessions((prev) => prev.map((s) => (s.id === full.id ? full : s)));
+      void loadSessionPrescriptions(full);
+    },
+    [loadSessionPrescriptions]
+  );
 
   const refreshData = useCallback(() => {
     void loadPatients();
@@ -233,10 +298,9 @@ const SessionsPage = () => {
       nextAppointmentDate: session.nextAppointmentDate || "",
       followUpNotes: session.followUpNotes || "",
       appointmentReason: session.appointmentReason || "",
+      podiatryExam: sessionToPodiatryExam(session),
     });
     setShowForm(true);
-
-    // Scroll to the form
     setTimeout(() => {
       const form = document.querySelector('[data-session-form]');
       if (form) {
@@ -255,14 +319,12 @@ const SessionsPage = () => {
     if (sessionIdFromUrl) {
       const session = sessions.find((s) => s.id === sessionIdFromUrl);
       if (session) {
-        setSelectedSession(session);
-        loadSessionPrescriptions(session);
+        void openSessionDetail(session);
       }
     } else {
-      // Clear selected session if no id in URL
       setSelectedSession(null);
     }
-  }, [sessionIdFromUrl, sessions, loadSessionPrescriptions]);
+  }, [sessionIdFromUrl, sessions, openSessionDetail]);
 
   useEffect(() => {
     if (isClinicAdmin) {
@@ -450,6 +512,8 @@ const SessionsPage = () => {
       return;
     }
 
+    const finalizedExam = finalizePodiatryExamination(formData.podiatryExam);
+
     const sessionData = {
       patientId: formData.patientId,
       sessionDate: formData.sessionDate,
@@ -465,6 +529,8 @@ const SessionsPage = () => {
       nextAppointmentDate: formData.nextAppointmentDate || null,
       followUpNotes: formData.followUpNotes || null,
       appointmentReason: formData.appointmentReason || null,
+      ...finalizedExam,
+      customSections: formData.customSections,
     };
 
     try {
@@ -543,23 +609,30 @@ const SessionsPage = () => {
     }
   };
 
-  const handleEdit = (session: ClinicalSession) => {
+  const handleEdit = async (session: ClinicalSession) => {
     if (session.status === "completed") return;
-    
-    setEditingSession(session);
+
+    const res = await api.get<{ success: boolean; session: ClinicalSession }>(
+      `/sessions/${session.id}`
+    );
+    const s = res.success && res.data?.session ? res.data.session : session;
+
+    setEditingSession(s);
     setSelectedTemplateId("");
     setFormData({
-      patientId: session.patientId,
-      sessionDate: session.sessionDate,
-      clinicalNotes: session.clinicalNotes,
-      anamnesis: session.anamnesis,
-      physicalExamination: session.physicalExamination,
-      diagnosis: session.diagnosis,
-      treatmentPlan: session.treatmentPlan,
-      images: session.images,
-      nextAppointmentDate: session.nextAppointmentDate || "",
-      followUpNotes: session.followUpNotes || "",
-      appointmentReason: session.appointmentReason || "",
+      patientId: s.patientId,
+      sessionDate: s.sessionDate,
+      clinicalNotes: s.clinicalNotes,
+      anamnesis: s.anamnesis,
+      physicalExamination: s.physicalExamination,
+      diagnosis: s.diagnosis,
+      treatmentPlan: s.treatmentPlan,
+      images: s.images ?? [],
+      nextAppointmentDate: s.nextAppointmentDate || "",
+      followUpNotes: s.followUpNotes || "",
+      appointmentReason: s.appointmentReason || "",
+      podiatryExam: sessionToPodiatryExam(s),
+      customSections: s.customSections ?? {},
     });
     setShowForm(true);
   };
@@ -656,179 +729,38 @@ const SessionsPage = () => {
 
     void api.post("/compliance/record-access", { patientId: patient.id, action: "print" });
     
-    // Get clinic logo and full info based on user's clinic membership
     const clinicLogo = await loadLogoForCurrentUser();
-    type ClinicRow = {
-      clinicName?: string;
-      legalName?: string;
-      rfc?: string;
-      clues?: string;
-      cofeprisRegistration?: string;
-      phone?: string;
-      email?: string;
-      address?: string;
-      city?: string;
-      postalCode?: string;
-      licenseNumber?: string;
-    };
-    type ProfRow = { name?: string; phone?: string; email?: string; address?: string; city?: string; postalCode?: string; licenseNumber?: string; professionalLicense?: string; license?: string };
-    let clinic: ClinicRow | null = null;
+    let clinic: ClinicPrintInfo | null = null;
     if (user?.clinicId) {
-      const cr = await api.get<{ success?: boolean; clinic?: ClinicRow }>(`/clinics/${user.clinicId}`);
+      const cr = await api.get<{ success?: boolean; clinic?: ClinicPrintInfo }>(`/clinics/${user.clinicId}`);
       if (cr.success && cr.data?.clinic) clinic = cr.data.clinic;
     }
-    let profInfo: ProfRow | null = null;
+    let profInfo: ProfessionalPrintInfo | null = null;
     let podiatristLicense: string | null = null;
     if (user?.id) {
-      const pr = await api.get<{ success?: boolean; professional?: ProfRow; license?: string }>(`/professionals/${user.id}`);
+      const pr = await api.get<{ success?: boolean; professional?: ProfessionalPrintInfo; license?: string }>(`/professionals/${user.id}`);
       if (pr.success) {
-        profInfo = pr.data?.professional ?? (pr.data as ProfRow);
+        profInfo = pr.data?.professional ?? (pr.data as ProfessionalPrintInfo);
         podiatristLicense = pr.data?.license || profInfo?.professionalLicense || profInfo?.license || null;
       }
     }
-    
-    // Build clinic contact info for header
-    const clinicName = clinic?.legalName || clinic?.clinicName || "";
-    const clinicPhone = clinic?.phone || "";
-    const clinicEmail = clinic?.email || "";
-    const clinicAddress = clinic?.address 
-      ? `${clinic.address}${clinic.city ? `, ${clinic.city}` : ""}${clinic.postalCode ? ` ${clinic.postalCode}` : ""}`
-      : "";
-    const hasClinicInfo = !!(clinicName || clinicPhone || clinicEmail || clinicAddress);
-    const clinicLicenseNumber = clinic?.licenseNumber || "";
-    
-    // For independent doctors, get their professional info
-    const isIndependent = !clinic;
-    
-    const printWindow = window.open("", "_blank");
-    if (!printWindow) return;
-    
-    printWindow.document.write(`
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <title>Historia Clínica - ${patient.firstName} ${patient.lastName}</title>
-        <style>
-          body { font-family: Arial, sans-serif; padding: 40px; max-width: 800px; margin: 0 auto; color: #1a1a1a; }
-          h1 { font-size: 22px; margin-bottom: 4px; }
-          h2 { font-size: 16px; margin-top: 20px; margin-bottom: 10px; border-bottom: 1px solid #ddd; padding-bottom: 4px; color: #333; }
-          .header { border-bottom: 2px solid #1a1a1a; padding-bottom: 16px; margin-bottom: 16px; }
-          .header-content { display: flex; align-items: flex-start; gap: 20px; }
-          .header-logo { max-height: 60px; max-width: 160px; object-fit: contain; }
-          .header-text { flex: 1; }
-          .clinic-contact { font-size: 12px; color: #666; margin-top: 4px; line-height: 1.4; }
-          .folio-bar { background: #f5f5f5; padding: 10px 16px; margin: 12px 0; border-radius: 4px; text-align: center; }
-          .folio-bar span.label { font-size: 12px; color: #666; margin-right: 8px; }
-          .folio-bar span.value { font-size: 16px; font-weight: bold; color: #1a1a1a; letter-spacing: 1px; }
-          .patient-header { display: flex; align-items: center; gap: 16px; margin-bottom: 12px; }
-          .patient-name { font-size: 18px; font-weight: 600; }
-          .patient-folio { font-size: 12px; color: #666; background: #f0f0f0; padding: 2px 8px; border-radius: 4px; }
-          .section { margin-bottom: 14px; }
-          .label { font-weight: bold; color: #555; }
-          .value { margin-top: 4px; }
-          .patient-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 14px; }
-          .patient-grid p { margin: 0; }
-          .footer { margin-top: 40px; padding-top: 16px; border-top: 1px solid #ddd; font-size: 11px; color: #666; }
-          .images { display: flex; gap: 16px; margin-top: 12px; }
-          .images img { max-width: 280px; max-height: 180px; border: 1px solid #ddd; border-radius: 4px; }
-          @media print { 
-            body { padding: 20px; } 
-            .folio-bar { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-          }
-        </style>
-      </head>
-      <body>
-        <div class="header">
-          <div class="header-content">
-            ${clinicLogo ? `<img src="${clinicLogo}" alt="Logo" class="header-logo" />` : ''}
-            <div class="header-text">
-              ${isIndependent 
-                ? `<h1>${profInfo?.name || user?.name || "Profesional Independiente"}</h1>
-                   ${podiatristLicense ? `<p style="margin: 0; color: #333; font-size: 13px; font-weight: 500;">Lic. ${podiatristLicense}</p>` : ''}
-                   <p style="margin: 0; color: #666; font-size: 14px;">Historia Clínica Podológica</p>
-                   ${profInfo ? `
-                     <div class="clinic-contact">
-                       ${profInfo.phone ? `<div>Tel: ${profInfo.phone}</div>` : ''}
-                       ${profInfo.email ? `<div>Email: ${profInfo.email}</div>` : ''}
-                       ${profInfo.address ? `<div>${profInfo.address}${profInfo.city ? `, ${profInfo.city}` : ""}${profInfo.postalCode ? ` ${profInfo.postalCode}` : ""}</div>` : ''}
-                       ${profInfo.licenseNumber ? `<div>Reg. Sanitario: ${profInfo.licenseNumber}</div>` : ''}
-                     </div>
-                   ` : ''}`
-                : `<h1>${clinicName}</h1>
-                   ${clinicLicenseNumber ? `<p style="margin: 0; color: #555; font-size: 12px;">Reg. Sanitario: ${clinicLicenseNumber}</p>` : ''}
-                   ${clinic?.rfc ? `<p style="margin: 0; color: #555; font-size: 11px;">RFC: ${clinic.rfc}</p>` : ''}
-                   ${clinic?.clues ? `<p style="margin: 0; color: #555; font-size: 11px;">CLUES: ${clinic.clues}</p>` : ''}
-                   ${clinic?.cofeprisRegistration ? `<p style="margin: 0; color: #555; font-size: 11px;">COFEPRIS: ${clinic.cofeprisRegistration}</p>` : ''}
-                   ${hasClinicInfo ? `
-                     <div class="clinic-contact">
-                       ${clinicPhone ? `<div>Tel: ${clinicPhone}</div>` : ''}
-                       ${clinicEmail ? `<div>Email: ${clinicEmail}</div>` : ''}
-                       ${clinicAddress ? `<div>${clinicAddress}</div>` : ''}
-                     </div>
-                   ` : ''}
-                  `
-              }
-            </div>
-          </div>
-          <!-- Folio prominently displayed below header -->
-          <div class="folio-bar">
-            <span class="label">FOLIO:</span>
-            <span class="value">${patient.folio || "—"}</span>
-          </div>
-        </div>
-        
-        <h2>Datos del Paciente</h2>
-        <div class="section">
-          <div class="patient-header">
-            <span class="patient-name">${patient.firstName} ${patient.lastName}</span>
-            <span class="patient-folio">Folio: ${patient.folio || "—"}</span>
-          </div>
-          <div class="patient-grid">
-            <p><span class="label">DNI/NIE:</span> ${patient.idNumber}</p>
-            ${patient.curp ? `<p><span class="label">CURP:</span> ${patient.curp}</p>` : ''}
-            <p><span class="label">Fecha de nacimiento:</span> ${new Date(patient.dateOfBirth).toLocaleDateString("es-ES")}</p>
-            <p><span class="label">Teléfono:</span> ${patient.phone}</p>
-            <p><span class="label">Email:</span> ${patient.email || "—"}</p>
-          </div>
-        </div>
-        
-        <p style="font-size: 13px; color: #666; margin-bottom: 16px;">
-          <strong>Fecha de sesión:</strong> ${new Date(session.sessionDate).toLocaleDateString("es-ES", { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
-        </p>
-        
-        <h2>Anamnesis</h2>
-        <div class="section value">${session.anamnesis || "N/A"}</div>
-        
-        <h2>Exploración Física</h2>
-        <div class="section value">${session.physicalExamination || "N/A"}</div>
-        
-        <h2>Diagnóstico Podológico</h2>
-        <div class="section value">${session.diagnosis || "N/A"}</div>
-        
-        <h2>Plan de Tratamiento</h2>
-        <div class="section value">${session.treatmentPlan || "N/A"}</div>
-        
-        <h2>Notas Clínicas</h2>
-        <div class="section value">${session.clinicalNotes || "N/A"}</div>
-        
-        ${session.images.length > 0 ? `
-          <h2>Imágenes Clínicas</h2>
-          <div class="images">
-            ${session.images.map((img) => `<img src="${img}" alt="Imagen clínica" />`).join("")}
-          </div>
-        ` : ""}
-        
-        <div class="footer">
-          <p><strong>Documento generado por PodoAdmin</strong></p>
-          <p>Profesional: ${user?.name}${podiatristLicense ? ` | Lic. ${podiatristLicense}` : ''} | Fecha de impresión: ${new Date().toLocaleString("es-ES")}</p>
-          <p>ID Sesión: ${session.id} | Folio Paciente: ${patient.folio || "—"}</p>
-        </div>
-      </body>
-      </html>
-    `);
-    
-    printWindow.document.close();
-    printWindow.print();
+    const patientSessions = sessions
+      .filter((s) => s.patientId === patient.id)
+      .sort((a, b) => new Date(b.sessionDate).getTime() - new Date(a.sessionDate).getTime());
+    const latestSession = patientSessions[0] ?? session;
+
+    const opened = openPodiatryHistoryPrint({
+      patient,
+      sessions: patientSessions,
+      latestSession,
+      clinicLogo,
+      clinic,
+      professional: profInfo,
+      podiatristName: user?.name,
+      podiatristLicense,
+      layout: clinicalLayout,
+    });
+    if (!opened) return;
     
     void postAuditLog({
       action: "PRINT",
@@ -838,7 +770,8 @@ const SessionsPage = () => {
         sessionId: session.id,
         patientId: session.patientId,
         patientName: `${patient.firstName} ${patient.lastName}`,
-        printType: "clinical_history",
+        printType: "podiatry_history_full",
+        sessionsIncluded: patientSessions.length,
       },
     });
   };
@@ -1136,45 +1069,79 @@ const SessionsPage = () => {
                 <p className="font-medium">{formatDate(selectedSession.sessionDate)}</p>
               </div>
               
-              {selectedSession.anamnesis && (
+              {showClinicalSection("anamnesis") && selectedSession.anamnesis && (
                 <div>
-                  <h4 className="font-medium text-[#1a1a1a] mb-2">{t.sessions.anamnesis}</h4>
+                  <h4 className="font-medium text-[#1a1a1a] mb-2">
+                    {getSectionLabel(clinicalLayout, "anamnesis")}
+                  </h4>
                   <p className="text-gray-600 whitespace-pre-wrap">{selectedSession.anamnesis}</p>
                 </div>
               )}
-              
-              {selectedSession.physicalExamination && (
+
+              {Object.values(podiatryVisibleBlocks).some(Boolean) && (
+              <div>
+                <h4 className="font-medium text-[#1a1a1a] mb-3">Exploración podológica</h4>
+                <PodiatryExaminationFields
+                  value={sessionToPodiatryExam(selectedSession)}
+                  onChange={() => {}}
+                  readOnly
+                  visibleBlocks={podiatryVisibleBlocks}
+                />
+              </div>
+              )}
+
+              {showClinicalSection("physical_examination") && selectedSession.physicalExamination && (
                 <div>
-                  <h4 className="font-medium text-[#1a1a1a] mb-2">{t.sessions.physicalExamination}</h4>
+                  <h4 className="font-medium text-[#1a1a1a] mb-2">
+                    {getSectionLabel(clinicalLayout, "physical_examination")}
+                  </h4>
                   <p className="text-gray-600 whitespace-pre-wrap">{selectedSession.physicalExamination}</p>
                 </div>
               )}
               
-              {selectedSession.diagnosis && (
+              {showClinicalSection("diagnosis") && selectedSession.diagnosis && (
                 <div>
-                  <h4 className="font-medium text-[#1a1a1a] mb-2">{t.sessions.diagnosis}</h4>
+                  <h4 className="font-medium text-[#1a1a1a] mb-2">
+                    {getSectionLabel(clinicalLayout, "diagnosis")}
+                  </h4>
                   <p className="text-gray-600 whitespace-pre-wrap">{selectedSession.diagnosis}</p>
                 </div>
               )}
               
-              {selectedSession.treatmentPlan && (
+              {showClinicalSection("treatment_plan") && selectedSession.treatmentPlan && (
                 <div>
-                  <h4 className="font-medium text-[#1a1a1a] mb-2">{t.sessions.treatmentPlan}</h4>
+                  <h4 className="font-medium text-[#1a1a1a] mb-2">
+                    {getSectionLabel(clinicalLayout, "treatment_plan")}
+                  </h4>
                   <p className="text-gray-600 whitespace-pre-wrap">{selectedSession.treatmentPlan}</p>
                 </div>
               )}
               
-              {selectedSession.clinicalNotes && (
+              {showClinicalSection("clinical_notes") && selectedSession.clinicalNotes && (
                 <div>
-                  <h4 className="font-medium text-[#1a1a1a] mb-2">{t.sessions.clinicalNotes}</h4>
+                  <h4 className="font-medium text-[#1a1a1a] mb-2">
+                    {getSectionLabel(clinicalLayout, "clinical_notes")}
+                  </h4>
                   <p className="text-gray-600 whitespace-pre-wrap">{selectedSession.clinicalNotes}</p>
                 </div>
               )}
+
+              <SessionCustomSectionsFields
+                layoutSections={clinicalLayout.sections}
+                value={selectedSession.customSections ?? {}}
+                onChange={() => {}}
+                readOnly
+              />
               
-              {selectedSession.images.length > 0 && (
-                <div>
-                  <h4 className="font-medium text-[#1a1a1a] mb-2">{t.sessions.images}</h4>
-                  <div className="flex gap-4">
+              {showClinicalSection("session_images") && (
+              <div>
+                <h4 className="font-medium text-[#1a1a1a] mb-2">{t.sessions.images}</h4>
+                {(selectedSession.images ?? []).length === 0 ? (
+                  <p className="text-sm text-gray-400">
+                    No hay fotos en esta sesión. Súbelas al crear o editar el borrador.
+                  </p>
+                ) : (
+                  <div className="flex flex-wrap gap-4">
                     {selectedSession.images.map((img, idx) => (
                       <img
                         key={idx}
@@ -1184,7 +1151,19 @@ const SessionsPage = () => {
                       />
                     ))}
                   </div>
-                </div>
+                )}
+              </div>
+              )}
+
+              {canManageClinicalSession(user?.role) && showClinicalSection("session_checklist") && (
+                <SessionChecklistPanel sessionId={selectedSession.id} />
+              )}
+              {canManageClinicalSession(user?.role) && showClinicalSection("session_signature") && (
+                  <SessionPatientSignature
+                    sessionId={selectedSession.id}
+                    patientId={selectedSession.patientId}
+                    consentVersion={1}
+                  />
               )}
               
               {/* Prescriptions Section - Only visible for podiatrists */}
@@ -1233,17 +1212,6 @@ const SessionsPage = () => {
                 </div>
               )}
 
-              {canCreatePrescriptions(user?.role) && (
-                <>
-                  <SessionChecklistPanel sessionId={selectedSession.id} />
-                  <SessionPatientSignature
-                    sessionId={selectedSession.id}
-                    patientId={selectedSession.patientId}
-                    consentVersion={1}
-                  />
-                </>
-              )}
-              
               <div className="flex gap-3 pt-4 border-t border-gray-100">
                 {selectedSession.status === "draft" && (
                   <button
@@ -1500,9 +1468,18 @@ const SessionsPage = () => {
                 )}
               </div>
 
+              {Object.values(podiatryVisibleBlocks).some(Boolean) && (
+              <PodiatryExaminationFields
+                value={formData.podiatryExam}
+                onChange={(podiatryExam) => setFormData((prev) => ({ ...prev, podiatryExam }))}
+                visibleBlocks={podiatryVisibleBlocks}
+              />
+              )}
+
+              {showClinicalSection("anamnesis") && (
               <div>
                 <label className="block text-sm font-medium text-[#1a1a1a] mb-1">
-                  {t.sessions.anamnesis}
+                  {getSectionLabel(clinicalLayout, "anamnesis")}
                 </label>
                 <textarea
                   rows={3}
@@ -1512,10 +1489,12 @@ const SessionsPage = () => {
                   placeholder="Motivo de consulta, antecedentes..."
                 />
               </div>
+              )}
 
+              {showClinicalSection("physical_examination") && (
               <div>
                 <label className="block text-sm font-medium text-[#1a1a1a] mb-1">
-                  {t.sessions.physicalExamination}
+                  {getSectionLabel(clinicalLayout, "physical_examination")}
                 </label>
                 <textarea
                   rows={3}
@@ -1525,10 +1504,12 @@ const SessionsPage = () => {
                   placeholder="Hallazgos de la exploración..."
                 />
               </div>
+              )}
 
+              {showClinicalSection("diagnosis") && (
               <div>
                 <label className="block text-sm font-medium text-[#1a1a1a] mb-1">
-                  {t.sessions.diagnosis}
+                  {getSectionLabel(clinicalLayout, "diagnosis")}
                 </label>
                 <textarea
                   rows={2}
@@ -1538,10 +1519,12 @@ const SessionsPage = () => {
                   placeholder="Diagnóstico podológico..."
                 />
               </div>
+              )}
 
+              {showClinicalSection("treatment_plan") && (
               <div>
                 <label className="block text-sm font-medium text-[#1a1a1a] mb-1">
-                  {t.sessions.treatmentPlan}
+                  {getSectionLabel(clinicalLayout, "treatment_plan")}
                 </label>
                 <textarea
                   rows={3}
@@ -1551,10 +1534,12 @@ const SessionsPage = () => {
                   placeholder="Plan de tratamiento..."
                 />
               </div>
+              )}
 
+              {showClinicalSection("clinical_notes") && (
               <div>
                 <label className="block text-sm font-medium text-[#1a1a1a] mb-1">
-                  {t.sessions.clinicalNotes}
+                  {getSectionLabel(clinicalLayout, "clinical_notes")}
                 </label>
                 <textarea
                   rows={2}
@@ -1564,8 +1549,15 @@ const SessionsPage = () => {
                   placeholder="Notas adicionales..."
                 />
               </div>
+              )}
 
-              {/* Images */}
+              <SessionCustomSectionsFields
+                layoutSections={clinicalLayout.sections}
+                value={formData.customSections}
+                onChange={(customSections) => setFormData((prev) => ({ ...prev, customSections }))}
+              />
+
+              {showClinicalSection("session_images") && (
               <div>
                 <label className="block text-sm font-medium text-[#1a1a1a] mb-2">
                   {t.sessions.images} ({formData.images.length}/2)
@@ -1618,6 +1610,7 @@ const SessionsPage = () => {
                 )}
                 <p className="text-xs text-gray-500 mt-2">{t.sessions.maxImages}</p>
               </div>
+              )}
 
               {/* Follow-up Section */}
               <div className="border-t border-gray-100 pt-6">
@@ -1922,10 +1915,7 @@ const SessionsPage = () => {
                 className="bg-white rounded-xl border border-gray-100 p-5 hover:border-gray-200 transition-colors"
               >
                 <div className="flex items-start justify-between gap-4">
-                  <div className="flex-1" onClick={() => {
-                    setSelectedSession(session);
-                    loadSessionPrescriptions(session);
-                  }}>
+                  <div className="flex-1" onClick={() => void openSessionDetail(session)}>
                     <div className="flex items-center gap-3 mb-2 cursor-pointer">
                       <h4 className="font-medium text-[#1a1a1a]">
                         {getPatientName(session.patientId)}

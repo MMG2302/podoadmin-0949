@@ -63,6 +63,31 @@ export function SessionPatientSignature({
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [drawing, setDrawing] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [savedImage, setSavedImage] = useState<string | null>(null);
+  const [savedAt, setSavedAt] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  const loadExisting = useCallback(async () => {
+    setLoading(true);
+    const res = await api.get<{
+      success?: boolean;
+      signature?: { signatureData: string; signedAt: string } | null;
+    }>(`/compliance/consent-signatures/session/${sessionId}`);
+    if (res.success && res.data?.signature?.signatureData) {
+      setSavedImage(res.data.signature.signatureData);
+      setSavedAt(res.data.signature.signedAt);
+      setSaved(true);
+    } else {
+      setSavedImage(null);
+      setSavedAt(null);
+      setSaved(false);
+    }
+    setLoading(false);
+  }, [sessionId]);
+
+  useEffect(() => {
+    void loadExisting();
+  }, [loadExisting]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -71,7 +96,7 @@ export function SessionPatientSignature({
     ctx.strokeStyle = "#111";
     ctx.lineWidth = 2;
     ctx.lineCap = "round";
-  }, []);
+  }, [savedImage]);
 
   const getPoint = (e: React.PointerEvent<HTMLCanvasElement>) => {
     const canvas = canvasRef.current!;
@@ -109,6 +134,8 @@ export function SessionPatientSignature({
     if (!ctx) return;
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     setSaved(false);
+    setSavedImage(null);
+    setSavedAt(null);
   };
 
   const save = async () => {
@@ -122,12 +149,36 @@ export function SessionPatientSignature({
       signatureData,
       deviceInfo: navigator.userAgent.slice(0, 200),
     });
-    if (res.success) setSaved(true);
+    if (res.success) await loadExisting();
   };
 
   return (
     <div className="mt-4 border-t pt-4">
-      <h4 className="text-sm font-semibold mb-2">Firma del paciente (tablet)</h4>
+      <h4 className="text-sm font-semibold mb-1">Firma del paciente</h4>
+      <p className="text-xs text-gray-500 mb-2">
+        Se guarda en el expediente (tabla de consentimientos, vinculada a esta sesión).
+      </p>
+      {loading ? (
+        <p className="text-xs text-gray-400">Cargando firma…</p>
+      ) : savedImage ? (
+        <div className="space-y-2">
+          <img
+            src={savedImage}
+            alt="Firma del paciente"
+            className="max-w-md border border-gray-200 rounded-lg bg-white p-2"
+          />
+          {savedAt && (
+            <p className="text-xs text-gray-500">
+              Guardada: {new Date(savedAt).toLocaleString("es-ES")}
+            </p>
+          )}
+          <p className="text-xs text-gray-400">
+            Dibuje de nuevo abajo para reemplazar la firma.
+          </p>
+        </div>
+      ) : (
+        <p className="text-xs text-gray-400 mb-2">Aún no hay firma para esta sesión.</p>
+      )}
       <canvas
         ref={canvasRef}
         width={400}

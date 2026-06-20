@@ -65,6 +65,7 @@
     "deploy:production": "node scripts/build-production.cjs && wrangler deploy",
     "deploy:production:dry-run": "node scripts/build-production.cjs && wrangler deploy --dry-run",
     "dev": "vite",
+    "dev:clean": "node scripts/dev-clean.cjs",
     "tunnel": "npx --yes cloudflared tunnel --url http://localhost:5173",
     "lint": "eslint .",
     "test": "vitest run --config vitest.config.ts",

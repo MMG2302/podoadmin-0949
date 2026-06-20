@@ -1,5 +1,13 @@
 import { patients as patientsTable, clinicalSessions as sessionsTable } from '../database/schema';
 import type { ClinicalSession, Patient } from '../../web/types/clinical';
+import {
+  normalizeDigitalAlterations,
+  normalizeHelomas,
+  normalizeLimbAssessment,
+  normalizeOnychopathies,
+  normalizeSweatDisorders,
+} from '../../web/types/podiatry';
+import { normalizeCustomSections } from '../../web/types/clinical-layout';
 
 type DbPatient = typeof patientsTable.$inferSelect;
 type DbSession = typeof sessionsTable.$inferSelect;
@@ -63,6 +71,7 @@ export function mapDbPatient(row: DbPatient): Patient {
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
     createdBy: row.createdBy,
+    clinicId: row.clinicId ?? null,
     clinicalAlerts,
   };
 }
@@ -81,6 +90,14 @@ export function mapDbSession(row: DbSession): ClinicalSession {
     status?: ClinicalSession['status'];
     completedAt?: string | null;
     creditReservedAt?: string | null;
+    footType?: ClinicalSession['footType'];
+    archType?: ClinicalSession['archType'];
+    sweatDisorders?: ClinicalSession['sweatDisorders'];
+    limbAssessment?: ClinicalSession['limbAssessment'];
+    helomas?: ClinicalSession['helomas'];
+    digitalAlterations?: ClinicalSession['digitalAlterations'];
+    onychopathies?: ClinicalSession['onychopathies'];
+    customSections?: ClinicalSession['customSections'];
   };
 
   let extra: NotesPayload = {};
@@ -117,6 +134,14 @@ export function mapDbSession(row: DbSession): ClinicalSession {
     nextAppointmentDate: extra.nextAppointmentDate ?? null,
     followUpNotes: extra.followUpNotes ?? null,
     appointmentReason: (extra.appointmentReason as ClinicalSession['appointmentReason']) ?? null,
+    footType: extra.footType ?? null,
+    archType: extra.archType ?? null,
+    sweatDisorders: normalizeSweatDisorders(extra.sweatDisorders),
+    limbAssessment: normalizeLimbAssessment(extra.limbAssessment),
+    helomas: normalizeHelomas(extra.helomas),
+    digitalAlterations: normalizeDigitalAlterations(extra.digitalAlterations),
+    onychopathies: normalizeOnychopathies(extra.onychopathies),
+    customSections: normalizeCustomSections(extra.customSections),
   };
 }
 
@@ -162,6 +187,8 @@ export function formatPatientExport(patient: Patient, sessions: ClinicalSession[
       treatmentPlan: s.treatmentPlan,
       followUpNotes: s.followUpNotes ?? null,
       appointmentReason: s.appointmentReason ?? null,
+      footType: s.footType ?? null,
+      archType: s.archType ?? null,
       images: s.images.map((img, idx) => ({
         index: idx + 1,
         format: 'webp',

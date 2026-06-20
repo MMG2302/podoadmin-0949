@@ -321,6 +321,64 @@ export const createRegistrationEntrySchema = z.object({
   notes: z.string().max(500).optional(),
 });
 
+const parseLimit = (value: unknown, fallback: number, max: number): number => {
+  if (value == null || value === '') return fallback;
+  const n = typeof value === 'number' ? value : parseInt(String(value), 10);
+  if (!Number.isFinite(n)) return fallback;
+  return Math.min(Math.max(n, 1), max);
+};
+
+/** Query: límite de filas (1–500). */
+export const limitQuerySchema = z.object({
+  limit: z
+    .union([z.string(), z.number()])
+    .optional()
+    .transform((v) => parseLimit(v, 100, 500)),
+});
+
+/** Query: límite ampliado (1–5000) para exportaciones. */
+export const limitQuery500Schema = z.object({
+  limit: z
+    .union([z.string(), z.number()])
+    .optional()
+    .transform((v) => parseLimit(v, 500, 5000)),
+});
+
+/** Query: rango temporal para métricas de seguridad. */
+export const timeRangeQuerySchema = z.object({
+  startTime: z.union([z.string(), z.number()]).optional(),
+  endTime: z.union([z.string(), z.number()]).optional(),
+  limit: z
+    .union([z.string(), z.number()])
+    .optional()
+    .transform((v) => parseLimit(v, 500, 5000)),
+});
+
+/** Path/query: tipo de métrica de seguridad. */
+export const securityMetricTypeSchema = z.string().min(1).max(64);
+
+/** Query: exportación de auditoría. */
+export const auditLogExportQuerySchema = z.object({
+  format: z.enum(['csv', 'json']).optional().default('json'),
+  from: z.string().max(64).optional(),
+  to: z.string().max(64).optional(),
+  userId: z.string().max(128).optional(),
+  clinicId: z.string().max(128).optional(),
+  action: z.string().max(128).optional(),
+  limit: z
+    .union([z.string(), z.number()])
+    .optional()
+    .transform((v) => parseLimit(v, 1000, 5000)),
+});
+
+/** Body: mensaje broadcast (super_admin). */
+export const createMessageSchema = z.object({
+  subject: z.string().min(1).max(500),
+  body: z.string().min(1).max(50000),
+  recipientIds: z.array(z.string().max(128)).min(1),
+  recipientType: z.enum(['all', 'specific', 'single']),
+});
+
 const sessionFieldsSchema = {
   patientId: z.string().min(1).max(128),
   sessionDate: z.string().min(1).max(32),
@@ -335,6 +393,82 @@ const sessionFieldsSchema = {
   nextAppointmentDate: z.string().max(32).optional().nullable(),
   followUpNotes: z.string().max(5000).optional().nullable(),
   appointmentReason: z.string().max(2000).optional().nullable(),
+  footType: z.enum(['egyptian', 'roman', 'greek', 'germanic', 'celtic']).optional().nullable(),
+  archType: z.enum(['flat', 'normal', 'cavus']).optional().nullable(),
+  sweatDisorders: z
+    .array(
+      z.object({
+        id: z.enum(['bromhidrosis', 'hiperhidrosis', 'anhidrosis']),
+        present: z.boolean().nullable().optional(),
+        notes: z.string().max(200).optional(),
+      })
+    )
+    .max(10)
+    .optional(),
+  limbAssessment: z
+    .array(
+      z.object({
+        id: z.enum(['edema', 'xerosis', 'varices', 'dermatomycosis']),
+        left: z.boolean().nullable().optional(),
+        right: z.boolean().nullable().optional(),
+        notes: z.string().max(200).optional(),
+      })
+    )
+    .max(10)
+    .optional(),
+  helomas: z
+    .array(
+      z.object({
+        id: z.enum(['interphalangeal', 'interdigital', 'dorsal_fifth']),
+        present: z.boolean().nullable().optional(),
+        locationLeft: z.string().max(50).optional(),
+        locationRight: z.string().max(50).optional(),
+        notes: z.string().max(200).optional(),
+      })
+    )
+    .max(10)
+    .optional(),
+  digitalAlterations: z
+    .array(
+      z.object({
+        id: z.enum(['hallux_valgus', 'fifth_varus', 'claw_toes']),
+        present: z.boolean().nullable().optional(),
+        locationLeft: z.string().max(50).optional(),
+        locationRight: z.string().max(50).optional(),
+      })
+    )
+    .max(10)
+    .optional(),
+  onychopathies: z
+    .array(
+      z.object({
+        id: z.enum([
+          'anoniquia',
+          'microniquia',
+          'onicolisis',
+          'onicauxis',
+          'onicocriptosis',
+          'onicogriptosis',
+          'onicofosis',
+          'paquioniquia',
+          'onicomicosis',
+        ]),
+        present: z.boolean().nullable().optional(),
+        toesLeft: z.string().max(30).optional(),
+        toesRight: z.string().max(30).optional(),
+      })
+    )
+    .max(20)
+    .optional(),
+  customSections: z
+    .record(
+      z.string().max(64),
+      z.object({
+        text: z.string().max(10000).optional(),
+        checks: z.record(z.string().max(120), z.boolean()).optional(),
+      })
+    )
+    .optional(),
 };
 
 export const createSessionSchema = z.object(sessionFieldsSchema);

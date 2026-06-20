@@ -10,6 +10,7 @@ import { canConfigureWhatsApp } from '../utils/whatsapp-integration';
 import { sendWhatsAppTemplateMessage } from '../utils/whatsapp-meta-api';
 import { decryptSecret } from '../utils/field-encryption';
 import { userWhatsappIntegrations } from '../database/schema';
+import { filterPatientsForWhatsAppCampaign } from '../utils/campaign-patients';
 
 const campaignsRoutes = new Hono();
 campaignsRoutes.use('*', requireAuth, requireActiveSubscription);
@@ -70,16 +71,18 @@ campaignsRoutes.post('/:id/send', async (c) => {
   if (!waRow?.enabled) return c.json({ error: 'WhatsApp no configurado' }, 400);
 
   const token = await decryptSecret(waRow.accessTokenEnc);
-  let filter: { clinicId?: string; hasPhone?: boolean } = {};
+  let filter: { clinicId?: string; hasPhone?: boolean; clinicOnly?: boolean } = {};
   try {
     filter = JSON.parse(campaign.filterJson);
   } catch {
-    filter = { hasPhone: true };
+    filter = { hasPhone: true, clinicOnly: true };
   }
 
-  let patientRows = await database.select().from(patients);
-  if (filter.clinicId) patientRows = patientRows.filter((p) => p.clinicId === filter.clinicId);
-  patientRows = patientRows.filter((p) => p.phone && p.phone.trim().length >= 8);
+  const patientRows = await filterPatientsForWhatsAppCampaign(
+    await database.select().from(patients),
+    user,
+    filter
+  );
 
   let sent = 0;
   let failed = 0;

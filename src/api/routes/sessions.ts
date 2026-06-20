@@ -14,6 +14,7 @@ import { clinicalSessions as sessionsTable, patients as patientsTable, createdUs
 import { eq } from 'drizzle-orm';
 import { validateImageDataUri, MAX_SESSION_IMAGE_BYTES } from '../utils/logo-upload';
 import { syncClinicalRetentionForSession } from '../utils/clinical-retention';
+import { attachSessionImages, replaceSessionImages } from '../utils/session-images';
 import { canUserAccess } from '../utils/user-retention';
 import { checkSessionCreateRateLimit } from '../utils/action-rate-limit';
 import {
@@ -23,6 +24,18 @@ import {
   isClinicAdminWithoutClinic,
 } from '../utils/tenant-isolation';
 import type { ClinicalSession } from '../../web/types/clinical';
+import {
+  normalizeDigitalAlterations,
+  normalizeHelomas,
+  normalizeLimbAssessment,
+  normalizeOnychopathies,
+  normalizeSweatDisorders,
+  finalizeDigitalAlterations,
+  finalizeHelomas,
+  finalizeLimbAssessment,
+  finalizeOnychopathies,
+  finalizeSweatDisorders,
+} from '../../web/types/podiatry';
 import { mapDbSession } from '../utils/clinical-maps';
 
 const DEFAULT_MAX_SESSION_IMAGES = 10;
@@ -60,15 +73,38 @@ function buildNotesPayload(session: ClinicalSession): string {
     physicalExamination: session.physicalExamination,
     diagnosis: session.diagnosis,
     treatmentPlan: session.treatmentPlan,
-    images: session.images,
+    images: [],
     nextAppointmentDate: session.nextAppointmentDate,
     followUpNotes: session.followUpNotes,
     appointmentReason: session.appointmentReason,
+    footType: session.footType,
+    archType: session.archType,
+    sweatDisorders: session.sweatDisorders,
+    limbAssessment: session.limbAssessment,
+    helomas: session.helomas,
+    digitalAlterations: session.digitalAlterations,
+    onychopathies: session.onychopathies,
+    customSections: session.customSections ?? {},
     status: session.status,
     completedAt: session.completedAt,
   };
 
   return JSON.stringify(payload);
+}
+
+function sessionSaveErrorResponse(error: unknown) {
+  const message = error instanceof Error ? error.message : String(error);
+  if (/too large|TOOBIG|SQLITE_FULL|string too long|hung|canceled/i.test(message)) {
+    return {
+      status: 413 as const,
+      body: {
+        error: 'payload_too_large',
+        message:
+          'La sesión es demasiado pesada (fotos o notas). Reduce el tamaño de las imágenes o el texto e intenta de nuevo.',
+      },
+    };
+  }
+  return null;
 }
 
 // Todas las rutas de sesiones requieren autenticación
@@ -121,7 +157,7 @@ sessionsRoutes.get(
         rows = rows.filter((s) => s.patientId === patientFilter);
       }
 
-      const sessions = rows.map(mapDbSession);
+      const sessions = await attachSessionImages(rows.map(mapDbSession));
       return c.json({ success: true, sessions });
     } catch (error) {
       console.error('Error obteniendo sesiones:', error);
@@ -197,7 +233,7 @@ sessionsRoutes.get(
         }
       }
 
-      const session = mapDbSession(row);
+      const session = (await attachSessionImages([mapDbSession(row)]))[0];
       return c.json({ success: true, session });
     } catch (error) {
       console.error('Error obteniendo sesión:', error);
@@ -296,15 +332,11 @@ sessionsRoutes.post(
       const status: ClinicalSession['status'] =
         body.status === 'completed' ? 'completed' : 'draft';
 
-      // Solo almacenar imágenes en sesiones en progreso (draft). Completadas no guardan imágenes (respaldo más ligero).
-      let sessionImages: string[] = [];
-      if (status === 'draft') {
-        const imagesValidation = validateSessionImages(body.images);
-        if (!imagesValidation.ok) {
-          return c.json({ error: imagesValidation.error, message: imagesValidation.message }, 400);
-        }
-        sessionImages = imagesValidation.sanitized;
+      const imagesValidation = validateSessionImages(body.images);
+      if (!imagesValidation.ok) {
+        return c.json({ error: imagesValidation.error, message: imagesValidation.message }, 400);
       }
+      const sessionImages = imagesValidation.sanitized;
 
       const now = new Date().toISOString();
       const id = generateId();
@@ -333,6 +365,14 @@ sessionsRoutes.post(
         nextAppointmentDate: body.nextAppointmentDate || null,
         followUpNotes: body.followUpNotes || null,
         appointmentReason: body.appointmentReason || null,
+        footType: body.footType ?? null,
+        archType: body.archType ?? null,
+        sweatDisorders: finalizeSweatDisorders(normalizeSweatDisorders(body.sweatDisorders)),
+        limbAssessment: finalizeLimbAssessment(normalizeLimbAssessment(body.limbAssessment)),
+        helomas: finalizeHelomas(normalizeHelomas(body.helomas)),
+        digitalAlterations: finalizeDigitalAlterations(normalizeDigitalAlterations(body.digitalAlterations)),
+        onychopathies: finalizeOnychopathies(normalizeOnychopathies(body.onychopathies)),
+        customSections: body.customSections ?? {},
       };
 
       await database.insert(sessionsTable).values({
@@ -350,6 +390,8 @@ sessionsRoutes.post(
         clinicId: user?.clinicId ?? patient.clinicId ?? null,
       });
 
+      await replaceSessionImages(session.id, sessionImages);
+
       await syncClinicalRetentionForSession({
         sessionId: session.id,
         patientId: session.patientId,
@@ -358,9 +400,11 @@ sessionsRoutes.post(
         updatedAtIso: session.updatedAt,
       });
 
-      return c.json({ success: true, session }, 201);
+      return c.json({ success: true, session: { ...session, images: sessionImages } }, 201);
     } catch (error) {
       console.error('Error creando sesión:', error);
+      const saveErr = sessionSaveErrorResponse(error);
+      if (saveErr) return c.json(saveErr.body, saveErr.status);
       return c.json(
         { error: 'Error interno', message: 'Error al crear sesión' },
         500
@@ -396,7 +440,7 @@ sessionsRoutes.put(
       }
 
       const existingRow = existingRows[0];
-      const existingSession = mapDbSession(existingRow);
+      const existingSession = (await attachSessionImages([mapDbSession(existingRow)]))[0];
 
       const sessionDeny = await getSessionAccessDeniedReason(user, existingRow);
       if (sessionDeny === 'clinic_admin_sin_clinica') {
@@ -479,11 +523,9 @@ sessionsRoutes.put(
       const finalStatus: ClinicalSession['status'] =
         requestedStatus ?? existingSession.status;
 
-      // Solo almacenar imágenes en sesiones en progreso (draft). Al completar, vaciar.
+      // Imágenes clínicas se conservan también en sesiones completadas (historial / impresión).
       let updatedImages: string[] = existingSession.images;
-      if (finalStatus === 'completed') {
-        updatedImages = [];
-      } else if (body.images !== undefined) {
+      if (body.images !== undefined) {
         const imagesValidation = validateSessionImages(body.images);
         if (!imagesValidation.ok) {
           return c.json({ error: imagesValidation.error, message: imagesValidation.message }, 400);
@@ -536,6 +578,34 @@ sessionsRoutes.put(
           body.appointmentReason !== undefined
             ? body.appointmentReason
             : existingSession.appointmentReason,
+        footType:
+          body.footType !== undefined ? body.footType ?? null : existingSession.footType,
+        archType:
+          body.archType !== undefined ? body.archType ?? null : existingSession.archType,
+        sweatDisorders:
+          body.sweatDisorders !== undefined
+            ? finalizeSweatDisorders(normalizeSweatDisorders(body.sweatDisorders))
+            : existingSession.sweatDisorders,
+        limbAssessment:
+          body.limbAssessment !== undefined
+            ? finalizeLimbAssessment(normalizeLimbAssessment(body.limbAssessment))
+            : existingSession.limbAssessment,
+        helomas:
+          body.helomas !== undefined
+            ? finalizeHelomas(normalizeHelomas(body.helomas))
+            : existingSession.helomas,
+        digitalAlterations:
+          body.digitalAlterations !== undefined
+            ? finalizeDigitalAlterations(normalizeDigitalAlterations(body.digitalAlterations))
+            : existingSession.digitalAlterations,
+        onychopathies:
+          body.onychopathies !== undefined
+            ? finalizeOnychopathies(normalizeOnychopathies(body.onychopathies))
+            : existingSession.onychopathies,
+        customSections:
+          body.customSections !== undefined
+            ? body.customSections
+            : existingSession.customSections,
       };
 
       await database
@@ -551,6 +621,10 @@ sessionsRoutes.put(
         })
         .where(eq(sessionsTable.id, sessionId));
 
+      if (body.images !== undefined) {
+        await replaceSessionImages(sessionId, updatedImages);
+      }
+
       await syncClinicalRetentionForSession({
         sessionId,
         patientId: updatedSession.patientId,
@@ -559,9 +633,11 @@ sessionsRoutes.put(
         updatedAtIso: updatedSession.updatedAt,
       });
 
-      return c.json({ success: true, session: updatedSession });
+      return c.json({ success: true, session: { ...updatedSession, images: updatedImages } });
     } catch (error) {
       console.error('Error actualizando sesión:', error);
+      const saveErr = sessionSaveErrorResponse(error);
+      if (saveErr) return c.json(saveErr.body, saveErr.status);
       return c.json(
         { error: 'Error interno', message: 'Error al actualizar sesión' },
         500
@@ -597,7 +673,7 @@ sessionsRoutes.delete(
       }
 
       const existingRow = existingRows[0];
-      const existingSession = mapDbSession(existingRow);
+      const existingSession = (await attachSessionImages([mapDbSession(existingRow)]))[0];
 
       const delDeny = await getSessionAccessDeniedReason(user, existingRow);
       if (delDeny === 'clinic_admin_sin_clinica') {

@@ -14,6 +14,8 @@ import {
 import { PatientEvolutionNotesSection } from "../components/patients/patient-evolution-notes";
 import { PatientEvolutionReportButton } from "../components/sessions/session-clinical-extras";
 import { api } from "../lib/api-client";
+import { useClinicalLayout } from "../hooks/use-clinical-layout";
+import { isPatientFieldEnabled } from "../types/clinical-layout";
 
 interface PatientFormData {
   firstName: string;
@@ -55,6 +57,11 @@ const PatientsPage = () => {
   const { t } = useLanguage();
   const { user, getAllUsers } = useAuth();
   const { isSuperAdmin, isPodiatrist, isClinicAdmin, isReceptionist } = usePermissions();
+  const { layout: clinicalLayout } = useClinicalLayout();
+  const showPatientCurp = isPatientFieldEnabled(clinicalLayout, "patient_curp");
+  const showPatientEmail = isPatientFieldEnabled(clinicalLayout, "patient_email");
+  const showPatientAddress = isPatientFieldEnabled(clinicalLayout, "patient_address");
+  const showPatientMedicalHistory = isPatientFieldEnabled(clinicalLayout, "patient_medical_history");
   const [location, setLocation] = useLocation();
   
   // Clinic admins should use the Clinic Management page for patient viewing/reassignment
@@ -488,20 +495,24 @@ const PatientsPage = () => {
                     <span className="text-gray-500">{t.patients.phone}:</span>
                     <span className="ml-2 font-medium">{selectedPatient.phone}</span>
                   </div>
+                  {showPatientEmail && (
                   <div className="col-span-2">
                     <span className="text-gray-500">{t.patients.email}:</span>
                     <span className="ml-2 font-medium">{selectedPatient.email}</span>
                   </div>
+                  )}
+                  {showPatientAddress && (
                   <div className="col-span-2">
                     <span className="text-gray-500">{t.patients.address}:</span>
                     <span className="ml-2 font-medium">
                       {selectedPatient.address}, {selectedPatient.city} {selectedPatient.postalCode}
                     </span>
                   </div>
+                  )}
                 </div>
               </div>
 
-              {/* Medical History */}
+              {showPatientMedicalHistory && (
               <div>
                 <h4 className="font-medium text-[#1a1a1a] mb-3">{t.patients.medicalHistory}</h4>
                 <div className="space-y-2 text-sm">
@@ -531,6 +542,7 @@ const PatientsPage = () => {
                   </div>
                 </div>
               </div>
+              )}
 
               {/* Alertas clínicas */}
               <PatientClinicalAlertsSection
@@ -857,6 +869,7 @@ const PatientsPage = () => {
                     <p className="mt-1 text-xs text-red-600">{formErrors.idNumber}</p>
                   )}
                 </div>
+                {showPatientCurp && (
                 <div>
                   <label className="block text-sm font-medium text-[#1a1a1a] dark:text-gray-100 mb-1">
                     {t.patients.curp}
@@ -871,6 +884,7 @@ const PatientsPage = () => {
                     className="w-full px-3 py-2 border border-gray-200 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-[#1a1a1a] dark:text-white focus:outline-none focus:border-[#1a1a1a] dark:focus:border-gray-400"
                   />
                 </div>
+                )}
                 <div>
                   <label className="block text-sm font-medium text-[#1a1a1a] mb-1">
                     {t.patients.phone} *
@@ -895,6 +909,7 @@ const PatientsPage = () => {
                     <p className="mt-1 text-xs text-red-600">{formErrors.phone}</p>
                   )}
                 </div>
+                {showPatientEmail && (
                 <div className="sm:col-span-2">
                   <label className="block text-sm font-medium text-[#1a1a1a] mb-1">
                     {t.patients.email}
@@ -918,6 +933,9 @@ const PatientsPage = () => {
                     <p className="mt-1 text-xs text-red-600">{formErrors.email}</p>
                   )}
                 </div>
+                )}
+                {showPatientAddress && (
+                <>
                 <div className="sm:col-span-2">
                   <label className="block text-sm font-medium text-[#1a1a1a] mb-1">
                     {t.patients.address}
@@ -951,9 +969,11 @@ const PatientsPage = () => {
                     className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:border-[#1a1a1a] focus:ring-1 focus:ring-[#1a1a1a]"
                   />
                 </div>
+                </>
+                )}
               </div>
 
-              {/* Medical History */}
+              {showPatientMedicalHistory && (
               <div className="space-y-4">
                 <h4 className="font-medium text-[#1a1a1a]">{t.patients.medicalHistory}</h4>
                 <div>
@@ -993,6 +1013,7 @@ const PatientsPage = () => {
                   />
                 </div>
               </div>
+              )}
 
               {/* Consent - Términos y condiciones */}
               <div className="space-y-3">

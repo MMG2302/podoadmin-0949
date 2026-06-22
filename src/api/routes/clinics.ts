@@ -73,6 +73,7 @@ clinicsRoutes.get('/', requireRole('super_admin', 'admin'), async (c) => {
         address: r.address ?? '',
         city: r.city ?? '',
         postalCode: r.postalCode ?? '',
+        countryCode: r.countryCode ?? 'MX',
         podiatristLimit: r.podiatristLimit ?? null,
         podiatristCount: podiatristCounts[r.clinicId] ?? 0,
       })),
@@ -95,7 +96,7 @@ clinicsRoutes.post('/', requireRole('super_admin'), async (c) => {
       return c.json({ error: 'Datos inválidos', message: validation.error, issues: validation.issues }, 400);
     }
 
-    const { ownerId, phone, email, address, city, postalCode, licenseNumber, website, podiatristLimit } = validation.data;
+    const { ownerId, phone, email, address, city, postalCode, countryCode, licenseNumber, website, podiatristLimit } = validation.data;
     const user = c.get('user');
 
     let clinicId = (validation.data.clinicId || '').trim();
@@ -154,6 +155,7 @@ clinicsRoutes.post('/', requireRole('super_admin'), async (c) => {
       address: (address || '').trim() || null,
       city: (city || '').trim() || null,
       postalCode: (postalCode || '').trim() || null,
+      countryCode: countryCode ?? 'MX',
       licenseNumber: (licenseNumber || '').trim() || null,
       website: (website || '').trim() || null,
       consentText: null,
@@ -242,6 +244,7 @@ clinicsRoutes.get('/:clinicId', async (c) => {
       address: row.address ?? '',
       city: row.city ?? '',
       postalCode: row.postalCode ?? '',
+      countryCode: row.countryCode ?? 'MX',
       licenseNumber: row.licenseNumber ?? '',
       legalName: row.legalName ?? '',
       rfc: row.rfc ?? '',
@@ -285,7 +288,7 @@ clinicsRoutes.patch('/:clinicId', async (c) => {
   }
   const body = await c.req.json().catch(() => ({})) as Record<string, unknown>;
   const updates: Record<string, unknown> = {};
-  const allowed = ['clinicName', 'clinicCode', 'phone', 'email', 'address', 'city', 'postalCode', 'licenseNumber', 'website', 'consentText', 'legalName', 'rfc', 'clues', 'establishmentType', 'cofeprisRegistration'];
+  const allowed = ['clinicName', 'clinicCode', 'phone', 'email', 'address', 'city', 'postalCode', 'countryCode', 'licenseNumber', 'website', 'consentText', 'legalName', 'rfc', 'clues', 'establishmentType', 'cofeprisRegistration'];
   for (const k of allowed) {
     if (body[k] !== undefined) updates[k] = body[k];
   }
@@ -297,6 +300,11 @@ clinicsRoutes.patch('/:clinicId', async (c) => {
       const n = typeof v === 'number' ? v : parseInt(String(v), 10);
       if (!Number.isNaN(n) && n >= 0) updates.podiatristLimit = n;
     }
+  }
+  if (updates.countryCode !== undefined) {
+    const { isTenantCountryCode } = await import('../../lib/phone-country');
+    const code = String(updates.countryCode || 'MX');
+    updates.countryCode = isTenantCountryCode(code) ? code : 'MX';
   }
   if (updates.clinicName !== undefined && String(updates.clinicName || '').trim() === '') {
     return c.json({ error: 'Datos inválidos', message: 'El nombre de la clínica no puede estar vacío' }, 400);
@@ -363,6 +371,7 @@ clinicsRoutes.patch('/:clinicId', async (c) => {
       address: updated.address ?? '',
       city: updated.city ?? '',
       postalCode: updated.postalCode ?? '',
+      countryCode: updated.countryCode ?? 'MX',
       licenseNumber: updated.licenseNumber ?? '',
       legalName: updated.legalName ?? '',
       rfc: updated.rfc ?? '',

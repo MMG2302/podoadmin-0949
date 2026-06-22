@@ -88,7 +88,7 @@ const ForgotPassword = () => {
         <div className="flex-1 flex items-center justify-center p-8">
           <div className="w-full max-w-md">
             <div className="lg:hidden text-center mb-12">
-              <h1 className="text-[#1a1a1a] text-4xl font-light tracking-tight">
+              <h1 className="text-[#1a1a1a] dark:text-white text-4xl font-light tracking-tight">
                 Podo<span className="font-bold">Admin</span>
               </h1>
             </div>
@@ -96,7 +96,7 @@ const ForgotPassword = () => {
             {!sent ? (
               <>
                 <div className="mb-10">
-                  <h2 className="text-[#1a1a1a] text-3xl font-semibold mb-2">
+                  <h2 className="text-[#1a1a1a] dark:text-white text-3xl font-semibold mb-2">
                     {t.auth.forgotPasswordTitle}
                   </h2>
                   <p className="text-gray-500">
@@ -109,7 +109,7 @@ const ForgotPassword = () => {
                     {t.auth.contactToVerifyRecovery}{" "}
                     <a
                       href={`mailto:${supportEmail || "soporte@podoadmin.com"}?subject=${encodeURIComponent("Verificación de identidad - Recuperación de contraseña")}`}
-                      className="font-medium text-[#1a1a1a] hover:underline"
+                      className="font-medium text-[#1a1a1a] dark:text-white hover:underline"
                     >
                       {supportEmail || "soporte@podoadmin.com"}
                     </a>
@@ -123,14 +123,14 @@ const ForgotPassword = () => {
                     </div>
                   )}
                   <div>
-                    <label className="block text-sm font-medium text-[#1a1a1a] mb-2">
+                    <label className="block text-sm font-medium text-[#1a1a1a] dark:text-gray-100 mb-2">
                       {t.auth.emailLabel}
                     </label>
                     <input
                       type="email"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
-                      className="w-full px-4 py-3.5 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:border-[#1a1a1a] focus:ring-1 focus:ring-[#1a1a1a] transition-all text-[#1a1a1a] placeholder:text-gray-400"
+                      className="w-full px-4 py-3.5 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:border-[#1a1a1a] focus:ring-1 focus:ring-[#1a1a1a] transition-all text-[#1a1a1a] dark:text-white bg-gray-50 dark:bg-gray-900 border-gray-200 dark:border-gray-700 placeholder:text-gray-400 dark:placeholder:text-gray-500"
                       placeholder={t.auth.emailPlaceholder}
                       required
                       autoComplete="email"
@@ -152,7 +152,7 @@ const ForgotPassword = () => {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                   </svg>
                 </div>
-                <h2 className="text-xl font-semibold text-[#1a1a1a] mb-2">
+                <h2 className="text-xl font-semibold text-[#1a1a1a] dark:text-white mb-2">
                   {t.auth.forgotPasswordTitle}
                 </h2>
                 <p className="text-gray-600 mb-6">
@@ -172,7 +172,7 @@ const ForgotPassword = () => {
                 <button
                   type="button"
                   onClick={() => setLocation("/login")}
-                  className="text-[#1a1a1a] font-medium hover:underline"
+                  className="text-[#1a1a1a] dark:text-white font-medium hover:underline"
                 >
                   {t.auth.backToLogin}
                 </button>

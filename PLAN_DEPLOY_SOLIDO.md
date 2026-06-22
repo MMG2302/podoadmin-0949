@@ -1,0 +1,522 @@
+# Plan de deploy sólido — PodoAdmin
+
+**Documento de referencia constante** para llevar PodoAdmin a producción (Cloudflare Workers + D1 + R2).
+
+Última revisión: junio 2026.
+
+---
+
+## Índice rápido
+
+1. [Estado actual del proyecto](#1-estado-actual-del-proyecto)
+2. [Checklist ejecutable (copiar y marcar)](#2-checklist-ejecutable)
+3. [Fase 0 — Preparación local](#3-fase-0--preparación-local)
+4. [Fase 1 — Infraestructura Cloudflare](#4-fase-1--infraestructura-cloudflare)
+5. [Fase 2 — Secretos y servicios](#5-fase-2--secretos-y-servicios)
+6. [Fase 3 — BD, deploy y smoke tests](#6-fase-3--bd-deploy-y-smoke-tests)
+7. [Fase 4 — Endurecimiento (código + operación)](#7-fase-4--endurecimiento)
+8. [Comandos de referencia](#8-comandos-de-referencia)
+9. [Errores habituales](#9-errores-habituales)
+10. [Qué NO hacer en producción](#10-qué-no-hacer-en-producción)
+11. [Operación continua](#11-operación-continua)
+12. [Documentos relacionados](#12-documentos-relacionados)
+
+---
+
+## 1. Estado actual del proyecto
+
+| Área | Estado | Notas |
+|------|--------|-------|
+| Arquitectura | ✅ Lista | Worker único: SPA (`dist/client`) + API (`/api/*`), D1, R2, crons |
+| Build (`npm run build`) | ✅ Pasa | Bundle JS ~1.2 MB (aviso de rendimiento, no bloquea) |
+| `wrangler.json` production | ❌ Pendiente | Placeholders: `podoadmin-pendiente`, `PENDIENTE-DATABASE-ID` |
+| Secretos en Cloudflare | ❌ Pendiente | JWT, REFRESH, CSRF obligatorios |
+| Tests (`npm test`) | ❌ Roto | Falta `vitest.config.ts` (hay 7 archivos `.test.ts`) |
+| CI/CD | ❌ No existe | Deploy manual con Wrangler |
+| Deuda `localStorage` | ⚠️ Parcial | Ver `REVISION_PENDIENTE.md` |
+| Documentación | ✅ Buena | Varios MD; **este es el índice maestro operativo** |
+
+**Veredicto:** el código es desplegable; el cuello de botella es **configuración Cloudflare**, no arquitectura.
+
+---
+
+## 2. Checklist ejecutable
+
+Marca en orden. No saltar al deploy sin completar Fase 1 y 2.
+
+### Fase 0 — Local
+- [ ] Carpeta de trabajo sin problemas de OneDrive (ver [§3](#3-fase-0--preparación-local))
+- [ ] `npx wrangler login`
+- [ ] `npm install`
+- [ ] `npm run setup:env` → `.dev.vars` con JWT, REFRESH, CSRF (≥32 chars, distintos)
+- [ ] `npm run build` OK
+- [ ] `npm run deploy:prep` sin errores
+- [ ] `npm run deploy:prep:full` OK (build + dry-run)
+
+### Fase 1 — Cloudflare
+- [ ] D1 creada: `podoadmin-prod` + `database_id` anotado
+- [ ] R2 creado: bucket `podoadmin-prod`
+- [ ] `wrangler.json` → `env.production` completado (sin placeholders)
+- [ ] Dominio configurado (Custom Domain) o URL `*.workers.dev` decidida
+
+### Fase 2 — Secretos y servicios
+- [ ] `JWT_SECRET` → `wrangler secret put --env production`
+- [ ] `REFRESH_TOKEN_SECRET` → secret production
+- [ ] `CSRF_SECRET` → secret production
+- [ ] Email configurado (si registro / reset / verificación)
+- [ ] CAPTCHA configurado (si registro público)
+- [ ] (Opcional) Sentry, Safe Browsing, SUPPORT_EMAIL
+
+### Fase 3 — Deploy
+- [ ] `npm run db:migrate:remote:production`
+- [ ] Super admin creado (script + SQL remoto)
+- [ ] `npm run build:production`
+- [ ] `npx wrangler deploy --env production` ← **siempre con `--env production`**
+- [ ] Smoke tests (ver [§6.4](#64-smoke-tests-post-deploy))
+
+### Fase 4 — Endurecimiento
+- [ ] Corregir `deploy:production` para incluir `--env production`
+- [ ] Restaurar `vitest.config.ts` y `npm test` verde
+- [ ] Cerrar deuda alta de `REVISION_PENDIENTE.md`
+- [ ] Entorno staging (recomendado)
+- [ ] CI/CD en GitHub Actions (recomendado)
+- [ ] Backup D1 antes de migraciones grandes
+
+---
+
+## 3. Fase 0 — Preparación local
+
+**Tiempo estimado:** 30 minutos.
+
+### 3.1 Carpeta del proyecto
+
+Preferir **`C:\proyectos\podoadmin-0949`** si OneDrive da errores de build (“proveedor de archivos de nube”):
+
+```powershell
+# Copia única si hace falta:
+xcopy "C:\Users\mvs92\OneDrive\Escritorio\clinic\podoadmin-0949" "C:\proyectos\podoadmin-0949" /E /I /H
+cd C:\proyectos\podoadmin-0949
+```
+
+Alternativa: clic derecho en la carpeta → **Mantener siempre en este dispositivo**.
+
+### 3.2 Autenticación y dependencias
+
+```bash
+npm install
+npx wrangler login
+npx wrangler whoami
+```
+
+### 3.3 Variables locales de desarrollo
+
+```bash
+npm run setup:env
+```
+
+Genera `.dev.vars` con secretos locales. **No commitear** este archivo.
+
+Requisitos (validados por `scripts/prepare-deploy.cjs`):
+
+| Variable | Regla |
+|----------|-------|
+| `JWT_SECRET` | ≥ 32 caracteres |
+| `REFRESH_TOKEN_SECRET` | ≥ 32, **distinto** de JWT |
+| `CSRF_SECRET` | ≥ 32 caracteres |
+
+Generar valores seguros:
+
+```bash
+openssl rand -base64 32
+```
+
+### 3.4 Verificación pre-deploy
+
+```bash
+npm run build
+npm run deploy:prep          # solo comprobaciones
+npm run deploy:prep:full     # build producción + dry-run
+```
+
+Si `deploy:prep` lista errores con ✗, corregir antes de seguir.
+
+---
+
+## 4. Fase 1 — Infraestructura Cloudflare
+
+**Tiempo estimado:** 1–2 horas.
+
+### 4.1 Crear D1 y R2
+
+```bash
+npx wrangler d1 create podoadmin-prod
+# Guardar el database_id que imprime el comando
+
+npx wrangler r2 bucket create podoadmin-prod
+```
+
+En el dashboard: Workers habilitado, plan adecuado (Workers Paid si aplica volumen).
+
+### 4.2 Configurar `wrangler.json` → `env.production`
+
+Archivo: `wrangler.json` (el deploy de Vite usa este archivo).
+
+Sustituir **todos** los placeholders:
+
+```json
+"production": {
+  "name": "podoadmin",
+  "vars": {
+    "NODE_ENV": "production",
+    "APP_BASE_URL": "https://app.tudominio.com",
+    "ALLOWED_ORIGINS": "https://app.tudominio.com",
+    "OFFICIAL_APP_DOMAIN": "https://app.tudominio.com"
+  },
+  "d1_databases": [{
+    "binding": "DB",
+    "database_name": "podoadmin-prod",
+    "database_id": "<ID-REAL-DE-CLOUDFLARE>",
+    "migrations_dir": "src/api/migrations"
+  }],
+  "r2_buckets": [{
+    "bucket_name": "podoadmin-prod",
+    "binding": "BUCKET"
+  }]
+}
+```
+
+**Variables de URL en producción:**
+
+| Variable | Uso |
+|----------|-----|
+| `APP_BASE_URL` | Enlaces en emails (reset password, verificación) — **principal en backend** |
+| `ALLOWED_ORIGINS` | CORS con credenciales; debe coincidir con el origen del front |
+| `OFFICIAL_APP_DOMAIN` | Aviso anti-phishing en login |
+
+Las tres deben apuntar al **mismo dominio público** (sin barra final inconsistente).
+
+Si aún no hay dominio propio, usa temporalmente `https://<nombre-worker>.<cuenta>.workers.dev` y actualiza después.
+
+### 4.3 Dominio y HTTPS
+
+1. Añadir dominio en Cloudflare (DNS).
+2. Workers → tu Worker → **Custom Domains** → p. ej. `app.tudominio.com`.
+3. Verificar que la app carga por `https://`.
+
+### 4.4 Entorno staging (recomendado)
+
+Duplicar bloque `production` como `staging` con:
+
+- D1/R2 propios (`podoadmin-staging`)
+- Dominio `staging.tudominio.com`
+- Secrets separados
+
+Probar el flujo completo en staging 1–2 días antes del go-live.
+
+---
+
+## 5. Fase 2 — Secretos y servicios
+
+**Tiempo estimado:** 1–2 horas.
+
+### 5.1 Secretos obligatorios (Worker no arranca sin ellos)
+
+```bash
+openssl rand -base64 32   # ejecutar 3 veces → 3 valores distintos
+
+npx wrangler secret put JWT_SECRET --env production
+npx wrangler secret put REFRESH_TOKEN_SECRET --env production
+npx wrangler secret put CSRF_SECRET --env production
+```
+
+Validación en código: `src/api/utils/validate-env.ts` y `validate-production-safety.ts`.
+
+### 5.2 Email transaccional
+
+**Obligatorio** si hay registro público, verificación de email o reset de contraseña.
+
+| Proveedor | Secret / var |
+|-----------|----------------|
+| **Resend** (recomendado) | `RESEND_API_KEY` (secret), `RESEND_FROM_EMAIL` (var) |
+| SendGrid | `SENDGRID_API_KEY`, `SENDGRID_FROM_EMAIL` |
+| AWS SES | `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_REGION`, `AWS_SES_FROM_EMAIL` |
+
+DNS del dominio de envío (reduce spam/phishing):
+
+- **SPF** — TXT autorizando servidores de envío
+- **DKIM** — firma; el proveedor da registros TXT
+- **DMARC** — política de rechazo/cuarentena
+
+### 5.3 CAPTCHA (registro público)
+
+Recomendado: **Cloudflare Turnstile**.
+
+| Variable | Tipo |
+|----------|------|
+| `CAPTCHA_PROVIDER` | `turnstile` |
+| `CAPTCHA_SITE_KEY` | var pública |
+| `CAPTCHA_SECRET_KEY` | secret |
+
+### 5.4 Opcionales recomendables
+
+| Variable | Uso |
+|----------|-----|
+| `SENTRY_DSN` | Errores en Worker |
+| `VITE_SENTRY_DSN` | Errores en frontend |
+| `GOOGLE_SAFE_BROWSING_API_KEY` | Reputación de URLs en mensajes |
+| `SUPPORT_EMAIL` | Enlace de contacto en login |
+| `ADMIN_EMAIL` | Config pública / alertas |
+
+Detalle exhaustivo: `ENV_VARIABLES.md` y `PRODUCCION_CONFIG.md`.
+
+---
+
+## 6. Fase 3 — BD, deploy y smoke tests
+
+**Tiempo estimado:** ~1 hora.
+
+### 6.1 Migraciones remotas
+
+```bash
+npm run db:migrate:remote:production
+```
+
+Equivalente:
+
+```bash
+npx wrangler d1 migrations apply DB --remote --env production
+```
+
+### 6.2 Super administrador (solo primera vez)
+
+```bash
+node scripts/create-super-admin.cjs "admin@tudominio.com" "ContraseñaSegura123!" "Admin Principal"
+
+npx wrangler d1 execute DB --remote --env production --file=scripts/super-admin.sql
+```
+
+Verificar login como `super_admin` en la URL de producción.
+
+### 6.3 Deploy a producción
+
+> **Importante:** `npm run deploy:production` hace build con entorno production pero el script actual puede **no** pasar `--env production` a Wrangler. Para producción real, usar siempre:
+
+```bash
+npm run build:production
+npx wrangler deploy --env production
+```
+
+Dry-run previo:
+
+```bash
+npm run build:production
+npx wrangler deploy --dry-run --env production
+```
+
+**No usar** `npm run deploy` a ciegas en producción: despliega el entorno por defecto (`sandbox-website-template`).
+
+### 6.4 Smoke tests post-deploy
+
+| # | Prueba | Cómo verificar |
+|---|--------|----------------|
+| 1 | Salud | `GET https://app.tudominio.com/api/health` → `{ "status": "ok", "timestamp": "..." }` |
+| 2 | Login / logout | Super admin creado en §6.2 |
+| 3 | Anti-phishing | Pantalla login muestra dominio oficial |
+| 4 | Dashboard | Carga sin errores en consola |
+| 5 | CRUD clínico | Crear/editar paciente, sesión, cita (según rol) |
+| 6 | Archivos R2 | Subir imagen o adjunto en sesión/paciente |
+| 7 | Email | Reset password o verificación (si email configurado) |
+| 8 | CORS | Sin errores de origen en consola del navegador |
+| 9 | Rate limit | Varios intentos de login fallidos → bloqueo razonable |
+| 10 | Logs | Error de API incluye `requestId` (JSON o cabecera `X-Request-Id`) |
+| 11 | Sistema | Super admin → `/system` (diagnóstico Worker + D1) |
+
+---
+
+## 7. Fase 4 — Endurecimiento
+
+Para que el deploy sea **sólido**, no solo “que arranque”.
+
+### 7.1 Correcciones técnicas en el repo
+
+| Prioridad | Tarea | Motivo |
+|-----------|-------|--------|
+| **Alta** | Añadir `--env production` a scripts `deploy:production` y `deploy:production:dry-run` en `package.json` | Evita desplegar al sandbox |
+| **Alta** | Crear `vitest.config.ts` (7 tests existen) | Regresiones en políticas de seguridad |
+| **Media** | Cerrar `REVISION_PENDIENTE.md` (auth, créditos, audit solo API) | Una sola fuente de verdad en prod |
+| **Media** | Code-splitting del bundle (~1.2 MB) | Tiempo de carga inicial |
+| **Baja** | Unificar páginas auth públicas con `authPage` | Consistencia UI / modo oscuro |
+
+### 7.2 Deuda localStorage (resumen)
+
+Archivo completo: `REVISION_PENDIENTE.md`.
+
+**Alta prioridad antes de confiar en prod multi-usuario:**
+
+1. Auth backend sin `getAllUsersWithCredentials` / storage
+2. Usuarios desde API en frontend (no `getCreatedUsers()`)
+3. Créditos solo vía `/credits/me`
+4. Audit log escritura vía `api.post("/audit-logs")`
+
+### 7.3 CI/CD sugerido (GitHub Actions)
+
+Pipeline mínimo en cada PR:
+
+```yaml
+# .github/workflows/ci.yml (borrador)
+- npm ci
+- npm run lint
+- npm test
+- npm run build:production
+- npx wrangler deploy --dry-run --env production
+```
+
+Deploy real solo en merge a `main`, con secrets en GitHub (`CLOUDFLARE_API_TOKEN`, etc.).
+
+### 7.4 Tiempos estimados
+
+| Escenario | Tiempo |
+|-----------|--------|
+| MVP en Workers (sin dominio propio, sin email) | 2–4 h |
+| Producción seria (dominio, email, CAPTCHA, staging) | 1–2 días |
+| Producción + endurecimiento (tests, CI, deuda código) | 3–5 días |
+
+---
+
+## 8. Comandos de referencia
+
+### Desarrollo
+
+```bash
+npm run dev              # http://localhost:5173
+npm run build
+npm run lint
+npm run setup:env
+```
+
+### Base de datos
+
+```bash
+npm run db:migrate                           # local
+npm run db:migrate:remote                    # remoto (entorno default)
+npm run db:migrate:remote:production         # remoto production
+npm run db:backup:remote                     # backup D1
+npm run db:seed:local                        # solo local — NUNCA en prod
+```
+
+### Deploy y comprobaciones
+
+```bash
+npm run deploy:prep
+npm run deploy:prep:full
+npm run build:production
+npx wrangler deploy --env production
+npx wrangler deploy --dry-run --env production
+npm run check                                # typecheck + build + dry-run default
+```
+
+### Secretos (producción)
+
+```bash
+npx wrangler secret put JWT_SECRET --env production
+npx wrangler secret put REFRESH_TOKEN_SECRET --env production
+npx wrangler secret put CSRF_SECRET --env production
+```
+
+### Alertas
+
+```bash
+npm run alerts:check
+npm run alerts:check:remote
+```
+
+---
+
+## 9. Errores habituales
+
+| Síntoma | Causa probable | Solución |
+|---------|----------------|----------|
+| Worker no arranca | Faltan o son cortos JWT / REFRESH / CSRF | `wrangler secret put` con ≥32 chars |
+| CORS / cookies | Origen no está en `ALLOWED_ORIGINS` | Añadir URL exacta del front |
+| Login raro en prod | `APP_BASE_URL` / `OFFICIAL_APP_DOMAIN` incorrectos | Alinear con URL real |
+| Deploy va al sandbox | Falta `--env production` | Usar `wrangler deploy --env production` |
+| 404 en ruta API nueva | Segmento no en lista blanca | `src/api/middleware/block-sensitive-paths.ts` |
+| Migraciones fallan | Schema desactualizado | `db:migrate:remote:production` tras cada release con cambios D1 |
+| Build falla en OneDrive | Sync de archivos | Usar `C:\proyectos\podoadmin-0949` |
+| Emails no llegan | SPF/DKIM/DMARC o API key | Revisar proveedor + DNS |
+
+---
+
+## 10. Qué NO hacer en producción
+
+- ❌ Commitear `.dev.vars`, secretos o `TEST_CREDENTIALS.md`
+- ❌ Ejecutar `npm run db:seed:remote` ni seeds mock en D1 remota
+- ❌ Usar credenciales de prueba (`TEST_CREDENTIALS.md`) en prod
+- ❌ Dejar `PENDIENTE-DATABASE-ID` o `podoadmin-pendiente` en `wrangler.json`
+- ❌ Reutilizar secrets de desarrollo en production
+- ❌ `wrangler deploy` sin `--env production` cuando el objetivo es prod
+- ❌ Desplegar sin migraciones aplicadas en la D1 remota
+
+---
+
+## 11. Operación continua
+
+| Tarea | Cuándo |
+|-------|--------|
+| Backup D1 | Antes de migraciones grandes: `npm run db:backup:remote` |
+| Migraciones | Tras cada release con cambios en `src/api/migrations` |
+| Revisar logs | Cloudflare → Workers → Logs; correlacionar con `requestId` |
+| Rotación secrets | Cada 6–12 meses o tras incidente |
+| Health check externo | Monitor en `GET /api/health` |
+| Crons | Configurados en `wrangler.json` (mantenimiento horario) |
+
+### Arquitectura de deploy (recordatorio)
+
+```
+┌─────────────┐     wrangler deploy      ┌─────────────────────────────┐
+│ npm run     │  ──────────────────────► │ Cloudflare Worker           │
+│ build:prod  │                            │  /api/*  → Hono API         │
+└─────────────┘                            │  /*      → SPA (dist/client)│
+                                           │  D1 (DB)  ·  R2 (BUCKET)    │
+                                           └─────────────────────────────┘
+```
+
+Un deploy **no borra** la D1 remota: datos y migraciones son responsabilidad operativa.
+
+### Nuevas rutas API
+
+Si añades `/api/mi-modulo/...`, registrar el primer segmento en:
+
+`src/api/middleware/block-sensitive-paths.ts` → `ALLOWED_API_FIRST_SEGMENTS`
+
+---
+
+## 12. Documentos relacionados
+
+| Archivo | Cuándo usarlo |
+|---------|----------------|
+| **`PLAN_DEPLOY_SOLIDO.md`** (este) | Referencia constante y checklist completo |
+| `CHECKLIST_DEPLOY_PRODUCCION.md` | Lista de casillas pre-deploy |
+| `DESPLIEGUE_PRODUCCION.md` | Guía técnica (health, requestId, R2, rutas) |
+| `PRODUCCION_CONFIG.md` | Tablas de variables y orden de configuración |
+| `ENV_VARIABLES.md` | Referencia exhaustiva de entorno |
+| `docs/DEPLOY_AHORA.md` | Guía corta “desplegar hoy” |
+| `docs/DEPLOY_PASO_A_PASO.md` | Paso a paso largo |
+| `LISTA_DESPLIEGUE.md` | Lista alternativa con casillas |
+| `REVISION_PENDIENTE.md` | Deuda localStorage / API |
+| `TEST_CREDENTIALS.md` | Solo desarrollo local — no prod |
+
+### Script de auditoría automática
+
+```bash
+npm run deploy:prep
+npm run deploy:prep:full
+```
+
+Implementación: `scripts/prepare-deploy.cjs`
+
+---
+
+## Orden recomendado (resumen de una línea)
+
+**Local OK → D1+R2 → wrangler.json → secrets → migrate → super admin → deploy `--env production` → smoke tests → endurecimiento (tests, CI, deuda código).**

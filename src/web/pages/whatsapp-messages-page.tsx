@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { MainLayout } from "../components/layout/main-layout";
 import { api } from "../lib/api-client";
+import { fetchAllClinicalPages } from "../lib/clinical-list-fetch";
 import { useAuth } from "../contexts/auth-context";
 import type { Patient } from "../types/clinical";
 import {
@@ -13,6 +14,7 @@ import {
   normalizePhoneForWaMe,
   saveWhatsAppWebTemplate,
 } from "../lib/whatsapp-web-link";
+import { useTenantCountry } from "../hooks/use-tenant-country";
 
 type WhatsAppMessageRow = {
   id: string;
@@ -64,6 +66,7 @@ type TomorrowRow = {
 
 export default function WhatsAppMessagesPage() {
   const { user } = useAuth();
+  const tenantCountry = useTenantCountry(user);
   const [messages, setMessages] = useState<WhatsAppMessageRow[]>([]);
   const [appointments, setAppointments] = useState<AppointmentRow[]>([]);
   const [patients, setPatients] = useState<Patient[]>([]);
@@ -94,21 +97,17 @@ export default function WhatsAppMessagesPage() {
   const loadData = async () => {
     setLoading(true);
     setError(null);
-    const [mRes, aRes, pRes, wRes] = await Promise.all([
+    const [mRes, appointmentsList, patientsList, wRes] = await Promise.all([
       api.get<{ success?: boolean; messages?: WhatsAppMessageRow[] }>("/whatsapp-messages?limit=200"),
-      api.get<{ success?: boolean; appointments?: AppointmentRow[] }>("/appointments"),
-      api.get<{ success?: boolean; patients?: Patient[] }>("/patients"),
+      fetchAllClinicalPages<AppointmentRow>("/appointments", "appointments", () => "Error citas"),
+      fetchAllClinicalPages<Patient>("/patients", "patients", () => "Error pacientes"),
       api.get<{ success?: boolean; config?: WhatsAppConfigPublic }>("/integrations/whatsapp/me"),
     ]);
     if (mRes.success && Array.isArray(mRes.data?.messages)) {
       setMessages(mRes.data.messages);
     }
-    if (aRes.success && Array.isArray(aRes.data?.appointments)) {
-      setAppointments(aRes.data.appointments.filter((a) => a.status !== "cancelled"));
-    }
-    if (pRes.success && Array.isArray(pRes.data?.patients)) {
-      setPatients(pRes.data.patients);
-    }
+    setAppointments(appointmentsList.filter((a) => a.status !== "cancelled"));
+    setPatients(patientsList);
     if (wRes.success && wRes.data?.config) {
       setWhatsAppConfig(wRes.data.config);
       setShowApiSection(Boolean(wRes.data.config.configured && wRes.data.config.enabled));
@@ -134,7 +133,7 @@ export default function WhatsAppMessagesPage() {
         phone = p.phone?.trim() || phone;
       }
     }
-    return { patientName, phone, waPhone: normalizePhoneForWaMe(phone) };
+    return { patientName, phone, waPhone: normalizePhoneForWaMe(phone, tenantCountry) };
   };
 
   const tomorrowAppointments = useMemo((): TomorrowRow[] => {
@@ -152,7 +151,7 @@ export default function WhatsAppMessagesPage() {
           dateLabel: tomorrowLabel,
         };
       });
-  }, [appointments, tomorrowIso, tomorrowLabel, patientById]);
+  }, [appointments, tomorrowIso, tomorrowLabel, patientById, tenantCountry]);
 
   const upcomingAppointments = useMemo(() => {
     const today = new Date();

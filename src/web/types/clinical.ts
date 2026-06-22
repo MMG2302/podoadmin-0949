@@ -1,5 +1,15 @@
 /** Tipos clínicos compartidos entre frontend y API (D1 es la fuente de verdad). */
 
+import type { PatientMedicalHistory } from "./medical-history";
+export type { AntecedentEntry, FamilyAntecedentId, PatientMedicalHistory } from "./medical-history";
+export {
+  createDefaultMedicalHistory,
+  FAMILY_ANTECEDENT_IDS,
+  FAMILY_ANTECEDENT_LABELS,
+  formatAntecedentSiNo,
+  normalizeMedicalHistory,
+} from "./medical-history";
+
 export interface ClinicalAlert {
   type: string;
   message: string;
@@ -20,11 +30,7 @@ export interface Patient {
   address: string;
   city: string;
   postalCode: string;
-  medicalHistory: {
-    allergies: string[];
-    medications: string[];
-    conditions: string[];
-  };
+  medicalHistory: PatientMedicalHistory;
   consent: {
     given: boolean;
     date: string | null;

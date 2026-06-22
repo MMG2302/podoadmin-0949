@@ -13,6 +13,7 @@ export interface ApiResponse<T = any> {
   data?: T;
   error?: string;
   message?: string;
+  httpStatus?: number;
   // Campos adicionales que pueden venir en respuestas de error (ej: rate limiting)
   retryAfter?: number;
   blockedUntil?: number;
@@ -131,13 +132,59 @@ async function ensureCsrfToken(): Promise<string | null> {
   return csrfTokenPromise;
 }
 
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+/** Worker de Miniflare reiniciando: devuelve HTML de error de Vite en lugar de JSON. */
+function isWorkerUnavailable(status: number, rawText: string, contentType: string | null): boolean {
+  const trimmed = rawText.trimStart();
+  if (trimmed.startsWith("<!DOCTYPE") || trimmed.startsWith("<html") || trimmed.startsWith("<")) {
+    return true;
+  }
+  if (contentType?.includes("text/html")) {
+    return true;
+  }
+  return status >= 500 && status <= 599;
+}
+
+async function fetchApiResponse(
+  url: string,
+  options: RequestInit,
+  maxAttempts = 4
+): Promise<{ response: Response; rawText: string }> {
+  let lastResponse: Response | null = null;
+  let lastText = "";
+
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    const response = await fetch(url, options);
+    const rawText = await response.text();
+    lastResponse = response;
+    lastText = rawText;
+
+    const unavailable = isWorkerUnavailable(
+      response.status,
+      rawText,
+      response.headers.get("content-type")
+    );
+
+    if (!unavailable || attempt === maxAttempts - 1) {
+      return { response, rawText };
+    }
+
+    // Esperar a que Miniflare termine de recargar el worker (dev local).
+    await sleep(1200 * (attempt + 1));
+  }
+
+  return { response: lastResponse!, rawText: lastText };
+}
+
 /**
  * Realiza una solicitud HTTP al servidor con autenticación automática y CSRF
  * Los tokens se envían automáticamente en cookies HTTP-only
  */
 export async function apiRequest<T = any>(
   endpoint: string,
-  options: RequestInit = {}
+  options: RequestInit = {},
+  _retry401 = true
 ): Promise<ApiResponse<T>> {
   const url = `${API_BASE_URL}${endpoint}`;
   const method = options.method || 'GET';
@@ -169,7 +216,7 @@ export async function apiRequest<T = any>(
   }
 
   try {
-    const response = await fetch(url, {
+    const { response, rawText } = await fetchApiResponse(url, {
       ...options,
       headers,
       credentials: 'include', // CRÍTICO: Necesario para enviar cookies HTTP-only
@@ -177,28 +224,43 @@ export async function apiRequest<T = any>(
 
     let data: any = {};
     try {
-      const text = await response.text();
-      if (text) data = JSON.parse(text);
+      if (rawText) data = JSON.parse(rawText);
     } catch {
       // Body vacío o no JSON: data queda {}
     }
 
+    const isHtmlBody = isWorkerUnavailable(
+      response.status,
+      rawText,
+      response.headers.get("content-type")
+    );
+
     // Si el access token expiró (401), intentar renovar con refresh token
-    if (response.status === 401 && !isLogin && !isRefresh && endpoint !== '/auth/refresh') {
+    if (response.status === 401 && !isLogin && !isRefresh && endpoint !== '/auth/refresh' && _retry401) {
       const refreshed = await refreshAccessToken();
       
       if (refreshed) {
         // Reintentar la solicitud original con el nuevo token
-        return apiRequest<T>(endpoint, options);
+        return apiRequest<T>(endpoint, options, false);
       } else {
         // Si la renovación falla, limpiar y redirigir al login
         localStorage.removeItem('podoadmin_user');
         window.dispatchEvent(new CustomEvent('auth:logout'));
+        return {
+          success: false,
+          error: data.error || 'No autorizado',
+          message: data.message || 'Tu sesión expiró. Vuelve a iniciar sesión.',
+          httpStatus: 401,
+          data,
+        };
       }
     }
 
     // Si hay error de CSRF, intentar obtener nuevo token y reintentar una vez
-    if (response.status === 403 && data.error === 'Token CSRF faltante' || data.error === 'Token CSRF inválido') {
+    if (
+      response.status === 403 &&
+      (data.error === 'Token CSRF faltante' || data.error === 'Token CSRF inválido')
+    ) {
       // Limpiar token CSRF y obtener uno nuevo
       csrfTokenPromise = null;
       const newCsrfToken = await ensureCsrfToken();
@@ -242,10 +304,23 @@ export async function apiRequest<T = any>(
     }
 
     if (!response.ok) {
+      const fallbackError =
+        response.status === 401
+          ? 'No autorizado'
+          : response.status === 402
+            ? 'access_not_granted'
+            : response.status >= 500
+              ? 'Error del servidor'
+              : 'Error en la solicitud';
       return {
         success: false,
-        error: data.error || 'Error en la solicitud',
-        message: data.message,
+        error: data.error || fallbackError,
+        message:
+          data.message ||
+          (isHtmlBody
+            ? 'El servidor local está reiniciando. Espera unos segundos y pulsa Reintentar, o reinicia con npm run dev.'
+            : undefined),
+        httpStatus: response.status,
         data, // Incluir body completo para que el frontend pueda leer data.message
         // Pasar campos de rate limiting para login
         retryAfter: data.retryAfter,

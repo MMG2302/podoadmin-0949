@@ -6,6 +6,11 @@ import {
   getSectionLabel,
   isSectionActive,
 } from "../types/clinical-layout";
+import {
+  FAMILY_ANTECEDENT_IDS,
+  formatFamilyAntecedentPrintRow,
+  normalizeMedicalHistory,
+} from "../types/medical-history";
 import { buildCustomSectionPrintBlock } from "./custom-section-print";
 import {
   buildAnamnesisPrintBlock,
@@ -112,11 +117,6 @@ const fmtDateLong = (value?: string | null): string => {
     month: "long",
     day: "numeric",
   });
-};
-
-const boolFromText = (text: string, keywords: string[]): "SI" | "NO" => {
-  const base = text.toLowerCase();
-  return keywords.some((k) => base.includes(k)) ? "SI" : "NO";
 };
 
 const h2 = (title: string): string => `<h2>${esc(title)}</h2>`;
@@ -383,9 +383,10 @@ export function openPodiatryHistoryPrint(input: PodiatryHistoryPrintInput): bool
       : "";
   const clinicLicense = clinic?.licenseNumber || professional?.licenseNumber || "";
 
-  const conditions = patient.medicalHistory?.conditions ?? [];
-  const allergies = patient.medicalHistory?.allergies ?? [];
-  const medications = patient.medicalHistory?.medications ?? [];
+  const mh = normalizeMedicalHistory(patient.medicalHistory);
+  const conditions = mh.conditions;
+  const allergies = mh.allergies;
+  const medications = mh.medications;
   const anamnesisText = latestSession?.anamnesis ?? "";
   const examText = latestSession?.physicalExamination ?? "";
   const diagnosisText = latestSession?.diagnosis ?? "";
@@ -394,16 +395,45 @@ export function openPodiatryHistoryPrint(input: PodiatryHistoryPrintInput): bool
   const diagramMeta = resolvePodiatryDiagramContext(sessions);
   const diagramCtx = diagramMeta;
 
-  const familyRows = [
-    ["Hipertensión arterial", boolFromText(conditions.join(" "), ["hipertensi"])],
-    ["Diabetes", boolFromText(conditions.join(" "), ["diabet"])],
-    ["Psoriasis", boolFromText(conditions.join(" "), ["psoriasis"])],
-  ];
+  const printPersonalAntecedents = printOn("patient_medical_history");
+  const printFamilyAntecedents = printOn("patient_family_history");
+  const printPatientCurp = printOn("patient_curp");
+  const printPatientEmail = printOn("patient_email");
+  const printPatientAddress = printOn("patient_address");
+
+  const familyRows = FAMILY_ANTECEDENT_IDS.map((id) =>
+    formatFamilyAntecedentPrintRow(id, mh.family[id])
+  );
   const personalRows = [
     ["Alergias medicamentosas", allergies.length > 0 ? "SI" : "NO", allergies.join(", ") || "—"],
     ["Medicación habitual", medications.length > 0 ? "SI" : "NO", medications.join(", ") || "—"],
     ["Patologías crónicas", conditions.length > 0 ? "SI" : "NO", conditions.join(", ") || "—"],
   ];
+
+  const antecedentsBlock =
+    printPersonalAntecedents || printFamilyAntecedents
+      ? `<div>
+              ${h2("II. Antecedentes")}
+              ${
+                printFamilyAntecedents
+                  ? `<table>
+                <tr><th colspan="3">Familiares</th></tr>
+                <tr><th>Enfermedad</th><th class="si-no">SI</th><th>Obs.</th></tr>
+                ${familyRows.map(([label, val, obs]) => `<tr><td>${esc(label)}</td><td class="si-no">${esc(val)}</td><td>${esc(obs)}</td></tr>`).join("")}
+              </table>`
+                  : ""
+              }
+              ${
+                printPersonalAntecedents
+                  ? `<table style="margin-top:2px">
+                <tr><th colspan="3">Personales</th></tr>
+                <tr><th>Enfermedad</th><th class="si-no">SI</th><th>Obs.</th></tr>
+                ${personalRows.map(([label, val, obs]) => `<tr><td>${esc(label)}</td><td class="si-no">${esc(val)}</td><td>${esc(obs)}</td></tr>`).join("")}
+              </table>`
+                  : ""
+              }
+            </div>`
+      : "";
 
   const evolutionRows = sessions
     .slice(0, 10)
@@ -545,33 +575,33 @@ export function openPodiatryHistoryPrint(input: PodiatryHistoryPrintInput): bool
                   <th>Teléfono</th>
                   <td>${esc(patient.phone || "—")}</td>
                 </tr>
-                <tr>
+                ${
+                  printPatientCurp
+                    ? `<tr>
                   <th>CURP</th>
                   <td>${esc(patient.curp || "—")}</td>
-                </tr>
-                <tr>
+                </tr>`
+                    : ""
+                }
+                ${
+                  printPatientEmail
+                    ? `<tr>
                   <th>Email</th>
                   <td>${esc(patient.email || "—")}</td>
-                </tr>
-                <tr>
+                </tr>`
+                    : ""
+                }
+                ${
+                  printPatientAddress
+                    ? `<tr>
                   <th>Dirección</th>
                   <td>${esc(`${patient.address || ""}${patient.city ? `, ${patient.city}` : ""}${patient.postalCode ? ` ${patient.postalCode}` : ""}` || "—")}</td>
-                </tr>
+                </tr>`
+                    : ""
+                }
               </table>
             </div>
-            <div>
-              ${h2("II. Antecedentes")}
-              <table>
-                <tr><th colspan="3">Familiares</th></tr>
-                <tr><th>Enfermedad</th><th class="si-no">SI</th><th>Obs.</th></tr>
-                ${familyRows.map(([label, val]) => `<tr><td>${esc(label)}</td><td class="si-no">${esc(val)}</td><td>—</td></tr>`).join("")}
-              </table>
-              <table style="margin-top:2px">
-                <tr><th colspan="3">Personales</th></tr>
-                <tr><th>Enfermedad</th><th class="si-no">SI</th><th>Obs.</th></tr>
-                ${personalRows.map(([label, val, obs]) => `<tr><td>${esc(label)}</td><td class="si-no">${esc(val)}</td><td>${esc(obs)}</td></tr>`).join("")}
-              </table>
-            </div>
+            ${antecedentsBlock}
           </div>
 
           ${morphologySection}

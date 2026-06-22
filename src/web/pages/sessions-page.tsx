@@ -4,7 +4,16 @@ import { MainLayout } from "../components/layout/main-layout";
 import { useLanguage } from "../contexts/language-context";
 import { useAuth } from "../contexts/auth-context";
 import { usePermissions } from "../hooks/use-permissions";
-import { useRefreshOnFocus } from "../hooks/use-refresh-on-focus";
+import { useClinicalListData, invalidateClinicalListCache } from "../hooks/use-clinical-list-data";
+import { ClinicalListError, ClinicalListLoading } from "../components/clinical/clinical-list-states";
+import { AppModal, AppModalBody, AppModalFooter, AppModalHeader } from "../components/ui/app-modal";
+import {
+  formFieldClassSm,
+  formFieldResizeClass,
+  formHintClass,
+  formLabelClass,
+  formPanelMutedClass,
+} from "../lib/form-field-classes";
 
 // Helper to check if user puede crear recetas
 // Por defecto: podólogo. Opcionalmente permitimos también clinic_admin para gestión clínica avanzada.
@@ -139,38 +148,19 @@ const SessionsPage = () => {
     }
   }
   
-  const [sessions, setSessions] = useState<ClinicalSession[]>([]);
-  const [patients, setPatients] = useState<Patient[]>([]);
+  const {
+    patients,
+    sessions,
+    isLoading: clinicalListLoading,
+    error: clinicalListError,
+    reload: reloadClinicalLists,
+  } = useClinicalListData();
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | "draft" | "completed">("all");
   const [showForm, setShowForm] = useState(false);
   const [editingSession, setEditingSession] = useState<ClinicalSession | null>(null);
   const [sessionTemplates, setSessionTemplates] = useState<SessionTemplate[]>([]);
   const [sessionPrescriptions, setSessionPrescriptions] = useState<Prescription[]>([]);
-
-  const loadPatients = useCallback(async () => {
-    try {
-      const response = await api.get<{ success: boolean; patients: Patient[] }>("/patients");
-      if (response.success && response.data?.success) {
-        setPatients(response.data.patients ?? []);
-      }
-    } catch (error) {
-      console.error("Error cargando pacientes:", error);
-    }
-  }, []);
-
-  const loadSessions = useCallback(async () => {
-    try {
-      const response = await api.get<{ success: boolean; sessions: ClinicalSession[] }>("/sessions");
-      if (response.success && response.data?.success) {
-        setSessions(response.data.sessions);
-      } else {
-        console.error("Error cargando sesiones:", response.error || response.data?.message);
-      }
-    } catch (error) {
-      console.error("Error cargando sesiones:", error);
-    }
-  }, []);
 
   const loadSessionTemplates = useCallback(async () => {
     try {
@@ -206,30 +196,17 @@ const SessionsPage = () => {
       const full =
         res.success && res.data?.session ? res.data.session : session;
       setSelectedSession(full);
-      setSessions((prev) => prev.map((s) => (s.id === full.id ? full : s)));
       void loadSessionPrescriptions(full);
     },
     [loadSessionPrescriptions]
   );
 
-  const refreshData = useCallback(() => {
-    void loadPatients();
-    void loadSessions();
-  }, [loadPatients, loadSessions]);
-
-  // Cargar pacientes al montar y cuando se abre el formulario (para tener datos frescos)
-  useEffect(() => {
-    loadPatients();
-  }, [user?.id, loadPatients]);
-
   useEffect(() => {
     if (showForm) {
-      loadPatients();
+      void reloadClinicalLists();
       loadSessionTemplates();
     }
-  }, [showForm, loadPatients, loadSessionTemplates]);
-
-  useRefreshOnFocus(refreshData);
+  }, [showForm, reloadClinicalLists, loadSessionTemplates]);
 
   const getPatientById = (id: string) => patients.find((p) => p.id === id);
 
@@ -310,11 +287,6 @@ const SessionsPage = () => {
     }, 100);
   };
   
-  // Cargar sesiones desde la API (el backend aplica reglas de visibilidad por rol)
-  useEffect(() => {
-    loadSessions();
-  }, [isPodiatrist, user?.id, loadSessions]);
-
   // Auto-open session if id is in URL
   useEffect(() => {
     if (sessionIdFromUrl) {
@@ -328,9 +300,7 @@ const SessionsPage = () => {
   }, [sessionIdFromUrl, sessions, openSessionDetail]);
 
   useEffect(() => {
-    if (isClinicAdmin) {
-      setLocation("/");
-    }
+    if (isClinicAdmin) setLocation("/clinic");
   }, [isClinicAdmin, setLocation]);
 
   // Detect print attempts from session form
@@ -469,14 +439,17 @@ const SessionsPage = () => {
     const processed: string[] = [];
 
     const toDataUrl = (file: File): Promise<string> =>
-      compressImageForSession(file).catch(() =>
-        new Promise((resolve, reject) => {
+      compressImageForSession(file).catch((err) => {
+        if (err instanceof Error && err.message.includes("demasiado pesada")) {
+          throw err;
+        }
+        return new Promise((resolve, reject) => {
           const reader = new FileReader();
           reader.onload = () => resolve(reader.result as string);
           reader.onerror = () => reject(new Error("No se pudo leer la imagen"));
           reader.readAsDataURL(file);
-        })
-      );
+        });
+      });
 
     for (const file of slice) {
       if (!file.type.startsWith("image/")) {
@@ -503,6 +476,9 @@ const SessionsPage = () => {
       images: prev.images.filter((_, i) => i !== index),
     }));
   };
+
+  const sessionSaveErrorMessage = (response: { error?: string; message?: string; data?: { message?: string } }) =>
+    response.message || response.data?.message || response.error || "No se pudo guardar la sesión.";
 
   const handleSubmit = async (e: React.FormEvent, asDraft: boolean) => {
     e.preventDefault();
@@ -547,7 +523,8 @@ const SessionsPage = () => {
 
         if (response.success && response.data?.success) {
           const updated = response.data.session;
-          setSessions((prev) => prev.map((s) => (s.id === updated.id ? updated : s)));
+          invalidateClinicalListCache();
+          void reloadClinicalLists();
 
           const patient = getPatientById(editingSession.patientId);
           void postAuditLog({
@@ -562,7 +539,7 @@ const SessionsPage = () => {
             },
           });
         } else {
-          alert(response.error || response.data?.message || "No se pudo actualizar la sesión.");
+          alert(sessionSaveErrorMessage(response));
           return;
         }
       } else {
@@ -573,7 +550,8 @@ const SessionsPage = () => {
 
         if (response.success && response.data?.success) {
           const newSession = response.data.session;
-          setSessions((prev) => [newSession, ...prev]);
+          invalidateClinicalListCache();
+          void reloadClinicalLists();
 
           const patient = getPatientById(newSession.patientId);
           void postAuditLog({
@@ -599,7 +577,7 @@ const SessionsPage = () => {
             return;
           }
 
-          alert(response.error || response.data?.message || "No se pudo crear la sesión.");
+          alert(sessionSaveErrorMessage(response));
           return;
         }
       }
@@ -653,7 +631,8 @@ const SessionsPage = () => {
 
       if (response.success && response.data?.success) {
         const patient = getPatientById(session.patientId);
-        setSessions((prev) => prev.filter((s) => s.id !== session.id));
+        invalidateClinicalListCache();
+        void reloadClinicalLists();
         
         void postAuditLog({
           action: "DELETE",
@@ -1019,35 +998,23 @@ const SessionsPage = () => {
     });
   };
 
-  if (isClinicAdmin) {
-    return (
-      <MainLayout title={t.sessions?.title || "Sesiones Clínicas"}>
-        <div className="flex items-center justify-center h-64">
-          <div className="text-center">
-            <svg className="w-16 h-16 text-gray-300 mx-auto mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-            </svg>
-            <p className="text-gray-500 text-lg">No tienes acceso a esta sección</p>
-            <p className="text-gray-400 text-sm mt-2">Los administradores de clínica no pueden acceder a sesiones clínicas.</p>
-          </div>
-        </div>
-      </MainLayout>
-    );
-  }
+  if (isClinicAdmin) return null;
 
   return (
     <MainLayout title={t.sessions.title}>
       {/* Session Detail Modal */}
       {selectedSession && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 overflow-y-auto">
-          <div className="bg-white rounded-2xl max-w-3xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="sticky top-0 bg-white border-b border-gray-100 p-6 flex items-center justify-between">
-              <div>
-                <h3 className="text-xl font-semibold text-[#1a1a1a]">{t.sessions.sessionDetails}</h3>
-                <p className="text-sm text-gray-500">{getPatientName(selectedSession.patientId)}</p>
+        <AppModal open onClose={() => setSelectedSession(null)} maxWidth="3xl">
+            <AppModalHeader>
+              <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0 flex-1">
+                <h3 className="text-lg sm:text-xl font-semibold text-[#1a1a1a] dark:text-white truncate">
+                  {t.sessions.sessionDetails}
+                </h3>
+                <p className="text-sm text-gray-500 truncate">{getPatientName(selectedSession.patientId)}</p>
               </div>
-              <div className="flex items-center gap-2">
-                <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+              <div className="flex items-center gap-2 flex-shrink-0">
+                <span className={`px-3 py-1 rounded-full text-xs font-medium whitespace-nowrap ${
                   selectedSession.status === "completed"
                     ? "bg-green-100 text-green-700"
                     : "bg-yellow-100 text-yellow-700"
@@ -1055,17 +1022,20 @@ const SessionsPage = () => {
                   {selectedSession.status === "completed" ? t.sessions.completed : t.sessions.draft}
                 </span>
                 <button
+                  type="button"
                   onClick={() => setSelectedSession(null)}
-                  className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                  className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
+                  aria-label="Cerrar"
                 >
                   <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                   </svg>
                 </button>
               </div>
-            </div>
+              </div>
+            </AppModalHeader>
             
-            <div className="p-6 space-y-6">
+            <AppModalBody className="space-y-6">
               <div>
                 <p className="text-sm text-gray-500 mb-1">{t.sessions.sessionDate}</p>
                 <p className="font-medium">{formatDate(selectedSession.sessionDate)}</p>
@@ -1073,7 +1043,7 @@ const SessionsPage = () => {
               
               {showClinicalSection("anamnesis") && selectedSession.anamnesis && (
                 <div>
-                  <h4 className="font-medium text-[#1a1a1a] mb-2">
+                  <h4 className="font-medium text-[#1a1a1a] dark:text-white mb-2">
                     {getSectionLabel(clinicalLayout, "anamnesis")}
                   </h4>
                   <p className="text-gray-600 whitespace-pre-wrap">{selectedSession.anamnesis}</p>
@@ -1082,7 +1052,7 @@ const SessionsPage = () => {
 
               {Object.values(podiatryVisibleBlocks).some(Boolean) && (
               <div>
-                <h4 className="font-medium text-[#1a1a1a] mb-3">Exploración podológica</h4>
+                <h4 className="font-medium text-[#1a1a1a] dark:text-white mb-3">Exploración podológica</h4>
                 <PodiatryExaminationFields
                   value={sessionToPodiatryExam(selectedSession)}
                   onChange={() => {}}
@@ -1094,7 +1064,7 @@ const SessionsPage = () => {
 
               {showClinicalSection("physical_examination") && selectedSession.physicalExamination && (
                 <div>
-                  <h4 className="font-medium text-[#1a1a1a] mb-2">
+                  <h4 className="font-medium text-[#1a1a1a] dark:text-white mb-2">
                     {getSectionLabel(clinicalLayout, "physical_examination")}
                   </h4>
                   <p className="text-gray-600 whitespace-pre-wrap">{selectedSession.physicalExamination}</p>
@@ -1103,7 +1073,7 @@ const SessionsPage = () => {
               
               {showClinicalSection("diagnosis") && selectedSession.diagnosis && (
                 <div>
-                  <h4 className="font-medium text-[#1a1a1a] mb-2">
+                  <h4 className="font-medium text-[#1a1a1a] dark:text-white mb-2">
                     {getSectionLabel(clinicalLayout, "diagnosis")}
                   </h4>
                   <p className="text-gray-600 whitespace-pre-wrap">{selectedSession.diagnosis}</p>
@@ -1112,7 +1082,7 @@ const SessionsPage = () => {
               
               {showClinicalSection("treatment_plan") && selectedSession.treatmentPlan && (
                 <div>
-                  <h4 className="font-medium text-[#1a1a1a] mb-2">
+                  <h4 className="font-medium text-[#1a1a1a] dark:text-white mb-2">
                     {getSectionLabel(clinicalLayout, "treatment_plan")}
                   </h4>
                   <p className="text-gray-600 whitespace-pre-wrap">{selectedSession.treatmentPlan}</p>
@@ -1121,7 +1091,7 @@ const SessionsPage = () => {
               
               {showClinicalSection("clinical_notes") && selectedSession.clinicalNotes && (
                 <div>
-                  <h4 className="font-medium text-[#1a1a1a] mb-2">
+                  <h4 className="font-medium text-[#1a1a1a] dark:text-white mb-2">
                     {getSectionLabel(clinicalLayout, "clinical_notes")}
                   </h4>
                   <p className="text-gray-600 whitespace-pre-wrap">{selectedSession.clinicalNotes}</p>
@@ -1137,7 +1107,7 @@ const SessionsPage = () => {
               
               {showClinicalSection("session_images") && (
               <div>
-                <h4 className="font-medium text-[#1a1a1a] mb-2">{t.sessions.images}</h4>
+                <h4 className="font-medium text-[#1a1a1a] dark:text-white mb-2">{t.sessions.images}</h4>
                 {(selectedSession.images ?? []).length === 0 ? (
                   <p className="text-sm text-gray-400">
                     No hay fotos en esta sesión. Súbelas al crear o editar el borrador.
@@ -1172,10 +1142,10 @@ const SessionsPage = () => {
               {canCreatePrescriptions(user?.role) && (
                 <div className="pt-4 border-t border-gray-100">
                   <div className="flex items-center justify-between mb-3">
-                    <h4 className="font-medium text-[#1a1a1a]">Recetas / Prescripciones</h4>
+                    <h4 className="font-medium text-[#1a1a1a] dark:text-white">Recetas / Prescripciones</h4>
                     <button
                       onClick={() => setShowPrescriptionForm(true)}
-                      className="flex items-center gap-1 text-sm text-[#1a1a1a] hover:underline font-medium"
+                      className="flex items-center gap-1 text-sm text-[#1a1a1a] dark:text-gray-100 hover:underline font-medium"
                     >
                       <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -1189,8 +1159,8 @@ const SessionsPage = () => {
                       {sessionPrescriptions.map((rx) => (
                         <div key={rx.id} className="flex items-center justify-between bg-gray-50 rounded-lg p-3">
                           <div className="flex-1 min-w-0 pr-3">
-                            <p className="font-medium text-sm text-[#1a1a1a]">Folio: {rx.folio}</p>
-                            <p className="text-xs text-gray-500">
+                            <p className="font-medium text-sm text-[#1a1a1a] dark:text-gray-100">Folio: {rx.folio}</p>
+                            <p className={`text-xs ${formHintClass}`}>
                               {new Date(rx.prescriptionDate).toLocaleDateString("es-ES")}
                             </p>
                             {rx.medications && (
@@ -1214,63 +1184,79 @@ const SessionsPage = () => {
                 </div>
               )}
 
-              <div className="flex gap-3 pt-4 border-t border-gray-100">
+            </AppModalBody>
+
+            <AppModalFooter>
+              <div className="flex flex-col sm:flex-row gap-3">
                 {selectedSession.status === "draft" && (
                   <button
+                    type="button"
                     onClick={() => {
                       setSelectedSession(null);
                       handleEdit(selectedSession);
                     }}
-                    className="flex-1 py-2 bg-gray-100 text-[#1a1a1a] rounded-lg hover:bg-gray-200 transition-colors font-medium text-sm"
+                    className="flex-1 py-2.5 bg-gray-100 dark:bg-gray-800 text-[#1a1a1a] dark:text-gray-100 rounded-lg hover:bg-gray-200 transition-colors font-medium text-sm"
                   >
                     {t.common.edit}
                   </button>
                 )}
                 {isSuperAdmin && (
                   <button
+                    type="button"
                     onClick={() => handleExport(selectedSession)}
-                    className="flex-1 py-2 bg-gray-100 text-[#1a1a1a] rounded-lg hover:bg-gray-200 transition-colors font-medium text-sm"
+                    className="flex-1 py-2.5 bg-gray-100 dark:bg-gray-800 text-[#1a1a1a] dark:text-gray-100 rounded-lg hover:bg-gray-200 transition-colors font-medium text-sm"
                   >
                     {t.common.export} JSON
                   </button>
                 )}
                 <button
+                  type="button"
                   onClick={() => handlePrint(selectedSession)}
-                  className="flex-1 py-2 bg-[#1a1a1a] text-white rounded-lg hover:bg-[#2a2a2a] transition-colors font-medium text-sm"
+                  className="flex-1 py-2.5 bg-[#1a1a1a] text-white rounded-lg hover:bg-[#2a2a2a] transition-colors font-medium text-sm"
                 >
                   {t.common.print}
                 </button>
               </div>
-            </div>
-          </div>
-        </div>
+            </AppModalFooter>
+        </AppModal>
       )}
       
       {/* Prescription Form Modal - Only accessible for podiatrists */}
       {showPrescriptionForm && selectedSession && canCreatePrescriptions(user?.role) && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[60] p-4 overflow-y-auto form-modal-scroll">
-          <div className="bg-white rounded-2xl max-w-xl w-full max-h-[90vh] overflow-y-auto form-modal-scroll">
-            <div className="p-6 border-b border-gray-100">
-              <div className="flex items-center justify-between">
-                <h3 className="text-lg font-semibold text-[#1a1a1a]">Nueva Receta</h3>
+        <AppModal
+          open
+          onClose={() => {
+            setShowPrescriptionForm(false);
+            setPrescriptionData({ prescriptionText: "", medications: "", nextVisitDate: "", notes: "" });
+          }}
+          maxWidth="xl"
+          zIndex={60}
+        >
+            <AppModalHeader>
+              <div className="flex items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <h3 className="text-lg font-semibold text-[#1a1a1a] dark:text-white">Nueva Receta</h3>
+                  <p className="text-sm text-gray-500 truncate mt-1">
+                    Paciente: {getPatientName(selectedSession.patientId)}
+                  </p>
+                </div>
                 <button
+                  type="button"
                   onClick={() => {
                     setShowPrescriptionForm(false);
                     setPrescriptionData({ prescriptionText: "", medications: "", nextVisitDate: "", notes: "" });
                   }}
-                  className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                  className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors flex-shrink-0"
+                  aria-label="Cerrar"
                 >
                   <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                   </svg>
                 </button>
               </div>
-              <p className="text-sm text-gray-500 mt-1">
-                Paciente: {getPatientName(selectedSession.patientId)}
-              </p>
-            </div>
+            </AppModalHeader>
             
-            <div className="p-6 space-y-4">
+            <AppModalBody className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Prescripción / Indicaciones *
@@ -1280,7 +1266,7 @@ const SessionsPage = () => {
                   onChange={(e) => setPrescriptionData(prev => ({ ...prev, prescriptionText: e.target.value }))}
                   rows={4}
                   placeholder="Describa las indicaciones y recomendaciones para el paciente..."
-                  className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#1a1a1a] focus:border-transparent resize-none"
+                  className="w-full px-4 py-2.5 bg-white dark:bg-gray-900 text-[#1a1a1a] dark:text-white border border-gray-200 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-[#1a1a1a] dark:focus:ring-gray-500 focus:border-transparent resize-none"
                 />
               </div>
               
@@ -1293,7 +1279,7 @@ const SessionsPage = () => {
                   onChange={(e) => setPrescriptionData(prev => ({ ...prev, medications: e.target.value }))}
                   rows={3}
                   placeholder="Liste los medicamentos o tratamientos recomendados..."
-                  className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#1a1a1a] focus:border-transparent resize-none"
+                  className="w-full px-4 py-2.5 bg-white dark:bg-gray-900 text-[#1a1a1a] dark:text-white border border-gray-200 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-[#1a1a1a] dark:focus:ring-gray-500 focus:border-transparent resize-none"
                 />
               </div>
               
@@ -1305,7 +1291,7 @@ const SessionsPage = () => {
                   type="date"
                   value={prescriptionData.nextVisitDate}
                   onChange={(e) => setPrescriptionData(prev => ({ ...prev, nextVisitDate: e.target.value }))}
-                  className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#1a1a1a] focus:border-transparent"
+                  className="w-full px-4 py-2.5 bg-white dark:bg-gray-900 text-[#1a1a1a] dark:text-white border border-gray-200 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-[#1a1a1a] dark:focus:ring-gray-500 focus:border-transparent"
                 />
               </div>
               
@@ -1318,62 +1304,69 @@ const SessionsPage = () => {
                   onChange={(e) => setPrescriptionData(prev => ({ ...prev, notes: e.target.value }))}
                   rows={2}
                   placeholder="Notas adicionales..."
-                  className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#1a1a1a] focus:border-transparent resize-none"
+                  className="w-full px-4 py-2.5 bg-white dark:bg-gray-900 text-[#1a1a1a] dark:text-white border border-gray-200 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-[#1a1a1a] dark:focus:ring-gray-500 focus:border-transparent resize-none"
                 />
               </div>
-            </div>
+            </AppModalBody>
             
-            <div className="p-6 border-t border-gray-100 flex gap-3">
+            <AppModalFooter>
+              <div className="flex flex-col sm:flex-row gap-3">
               <button
+                type="button"
                 onClick={() => {
                   setShowPrescriptionForm(false);
                   setPrescriptionData({ prescriptionText: "", medications: "", nextVisitDate: "", notes: "" });
                 }}
-                className="flex-1 py-2.5 bg-gray-100 text-[#1a1a1a] rounded-lg hover:bg-gray-200 transition-colors font-medium"
+                className="flex-1 py-2.5 bg-gray-100 dark:bg-gray-800 text-[#1a1a1a] dark:text-gray-100 rounded-lg hover:bg-gray-200 transition-colors font-medium"
               >
                 Cancelar
               </button>
               <button
+                type="button"
                 onClick={handleCreatePrescription}
                 disabled={!prescriptionData.prescriptionText.trim()}
                 className="flex-1 py-2.5 bg-[#1a1a1a] text-white rounded-lg hover:bg-[#2a2a2a] transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Crear Receta
               </button>
-            </div>
-          </div>
-        </div>
+              </div>
+            </AppModalFooter>
+        </AppModal>
       )}
 
       {/* Session Form Modal */}
       {showForm && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 overflow-y-auto form-modal-scroll">
-          <div className="bg-white rounded-2xl max-w-3xl w-full max-h-[90vh] overflow-y-auto form-modal-scroll" data-session-form>
-            <div className="sticky top-0 bg-white border-b border-gray-100 p-6 flex items-center justify-between">
-              <h3 className="text-xl font-semibold text-[#1a1a1a]">
+        <AppModal open onClose={closeSessionForm} maxWidth="3xl" panelId="session-form-panel">
+            <AppModalHeader>
+              <div className="flex items-center justify-between gap-3">
+              <h3 className="text-lg sm:text-xl font-semibold text-[#1a1a1a] dark:text-white min-w-0 truncate">
                 {editingSession ? t.sessions.editSession : t.sessions.newSession}
               </h3>
               <button
+                type="button"
                 onClick={closeSessionForm}
-                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors flex-shrink-0"
+                aria-label={t.common.close}
               >
                 <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                 </svg>
               </button>
-            </div>
+              </div>
+            </AppModalHeader>
 
-            <form className="p-6 space-y-6">
-              <div className="grid grid-cols-2 gap-4">
+            <AppModalBody>
+            <form className="space-y-6" data-session-form>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-[#1a1a1a] mb-1">
+                  <label className={`${formLabelClass} mb-1`}>
                     {t.sessions.selectPatient} *
                   </label>
                   <select
                     required
                     value={formData.patientId}
                     onChange={(e) => setFormData({ ...formData, patientId: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:border-[#1a1a1a] focus:ring-1 focus:ring-[#1a1a1a]"
+                    className={formFieldClassSm}
                     disabled={!!editingSession}
                   >
                     <option value="">Seleccionar...</option>
@@ -1403,7 +1396,7 @@ const SessionsPage = () => {
                         </button>
                         <button
                           type="button"
-                          onClick={loadPatients}
+                          onClick={() => void reloadClinicalLists()}
                           className="px-4 py-2 bg-white border border-amber-300 text-amber-800 text-sm font-medium rounded-lg hover:bg-amber-50 transition-colors"
                         >
                           Actualizar datos (si ya editó el paciente)
@@ -1413,7 +1406,7 @@ const SessionsPage = () => {
                   )}
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-[#1a1a1a] mb-1">
+                  <label className={`${formLabelClass} mb-1`}>
                     {t.sessions.sessionDate} *
                   </label>
                   <input
@@ -1421,21 +1414,21 @@ const SessionsPage = () => {
                     required
                     value={formData.sessionDate}
                     onChange={(e) => setFormData({ ...formData, sessionDate: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:border-[#1a1a1a] focus:ring-1 focus:ring-[#1a1a1a]"
+                    className={formFieldClassSm}
                   />
                 </div>
               </div>
 
-              <div className="rounded-lg border border-gray-200 bg-gray-50 p-4 space-y-3">
+              <div className={`${formPanelMutedClass} space-y-3`}>
                 <div className="flex flex-wrap items-end gap-2">
                   <div className="flex-1 min-w-[200px]">
-                    <label className="block text-sm font-medium text-[#1a1a1a] mb-1">
+                    <label className={`${formLabelClass} mb-1`}>
                       Plantilla de sesión
                     </label>
                     <select
                       value={selectedTemplateId}
                       onChange={(e) => setSelectedTemplateId(e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:border-[#1a1a1a] focus:ring-1 focus:ring-[#1a1a1a] bg-white"
+                      className="w-full px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 text-[#1a1a1a] dark:text-white focus:outline-none focus:border-[#1a1a1a] dark:focus:border-gray-400 focus:ring-1 focus:ring-[#1a1a1a] dark:focus:ring-gray-500 placeholder:text-gray-400 dark:placeholder:text-gray-500 bg-white"
                     >
                       <option value="">Sin plantilla</option>
                       {sessionTemplates.map((tpl) => (
@@ -1456,15 +1449,15 @@ const SessionsPage = () => {
                   </button>
                 </div>
                 {sessionTemplates.length === 0 ? (
-                  <p className="text-xs text-gray-500">
+                  <p className={`text-xs ${formHintClass}`}>
                     No hay plantillas. Créalas en{" "}
-                    <a href="/clinical-tools" className="underline text-[#1a1a1a]">
+                    <a href="/clinical-tools" className="underline text-[#1a1a1a] dark:text-gray-200">
                       Herramientas clínicas
                     </a>
                     .
                   </p>
                 ) : (
-                  <p className="text-xs text-gray-500">
+                  <p className={`text-xs ${formHintClass}`}>
                     Rellena anamnesis, exploración, diagnóstico y plan con el contenido guardado en la plantilla.
                   </p>
                 )}
@@ -1480,14 +1473,14 @@ const SessionsPage = () => {
 
               {showClinicalSection("anamnesis") && (
               <div>
-                <label className="block text-sm font-medium text-[#1a1a1a] mb-1">
+                <label className={`${formLabelClass} mb-1`}>
                   {getSectionLabel(clinicalLayout, "anamnesis")}
                 </label>
                 <textarea
                   rows={3}
                   value={formData.anamnesis}
                   onChange={(e) => setFormData({ ...formData, anamnesis: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:border-[#1a1a1a] focus:ring-1 focus:ring-[#1a1a1a]"
+                  className={formFieldResizeClass}
                   placeholder="Motivo de consulta, antecedentes..."
                 />
               </div>
@@ -1495,14 +1488,14 @@ const SessionsPage = () => {
 
               {showClinicalSection("physical_examination") && (
               <div>
-                <label className="block text-sm font-medium text-[#1a1a1a] mb-1">
+                <label className={`${formLabelClass} mb-1`}>
                   {getSectionLabel(clinicalLayout, "physical_examination")}
                 </label>
                 <textarea
                   rows={3}
                   value={formData.physicalExamination}
                   onChange={(e) => setFormData({ ...formData, physicalExamination: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:border-[#1a1a1a] focus:ring-1 focus:ring-[#1a1a1a]"
+                  className={formFieldResizeClass}
                   placeholder="Hallazgos de la exploración..."
                 />
               </div>
@@ -1510,14 +1503,14 @@ const SessionsPage = () => {
 
               {showClinicalSection("diagnosis") && (
               <div>
-                <label className="block text-sm font-medium text-[#1a1a1a] mb-1">
+                <label className={`${formLabelClass} mb-1`}>
                   {getSectionLabel(clinicalLayout, "diagnosis")}
                 </label>
                 <textarea
                   rows={2}
                   value={formData.diagnosis}
                   onChange={(e) => setFormData({ ...formData, diagnosis: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:border-[#1a1a1a] focus:ring-1 focus:ring-[#1a1a1a]"
+                  className={formFieldResizeClass}
                   placeholder="Diagnóstico podológico..."
                 />
               </div>
@@ -1525,14 +1518,14 @@ const SessionsPage = () => {
 
               {showClinicalSection("treatment_plan") && (
               <div>
-                <label className="block text-sm font-medium text-[#1a1a1a] mb-1">
+                <label className={`${formLabelClass} mb-1`}>
                   {getSectionLabel(clinicalLayout, "treatment_plan")}
                 </label>
                 <textarea
                   rows={3}
                   value={formData.treatmentPlan}
                   onChange={(e) => setFormData({ ...formData, treatmentPlan: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:border-[#1a1a1a] focus:ring-1 focus:ring-[#1a1a1a]"
+                  className={formFieldResizeClass}
                   placeholder="Plan de tratamiento..."
                 />
               </div>
@@ -1540,14 +1533,14 @@ const SessionsPage = () => {
 
               {showClinicalSection("clinical_notes") && (
               <div>
-                <label className="block text-sm font-medium text-[#1a1a1a] mb-1">
+                <label className={`${formLabelClass} mb-1`}>
                   {getSectionLabel(clinicalLayout, "clinical_notes")}
                 </label>
                 <textarea
                   rows={2}
                   value={formData.clinicalNotes}
                   onChange={(e) => setFormData({ ...formData, clinicalNotes: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:border-[#1a1a1a] focus:ring-1 focus:ring-[#1a1a1a]"
+                  className={formFieldResizeClass}
                   placeholder="Notas adicionales..."
                 />
               </div>
@@ -1561,7 +1554,7 @@ const SessionsPage = () => {
 
               {showClinicalSection("session_images") && (
               <div>
-                <label className="block text-sm font-medium text-[#1a1a1a] mb-2">
+                <label className={`${formLabelClass} mb-2`}>
                   {t.sessions.images} ({formData.images.length}/2)
                 </label>
                 
@@ -1615,29 +1608,29 @@ const SessionsPage = () => {
               )}
 
               {/* Follow-up Section */}
-              <div className="border-t border-gray-100 pt-6">
-                <h4 className="text-sm font-semibold text-[#1a1a1a] mb-4">Seguimiento</h4>
+              <div className="border-t border-gray-100 dark:border-gray-800 pt-6">
+                <h4 className="text-sm font-semibold text-[#1a1a1a] dark:text-gray-100 mb-4">Seguimiento</h4>
                 
                 <div className="grid grid-cols-2 gap-4 mb-4">
                   <div>
-                    <label className="block text-sm font-medium text-[#1a1a1a] mb-1">
+                    <label className={`${formLabelClass} mb-1`}>
                       Próxima cita
                     </label>
                     <input
                       type="date"
                       value={formData.nextAppointmentDate}
                       onChange={(e) => setFormData({ ...formData, nextAppointmentDate: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:border-[#1a1a1a] focus:ring-1 focus:ring-[#1a1a1a]"
+                      className={formFieldClassSm}
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-[#1a1a1a] mb-1">
+                    <label className={`${formLabelClass} mb-1`}>
                       Motivo de la cita
                     </label>
                     <select
                       value={formData.appointmentReason}
                       onChange={(e) => setFormData({ ...formData, appointmentReason: e.target.value as AppointmentReason })}
-                      className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:border-[#1a1a1a] focus:ring-1 focus:ring-[#1a1a1a]"
+                      className={formFieldClassSm}
                     >
                       <option value="">Sin motivo específico</option>
                       {appointmentReasons.map((reason) => (
@@ -1650,14 +1643,14 @@ const SessionsPage = () => {
                 </div>
                 
                 <div>
-                  <label className="block text-sm font-medium text-[#1a1a1a] mb-1">
+                  <label className={`${formLabelClass} mb-1`}>
                     Instrucciones de seguimiento
                   </label>
                   <textarea
                     rows={2}
                     value={formData.followUpNotes}
                     onChange={(e) => setFormData({ ...formData, followUpNotes: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:border-[#1a1a1a] focus:ring-1 focus:ring-[#1a1a1a]"
+                    className={formFieldClassSm}
                     placeholder="Instrucciones para el paciente, medicación, cuidados..."
                   />
                 </div>
@@ -1710,7 +1703,7 @@ const SessionsPage = () => {
                       <button
                         type="button"
                         onClick={closeSessionForm}
-                        className="flex-1 py-3 bg-gray-100 text-[#1a1a1a] rounded-lg hover:bg-gray-200 transition-colors font-medium"
+                        className="flex-1 py-3 bg-gray-100 dark:bg-gray-800 text-[#1a1a1a] dark:text-gray-100 rounded-lg hover:bg-gray-200 transition-colors font-medium"
                       >
                         {t.common.cancel}
                       </button>
@@ -1719,7 +1712,7 @@ const SessionsPage = () => {
                         onClick={(e) => handleSubmit(e, true)}
                         disabled={!canSave}
                         title={disableReason}
-                        className="flex-1 py-3 bg-gray-100 text-[#1a1a1a] rounded-lg hover:bg-gray-200 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="flex-1 py-3 bg-gray-100 dark:bg-gray-800 text-[#1a1a1a] dark:text-gray-100 rounded-lg hover:bg-gray-200 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         {t.sessions.saveDraft}
                       </button>
@@ -1737,8 +1730,8 @@ const SessionsPage = () => {
                 );
               })()}
             </form>
-          </div>
-        </div>
+            </AppModalBody>
+        </AppModal>
       )}
 
       {/* Main Content */}
@@ -1760,13 +1753,13 @@ const SessionsPage = () => {
                 placeholder={t.common.search}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:border-[#1a1a1a] focus:ring-1 focus:ring-[#1a1a1a]"
+                className="w-full pl-10 pr-4 py-2.5 border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 text-[#1a1a1a] dark:text-white focus:outline-none focus:border-[#1a1a1a] dark:focus:border-gray-400 focus:ring-1 focus:ring-[#1a1a1a] dark:focus:ring-gray-500 placeholder:text-gray-400 dark:placeholder:text-gray-500"
               />
             </div>
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value as "all" | "draft" | "completed")}
-              className="px-4 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:border-[#1a1a1a] focus:ring-1 focus:ring-[#1a1a1a]"
+              className="px-4 py-2.5 border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 text-[#1a1a1a] dark:text-white focus:outline-none focus:border-[#1a1a1a] dark:focus:border-gray-400 focus:ring-1 focus:ring-[#1a1a1a] dark:focus:ring-gray-500"
             >
               <option value="all">Todas</option>
               <option value="draft">{t.sessions.draft}</option>
@@ -1893,15 +1886,20 @@ const SessionsPage = () => {
         })()}
 
         {/* Session List */}
-        {filteredSessions.length === 0 ? (
-          <div className="bg-white rounded-xl border border-gray-100 p-12 text-center">
-            <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <svg className="w-8 h-8 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        {clinicalListError && (
+          <ClinicalListError message={clinicalListError} onRetry={() => void reloadClinicalLists()} />
+        )}
+        {clinicalListLoading && filteredSessions.length === 0 ? (
+          <ClinicalListLoading label="Cargando sesiones…" />
+        ) : filteredSessions.length === 0 ? (
+          <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-100 dark:border-gray-800 p-12 text-center">
+            <div className="w-16 h-16 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center mx-auto mb-4">
+              <svg className="w-8 h-8 text-gray-400 dark:text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
               </svg>
             </div>
-            <h3 className="text-lg font-semibold text-[#1a1a1a] mb-2">{t.sessions.noSessions}</h3>
-            <p className="text-gray-500 mb-6">Crea tu primera sesión clínica</p>
+            <h3 className="text-lg font-semibold text-[#1a1a1a] dark:text-white mb-2">{t.sessions.noSessions}</h3>
+            <p className="text-gray-500 dark:text-gray-400 mb-6">Crea tu primera sesión clínica</p>
             <button
               onClick={() => setShowForm(true)}
               className="px-6 py-2.5 bg-[#1a1a1a] text-white rounded-lg hover:bg-[#2a2a2a] transition-colors font-medium"
@@ -1914,18 +1912,18 @@ const SessionsPage = () => {
             {filteredSessions.map((session) => (
               <div
                 key={session.id}
-                className="bg-white rounded-xl border border-gray-100 p-5 hover:border-gray-200 transition-colors"
+                className="bg-white dark:bg-gray-900 rounded-xl border border-gray-100 dark:border-gray-800 p-5 hover:border-gray-200 dark:hover:border-gray-700 transition-colors"
               >
-                <div className="flex items-start justify-between gap-4">
-                  <div className="flex-1" onClick={() => void openSessionDetail(session)}>
-                    <div className="flex items-center gap-3 mb-2 cursor-pointer">
-                      <h4 className="font-medium text-[#1a1a1a]">
+                <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3 sm:gap-4">
+                  <div className="flex-1 min-w-0 cursor-pointer" onClick={() => void openSessionDetail(session)}>
+                    <div className="flex flex-wrap items-center gap-2 mb-2">
+                      <h4 className="font-medium text-[#1a1a1a] dark:text-white truncate max-w-full">
                         {getPatientName(session.patientId)}
                       </h4>
                       <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
                         session.status === "completed"
-                          ? "bg-green-100 text-green-700"
-                          : "bg-yellow-100 text-yellow-700"
+                          ? "bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300"
+                          : "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/40 dark:text-yellow-300"
                       }`}>
                         {session.status === "completed" ? t.sessions.completed : t.sessions.draft}
                       </span>
@@ -1955,18 +1953,18 @@ const SessionsPage = () => {
                         return null;
                       })()}
                     </div>
-                    <p className="text-sm text-gray-500 mb-2">{formatDate(session.sessionDate)}</p>
+                    <p className="text-sm text-gray-500 dark:text-gray-400 mb-2">{formatDate(session.sessionDate)}</p>
                     {session.diagnosis && (
-                      <p className="text-sm text-gray-600 line-clamp-2">{session.diagnosis}</p>
+                      <p className="text-sm text-gray-600 dark:text-gray-300 line-clamp-2">{session.diagnosis}</p>
                     )}
                     {session.nextAppointmentDate && (
-                      <p className="text-xs text-gray-400 mt-1">
+                      <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
                         📅 Próxima cita: {new Date(session.nextAppointmentDate).toLocaleDateString("es-ES", { day: "numeric", month: "short", year: "numeric" })}
                       </p>
                     )}
                   </div>
                   
-                  <div className="flex items-center gap-1 sm:gap-2">
+                  <div className="flex flex-wrap items-center justify-end gap-1 sm:gap-2 flex-shrink-0">
                     {session.status === "draft" && (
                       <>
                         <button

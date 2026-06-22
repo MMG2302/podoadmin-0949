@@ -1,46 +1,49 @@
-import type { patients as patientsTable } from '../database/schema';
-import { getAssignedPodiatristUserIds } from './tenant-isolation';
+import { isNotNull } from 'drizzle-orm';
+import type { JWTPayload } from './jwt';
+import { database } from '../database';
+import { patients } from '../database/schema';
+import { mergeScopeWhere, resolveClinicalListScope } from './clinical-list-scope';
 
-type DbPatient = typeof patientsTable.$inferSelect;
-
-export type CampaignPatientFilter = {
-  clinicOnly?: boolean;
-  hasPhone?: boolean;
+type CampaignFilter = {
   clinicId?: string;
+  hasPhone?: boolean;
+  clinicOnly?: boolean;
 };
 
-type CampaignUser = {
-  role: string;
-  userId: string;
-  clinicId?: string | null;
-};
+export async function fetchPatientsForWhatsAppCampaign(
+  user: JWTPayload,
+  filter: CampaignFilter
+): Promise<Array<{ id: string; phone: string; clinicId: string | null; firstName: string; lastName: string }>> {
+  const scope = await resolveClinicalListScope(user);
+  const extra =
+    filter.hasPhone !== false ? isNotNull(patients.phone) : undefined;
+  const where = mergeScopeWhere(
+    scope,
+    { createdBy: patients.createdBy, clinicId: patients.clinicId },
+    extra
+  );
 
-/** Misma visibilidad que GET /patients + filtro opcional de campaña. */
-export async function filterPatientsForWhatsAppCampaign(
-  rows: DbPatient[],
-  user: CampaignUser,
-  filter: CampaignPatientFilter
-): Promise<DbPatient[]> {
-  let list = rows;
+  let query = database
+    .select({
+      id: patients.id,
+      phone: patients.phone,
+      clinicId: patients.clinicId,
+      firstName: patients.firstName,
+      lastName: patients.lastName,
+    })
+    .from(patients)
+    .$dynamic();
 
-  if (user.role === 'podiatrist') {
-    list = list.filter((p) => p.createdBy === user.userId);
-  } else if (user.role === 'receptionist') {
-    const assignedIds = await getAssignedPodiatristUserIds(user.userId);
-    list = assignedIds.length === 0 ? [] : list.filter((p) => assignedIds.includes(p.createdBy));
-  } else if (user.role === 'clinic_admin' && user.clinicId) {
-    list = list.filter((p) => p.clinicId === user.clinicId);
+  if (where) query = query.where(where);
+
+  let rows = await query.limit(5000);
+
+  if (filter.clinicOnly && user.clinicId) {
+    rows = rows.filter((p) => p.clinicId === user.clinicId);
   }
-
   if (filter.clinicId) {
-    list = list.filter((p) => p.clinicId === filter.clinicId);
-  } else if (filter.clinicOnly !== false && user.clinicId) {
-    list = list.filter((p) => !p.clinicId || p.clinicId === user.clinicId);
+    rows = rows.filter((p) => p.clinicId === filter.clinicId);
   }
 
-  if (filter.hasPhone !== false) {
-    list = list.filter((p) => p.phone && p.phone.replace(/\D/g, '').length >= 8);
-  }
-
-  return list;
+  return rows.filter((p) => String(p.phone ?? '').trim().length > 0);
 }

@@ -20,6 +20,11 @@ import {
 } from '../utils/clinical-admin';
 import { resolveInitialIsEnabled } from '../utils/access-control';
 import { mapUsersWithAccessBadge } from '../utils/user-access-badge';
+import {
+  assertClinicCanAddActiveReceptionist,
+  canPodiatristManageReceptionist,
+  getClinicPodiatristUserIds,
+} from '../utils/receptionist-limits';
 
 const usersRoutes = new Hono();
 usersRoutes.use('*', requireAuth);
@@ -452,6 +457,14 @@ usersRoutes.post('/', requireRole('super_admin', 'clinic_admin'), async (c) => {
           );
         }
       }
+      if (role === 'receptionist' && requester.clinicId) {
+        try {
+          await assertClinicCanAddActiveReceptionist(requester.clinicId);
+        } catch (err: unknown) {
+          const message = err instanceof Error ? err.message : 'Límite de recepcionistas alcanzado';
+          return c.json({ error: 'Límite alcanzado', message }, 403);
+        }
+      }
     }
 
     const existing = await database.select().from(createdUsers).where(eq(createdUsers.email, emailLower)).limit(1);
@@ -465,6 +478,12 @@ usersRoutes.post('/', requireRole('super_admin', 'clinic_admin'), async (c) => {
     const finalClinicId = requester.role === 'clinic_admin' ? requester.clinicId : (clinicId || null);
 
     const initialEnabled = resolveInitialIsEnabled(role, requester.role);
+
+    let assignedPodiatristIdsJson: string | null = null;
+    if (role === 'receptionist' && finalClinicId) {
+      const podIds = await getClinicPodiatristUserIds(finalClinicId);
+      if (podIds.length > 0) assignedPodiatristIdsJson = JSON.stringify(podIds);
+    }
 
     await database.insert(createdUsers).values({
       id,
@@ -484,7 +503,7 @@ usersRoutes.post('/', requireRole('super_admin', 'clinic_admin'), async (c) => {
       termsAccepted: false,
       termsAcceptedAt: null,
       registrationSource: 'admin',
-      assignedPodiatristIds: null,
+      assignedPodiatristIds: assignedPodiatristIdsJson,
       googleId: null,
       appleId: null,
       oauthProvider: null,
@@ -565,7 +584,7 @@ usersRoutes.put('/:userId', requireRole('super_admin'), async (c) => {
  * - super_admin: puede eliminar cualquier usuario
  * - clinic_admin: solo puede eliminar recepcionistas de su propia clínica
  */
-usersRoutes.delete('/:userId', requireRole('super_admin', 'clinic_admin'), async (c) => {
+usersRoutes.delete('/:userId', requireRole('super_admin', 'clinic_admin', 'podiatrist'), async (c) => {
   try {
     const userId = sanitizePathParam(c.req.param('userId'), 128);
     if (!userId) return c.json({ error: 'ID de usuario inválido', message: 'Parámetro userId no válido' }, 400);
@@ -579,6 +598,17 @@ usersRoutes.delete('/:userId', requireRole('super_admin', 'clinic_admin'), async
           {
             error: 'Acceso denegado',
             message: 'Solo puedes eliminar recepcionistas de tu clínica',
+          },
+          403
+        );
+      }
+    }
+    if (requester.role === 'podiatrist') {
+      if (!canPodiatristManageReceptionist(requester, row)) {
+        return c.json(
+          {
+            error: 'Acceso denegado',
+            message: 'Solo puedes eliminar recepcionistas que hayas creado',
           },
           403
         );
@@ -623,8 +653,8 @@ async function setClinicUsersBlockState(clinicId: string, blocked: boolean) {
 // Bloqueo / desbloqueo:
 // - super_admin: cualquier usuario
 // - clinic_admin: solo recepcionistas de su clínica
-// - Si se bloquea/desbloquea un clinic_admin: en cascada a todos los usuarios de su clínica
-usersRoutes.post('/:userId/block', requireRole('super_admin', 'clinic_admin'), async (c) => {
+// - podiatrist: recepcionistas que creó (independiente) o de su clínica
+usersRoutes.post('/:userId/block', requireRole('super_admin', 'clinic_admin', 'podiatrist'), async (c) => {
   const requester = c.get('user');
   const userId = sanitizePathParam(c.req.param('userId'), 128);
   if (!userId) return c.json({ error: 'ID de usuario inválido', message: 'Parámetro userId no válido' }, 400);
@@ -635,13 +665,18 @@ usersRoutes.post('/:userId/block', requireRole('super_admin', 'clinic_admin'), a
       return c.json({ error: 'Acceso denegado' }, 403);
     }
   }
+  if (requester.role === 'podiatrist') {
+    if (!canPodiatristManageReceptionist(requester, row)) {
+      return c.json({ error: 'Acceso denegado', message: 'Solo puedes bloquear recepcionistas que hayas creado' }, 403);
+    }
+  }
   await setUserFlag(row.id, { isBlocked: true } as any);
   if (row.role === 'clinic_admin' && row.clinicId) {
     await setClinicUsersBlockState(row.clinicId, true);
   }
   return c.json({ success: true });
 });
-usersRoutes.post('/:userId/unblock', requireRole('super_admin', 'clinic_admin'), async (c) => {
+usersRoutes.post('/:userId/unblock', requireRole('super_admin', 'clinic_admin', 'podiatrist'), async (c) => {
   const requester = c.get('user');
   const userId = sanitizePathParam(c.req.param('userId'), 128);
   if (!userId) return c.json({ error: 'ID de usuario inválido', message: 'Parámetro userId no válido' }, 400);
@@ -650,6 +685,19 @@ usersRoutes.post('/:userId/unblock', requireRole('super_admin', 'clinic_admin'),
   if (requester.role === 'clinic_admin') {
     if (!requester.clinicId || row.clinicId !== requester.clinicId || row.role !== 'receptionist') {
       return c.json({ error: 'Acceso denegado' }, 403);
+    }
+  }
+  if (requester.role === 'podiatrist') {
+    if (!canPodiatristManageReceptionist(requester, row)) {
+      return c.json({ error: 'Acceso denegado', message: 'Solo puedes desbloquear recepcionistas que hayas creado' }, 403);
+    }
+  }
+  if (row.role === 'receptionist' && row.clinicId && row.isBlocked) {
+    try {
+      await assertClinicCanAddActiveReceptionist(row.clinicId);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Límite de recepcionistas activas alcanzado';
+      return c.json({ error: 'Límite alcanzado', message }, 403);
     }
   }
   await setUserFlag(row.id, { isBlocked: false } as any);
@@ -696,10 +744,16 @@ usersRoutes.post('/:userId/enable', requireRole('super_admin', 'clinic_admin', '
     if (row.role !== 'receptionist') {
       return c.json({ error: 'Acceso denegado', message: 'Solo puedes habilitar recepcionistas' }, 403);
     }
-    const sameClinic = Boolean(requester.clinicId && row.clinicId === requester.clinicId);
-    const createdBySelf = row.createdBy === requester.userId;
-    if (!createdBySelf && !sameClinic) {
+    if (!canPodiatristManageReceptionist(requester, row)) {
       return c.json({ error: 'Acceso denegado', message: 'Solo puedes habilitar recepcionistas que hayas creado' }, 403);
+    }
+  }
+  if (row.role === 'receptionist' && row.clinicId && row.isEnabled === false) {
+    try {
+      await assertClinicCanAddActiveReceptionist(row.clinicId);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Límite de recepcionistas activas alcanzado';
+      return c.json({ error: 'Límite alcanzado', message }, 403);
     }
   }
   await setUserFlag(row.id, { isEnabled: true, disabledAt: null } as any);
@@ -720,9 +774,7 @@ usersRoutes.post('/:userId/disable', requireRole('super_admin', 'clinic_admin', 
     if (row.role !== 'receptionist') {
       return c.json({ error: 'Acceso denegado', message: 'Solo puedes deshabilitar recepcionistas' }, 403);
     }
-    const sameClinic = Boolean(requester.clinicId && row.clinicId === requester.clinicId);
-    const createdBySelf = row.createdBy === requester.userId;
-    if (!createdBySelf && !sameClinic) {
+    if (!canPodiatristManageReceptionist(requester, row)) {
       return c.json({ error: 'Acceso denegado', message: 'Solo puedes deshabilitar recepcionistas que hayas creado' }, 403);
     }
   }

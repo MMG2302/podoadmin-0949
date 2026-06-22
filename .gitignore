@@ -200,3 +200,9 @@ dist
 
 # SQL generado con db:create-super-admin (puede contener hash de contraseña real)
 scripts/super-admin.sql
+
+# Local debug / generated
+cookies.txt
+repomix-output.xml
+repomix-remote-output.xml
+.tmp-test.sql

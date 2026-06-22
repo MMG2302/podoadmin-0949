@@ -3,6 +3,7 @@ import { MainLayout } from "../components/layout/main-layout";
 import { usePermissions } from "../hooks/use-permissions";
 import { useAuth } from "../contexts/auth-context";
 import { api } from "../lib/api-client";
+import { fetchAllClinicalPages } from "../lib/clinical-list-fetch";
 import type { Patient } from "../types/clinical";
 import {
   applyCampaignWebMessage,
@@ -11,6 +12,7 @@ import {
   parseCampaignFilterJson,
   type CampaignWebRecipient,
 } from "../lib/whatsapp-web-link";
+import { useTenantCountry } from "../hooks/use-tenant-country";
 
 interface Campaign {
   id: string;
@@ -25,6 +27,7 @@ interface Campaign {
 const WhatsAppCampaignsPage = () => {
   const { canViewWhatsAppMessages } = usePermissions();
   const { user } = useAuth();
+  const tenantCountry = useTenantCountry(user);
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [patients, setPatients] = useState<Patient[]>([]);
   const [name, setName] = useState("");
@@ -39,12 +42,12 @@ const WhatsAppCampaignsPage = () => {
 
   const load = useCallback(async () => {
     setLoading(true);
-    const [cRes, pRes] = await Promise.all([
+    const [cRes, patientList] = await Promise.all([
       api.get<{ success?: boolean; campaigns?: Campaign[] }>("/whatsapp-campaigns"),
-      api.get<{ success?: boolean; patients?: Patient[] }>("/patients"),
+      fetchAllClinicalPages<Patient>("/patients", "patients", () => "Error pacientes"),
     ]);
     if (cRes.success && cRes.data?.campaigns) setCampaigns(cRes.data.campaigns);
-    if (pRes.success && Array.isArray(pRes.data?.patients)) setPatients(pRes.data.patients);
+    setPatients(patientList);
     setLoading(false);
   }, []);
 
@@ -57,8 +60,9 @@ const WhatsAppCampaignsPage = () => {
       filterCampaignWebRecipients(patients, {
         clinicOnly: filterClinicOnly,
         userClinicId: user?.clinicId,
+        defaultCountry: tenantCountry,
       }),
-    [patients, filterClinicOnly, user?.clinicId]
+    [patients, filterClinicOnly, user?.clinicId, tenantCountry]
   );
 
   const recipientsForCampaign = useCallback(
@@ -67,9 +71,10 @@ const WhatsAppCampaignsPage = () => {
       return filterCampaignWebRecipients(patients, {
         clinicOnly,
         userClinicId: user?.clinicId,
+        defaultCountry: tenantCountry,
       });
     },
-    [patients, user?.clinicId]
+    [patients, user?.clinicId, tenantCountry]
   );
 
   const openWaMe = (campaign: Campaign, recipient: CampaignWebRecipient) => {

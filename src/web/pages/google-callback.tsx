@@ -36,7 +36,7 @@ const GoogleCallbackPage = () => {
         {error ? (
           <>
             <p className="text-red-600 mb-4">{error}</p>
-            <a href="/login" className="text-[#1a1a1a] underline">
+            <a href="/login" className="text-[#1a1a1a] dark:text-white underline">
               Volver al inicio de sesión
             </a>
           </>

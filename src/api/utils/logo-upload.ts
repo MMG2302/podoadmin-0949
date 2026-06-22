@@ -14,11 +14,13 @@
 /** Tamaño máximo del binario de la imagen (bytes). 2MB para alinearse con frontend. */
 export const MAX_LOGO_BYTES = 2 * 1024 * 1024;
 
-/** Máximo de píxeles (ancho × alto) para evitar bombas de descompresión. 4096×4096 = 16M. */
-export const MAX_IMAGE_PIXELS = 4096 * 4096;
+/** Límite D1: 2 MB por celda/fila TEXT/BLOB. El data URI almacenado incluye prefijo + base64. */
+export const MAX_D1_TEXT_BYTES = 2_000_000;
+/** Margen seguro para una celda data_uri (base64 ocupa ~4/3 del binario). */
+export const MAX_D1_STORED_DATA_URI_BYTES = 1_900_000;
 
-const DEFAULT_SESSION_IMAGE_BYTES = 2 * 1024 * 1024; // 2 MB
-/** Máximo tamaño por imagen en sesiones clínicas (bytes). Configurable con SESSION_IMAGE_MAX_BYTES (modo ligero). */
+const DEFAULT_SESSION_IMAGE_BYTES = Math.floor(((MAX_D1_STORED_DATA_URI_BYTES - 32) * 3) / 4);
+/** Máximo binario por imagen en sesiones clínicas (bytes). Configurable con SESSION_IMAGE_MAX_BYTES (modo ligero). */
 export const MAX_SESSION_IMAGE_BYTES =
   typeof process !== 'undefined' && process.env?.SESSION_IMAGE_MAX_BYTES
     ? Math.min(
@@ -26,6 +28,9 @@ export const MAX_SESSION_IMAGE_BYTES =
         DEFAULT_SESSION_IMAGE_BYTES
       )
     : DEFAULT_SESSION_IMAGE_BYTES;
+
+/** Máximo de píxeles (ancho × alto) para evitar bombas de descompresión. 4096×4096 = 16M. */
+export const MAX_IMAGE_PIXELS = 4096 * 4096;
 
 /** Prefijos data URI permitidos (solo imágenes raster seguras; sin SVG para evitar XSS/XXE). */
 const ALLOWED_DATA_URI_PREFIXES: { prefix: string; magic: number[][] }[] = [
@@ -204,6 +209,13 @@ export function validateLogoPayload(input: string | null | undefined): ValidateL
   }
 
   const sanitized = entry.prefix + base64Part;
+  if (sanitized.length > MAX_D1_STORED_DATA_URI_BYTES) {
+    return {
+      valid: false,
+      error: 'image_too_large',
+      message: `La imagen comprimida supera el límite de almacenamiento (${Math.round(MAX_D1_STORED_DATA_URI_BYTES / 1024 / 1024)} MB). Use una foto más pequeña o recorte la imagen.`,
+    };
+  }
   return { valid: true, sanitized };
 }
 
@@ -289,5 +301,12 @@ export function validateImageDataUri(
   }
 
   const sanitized = entry.prefix + base64Part;
+  if (sanitized.length > MAX_D1_STORED_DATA_URI_BYTES) {
+    return {
+      valid: false,
+      error: 'image_too_large',
+      message: `La imagen comprimida supera el límite de almacenamiento (${Math.round(MAX_D1_STORED_DATA_URI_BYTES / 1024 / 1024)} MB). Use una foto más pequeña o recorte la imagen.`,
+    };
+  }
   return { valid: true, sanitized };
 }

@@ -1,6 +1,9 @@
 import { z } from 'zod';
 import type { Context } from 'hono';
+import { TENANT_COUNTRY_CODES } from '../../lib/phone-country';
 import { escapeHtml, sanitizeEmail, containsXssPayload } from './sanitization';
+
+export const tenantCountryCodeSchema = z.enum(TENANT_COUNTRY_CODES);
 
 /**
  * Schemas de validación con Zod para prevenir inyección y validar datos
@@ -76,6 +79,7 @@ export const createClinicSchema = z.object({
   address: z.string().max(500, 'Dirección demasiado larga').optional(),
   city: z.string().max(100, 'Ciudad demasiado larga').optional(),
   postalCode: z.string().max(20, 'Código postal demasiado largo').optional(),
+  countryCode: tenantCountryCodeSchema.optional(),
   licenseNumber: z.string().max(100, 'Número de licencia demasiado largo').optional(),
   website: z.string().max(255, 'Web demasiado larga').optional(),
   podiatristLimit: z
@@ -160,6 +164,38 @@ export const createPatientSchema = z.object({
     allergies: z.array(z.string().transform((val) => escapeHtml(val))).optional(),
     medications: z.array(z.string().transform((val) => escapeHtml(val))).optional(),
     conditions: z.array(z.string().transform((val) => escapeHtml(val))).optional(),
+    family: z
+      .object({
+        hypertension: z
+          .object({
+            present: z.boolean().nullable().optional(),
+            condition: z.string().transform((val) => escapeHtml(val)).optional(),
+            notes: z.string().transform((val) => escapeHtml(val)).optional(),
+          })
+          .optional(),
+        diabetes: z
+          .object({
+            present: z.boolean().nullable().optional(),
+            condition: z.string().transform((val) => escapeHtml(val)).optional(),
+            notes: z.string().transform((val) => escapeHtml(val)).optional(),
+          })
+          .optional(),
+        psoriasis: z
+          .object({
+            present: z.boolean().nullable().optional(),
+            condition: z.string().transform((val) => escapeHtml(val)).optional(),
+            notes: z.string().transform((val) => escapeHtml(val)).optional(),
+          })
+          .optional(),
+        other: z
+          .object({
+            present: z.boolean().nullable().optional(),
+            condition: z.string().transform((val) => escapeHtml(val)).optional(),
+            notes: z.string().transform((val) => escapeHtml(val)).optional(),
+          })
+          .optional(),
+      })
+      .optional(),
   }).optional(),
   consent: z.object({
     given: z.boolean(),
@@ -278,13 +314,28 @@ export const roleFilterQuerySchema = z.object({
   role: roleEnum.optional(),
 });
 
+/** Paginación en listados clínicos */
+export const clinicalListPaginationSchema = z.object({
+  limit: z
+    .string()
+    .optional()
+    .transform((v) => (v === undefined || v === '' ? undefined : v)),
+  offset: z
+    .string()
+    .optional()
+    .transform((v) => (v === undefined || v === '' ? undefined : v)),
+});
+
+/** Query: listado de pacientes */
+export const patientsListQuerySchema = clinicalListPaginationSchema;
+
 /** Query: listado de sesiones */
-export const sessionsListQuerySchema = z.object({
+export const sessionsListQuerySchema = clinicalListPaginationSchema.extend({
   patient: z.string().max(128).optional(),
 });
 
 /** Query: listado de citas */
-export const appointmentsListQuerySchema = z.object({
+export const appointmentsListQuerySchema = clinicalListPaginationSchema.extend({
   clinicId: z.string().max(128).optional(),
   podiatristId: z.string().max(128).optional(),
   date: z

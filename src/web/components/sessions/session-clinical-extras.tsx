@@ -32,7 +32,7 @@ export function SessionChecklistPanel({ sessionId }: { sessionId: string }) {
 
   return (
     <div className="mt-4 border-t pt-4">
-      <h4 className="text-sm font-semibold text-[#1a1a1a] mb-2">Protocolo / checklist</h4>
+      <h4 className="text-sm font-semibold text-[#1a1a1a] dark:text-gray-100 mb-2">Protocolo / checklist</h4>
       <ul className="space-y-1">
         {items.map((item) => (
           <li key={item.id} className="flex items-center gap-2 text-sm">

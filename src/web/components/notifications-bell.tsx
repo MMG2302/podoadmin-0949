@@ -138,14 +138,14 @@ export const NotificationsBell = () => {
 
       {/* Dropdown Panel */}
       {isOpen && (
-        <div className="absolute right-0 mt-2 w-80 bg-white rounded-xl shadow-lg border border-gray-100 z-50 overflow-hidden">
+        <div className="absolute right-0 mt-2 w-80 bg-white dark:bg-gray-900 rounded-xl shadow-lg border border-gray-100 dark:border-gray-800 z-50 overflow-hidden">
           {/* Header */}
-          <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
-            <h3 className="font-semibold text-[#1a1a1a]">{t.notifications.title}</h3>
+          <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 dark:border-gray-800">
+            <h3 className="font-semibold text-[#1a1a1a] dark:text-white">{t.notifications.title}</h3>
             {unreadCount > 0 && (
               <button
                 onClick={handleMarkAllAsRead}
-                className="text-xs text-gray-500 hover:text-[#1a1a1a] transition-colors"
+                className="text-xs text-gray-500 dark:text-gray-400 hover:text-[#1a1a1a] dark:hover:text-white transition-colors"
               >
                 {t.notifications.markAllAsRead}
               </button>
@@ -159,7 +159,7 @@ export const NotificationsBell = () => {
                 <svg className="w-12 h-12 mx-auto text-gray-300 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
                 </svg>
-                <p className="text-sm text-gray-500">{t.notifications.noNotifications}</p>
+                <p className="text-sm text-gray-500 dark:text-gray-400">{t.notifications.noNotifications}</p>
               </div>
             ) : (
               recentNotifications.map((notification) => (
@@ -173,24 +173,24 @@ export const NotificationsBell = () => {
                     setIsOpen(false);
                     navigate("/notifications");
                   }}
-                  className={`w-full text-left px-4 py-3 border-b border-gray-50 hover:bg-gray-50 transition-colors ${
+                  className={`w-full text-left px-4 py-3 border-b border-gray-50 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors ${
                     notification.type === "admin_message"
                       ? !notification.read
-                        ? "bg-purple-50 border-l-4 border-l-purple-500"
-                        : "bg-purple-50/30 border-l-4 border-l-purple-300"
+                        ? "bg-purple-50 dark:bg-purple-950/40 border-l-4 border-l-purple-500"
+                        : "bg-purple-50/30 dark:bg-purple-950/20 border-l-4 border-l-purple-300 dark:border-l-purple-700"
                       : !notification.read
-                      ? "bg-blue-50/30"
+                      ? "bg-blue-50/30 dark:bg-blue-950/30"
                       : ""
                   }`}
                 >
                   <div className="flex gap-3">
                     {/* Icon */}
                     <div className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center ${
-                      notification.type === "reassignment" ? "bg-blue-100 text-blue-600" :
-                      notification.type === "appointment" ? "bg-green-100 text-green-600" :
-                      notification.type === "credit" ? "bg-yellow-100 text-yellow-600" :
-                      notification.type === "admin_message" ? "bg-purple-100 text-purple-600" :
-                      "bg-gray-100 text-gray-600"
+                      notification.type === "reassignment" ? "bg-blue-100 text-blue-600 dark:bg-blue-900/40 dark:text-blue-300" :
+                      notification.type === "appointment" ? "bg-green-100 text-green-600 dark:bg-green-900/40 dark:text-green-300" :
+                      notification.type === "credit" ? "bg-yellow-100 text-yellow-600 dark:bg-yellow-900/40 dark:text-yellow-300" :
+                      notification.type === "admin_message" ? "bg-purple-100 text-purple-600 dark:bg-purple-900/40 dark:text-purple-300" :
+                      "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300"
                     }`}>
                       <NotificationIcon type={notification.type} />
                     </div>
@@ -198,7 +198,7 @@ export const NotificationsBell = () => {
                     {/* Content */}
                     <div className="flex-1 min-w-0">
                       <div className="flex items-start justify-between gap-2">
-                        <p className="text-sm font-medium text-[#1a1a1a] truncate">
+                        <p className="text-sm font-medium text-[#1a1a1a] dark:text-white truncate">
                           {notification.title}
                         </p>
                         {!notification.read && (
@@ -212,7 +212,7 @@ export const NotificationsBell = () => {
                           </span>
                         )}
                       </div>
-                      <p className="text-xs text-gray-600 mt-0.5 line-clamp-2">
+                      <p className="text-xs text-gray-600 dark:text-gray-300 mt-0.5 line-clamp-2">
                         {notification.message}
                       </p>
                       {/* Show sender for admin messages */}
@@ -233,11 +233,11 @@ export const NotificationsBell = () => {
 
           {/* Footer */}
           {notifications.length > 0 && (
-            <div className="px-4 py-3 border-t border-gray-100 bg-gray-50">
+            <div className="px-4 py-3 border-t border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-950">
               <Link
                 href="/notifications"
                 onClick={() => setIsOpen(false)}
-                className="block text-center text-sm font-medium text-[#1a1a1a] hover:underline"
+                className="block text-center text-sm font-medium text-[#1a1a1a] dark:text-white hover:underline"
               >
                 {t.notifications.viewAll} →
               </Link>

@@ -194,7 +194,7 @@ const NotificationsPage = () => {
         {/* Header with actions */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            <h2 className="text-xl font-semibold text-[#1a1a1a]">{t.notifications.title}</h2>
+            <h2 className="text-xl font-semibold text-[#1a1a1a] dark:text-white">{t.notifications.title}</h2>
             {unreadCount > 0 && (
               <p className="text-sm text-gray-500 mt-1">
                 {unreadCount} {t.notifications.unread.toLowerCase()}
@@ -205,7 +205,7 @@ const NotificationsPage = () => {
           {unreadCount > 0 && (
             <button
               onClick={handleMarkAllAsRead}
-              className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-[#1a1a1a] bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+              className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-[#1a1a1a] dark:text-white bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
             >
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
@@ -216,7 +216,7 @@ const NotificationsPage = () => {
         </div>
 
         {/* Filters */}
-        <div className="bg-white rounded-xl border border-gray-100 p-4">
+        <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-100 dark:border-gray-800 p-4">
           <div className="flex flex-col lg:flex-row lg:items-center gap-4">
             {/* Tab Filter */}
             <div className="flex gap-1 bg-gray-100 p-1 rounded-lg">
@@ -226,8 +226,8 @@ const NotificationsPage = () => {
                   onClick={() => setFilterTab(tab)}
                   className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
                     filterTab === tab
-                      ? "bg-white text-[#1a1a1a] shadow-sm"
-                      : "text-gray-600 hover:text-[#1a1a1a]"
+                      ? "bg-white dark:bg-gray-800 text-[#1a1a1a] dark:text-white shadow-sm"
+                      : "text-gray-600 hover:text-[#1a1a1a] dark:hover:text-white"
                   }`}
                 >
                   {tab === "all" ? t.notifications.all : 
@@ -241,7 +241,7 @@ const NotificationsPage = () => {
             <select
               value={typeFilter}
               onChange={(e) => setTypeFilter(e.target.value as TypeFilter)}
-              className="px-4 py-2 bg-white border border-gray-200 rounded-lg text-sm focus:border-[#1a1a1a] focus:ring-1 focus:ring-[#1a1a1a] outline-none"
+              className="px-4 py-2 bg-white dark:bg-gray-900 text-[#1a1a1a] dark:text-white border border-gray-200 dark:border-gray-700 rounded-lg text-sm focus:border-[#1a1a1a] dark:focus:border-gray-400 focus:ring-1 focus:ring-[#1a1a1a] dark:focus:ring-gray-500 outline-none"
             >
               <option value="all">{t.notifications.all}</option>
               <option value="reassignment">{t.notifications.reassignment}</option>
@@ -291,7 +291,7 @@ const NotificationsPage = () => {
         </div>
 
         {/* Notifications List */}
-        <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
+        <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-100 dark:border-gray-800 overflow-hidden">
           {filteredNotifications.length === 0 ? (
             <div className="p-12 text-center">
               <svg className="w-16 h-16 mx-auto text-gray-200 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -354,7 +354,7 @@ const NotificationsPage = () => {
                     {/* Content: título y mensaje con espacio para no verse amontonado */}
                     <div className="flex-1 min-w-0">
                       <div className="flex items-start gap-2">
-                        <p className={`text-sm ${!notification.read ? "font-semibold" : "font-medium"} text-[#1a1a1a]`}>
+                        <p className={`text-sm ${!notification.read ? "font-semibold" : "font-medium"} text-[#1a1a1a] dark:text-white`}>
                           {notification.title}
                         </p>
                         {!notification.read && (

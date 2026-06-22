@@ -9,7 +9,7 @@ declare namespace Cloudflare {
 		BUCKET: R2Bucket;
 		DB: D1Database;
 		BETTER_AUTH_SECRET: string;
-		VITE_BASE_URL: string;
+		APP_BASE_URL: string;
 		AI_GATEWAY_BASE_URL: string;
 		AI_GATEWAY_API_KEY: string;
 		AUTUMN_SECRET_KEY: string;
@@ -20,7 +20,7 @@ type StringifyValues<EnvType extends Record<string, unknown>> = {
 	[Binding in keyof EnvType]: EnvType[Binding] extends string ? EnvType[Binding] : string;
 };
 declare namespace NodeJS {
-	interface ProcessEnv extends StringifyValues<Pick<Cloudflare.Env, "BETTER_AUTH_SECRET" | "VITE_BASE_URL" | "AI_GATEWAY_BASE_URL" | "AI_GATEWAY_API_KEY" | "AUTUMN_SECRET_KEY">> {}
+	interface ProcessEnv extends StringifyValues<Pick<Cloudflare.Env, "BETTER_AUTH_SECRET" | "APP_BASE_URL" | "AI_GATEWAY_BASE_URL" | "AI_GATEWAY_API_KEY" | "AUTUMN_SECRET_KEY">> {}
 }
 
 // Begin runtime types

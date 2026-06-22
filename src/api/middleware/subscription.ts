@@ -1,5 +1,5 @@
 import { createMiddleware } from 'hono/factory';
-import { resolveSystemAccess } from '../utils/access-control';
+import { resolveSystemAccessCached } from '../utils/access-cache';
 
 /**
  * Bloquea acceso si no hay grant de super_admin ni pago Stripe acreditado.
@@ -7,10 +7,13 @@ import { resolveSystemAccess } from '../utils/access-control';
 export const requireActiveSubscription = createMiddleware(async (c, next) => {
   const user = c.get('user');
   if (!user) {
-    return c.json({ error: 'No autorizado' }, 401);
+    return c.json(
+      { error: 'No autorizado', message: 'Se requiere autenticación' },
+      401
+    );
   }
 
-  const access = await resolveSystemAccess(user.userId, user.role);
+  const access = await resolveSystemAccessCached(user.userId, user.role);
   if (!access.granted) {
     return c.json(
       {

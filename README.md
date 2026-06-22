@@ -71,10 +71,6 @@ bun db:migrate:remote   # Apply migrations to remote D1 (production)
 
 **Usuarios mock (solo local):** Los usuarios de demostración ya no forman parte de las migraciones. Para tenerlos **solo en local**, tras `bun db:migrate` ejecuta `bun db:seed:local`; así el seed se aplica solo a la D1 local. `db:migrate:remote` no incluye seed, por lo que en remoto/producción no se insertan usuarios mock.
 
-## Despliegue a producción
-
-Guía consolidada: **[DESPLIEGUE_PRODUCCION.md](./DESPLIEGUE_PRODUCCION.md)** (Workers, D1, variables, `/api/health`, correlación `requestId`). Checklist: [CHECKLIST_DEPLOY_PRODUCCION.md](./CHECKLIST_DEPLOY_PRODUCCION.md).
-
 ## Coding Style
 
 - Functional programming preferred (use `const`, avoid `let`)

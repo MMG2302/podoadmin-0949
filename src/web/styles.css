@@ -158,6 +158,40 @@
     -webkit-user-select: text;
     user-select: text;
   }
+
+  /*
+   * Modo oscuro: inputs con bg-white heredan texto claro del body → ilegible.
+   * Estas reglas aplican a todos los formularios de la app.
+   */
+  .dark :is(
+    input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([type="range"]):not([type="color"]):not([type="hidden"]):not([type="submit"]):not([type="button"]):not([type="reset"]),
+    textarea,
+    select
+  ) {
+    background-color: var(--card) !important;
+    color: var(--foreground) !important;
+    border-color: var(--border) !important;
+    color-scheme: dark;
+  }
+
+  .dark :is(input, textarea)::placeholder {
+    color: var(--muted-foreground) !important;
+    opacity: 1;
+  }
+
+  .dark :is(input, textarea, select):disabled {
+    background-color: var(--muted) !important;
+    color: var(--muted-foreground) !important;
+    opacity: 1;
+  }
+
+  /* Paneles de solo lectura / vista previa con fondo gris claro */
+  .dark :is(div, p, span).bg-gray-50,
+  .dark div.rounded-lg.border.border-gray-200.bg-gray-50 {
+    background-color: var(--muted) !important;
+    border-color: var(--border) !important;
+    color: var(--foreground);
+  }
 }
 
 /* Safari compatibility prefixes */
@@ -306,11 +340,11 @@ button, a, [role="button"], input, select, textarea {
 
 /* Mobile card styles for responsive tables */
 .mobile-card {
-  @apply bg-white rounded-xl border border-gray-100 p-4 mb-3 shadow-sm;
+  @apply bg-white dark:bg-gray-900 rounded-xl border border-gray-100 dark:border-gray-800 p-4 mb-3 shadow-sm;
 }
 
 .mobile-card-header {
-  @apply flex items-center justify-between mb-3 pb-3 border-b border-gray-100;
+  @apply flex items-center justify-between mb-3 pb-3 border-b border-gray-100 dark:border-gray-800;
 }
 
 .mobile-card-row {
@@ -318,15 +352,15 @@ button, a, [role="button"], input, select, textarea {
 }
 
 .mobile-card-label {
-  @apply text-gray-500 font-medium;
+  @apply text-gray-500 dark:text-gray-400 font-medium;
 }
 
 .mobile-card-value {
-  @apply text-[#1a1a1a] text-right;
+  @apply text-[#1a1a1a] dark:text-white text-right;
 }
 
 .mobile-card-actions {
-  @apply flex items-center justify-end gap-2 mt-3 pt-3 border-t border-gray-100;
+  @apply flex items-center justify-end gap-2 mt-3 pt-3 border-t border-gray-100 dark:border-gray-800;
 }
 
 /* Active state for touch devices */

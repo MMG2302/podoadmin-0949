@@ -21,7 +21,7 @@ bun run db:migrate
 node scripts/setup-env.js
 ```
 
-O manualmente crear `.env` con las variables necesarias (ver `ENV_VARIABLES.md`).
+O copiar `.dev.vars.example` a `.dev.vars` y rellenar secretos (ver `ENV_VARIABLES.md`). Los secretos no van en `.env`.
 
 ### 3. Migrar Rate Limiting a D1
 

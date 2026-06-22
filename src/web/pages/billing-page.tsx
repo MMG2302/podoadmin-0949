@@ -232,7 +232,7 @@ const BillingPage = () => {
           !(subscription?.status === "trial" && subscription.isActive) &&
           trialVerification && (
             <div className="p-4 rounded-xl border border-gray-200 bg-gray-50 space-y-4 text-sm">
-              <p className="font-semibold text-[#1a1a1a]">Activar prueba gratuita (1 mes)</p>
+              <p className="font-semibold text-[#1a1a1a] dark:text-white">Activar prueba gratuita (1 mes)</p>
               <p className="text-gray-600">
                 Verifica tu correo y tarjeta. Una cuenta, una tarjeta y una conexión (IP) solo pueden
                 usarse una vez para la prueba.

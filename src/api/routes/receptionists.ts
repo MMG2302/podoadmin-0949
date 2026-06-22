@@ -1,6 +1,6 @@
 import { Hono } from 'hono';
 import { eq, and, inArray, or } from 'drizzle-orm';
-import { getCreatedUserByIdOrUserId } from '../utils/tenant-isolation';
+import { getCreatedUserByIdOrUserId, invalidateAssignedPodiatristCache } from '../utils/tenant-isolation';
 import { requireAuth } from '../middleware/auth';
 import { database } from '../database';
 import { createdUsers, userCredits } from '../database/schema';
@@ -9,12 +9,18 @@ import { getClientIP } from '../utils/ip-tracking';
 import { getSafeUserAgent } from '../utils/request-headers';
 import { hashPassword } from '../utils/password';
 import { sanitizePathParam } from '../utils/sanitization';
+import {
+  assertClinicCanAddActiveReceptionist,
+  assertIndependentCanAddReceptionist,
+  filterValidClinicPodiatristIds,
+  getClinicPodiatristUserIds,
+  MAX_CLINIC_ACTIVE_RECEPTIONISTS,
+} from '../utils/receptionist-limits';
 
 const receptionistsRoutes = new Hono();
 
 receptionistsRoutes.use('*', requireAuth);
 
-// UUID criptográfico: evita acceso por rutas predecibles
 function generateId() {
   return `user_created_${crypto.randomUUID().replace(/-/g, '')}`;
 }
@@ -35,9 +41,31 @@ function toCreatedUser(row: typeof createdUsers.$inferSelect) {
     role: row.role as 'receptionist',
     clinicId: row.clinicId ?? undefined,
     assignedPodiatristIds: assigned,
+    isBlocked: row.isBlocked ?? false,
+    isEnabled: row.isEnabled !== false,
+    mustChangePassword: row.mustChangePassword ?? false,
     createdAt: row.createdAt,
     createdBy: row.createdBy ?? '',
   };
+}
+
+function canManageReceptionistAssignments(
+  requester: { role: string; userId: string; clinicId?: string | null },
+  row: typeof createdUsers.$inferSelect
+): boolean {
+  if (requester.role === 'super_admin' || requester.role === 'admin') return true;
+  if (row.createdBy === requester.userId) return true;
+  if (requester.role === 'clinic_admin' && requester.clinicId && row.clinicId === requester.clinicId) {
+    return true;
+  }
+  if (
+    requester.role === 'receptionist' &&
+    requester.userId === row.userId &&
+    row.clinicId
+  ) {
+    return true;
+  }
+  return false;
 }
 
 /**
@@ -47,8 +75,6 @@ function toCreatedUser(row: typeof createdUsers.$inferSelect) {
 receptionistsRoutes.get('/', async (c) => {
   const user = c.get('user');
   if (!user) return c.json({ error: 'No autorizado' }, 401);
-  // - clinic_admin: ver todas las recepcionistas de su clínica
-  // - podiatrist: ver las recepcionistas que él mismo creó (modo independiente)
   const whereClause =
     user.role === 'clinic_admin' && user.clinicId
       ? and(eq(createdUsers.role, 'receptionist'), eq(createdUsers.clinicId, user.clinicId))
@@ -61,7 +87,7 @@ receptionistsRoutes.get('/', async (c) => {
 
 /**
  * POST /api/receptionists
- * Crea una recepcionista (podólogo independiente). Body: { name, email, password }
+ * Crea una recepcionista (podólogo independiente o clinic_admin). Body: { name, email, password }
  */
 receptionistsRoutes.post('/', async (c) => {
   const user = c.get('user');
@@ -69,6 +95,16 @@ receptionistsRoutes.post('/', async (c) => {
   if (user.role !== 'podiatrist' && user.role !== 'clinic_admin') {
     return c.json({ error: 'Solo podólogos o administradores de clínica pueden crear recepcionistas' }, 403);
   }
+  if (user.role === 'podiatrist' && user.clinicId) {
+    return c.json(
+      {
+        error: 'Acceso denegado',
+        message: 'Los podólogos de clínica deben pedir al administrador que cree recepcionistas desde Gestión de clínica.',
+      },
+      403
+    );
+  }
+
   const body = (await c.req.json().catch(() => ({}))) as { name?: string; email?: string; password?: string };
   const name = String(body.name ?? '').trim();
   const email = String(body.email ?? '').trim().toLowerCase();
@@ -79,13 +115,32 @@ receptionistsRoutes.post('/', async (c) => {
   if (password.length < 6) {
     return c.json({ error: 'La contraseña debe tener al menos 6 caracteres' }, 400);
   }
+
+  try {
+    if (user.role === 'clinic_admin' && user.clinicId) {
+      await assertClinicCanAddActiveReceptionist(user.clinicId);
+    } else if (user.role === 'podiatrist') {
+      await assertIndependentCanAddReceptionist(user.userId);
+    }
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : 'Límite de recepcionistas alcanzado';
+    return c.json({ error: 'Límite alcanzado', message }, 403);
+  }
+
   const existing = await database.select().from(createdUsers).where(eq(createdUsers.email, email)).limit(1);
   if (existing.length > 0) {
     return c.json({ error: 'Ya existe una cuenta con este correo electrónico' }, 400);
   }
+
   const id = generateId();
   const now = new Date().toISOString();
-  const assignedPodiatristIds = user.role === 'podiatrist' ? [user.userId] : undefined;
+  let assignedPodiatristIds: string[] | null = null;
+  if (user.role === 'podiatrist') {
+    assignedPodiatristIds = [user.userId];
+  } else if (user.role === 'clinic_admin' && user.clinicId) {
+    assignedPodiatristIds = await getClinicPodiatristUserIds(user.clinicId);
+  }
+
   const hashedPwd = await hashPassword(password);
   await database.insert(createdUsers).values({
     id,
@@ -94,7 +149,7 @@ receptionistsRoutes.post('/', async (c) => {
     name,
     role: 'receptionist',
     clinicId: user.clinicId ?? null,
-    assignedPodiatristIds: assignedPodiatristIds ? JSON.stringify(assignedPodiatristIds) : null,
+    assignedPodiatristIds: assignedPodiatristIds?.length ? JSON.stringify(assignedPodiatristIds) : null,
     password: hashedPwd,
     createdAt: now,
     updatedAt: now,
@@ -116,7 +171,11 @@ receptionistsRoutes.post('/', async (c) => {
     action: 'CREATE',
     resourceType: 'receptionist',
     resourceId: id,
-    details: { action: 'receptionist_create_by_podiatrist', receptionistEmail: email, podiatristId: user.userId },
+    details: {
+      action: user.role === 'clinic_admin' ? 'receptionist_create_by_clinic_admin' : 'receptionist_create_by_podiatrist',
+      receptionistEmail: email,
+      podiatristId: user.userId,
+    },
     ipAddress: getClientIP(c.req.raw.headers),
     userAgent: getSafeUserAgent(c),
     clinicId: user.clinicId ?? undefined,
@@ -127,8 +186,6 @@ receptionistsRoutes.post('/', async (c) => {
 
 /**
  * GET /api/receptionists/assigned-podiatrists/:receptionistId
- * Devuelve los podólogos asignados a una recepcionista.
- * Respuesta: { assignedPodiatristIds: string[], podiatrists: { id, name }[] }
  */
 receptionistsRoutes.get('/assigned-podiatrists/:receptionistId', async (c) => {
   const user = c.get('user');
@@ -137,7 +194,12 @@ receptionistsRoutes.get('/assigned-podiatrists/:receptionistId', async (c) => {
   if (!user) return c.json({ error: 'No autorizado' }, 401);
   const row = await getCreatedUserByIdOrUserId(receptionistId);
   if (!row || row.role !== 'receptionist') return c.json({ error: 'Recepcionista no encontrada' }, 404);
-  const canAccess = user.role === 'super_admin' || user.role === 'admin' || row.createdBy === user.userId || (user.clinicId && row.clinicId === user.clinicId);
+  const canAccess =
+    user.role === 'super_admin' ||
+    user.role === 'admin' ||
+    row.createdBy === user.userId ||
+    user.userId === row.userId ||
+    (user.clinicId && row.clinicId === user.clinicId);
   if (!canAccess) return c.json({ error: 'Acceso denegado' }, 403);
   let ids: string[] = [];
   if (row.assignedPodiatristIds) {
@@ -169,14 +231,29 @@ receptionistsRoutes.patch('/:receptionistId/assigned-podiatrists', async (c) => 
   if (!user) return c.json({ error: 'No autorizado' }, 401);
   const row = await getCreatedUserByIdOrUserId(receptionistId);
   if (!row || row.role !== 'receptionist') return c.json({ error: 'Recepcionista no encontrada' }, 404);
-  const canEdit = user.role === 'super_admin' || user.role === 'admin' || row.createdBy === user.userId || (user.role === 'clinic_admin' && user.clinicId && row.clinicId === user.clinicId);
-  if (!canEdit) return c.json({ error: 'Acceso denegado' }, 403);
+  if (!canManageReceptionistAssignments(user, row)) {
+    return c.json({ error: 'Acceso denegado' }, 403);
+  }
+
   const body = (await c.req.json().catch(() => ({}))) as { assignedPodiatristIds?: string[] };
-  const ids = Array.isArray(body.assignedPodiatristIds) ? body.assignedPodiatristIds : [];
-  await database.update(createdUsers).set({
-    assignedPodiatristIds: JSON.stringify(ids),
-    updatedAt: new Date().toISOString(),
-  }).where(eq(createdUsers.id, row.id));
+  let ids = Array.isArray(body.assignedPodiatristIds) ? body.assignedPodiatristIds : [];
+
+  if (row.clinicId) {
+    ids = await filterValidClinicPodiatristIds(row.clinicId, ids);
+  } else if (user.role === 'receptionist' && user.userId === row.userId) {
+    return c.json({ error: 'Acceso denegado', message: 'No puedes modificar la asignación en modo independiente' }, 403);
+  }
+
+  await database
+    .update(createdUsers)
+    .set({
+      assignedPodiatristIds: JSON.stringify(ids),
+      updatedAt: new Date().toISOString(),
+    })
+    .where(eq(createdUsers.id, row.id));
+
+  invalidateAssignedPodiatristCache(row.userId);
+
   await logAuditEvent({
     userId: user.userId,
     action: 'UPDATE',
@@ -187,7 +264,42 @@ receptionistsRoutes.patch('/:receptionistId/assigned-podiatrists', async (c) => 
     userAgent: getSafeUserAgent(c),
     clinicId: user.clinicId ?? undefined,
   });
-  return c.json({ success: true });
+  return c.json({ success: true, assignedPodiatristIds: ids });
+});
+
+/**
+ * GET /api/receptionists/limits
+ * Límites de recepcionistas para el contexto actual (clínica o independiente).
+ */
+receptionistsRoutes.get('/limits', async (c) => {
+  const user = c.get('user');
+  if (!user) return c.json({ error: 'No autorizado' }, 401);
+
+  if (user.role === 'clinic_admin' && user.clinicId) {
+    const { countActiveReceptionistsForClinic } = await import('../utils/receptionist-limits');
+    const activeCount = await countActiveReceptionistsForClinic(user.clinicId);
+    return c.json({
+      success: true,
+      maxActive: MAX_CLINIC_ACTIVE_RECEPTIONISTS,
+      activeCount,
+      canCreate: activeCount < MAX_CLINIC_ACTIVE_RECEPTIONISTS,
+    });
+  }
+
+  if (user.role === 'podiatrist' && !user.clinicId) {
+    const { countReceptionistsForIndependentPodiatrist, MAX_INDEPENDENT_RECEPTIONISTS } = await import(
+      '../utils/receptionist-limits'
+    );
+    const count = await countReceptionistsForIndependentPodiatrist(user.userId);
+    return c.json({
+      success: true,
+      maxTotal: MAX_INDEPENDENT_RECEPTIONISTS,
+      currentCount: count,
+      canCreate: count < MAX_INDEPENDENT_RECEPTIONISTS,
+    });
+  }
+
+  return c.json({ success: true, canCreate: false });
 });
 
 export default receptionistsRoutes;

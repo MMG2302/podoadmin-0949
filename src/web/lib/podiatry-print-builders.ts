@@ -12,7 +12,6 @@ import {
   PODIATRY_LIMB_OPTIONS,
   PODIATRY_ONYCHOPATHY_OPTIONS,
   PODIATRY_SWEAT_OPTIONS,
-  podiatryIsPositive,
   normalizeDigitalAlterations,
   normalizeHelomas,
   normalizeLimbAssessment,
@@ -31,18 +30,19 @@ const h2 = (title: string): string => `<h2>${esc(title)}</h2>`;
 
 const siNo = (present: boolean | null | undefined): { si: string; no: string } => ({
   si: present === true ? "X" : "",
-  no: present !== true ? "X" : "",
+  no: present === false ? "X" : "",
 });
 
-const sideSiNo = (v: boolean | null | undefined): string => (v === true ? "SI" : "NO");
+const sideSiNo = (v: boolean | null | undefined): string =>
+  v === true ? "SI" : v === false ? "NO" : "—";
 
-function notEvaluatedBlock(title: string, label = "Sin hallazgos positivos en consulta."): string {
+function notEvaluatedBlock(title: string, label = "No evaluado en consulta."): string {
   return `${h2(title)}<p class="muted">${esc(label)}</p>`;
 }
 
 export function buildSweatDisordersPrintHtml(session: ClinicalSession | null): string {
   const entries = normalizeSweatDisorders(session?.sweatDisorders);
-  const rows = entries.filter((e) => podiatryIsPositive(e.present) || e.notes.trim());
+  const rows = entries.filter((e) => e.present !== null || e.notes.trim());
   if (rows.length === 0) return notEvaluatedBlock("III.3 Patología del sudor");
 
   const body = rows
@@ -63,7 +63,7 @@ export function buildSweatDisordersPrintHtml(session: ClinicalSession | null): s
 export function buildLimbAssessmentPrintHtml(session: ClinicalSession | null): string {
   const entries = normalizeLimbAssessment(session?.limbAssessment);
   const rows = entries.filter(
-    (e) => podiatryIsPositive(e.left) || podiatryIsPositive(e.right) || e.notes.trim()
+    (e) => e.left !== null || e.right !== null || e.notes.trim()
   );
   if (rows.length === 0) return notEvaluatedBlock("III.4 Valoración pie y pierna");
 
@@ -86,13 +86,13 @@ export function buildHelomasPrintHtml(session: ClinicalSession | null): string {
   const entries = normalizeHelomas(session?.helomas);
   const rows = entries.filter(
     (e) =>
-      podiatryIsPositive(e.present) ||
+      e.present !== null ||
       e.locationLeft.trim() ||
       e.locationRight.trim() ||
       e.notes.trim()
   );
   if (rows.length === 0) {
-    return `<p class="muted" style="margin-top:2px">Helomas: sin hallazgos positivos en consulta.</p>`;
+    return `<p class="muted" style="margin-top:2px">Helomas: no evaluados en consulta.</p>`;
   }
 
   return `<table style="margin-top:2px">
@@ -110,7 +110,7 @@ export function buildHelomasPrintHtml(session: ClinicalSession | null): string {
 export function buildDigitalAlterationsPrintHtml(session: ClinicalSession | null): string {
   const entries = normalizeDigitalAlterations(session?.digitalAlterations);
   const rows = entries.filter(
-    (e) => podiatryIsPositive(e.present) || e.locationLeft.trim() || e.locationRight.trim()
+    (e) => e.present !== null || e.locationLeft.trim() || e.locationRight.trim()
   );
   if (rows.length === 0) return notEvaluatedBlock("III.6 Alteraciones digitales");
 
@@ -132,10 +132,10 @@ export function buildDigitalAlterationsPrintHtml(session: ClinicalSession | null
 export function buildOnychopathiesPrintHtml(session: ClinicalSession | null): string {
   const entries = normalizeOnychopathies(session?.onychopathies);
   const rows = entries.filter(
-    (e) => podiatryIsPositive(e.present) || e.toesLeft.trim() || e.toesRight.trim()
+    (e) => e.present !== null || e.toesLeft.trim() || e.toesRight.trim()
   );
   if (rows.length === 0) {
-    return `${h2("III.7 Onicopatías")}<p class="muted">Sin hallazgos positivos en consulta.</p>`;
+    return `${h2("III.7 Onicopatías")}<p class="muted">No visto en consulta.</p>`;
   }
 
   const body = rows

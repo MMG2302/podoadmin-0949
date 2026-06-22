@@ -37,7 +37,7 @@ const Privacy = () => {
 
       <div className={`${ap.formColumnScroll} w-full lg:w-1/2`}>
         <AuthPublicToolbar />
-        <div className="flex-1 overflow-y-auto p-8">
+        <div className="flex-1 min-h-0 overflow-y-auto p-8 pb-safe">
           <div className="max-w-2xl mx-auto">
             <button
               type="button"

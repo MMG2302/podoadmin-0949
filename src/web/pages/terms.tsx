@@ -1,6 +1,7 @@
 import { useLanguage } from "../contexts/language-context";
-import { LanguageSwitcher } from "../components/language-switcher";
+import { AuthPublicToolbar } from "../components/auth/auth-public-toolbar";
 import { useLocation } from "wouter";
+import { authPage as ap } from "../lib/auth-page-styles";
 
 const Terms = () => {
   const { t, language } = useLanguage();
@@ -23,9 +24,9 @@ const Terms = () => {
   };
 
   return (
-    <div className="min-h-screen bg-white flex">
+    <div className={`${ap.shell} min-h-screen`}>
       {/* Left Panel - Branding */}
-      <div className="hidden lg:flex lg:w-1/2 bg-[#1a1a1a] relative h-screen sticky top-0">
+      <div className="hidden lg:flex lg:w-1/2 bg-[#1a1a1a] relative overflow-hidden">
         <div className="absolute inset-0">
           <div className="absolute top-0 left-0 w-full h-full opacity-[0.03]">
             <svg width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
@@ -54,51 +55,48 @@ const Terms = () => {
       </div>
 
       {/* Right Panel - Terms Content */}
-      <div className="w-full lg:w-1/2 flex flex-col min-h-screen">
-        {/* Language switcher in header */}
-        <div className="flex justify-end p-4 flex-shrink-0">
-          <LanguageSwitcher />
-        </div>
+      <div className={ap.formColumnScroll}>
+        <AuthPublicToolbar />
         
-        <div className="flex-1 overflow-y-auto p-8">
+        <div className="flex-1 min-h-0 overflow-y-auto p-8 pb-safe">
           <div className="max-w-2xl mx-auto">
             {/* Header */}
             <div className="mb-8">
               <button
                 onClick={() => setLocation("/login")}
-                className="text-[#1a1a1a] hover:underline mb-4 inline-flex items-center text-sm"
+                className={`${ap.link} mb-4 inline-flex items-center text-sm`}
               >
                 <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
                 </svg>
                 {t.auth.backToLogin}
               </button>
-              <h1 className="text-3xl font-semibold text-[#1a1a1a] mb-2">
+              <h1 className={ap.heading}>
                 {t.terms.title}
               </h1>
-              <p className="text-gray-500 text-sm">
+              <p className={`${ap.subheading} text-sm`}>
                 {t.terms.lastUpdated}: {getFormattedDate()}
               </p>
             </div>
 
             {/* Content */}
-            <div className="prose prose-sm max-w-none text-gray-700 space-y-6">
+            <div className="prose prose-sm dark:prose-invert max-w-none text-gray-700 dark:text-gray-300 space-y-6">
               <section>
-                <h2 className="text-xl font-semibold text-[#1a1a1a] mb-3">{t.terms.section1.title}</h2>
+                <h2 className="text-xl font-semibold text-[#1a1a1a] dark:text-white mb-3">{t.terms.section1.title}</h2>
                 <p className="leading-relaxed">
                   {t.terms.section1.content}
                 </p>
               </section>
 
               <section>
-                <h2 className="text-xl font-semibold text-[#1a1a1a] mb-3">{t.terms.section2.title}</h2>
+                <h2 className="text-xl font-semibold text-[#1a1a1a] dark:text-white mb-3">{t.terms.section2.title}</h2>
                 <p className="leading-relaxed">
                   {t.terms.section2.content}
                 </p>
               </section>
 
               <section>
-                <h2 className="text-xl font-semibold text-[#1a1a1a] mb-3">{t.terms.section3.title}</h2>
+                <h2 className="text-xl font-semibold text-[#1a1a1a] dark:text-white mb-3">{t.terms.section3.title}</h2>
                 <p className="leading-relaxed mb-2">
                   {t.terms.section3.intro}
                 </p>
@@ -112,7 +110,7 @@ const Terms = () => {
               </section>
 
               <section>
-                <h2 className="text-xl font-semibold text-[#1a1a1a] mb-3">{t.terms.section4.title}</h2>
+                <h2 className="text-xl font-semibold text-[#1a1a1a] dark:text-white mb-3">{t.terms.section4.title}</h2>
                 <p className="leading-relaxed mb-2">
                   {t.terms.section4.intro}
                 </p>
@@ -127,63 +125,63 @@ const Terms = () => {
               </section>
 
               <section>
-                <h2 className="text-xl font-semibold text-[#1a1a1a] mb-3">{t.terms.section5.title}</h2>
+                <h2 className="text-xl font-semibold text-[#1a1a1a] dark:text-white mb-3">{t.terms.section5.title}</h2>
                 <p className="leading-relaxed">
                   {t.terms.section5.content}
                 </p>
               </section>
 
               <section>
-                <h2 className="text-xl font-semibold text-[#1a1a1a] mb-3">{t.terms.section6.title}</h2>
+                <h2 className="text-xl font-semibold text-[#1a1a1a] dark:text-white mb-3">{t.terms.section6.title}</h2>
                 <p className="leading-relaxed">
                   {t.terms.section6.content}
                 </p>
               </section>
 
               <section>
-                <h2 className="text-xl font-semibold text-[#1a1a1a] mb-3">{t.terms.section7.title}</h2>
+                <h2 className="text-xl font-semibold text-[#1a1a1a] dark:text-white mb-3">{t.terms.section7.title}</h2>
                 <p className="leading-relaxed">
                   {t.terms.section7.content}
                 </p>
               </section>
 
               <section>
-                <h2 className="text-xl font-semibold text-[#1a1a1a] mb-3">{t.terms.section8.title}</h2>
+                <h2 className="text-xl font-semibold text-[#1a1a1a] dark:text-white mb-3">{t.terms.section8.title}</h2>
                 <p className="leading-relaxed">
                   {t.terms.section8.content}
                 </p>
               </section>
 
               <section>
-                <h2 className="text-xl font-semibold text-[#1a1a1a] mb-3">{t.terms.section9.title}</h2>
+                <h2 className="text-xl font-semibold text-[#1a1a1a] dark:text-white mb-3">{t.terms.section9.title}</h2>
                 <p className="leading-relaxed">
                   {t.terms.section9.content}
                 </p>
               </section>
 
               <section>
-                <h2 className="text-xl font-semibold text-[#1a1a1a] mb-3">{t.terms.section10.title}</h2>
+                <h2 className="text-xl font-semibold text-[#1a1a1a] dark:text-white mb-3">{t.terms.section10.title}</h2>
                 <p className="leading-relaxed">
                   {t.terms.section10.content}
                 </p>
               </section>
 
               <section>
-                <h2 className="text-xl font-semibold text-[#1a1a1a] mb-3">{t.terms.section11.title}</h2>
+                <h2 className="text-xl font-semibold text-[#1a1a1a] dark:text-white mb-3">{t.terms.section11.title}</h2>
                 <p className="leading-relaxed">
                   {t.terms.section11.content}
                 </p>
               </section>
 
               <section>
-                <h2 className="text-xl font-semibold text-[#1a1a1a] mb-3">{t.terms.section12.title}</h2>
+                <h2 className="text-xl font-semibold text-[#1a1a1a] dark:text-white mb-3">{t.terms.section12.title}</h2>
                 <p className="leading-relaxed">
                   {t.terms.section12.content}
                 </p>
               </section>
 
               <section>
-                <h2 className="text-xl font-semibold text-[#1a1a1a] mb-3">{t.terms.section13.title}</h2>
+                <h2 className="text-xl font-semibold text-[#1a1a1a] dark:text-white mb-3">{t.terms.section13.title}</h2>
                 <p className="leading-relaxed">
                   {t.terms.section13.content}
                 </p>
@@ -191,17 +189,17 @@ const Terms = () => {
             </div>
 
             {/* Footer Actions */}
-            <div className="mt-12 pt-8 border-t border-gray-200">
+            <div className="mt-12 pt-8 border-t border-gray-200 dark:border-gray-800">
               <div className="flex gap-4">
                 <button
                   onClick={() => setLocation("/login")}
-                  className="flex-1 py-3 bg-[#1a1a1a] text-white font-medium rounded-lg hover:bg-[#2a2a2a] transition-colors"
+                  className={`flex-1 py-3 ${ap.primaryBtn}`}
                 >
                   {t.terms.acceptAndContinue}
                 </button>
                 <button
                   onClick={() => setLocation("/login")}
-                  className="flex-1 py-3 bg-gray-100 text-[#1a1a1a] font-medium rounded-lg hover:bg-gray-200 transition-colors"
+                  className="flex-1 py-3 bg-gray-100 dark:bg-gray-800 text-[#1a1a1a] dark:text-white font-medium rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
                 >
                   {t.terms.back}
                 </button>

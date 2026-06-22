@@ -26,9 +26,17 @@ import {
   finalizeSweatDisorders,
 } from "../../types/podiatry";
 import { PodiatryFootFields } from "./podiatry-foot-fields";
+import {
+  formFieldClassXs,
+  formHintClass,
+  formPanelMutedClass,
+  formPanelTitleClass,
+  formTableClass,
+  formTableHeadClass,
+  formTableRowBorderClass,
+} from "../../lib/form-field-classes";
 
-const inputClass =
-  "w-full px-2 py-1 border border-gray-200 rounded text-xs focus:outline-none focus:border-[#1a1a1a]";
+const inputClass = formFieldClassXs;
 
 export type PodiatryExaminationValue = {
   footType: PodiatryFootType | null;
@@ -95,12 +103,12 @@ function SectionShell({
   children: ReactNode;
 }) {
   return (
-    <div className="rounded-lg border border-gray-200 bg-gray-50/80 p-4 space-y-2">
+    <div className={`${formPanelMutedClass} space-y-2`}>
       <div>
-        <p className="text-sm font-medium text-[#1a1a1a]">{title}</p>
-        {hint && <p className="text-xs text-gray-500 mt-0.5">{hint}</p>}
+        <p className={formPanelTitleClass}>{title}</p>
+        {hint && <p className={`${formHintClass} mt-0.5`}>{hint}</p>}
       </div>
-      {children}
+      <div className="-mx-1 overflow-x-auto overscroll-contain">{children}</div>
     </div>
   );
 }
@@ -180,8 +188,8 @@ export function PodiatryExaminationFields({ value, onChange, readOnly = false, d
 
       {showSweat && (
       <SectionShell title="Patología del sudor" hint={SI_NO_HINT}>
-        <table className="w-full text-xs border border-gray-200 rounded-lg overflow-hidden bg-white">
-          <thead className="bg-gray-50">
+        <table className={formTableClass}>
+          <thead className={formTableHeadClass}>
             <tr>
               <th className="text-left p-2">Trastorno</th>
               <th className="p-2 w-14">SI</th>
@@ -193,7 +201,7 @@ export function PodiatryExaminationFields({ value, onChange, readOnly = false, d
             {PODIATRY_SWEAT_OPTIONS.map((o) => {
               const row = value.sweatDisorders.find((r) => r.id === o.id)!;
               return (
-                <tr key={o.id} className="border-t border-gray-100">
+                <tr key={o.id} className={formTableRowBorderClass}>
                   <td className="p-2 font-medium">{o.label}</td>
                   {readOnly ? (
                     <PresentReadCells present={row.present} />
@@ -213,7 +221,7 @@ export function PodiatryExaminationFields({ value, onChange, readOnly = false, d
                   )}
                   <td className="p-2">
                     {readOnly ? (
-                      <span className="text-gray-600">{row.notes || "—"}</span>
+                      <span className="text-gray-600 dark:text-gray-400">{row.notes || "—"}</span>
                     ) : (
                       <input
                         disabled={disabled}
@@ -239,8 +247,8 @@ export function PodiatryExaminationFields({ value, onChange, readOnly = false, d
 
       {showLimb && (
       <SectionShell title="Valoración pie y pierna" hint={SI_NO_HINT}>
-        <table className="w-full text-xs border border-gray-200 rounded-lg overflow-hidden bg-white">
-          <thead className="bg-gray-50">
+        <table className={formTableClass}>
+          <thead className={formTableHeadClass}>
             <tr>
               <th className="text-left p-2">Signo</th>
               <th className="p-2" colSpan={2}>
@@ -271,7 +279,7 @@ export function PodiatryExaminationFields({ value, onChange, readOnly = false, d
                 });
               const sideRead = (v: boolean | null) => (v === true ? "SI" : "NO");
               return (
-                <tr key={o.id} className="border-t border-gray-100">
+                <tr key={o.id} className={formTableRowBorderClass}>
                   <td className="p-2 font-medium">{o.label}</td>
                   {readOnly ? (
                     <>
@@ -326,8 +334,8 @@ export function PodiatryExaminationFields({ value, onChange, readOnly = false, d
 
       {showHelomas && (
       <SectionShell title="Helomas / hiperqueratosis" hint={`${SI_NO_HINT} Indique localización si aplica.`}>
-        <table className="w-full text-xs border border-gray-200 rounded-lg overflow-hidden bg-white">
-          <thead className="bg-gray-50">
+        <table className={formTableClass}>
+          <thead className={formTableHeadClass}>
             <tr>
               <th className="text-left p-2">Tipo</th>
               <th className="p-2 w-14">SI</th>
@@ -341,7 +349,7 @@ export function PodiatryExaminationFields({ value, onChange, readOnly = false, d
             {PODIATRY_HELOMA_OPTIONS.map((o) => {
               const row = value.helomas.find((r) => r.id === o.id)!;
               return (
-                <tr key={o.id} className="border-t border-gray-100">
+                <tr key={o.id} className={formTableRowBorderClass}>
                   <td className="p-2 font-medium">{o.label}</td>
                   {readOnly ? (
                     <PresentReadCells present={row.present} />
@@ -423,8 +431,8 @@ export function PodiatryExaminationFields({ value, onChange, readOnly = false, d
 
       {showDigital && (
       <SectionShell title="Alteraciones digitales" hint={SI_NO_HINT}>
-        <table className="w-full text-xs border border-gray-200 rounded-lg overflow-hidden bg-white">
-          <thead className="bg-gray-50">
+        <table className={formTableClass}>
+          <thead className={formTableHeadClass}>
             <tr>
               <th className="text-left p-2">Alteración</th>
               <th className="p-2 w-14">SI</th>
@@ -437,7 +445,7 @@ export function PodiatryExaminationFields({ value, onChange, readOnly = false, d
             {PODIATRY_DIGITAL_OPTIONS.map((o) => {
               const row = value.digitalAlterations.find((r) => r.id === o.id)!;
               return (
-                <tr key={o.id} className="border-t border-gray-100">
+                <tr key={o.id} className={formTableRowBorderClass}>
                   <td className="p-2 font-medium">{o.label}</td>
                   {readOnly ? (
                     <PresentReadCells present={row.present} />
@@ -504,8 +512,8 @@ export function PodiatryExaminationFields({ value, onChange, readOnly = false, d
         title="Onicopatías"
         hint={`${SI_NO_HINT} En impresión solo salen hallazgos positivos; aquí se muestra el registro completo.`}
       >
-        <table className="w-full text-xs border border-gray-200 rounded-lg overflow-hidden bg-white">
-          <thead className="bg-gray-50">
+        <table className={formTableClass}>
+          <thead className={formTableHeadClass}>
             <tr>
               <th className="text-left p-2">Onicopatía</th>
               <th className="p-2 w-14">SI</th>
@@ -518,7 +526,7 @@ export function PodiatryExaminationFields({ value, onChange, readOnly = false, d
             {PODIATRY_ONYCHOPATHY_OPTIONS.map((o) => {
               const row = value.onychopathies.find((r) => r.id === o.id)!;
               return (
-                <tr key={o.id} className="border-t border-gray-100">
+                <tr key={o.id} className={formTableRowBorderClass}>
                   <td className="p-2 font-medium">{o.label}</td>
                   {readOnly ? (
                     <PresentReadCells present={row.present} />

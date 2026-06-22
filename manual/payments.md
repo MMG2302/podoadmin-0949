@@ -12,7 +12,7 @@ import { AutumnProvider } from "autumn-js/react";
 import { env } from "cloudflare:workers";
 export function Provider({ children }: { children: React.ReactNode }) {
   return (
-    <AutumnProvider betterAuthUrl={env.VITE_BASE_URL}>
+    <AutumnProvider betterAuthUrl={env.APP_BASE_URL}>
       {children}
     </AutumnProvider>
   );

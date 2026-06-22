@@ -185,7 +185,9 @@ app.use('*', async (c, next) => {
 
 // Rutas protegidas - requieren autenticación, suscripción activa (excepto admin) y autorización
 app.use('/users/*', requireActiveSubscription);
+app.use('/patients', requireActiveSubscription);
 app.use('/patients/*', requireActiveSubscription);
+app.use('/sessions', requireActiveSubscription);
 app.use('/sessions/*', requireActiveSubscription);
 app.use('/appointments/*', requireActiveSubscription);
 app.use('/prescriptions/*', requireActiveSubscription);

@@ -1,19 +1,25 @@
 /**
  * Comprime y redimensiona una imagen antes de subirla a sesiones clínicas.
- * Pensado para fotos 4K de iPhone/cámara: el usuario no cambia la cámara; la app
- * reduce tamaño y peso (max 1600px, WebP) para aligerar respaldo y BD.
- * WebP suele dar menor tamaño que JPEG con calidad similar; el backend acepta image/webp.
+ * D1 limita cada celda TEXT a 2 MB; en base64 ~1,3 MB de binario es el techo seguro.
  */
 
-/** Lado máximo en píxeles (ej. 1600 → foto 4K queda ~1600 en el lado largo). */
-const MAX_SIDE_PX = 1600;
-/** Calidad WebP (0–1). 0.85 suele dar buen equilibrio tamaño/calidad; WebP comprime mejor que JPEG. */
-const WEBP_QUALITY = 0.85;
+/** Lado máximo en píxeles. */
+const MAX_SIDE_PX = 1400;
+/** Objetivo de binario tras comprimir (base64 ≈ +33 %). */
+const TARGET_BINARY_BYTES = 900_000;
+const MIN_WEBP_QUALITY = 0.45;
+const INITIAL_WEBP_QUALITY = 0.82;
+
+function binaryLengthFromDataUrl(dataUrl: string): number {
+  const comma = dataUrl.indexOf(",");
+  if (comma < 0) return dataUrl.length;
+  const base64 = dataUrl.slice(comma + 1).replace(/\s/g, "");
+  return Math.floor((base64.length * 3) / 4);
+}
 
 /**
  * Redimensiona y comprime un archivo de imagen a WebP para sesión clínica.
  * Devuelve un data URI listo para enviar al API (image/webp;base64,...).
- * Si falla (archivo no imagen, canvas sin WebP, etc.), lanza.
  */
 export function compressImageForSession(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -47,10 +53,30 @@ export function compressImageForSession(file: File): Promise<string> {
         }
         ctx.drawImage(img, 0, 0, width, height);
 
-        let dataUrl = canvas.toDataURL("image/webp", WEBP_QUALITY);
+        let quality = INITIAL_WEBP_QUALITY;
+        let dataUrl = canvas.toDataURL("image/webp", quality);
         if (!dataUrl || !dataUrl.startsWith("data:image/webp")) {
           dataUrl = canvas.toDataURL("image/jpeg", 0.82);
         }
+
+        while (
+          dataUrl.startsWith("data:image/webp") &&
+          binaryLengthFromDataUrl(dataUrl) > TARGET_BINARY_BYTES &&
+          quality > MIN_WEBP_QUALITY
+        ) {
+          quality = Math.max(MIN_WEBP_QUALITY, quality - 0.08);
+          dataUrl = canvas.toDataURL("image/webp", quality);
+        }
+
+        if (binaryLengthFromDataUrl(dataUrl) > TARGET_BINARY_BYTES * 1.15) {
+          reject(
+            new Error(
+              "La imagen sigue siendo demasiado pesada tras comprimir. Pruebe con otra foto o recorte la imagen."
+            )
+          );
+          return;
+        }
+
         resolve(dataUrl);
       } catch (err) {
         reject(err instanceof Error ? err : new Error("Error al procesar la imagen"));

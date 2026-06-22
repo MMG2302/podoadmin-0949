@@ -350,16 +350,22 @@ export function ClinicalLayoutDesigner({ initialLayout, canEdit, scope, onSaved 
                 <div className="space-y-2">
                   <div className="flex flex-wrap gap-4">
                     <Toggle
-                      label="Activa"
+                      label={
+                        selected.kind === "builtin" && selected.builtinKey?.startsWith("patient_")
+                          ? "En ficha paciente"
+                          : "Activa"
+                      }
                       checked={selected.enabled}
                       onChange={(enabled) => patchSection(selected.id, { enabled })}
                     />
+                    {!(selected.kind === "builtin" && selected.builtinKey?.startsWith("patient_")) && (
                     <Toggle
                       label="En sesión"
                       checked={selected.showInSession}
                       disabled={!selected.enabled}
                       onChange={(showInSession) => patchSection(selected.id, { showInSession })}
                     />
+                    )}
                     <Toggle
                       label="En impresión"
                       checked={selected.showInPrint}
@@ -368,6 +374,19 @@ export function ClinicalLayoutDesigner({ initialLayout, canEdit, scope, onSaved 
                     />
                   </div>
                   <div className="text-xs text-gray-500 dark:text-gray-400 space-y-1 bg-gray-50 dark:bg-gray-950/50 rounded-lg p-3 border border-gray-100 dark:border-gray-800">
+                    {selected.kind === "builtin" && selected.builtinKey?.startsWith("patient_") ? (
+                      <>
+                        <p>
+                          <strong className="text-gray-700 dark:text-gray-300">En ficha paciente:</strong> muestra u
+                          oculta el campo al crear, editar o ver un paciente.
+                        </p>
+                        <p>
+                          <strong className="text-gray-700 dark:text-gray-300">En impresión:</strong> incluye los
+                          antecedentes en la historia clínica podológica impresa.
+                        </p>
+                      </>
+                    ) : (
+                      <>
                     <p>
                       <strong className="text-gray-700 dark:text-gray-300">Activa:</strong> incluye o excluye la
                       sección del flujo clínico.
@@ -380,6 +399,8 @@ export function ClinicalLayoutDesigner({ initialLayout, canEdit, scope, onSaved 
                       <strong className="text-gray-700 dark:text-gray-300">En impresión:</strong> incluida en el
                       historial imprimible (solo contenido con datos).
                     </p>
+                      </>
+                    )}
                   </div>
                 </div>
               )}

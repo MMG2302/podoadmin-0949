@@ -1,9 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
-  applyCampaignWebMessage,
   applyWhatsAppWebTemplate,
   buildWaMeUrl,
-  filterCampaignWebRecipients,
   getTomorrowLocalDateString,
   normalizePhoneForWaMe,
 } from "./whatsapp-web-link";
@@ -29,39 +27,6 @@ describe("applyWhatsAppWebTemplate", () => {
     });
     expect(msg).toContain("Ana");
     expect(msg).toContain("Trae estudios.");
-  });
-});
-
-describe("applyCampaignWebMessage", () => {
-  it("personaliza nombre y apellido", () => {
-    const msg = applyCampaignWebMessage("Hola {{nombre}} {{apellido}} ({{nombre_completo}})", {
-      firstName: "Ana",
-      lastName: "López",
-    });
-    expect(msg).toBe("Hola Ana López (Ana López)");
-  });
-});
-
-describe("filterCampaignWebRecipients", () => {
-  it("incluye pacientes sin clinicId en JSON (listado ya filtrado por rol)", () => {
-    const rows = filterCampaignWebRecipients(
-      [{ id: "1", firstName: "A", lastName: "B", phone: "5512345678" }],
-      { clinicOnly: true, userClinicId: "c1" }
-    );
-    expect(rows).toHaveLength(1);
-  });
-
-  it("filtra por clínica cuando clinicId está presente", () => {
-    const rows = filterCampaignWebRecipients(
-      [
-        { id: "1", firstName: "A", lastName: "B", phone: "5512345678", clinicId: "c1" },
-        { id: "2", firstName: "C", lastName: "D", phone: "", clinicId: "c1" },
-        { id: "3", firstName: "E", lastName: "F", phone: "5598765432", clinicId: "c2" },
-      ],
-      { clinicOnly: true, userClinicId: "c1" }
-    );
-    expect(rows).toHaveLength(1);
-    expect(rows[0]?.id).toBe("1");
   });
 });
 

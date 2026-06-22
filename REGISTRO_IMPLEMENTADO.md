@@ -1,80 +1,80 @@
-# ✅ Registro Público Implementado
+# âœ… Registro PÃºblico Implementado
 
 ## Resumen
 
-Se ha implementado el registro público con **todas las medidas de seguridad** recomendadas.
+Se ha implementado el registro pÃºblico con **todas las medidas de seguridad** recomendadas.
 
 ## Funcionalidades Implementadas
 
-### ✅ 1. Validación de Contraseñas Fuertes
-- Mínimo 12 caracteres
-- Al menos una mayúscula, una minúscula, un número y un carácter especial
-- Máximo 128 caracteres
-- Detección de contraseñas comunes
+### âœ… 1. ValidaciÃ³n de ContraseÃ±as Fuertes
+- MÃ­nimo 12 caracteres
+- Al menos una mayÃºscula, una minÃºscula, un nÃºmero y un carÃ¡cter especial
+- MÃ¡ximo 128 caracteres
+- DetecciÃ³n de contraseÃ±as comunes
 - Hashing con bcrypt (12 rounds)
 
-### ✅ 2. Rate Limiting en Registro
-- **Límite**: Máximo 3 registros por IP por hora
-- **Bloqueo**: 24 horas después de 5 intentos fallidos
+### âœ… 2. Rate Limiting en Registro
+- **LÃ­mite**: MÃ¡ximo 3 registros por IP por hora
+- **Bloqueo**: 24 horas despuÃ©s de 5 intentos fallidos
 - Tracking persistente en base de datos
-- Limpieza automática de registros expirados
+- Limpieza automÃ¡tica de registros expirados
 
-### ✅ 3. Verificación de Email Obligatoria
-- Token de verificación único (32 caracteres hexadecimales)
-- Válido por 24 horas
+### âœ… 3. VerificaciÃ³n de Email Obligatoria
+- Token de verificaciÃ³n Ãºnico (32 caracteres hexadecimales)
+- VÃ¡lido por 24 horas
 - Token no reutilizable (se marca como usado)
-- Email HTML profesional con botón de verificación
+- Email HTML profesional con botÃ³n de verificaciÃ³n
 - Cuenta deshabilitada hasta verificar email
 
-### ✅ 4. CAPTCHA Obligatorio
+### âœ… 4. CAPTCHA Obligatorio
 - **Siempre requerido** en el formulario de registro
-- Verificación en servidor antes de procesar datos
+- VerificaciÃ³n en servidor antes de procesar datos
 - Soporte para reCAPTCHA, hCaptcha y Cloudflare Turnstile
-- Registro de métricas (CAPTCHA pasado/fallido)
+- Registro de mÃ©tricas (CAPTCHA pasado/fallido)
 
-### ✅ 5. Prevención de Cuentas Duplicadas
-- Verificación que el email no exista
-- **No revela** si un email existe (mensaje genérico)
+### âœ… 5. PrevenciÃ³n de Cuentas Duplicadas
+- VerificaciÃ³n que el email no exista
+- **No revela** si un email existe (mensaje genÃ©rico)
 - Registra intentos de registro con emails existentes
 
-### ✅ 6. Validación de Dominios de Email
+### âœ… 6. ValidaciÃ³n de Dominios de Email
 - Bloqueo de dominios temporales/descartables (20+ dominios comunes)
 - Soporte para lista de dominios permitidos (opcional)
-- Validación estricta de formato
+- ValidaciÃ³n estricta de formato
 
-### ✅ 7. Hashing Seguro de Contraseñas
-- **NUNCA** almacena contraseñas en texto plano
+### âœ… 7. Hashing Seguro de ContraseÃ±as
+- **NUNCA** almacena contraseÃ±as en texto plano
 - Usa `bcryptjs` con 12 rounds (cost factor)
 - Compatible con Cloudflare Workers
 
-### ✅ 8. Logging de Auditoría
+### âœ… 8. Logging de AuditorÃ­a
 - Registra todos los registros exitosos
 - Registra todos los intentos fallidos
 - Incluye IP, User-Agent, timestamp
 - Almacenado en base de datos D1
 
-### ✅ 9. Términos y Condiciones
-- Aceptación explícita requerida
-- Almacena timestamp de aceptación
+### âœ… 9. TÃ©rminos y Condiciones
+- AceptaciÃ³n explÃ­cita requerida
+- Almacena timestamp de aceptaciÃ³n
 - Registrado en audit log
 
-### ✅ 10. Integración Completa
+### âœ… 10. IntegraciÃ³n Completa
 - Usuarios almacenados en base de datos D1
 - Compatible con sistema de usuarios existente
-- Login actualizado para verificar contraseñas hasheadas
-- Verificación de email antes de permitir login
+- Login actualizado para verificar contraseÃ±as hasheadas
+- VerificaciÃ³n de email antes de permitir login
 
 ## Endpoints Implementados
 
 ### POST /api/auth/register
-Registro público con todas las validaciones.
+Registro pÃºblico con todas las validaciones.
 
 **Body:**
 ```json
 {
   "email": "usuario@example.com",
-  "password": "MiContraseñaSegura123!",
-  "name": "Juan Pérez",
+  "password": "MiContraseÃ±aSegura123!",
+  "name": "Juan PÃ©rez",
   "termsAccepted": true,
   "captchaToken": "token-del-captcha",
   "clinicCode": "clinic_001" // Opcional
@@ -85,17 +85,17 @@ Registro público con todas las validaciones.
 ```json
 {
   "success": true,
-  "message": "Si el email no está registrado, recibirás un correo de verificación. Por favor, revisa tu bandeja de entrada."
+  "message": "Si el email no estÃ¡ registrado, recibirÃ¡s un correo de verificaciÃ³n. Por favor, revisa tu bandeja de entrada."
 }
 ```
 
-**Características:**
-- Validación estricta de contraseñas
+**CaracterÃ­sticas:**
+- ValidaciÃ³n estricta de contraseÃ±as
 - Rate limiting (3 por IP/hora)
 - CAPTCHA obligatorio
-- Validación de dominio de email
-- Hashing de contraseña
-- Email de verificación enviado
+- ValidaciÃ³n de dominio de email
+- Hashing de contraseÃ±a
+- Email de verificaciÃ³n enviado
 - Logging completo
 
 ### POST /api/auth/verify-email
@@ -112,11 +112,11 @@ Verifica el email usando el token recibido por correo.
 ```json
 {
   "success": true,
-  "message": "Email verificado correctamente. Ya puedes iniciar sesión.",
+  "message": "Email verificado correctamente. Ya puedes iniciar sesiÃ³n.",
   "user": {
     "id": "user_public_...",
     "email": "usuario@example.com",
-    "name": "Juan Pérez"
+    "name": "Juan PÃ©rez"
   }
 }
 ```
@@ -124,50 +124,50 @@ Verifica el email usando el token recibido por correo.
 ## Tablas de Base de Datos Creadas
 
 ### `email_verification_tokens`
-- `id` - ID único
+- `id` - ID Ãºnico
 - `user_id` - Referencia al usuario
-- `token` - Token único (32 caracteres)
-- `expires_at` - Timestamp de expiración
+- `token` - Token Ãºnico (32 caracteres)
+- `expires_at` - Timestamp de expiraciÃ³n
 - `used` - Si el token ya fue usado
-- `created_at` - Fecha de creación
+- `created_at` - Fecha de creaciÃ³n
 
 ### `registration_rate_limit`
 - `identifier` - IP address
-- `count` - Número de registros/intentos
+- `count` - NÃºmero de registros/intentos
 - `first_attempt` - Timestamp del primer intento
-- `last_attempt` - Timestamp del último intento
+- `last_attempt` - Timestamp del Ãºltimo intento
 - `blocked_until` - Timestamp de bloqueo (opcional)
-- `created_at` - Fecha de creación
-- `updated_at` - Fecha de actualización
+- `created_at` - Fecha de creaciÃ³n
+- `updated_at` - Fecha de actualizaciÃ³n
 
 ### Campos Agregados a `created_users`
-- `email_verified` - Si el email está verificado
-- `terms_accepted` - Si aceptó términos
-- `terms_accepted_at` - Timestamp de aceptación
+- `email_verified` - Si el email estÃ¡ verificado
+- `terms_accepted` - Si aceptÃ³ tÃ©rminos
+- `terms_accepted_at` - Timestamp de aceptaciÃ³n
 - `registration_source` - 'admin' | 'public'
 
 ## Flujo de Registro
 
 1. **Usuario completa formulario** con:
    - Email
-   - Contraseña fuerte (12+ caracteres, mayúsculas, minúsculas, números, especiales)
+   - ContraseÃ±a fuerte (12+ caracteres, mayÃºsculas, minÃºsculas, nÃºmeros, especiales)
    - Nombre
-   - Aceptación de términos
+   - AceptaciÃ³n de tÃ©rminos
    - CAPTCHA
 
 2. **Validaciones en servidor:**
-   - ✅ Validación de schema (Zod)
-   - ✅ Rate limiting (3 por IP/hora)
-   - ✅ CAPTCHA verificado
-   - ✅ Dominio de email válido
-   - ✅ Contraseña fuerte
-   - ✅ Email no existe
+   - âœ… ValidaciÃ³n de schema (Zod)
+   - âœ… Rate limiting (3 por IP/hora)
+   - âœ… CAPTCHA verificado
+   - âœ… Dominio de email vÃ¡lido
+   - âœ… ContraseÃ±a fuerte
+   - âœ… Email no existe
 
-3. **Creación de usuario:**
-   - Hash de contraseña (bcrypt)
+3. **CreaciÃ³n de usuario:**
+   - Hash de contraseÃ±a (bcrypt)
    - Usuario creado con estado `emailVerified: false`, `isEnabled: false`
-   - Token de verificación generado
-   - Email de verificación enviado
+   - Token de verificaciÃ³n generado
+   - Email de verificaciÃ³n enviado
 
 4. **Usuario verifica email:**
    - Hace clic en enlace del email
@@ -175,15 +175,15 @@ Verifica el email usando el token recibido por correo.
    - Cuenta activada (`emailVerified: true`, `isEnabled: true`)
 
 5. **Usuario puede hacer login:**
-   - Login verifica que email esté verificado
-   - Contraseña verificada con bcrypt
+   - Login verifica que email estÃ© verificado
+   - ContraseÃ±a verificada con bcrypt
    - Tokens JWT generados
 
 ## Variables de Entorno Necesarias
 
 ### Requeridas para Registro
 ```env
-# Email (para enviar verificación)
+# Email (para enviar verificaciÃ³n)
 RESEND_API_KEY=... # o
 SENDGRID_API_KEY=... # o
 AWS_ACCESS_KEY_ID=... y AWS_SECRET_ACCESS_KEY=...
@@ -193,62 +193,62 @@ CAPTCHA_PROVIDER=recaptcha|hcaptcha|turnstile
 CAPTCHA_SITE_KEY=...
 CAPTCHA_SECRET_KEY=...
 
-# Base URL (para enlaces de verificación)
-VITE_BASE_URL=http://localhost:5173 # o tu dominio
+# Base URL (para enlaces de verificaciÃ³n)
+APP_BASE_URL=http://localhost:5173 # o tu dominio
 ```
 
 ### Opcionales
 ```env
-# Restricción de dominios de email
+# RestricciÃ³n de dominios de email
 ALLOWED_EMAIL_DOMAINS=gmail.com,outlook.com,hotmail.com
 ```
 
 ## Archivos Creados
 
-- `src/api/utils/password.ts` - Hashing y validación de contraseñas
-- `src/api/utils/email-verification.ts` - Tokens de verificación
-- `src/api/utils/registration-rate-limit.ts` - Rate limiting específico
-- `src/api/utils/email-domains.ts` - Validación de dominios
+- `src/api/utils/password.ts` - Hashing y validaciÃ³n de contraseÃ±as
+- `src/api/utils/email-verification.ts` - Tokens de verificaciÃ³n
+- `src/api/utils/registration-rate-limit.ts` - Rate limiting especÃ­fico
+- `src/api/utils/email-domains.ts` - ValidaciÃ³n de dominios
 - `src/api/utils/user-db.ts` - Utilidades para usuarios en BD
 
 ## Archivos Modificados
 
 - `src/api/database/schema.ts` - Nuevas tablas y campos
-- `src/api/utils/validation.ts` - Schemas de registro y verificación
-- `src/api/routes/auth.ts` - Endpoints de registro y verificación
-- `src/api/routes/auth.ts` - Login actualizado para contraseñas hasheadas
+- `src/api/utils/validation.ts` - Schemas de registro y verificaciÃ³n
+- `src/api/routes/auth.ts` - Endpoints de registro y verificaciÃ³n
+- `src/api/routes/auth.ts` - Login actualizado para contraseÃ±as hasheadas
 
 ## Seguridad Implementada
 
-✅ **Validación de contraseñas fuertes** - 12+ caracteres, mayúsculas, minúsculas, números, especiales
-✅ **Rate limiting** - 3 registros por IP/hora, bloqueo de 24h después de 5 fallos
-✅ **Verificación de email** - Obligatoria antes de activar cuenta
-✅ **CAPTCHA** - Siempre requerido en registro
-✅ **Hashing de contraseñas** - bcrypt con 12 rounds
-✅ **Prevención de duplicados** - Sin revelar si email existe
-✅ **Validación de dominios** - Bloquea temporales, permite restricción
-✅ **Logging completo** - Todos los eventos registrados
-✅ **Términos y condiciones** - Aceptación explícita requerida
-✅ **Sanitización** - Todos los inputs sanitizados
-✅ **Validación** - Schemas Zod para todos los campos
+âœ… **ValidaciÃ³n de contraseÃ±as fuertes** - 12+ caracteres, mayÃºsculas, minÃºsculas, nÃºmeros, especiales
+âœ… **Rate limiting** - 3 registros por IP/hora, bloqueo de 24h despuÃ©s de 5 fallos
+âœ… **VerificaciÃ³n de email** - Obligatoria antes de activar cuenta
+âœ… **CAPTCHA** - Siempre requerido en registro
+âœ… **Hashing de contraseÃ±as** - bcrypt con 12 rounds
+âœ… **PrevenciÃ³n de duplicados** - Sin revelar si email existe
+âœ… **ValidaciÃ³n de dominios** - Bloquea temporales, permite restricciÃ³n
+âœ… **Logging completo** - Todos los eventos registrados
+âœ… **TÃ©rminos y condiciones** - AceptaciÃ³n explÃ­cita requerida
+âœ… **SanitizaciÃ³n** - Todos los inputs sanitizados
+âœ… **ValidaciÃ³n** - Schemas Zod para todos los campos
 
-## Próximos Pasos
+## PrÃ³ximos Pasos
 
-1. ✅ Migraciones ejecutadas
-2. ⚙️ Configurar servicio de email (Resend/SendGrid/AWS SES)
-3. ⚙️ Configurar CAPTCHA
-4. 🧪 Probar flujo completo de registro
-5. 🧪 Probar verificación de email
-6. 🧪 Probar login con usuario registrado
+1. âœ… Migraciones ejecutadas
+2. âš™ï¸ Configurar servicio de email (Resend/SendGrid/AWS SES)
+3. âš™ï¸ Configurar CAPTCHA
+4. ðŸ§ª Probar flujo completo de registro
+5. ðŸ§ª Probar verificaciÃ³n de email
+6. ðŸ§ª Probar login con usuario registrado
 
 ## Notas Importantes
 
-1. **Usuarios registrados públicamente** tienen `role: 'podiatrist'` por defecto
+1. **Usuarios registrados pÃºblicamente** tienen `role: 'podiatrist'` por defecto
 2. **Cuentas deshabilitadas** hasta verificar email
-3. **Contraseñas hasheadas** - Los usuarios mock siguen usando texto plano (compatibilidad)
-4. **Login actualizado** - Verifica contraseñas hasheadas y texto plano
-5. **Email de verificación** - Expira en 24 horas
-6. **Rate limiting** - Bloquea IP por 24 horas después de 5 intentos fallidos
+3. **ContraseÃ±as hasheadas** - Los usuarios mock siguen usando texto plano (compatibilidad)
+4. **Login actualizado** - Verifica contraseÃ±as hasheadas y texto plano
+5. **Email de verificaciÃ³n** - Expira en 24 horas
+6. **Rate limiting** - Bloquea IP por 24 horas despuÃ©s de 5 intentos fallidos
 
 ## Ejemplo de Uso
 
@@ -261,7 +261,7 @@ Content-Type: application/json
 {
   "email": "nuevo@example.com",
   "password": "MiPasswordSegura123!",
-  "name": "Juan Pérez",
+  "name": "Juan PÃ©rez",
   "termsAccepted": true,
   "captchaToken": "token-del-captcha"
 }
@@ -287,7 +287,7 @@ Content-Type: application/json
 
 ### 3. Login
 
-Después de verificar el email, el usuario puede hacer login normalmente:
+DespuÃ©s de verificar el email, el usuario puede hacer login normalmente:
 
 ```bash
 POST /api/auth/login
@@ -299,6 +299,6 @@ Content-Type: application/json
 }
 ```
 
-## 🎉 ¡Implementación Completa!
+## ðŸŽ‰ Â¡ImplementaciÃ³n Completa!
 
-El registro público está completamente implementado con todas las medidas de seguridad recomendadas. El sistema está listo para recibir registros públicos de forma segura.
+El registro pÃºblico estÃ¡ completamente implementado con todas las medidas de seguridad recomendadas. El sistema estÃ¡ listo para recibir registros pÃºblicos de forma segura.

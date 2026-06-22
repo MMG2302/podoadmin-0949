@@ -8,22 +8,18 @@ import {
   normalizeSweatDisorders,
 } from '../../web/types/podiatry';
 import { normalizeCustomSections } from '../../web/types/clinical-layout';
+import { createDefaultMedicalHistory, normalizeMedicalHistory } from '../../web/types/medical-history';
 
 type DbPatient = typeof patientsTable.$inferSelect;
 type DbSession = typeof sessionsTable.$inferSelect;
 
 export function mapDbPatient(row: DbPatient): Patient {
-  let medicalHistory: Patient['medicalHistory'] = { allergies: [], medications: [], conditions: [] };
+  let medicalHistory = createDefaultMedicalHistory();
   let consent: Patient['consent'] = { given: false, date: null };
 
   try {
     if (row.medicalHistory) {
-      const parsed = JSON.parse(row.medicalHistory);
-      medicalHistory = {
-        allergies: parsed.allergies || [],
-        medications: parsed.medications || [],
-        conditions: parsed.conditions || [],
-      };
+      medicalHistory = normalizeMedicalHistory(JSON.parse(row.medicalHistory));
     }
   } catch {
     // valores por defecto

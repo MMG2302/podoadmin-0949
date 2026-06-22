@@ -18,7 +18,8 @@ export type BuiltInClinicalSectionId =
   | "patient_curp"
   | "patient_email"
   | "patient_address"
-  | "patient_medical_history";
+  | "patient_medical_history"
+  | "patient_family_history";
 
 export const CUSTOM_SECTION_KINDS = [
   "custom_text",
@@ -152,8 +153,13 @@ export const BUILTIN_SECTION_META: Record<
   patient_email: { label: "Email (ficha paciente)", group: "paciente" },
   patient_address: { label: "Dirección (ficha paciente)", group: "paciente" },
   patient_medical_history: {
-    label: "Antecedentes (ficha paciente)",
-    hint: "Alergias, medicación, condiciones",
+    label: "Antecedentes personales (ficha)",
+    hint: "Alergias, medicación habitual y patologías crónicas del paciente",
+    group: "paciente",
+  },
+  patient_family_history: {
+    label: "Antecedentes familiares (ficha)",
+    hint: "Hipertensión, diabetes, psoriasis y otras enfermedades relevantes en familiares",
     group: "paciente",
   },
 };
@@ -177,6 +183,7 @@ const BUILTIN_ORDER: BuiltInClinicalSectionId[] = [
   "patient_email",
   "patient_address",
   "patient_medical_history",
+  "patient_family_history",
 ];
 
 export function isCustomSectionKind(kind: string): kind is CustomSectionKind {
@@ -276,7 +283,12 @@ export function createDefaultClinicalLayout(): ClinicalLayoutConfig {
       hint: BUILTIN_SECTION_META[key].hint,
       enabled: true,
       showInSession: key.startsWith("patient_") ? false : true,
-      showInPrint: !key.startsWith("patient_") && key !== "session_checklist" && key !== "session_signature",
+      showInPrint:
+        (!key.startsWith("patient_") ||
+          key === "patient_medical_history" ||
+          key === "patient_family_history") &&
+        key !== "session_checklist" &&
+        key !== "session_signature",
       order,
     })),
   };
@@ -439,7 +451,11 @@ export function isPatientFieldEnabled(
   layout: ClinicalLayoutConfig,
   id: Extract<
     BuiltInClinicalSectionId,
-    "patient_curp" | "patient_email" | "patient_address" | "patient_medical_history"
+    | "patient_curp"
+    | "patient_email"
+    | "patient_address"
+    | "patient_medical_history"
+    | "patient_family_history"
   >
 ): boolean {
   const section = layout.sections.find((s) => s.builtinKey === id || s.id === id);

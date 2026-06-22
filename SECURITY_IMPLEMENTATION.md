@@ -79,6 +79,12 @@ Se ha implementado un sistema completo de autenticación y autorización en el s
 - Validación de acceso a clínicas
 - Protección CSRF en todas las operaciones que modifican estado
 
+### ✅ Políticas centralizadas (`src/api/security/`)
+- **Notificaciones**: `notification-policy.ts` valida destinatario y tipo en `POST /api/notifications`; citas y reasignaciones notifican desde el servidor (`notifications-service.ts`).
+- **Auditoría cliente**: `client-audit-policy.ts` — lista blanca de acciones (`PRINT_VIOLATION_FORM`); el `userId` del log es siempre el del JWT.
+- **Desarrollo**: `middleware/dev-only.ts` — rutas de prueba y `clear-ip-block` exigen entorno no productivo; opcional `DEV_API_SECRET` + header `X-Dev-Secret`.
+- Documentación detallada: `src/api/security/README.md`
+
 ### ✅ Escapado HTML y Sanitización
 - Escapado HTML en todos los inputs del servidor
 - Sanitización de strings removiendo caracteres peligrosos

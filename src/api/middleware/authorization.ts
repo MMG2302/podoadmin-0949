@@ -23,6 +23,7 @@ const rolePermissions: Record<UserRole, Permission[]> = {
     'view_dashboard',
     'view_patients',
     'manage_patients',
+    'view_sessions',
     'view_users',
     'manage_users',
     'view_audit_log',

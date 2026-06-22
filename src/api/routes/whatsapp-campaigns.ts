@@ -5,12 +5,14 @@ import { requireAuth } from '../middleware/auth';
 import { requirePermission } from '../middleware/authorization';
 import { requireActiveSubscription } from '../middleware/subscription';
 import { database } from '../database';
-import { whatsappCampaigns, patients } from '../database/schema';
+import { whatsappCampaigns } from '../database/schema';
 import { canConfigureWhatsApp } from '../utils/whatsapp-integration';
 import { sendWhatsAppTemplateMessage } from '../utils/whatsapp-meta-api';
+import { normalizePhoneE164 } from '../../lib/phone-country';
+import { getCountryForClinic } from '../utils/tenant-country';
 import { decryptSecret } from '../utils/field-encryption';
 import { userWhatsappIntegrations } from '../database/schema';
-import { filterPatientsForWhatsAppCampaign } from '../utils/campaign-patients';
+import { fetchPatientsForWhatsAppCampaign } from '../utils/campaign-patients';
 
 const campaignsRoutes = new Hono();
 campaignsRoutes.use('*', requireAuth, requireActiveSubscription);
@@ -78,20 +80,22 @@ campaignsRoutes.post('/:id/send', async (c) => {
     filter = { hasPhone: true, clinicOnly: true };
   }
 
-  const patientRows = await filterPatientsForWhatsAppCampaign(
-    await database.select().from(patients),
-    user,
-    filter
-  );
+  const patientRows = await fetchPatientsForWhatsAppCampaign(user, filter);
 
   let sent = 0;
   let failed = 0;
   for (const p of patientRows) {
     try {
+      const phoneCountry = await getCountryForClinic(p.clinicId);
+      const phoneE164 = normalizePhoneE164(p.phone, phoneCountry);
+      if (!phoneE164) {
+        failed++;
+        continue;
+      }
       await sendWhatsAppTemplateMessage({
         phoneNumberId: waRow.phoneNumberId,
         accessToken: token,
-        toPhoneE164: p.phone,
+        toPhoneE164: phoneE164,
         templateName: waRow.templateName || 'hello_world',
         templateLanguage: waRow.templateLanguage,
         bodyParams: [p.firstName, campaign.messageBody.slice(0, 200)],

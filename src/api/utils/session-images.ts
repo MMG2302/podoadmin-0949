@@ -2,23 +2,29 @@ import { asc, eq, inArray } from 'drizzle-orm';
 import { database } from '../database';
 import { clinicalSessionImages } from '../database/schema';
 import type { ClinicalSession } from '../../web/types/clinical';
+import { MAX_D1_STORED_DATA_URI_BYTES } from './logo-upload';
 
 export async function replaceSessionImages(sessionId: string, images: string[]): Promise<void> {
   await database.delete(clinicalSessionImages).where(eq(clinicalSessionImages.sessionId, sessionId));
   if (images.length === 0) return;
 
   const createdAt = new Date().toISOString();
-  await database.insert(clinicalSessionImages).values(
-    images.map((dataUri, sortOrder) => ({
+  for (let sortOrder = 0; sortOrder < images.length; sortOrder++) {
+    const dataUri = images[sortOrder]!;
+    if (dataUri.length > MAX_D1_STORED_DATA_URI_BYTES) {
+      throw new Error(
+        `image_stored_too_large: la imagen ${sortOrder + 1} supera el límite de almacenamiento D1`
+      );
+    }
+    await database.insert(clinicalSessionImages).values({
       id: crypto.randomUUID(),
       sessionId,
       sortOrder,
       dataUri,
       createdAt,
-    }))
-  );
+    });
+  }
 }
-
 export async function loadSessionImagesMap(sessionIds: string[]): Promise<Record<string, string[]>> {
   if (sessionIds.length === 0) return {};
 

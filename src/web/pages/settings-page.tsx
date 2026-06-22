@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { MainLayout } from "../components/layout/main-layout";
 import { useLanguage } from "../contexts/language-context";
 import { useAuth } from "../contexts/auth-context";
@@ -11,6 +11,9 @@ import { ComplianceSettingsSection } from "../components/settings/compliance-set
 import { SettingsTabBar, type SettingsTabId } from "../components/settings/settings-tab-bar";
 import { ClinicalLayoutSettingsSection } from "../components/settings/clinical-layout-settings-section";
 import { WorkspaceWatermarkSettingsSection } from "../components/settings/workspace-watermark-settings-section";
+import { CountrySelect } from "../components/settings/country-select";
+import { phonePlaceholderForCountry } from "../lib/whatsapp-web-link";
+import { DEFAULT_TENANT_COUNTRY, resolveTenantCountryCode } from "../../lib/phone-country";
 
 interface ClinicInfoForm {
   clinicName: string;
@@ -20,6 +23,7 @@ interface ClinicInfoForm {
   address: string;
   city: string;
   postalCode: string;
+  countryCode: string;
   licenseNumber: string;
   website: string;
   consentText: string;
@@ -47,7 +51,7 @@ export async function getLogoForUser(userId: string, clinicId?: string): Promise
 
 const SettingsPage = () => {
   const { t, language, setLanguage, languageNames, availableLanguages } = useLanguage();
-  const { user, getAllUsers } = useAuth();
+  const { user, getAllUsers, updateUser } = useAuth();
   const isDarkMode = useDarkMode();
   
   // Determine logo ownership based on role
@@ -95,6 +99,7 @@ const SettingsPage = () => {
           address: (c.address as string) ?? "",
           city: (c.city as string) ?? "",
           postalCode: (c.postalCode as string) ?? "",
+          countryCode: (c.countryCode as string) ?? DEFAULT_TENANT_COUNTRY,
           licenseNumber: (c.licenseNumber as string) ?? "",
           website: (c.website as string) ?? "",
           consentText: (c.consentText as string) ?? "",
@@ -130,6 +135,7 @@ const SettingsPage = () => {
     address: "",
     city: "",
     postalCode: "",
+    countryCode: DEFAULT_TENANT_COUNTRY,
     licenseNumber: "",
     website: "",
     consentText: "",
@@ -156,6 +162,7 @@ const SettingsPage = () => {
     postalCode: "",
     licenseNumber: "",
     professionalLicense: "",
+    countryCode: DEFAULT_TENANT_COUNTRY,
     consentDocumentUrl: "",
   });
   const [professionalInfoSaved, setProfessionalInfoSaved] = useState(false);
@@ -173,7 +180,10 @@ const SettingsPage = () => {
   const [receptionistForm, setReceptionistForm] = useState({ name: "", email: "", password: "" });
   const [receptionistError, setReceptionistError] = useState<string | null>(null);
   const [receptionistSuccess, setReceptionistSuccess] = useState(false);
-  const [myReceptionists, setMyReceptionists] = useState<{ id: string; name: string; email: string }[]>([]);
+  const [myReceptionists, setMyReceptionists] = useState<
+    { id: string; name: string; email: string; isBlocked?: boolean; isEnabled?: boolean }[]
+  >([]);
+  const [receptionistActionLoadingId, setReceptionistActionLoadingId] = useState<string | null>(null);
   
   // Recepcionista: edición de podólogos asignados (solo si es de clínica)
   const [assignedPodiatristIds, setAssignedPodiatristIds] = useState<string[]>([]);
@@ -205,6 +215,7 @@ const SettingsPage = () => {
         address: userClinic.address || "",
         city: userClinic.city || "",
         postalCode: userClinic.postalCode || "",
+        countryCode: (userClinic as { countryCode?: string }).countryCode || DEFAULT_TENANT_COUNTRY,
         licenseNumber: userClinic.licenseNumber || "",
         website: userClinic.website || "",
         consentText: userClinic.consentText || "",
@@ -231,6 +242,7 @@ const SettingsPage = () => {
             address: "",
             city: "",
             postalCode: "",
+            countryCode: DEFAULT_TENANT_COUNTRY,
             licenseNumber: "",
             professionalLicense: "",
             consentText: "",
@@ -272,16 +284,21 @@ const SettingsPage = () => {
     }
   }, [isPodiatristWithClinic, user?.id]);
 
-  // Cargar "mis recepcionistas" desde API (podólogo independiente)
-  useEffect(() => {
-    if (isPodiatristIndependent && user?.id) {
-      api.get<{ success?: boolean; receptionists?: { id: string; name: string; email: string }[] }>("/receptionists").then((res) => {
-        if (res.success && Array.isArray(res.data?.receptionists)) {
-          setMyReceptionists(res.data.receptionists);
-        }
-      });
+  const loadMyReceptionists = useCallback(async () => {
+    if (!isPodiatristIndependent || !user?.id) return;
+    const res = await api.get<{
+      success?: boolean;
+      receptionists?: { id: string; name: string; email: string; isBlocked?: boolean; isEnabled?: boolean }[];
+    }>("/receptionists");
+    if (res.success && Array.isArray(res.data?.receptionists)) {
+      setMyReceptionists(res.data.receptionists);
     }
   }, [isPodiatristIndependent, user?.id]);
+
+  // Cargar "mis recepcionistas" desde API (podólogo independiente)
+  useEffect(() => {
+    void loadMyReceptionists();
+  }, [loadMyReceptionists]);
 
   const clinicName = userClinic?.clinicName ?? getClinicNameFrom(userClinic, user?.clinicId ?? "");
   const isInfoBlocked = !!infoBlockedUntil && new Date(infoBlockedUntil) > new Date();
@@ -313,6 +330,7 @@ const SettingsPage = () => {
         address: clinicInfoForm.address,
         city: clinicInfoForm.city,
         postalCode: clinicInfoForm.postalCode,
+        countryCode: resolveTenantCountryCode(clinicInfoForm.countryCode),
         licenseNumber: clinicInfoForm.licenseNumber,
         website: clinicInfoForm.website,
         consentText: clinicInfoForm.consentText || null,
@@ -419,7 +437,7 @@ const SettingsPage = () => {
     });
     if (res.success && (res.data as { user?: { id: string; name: string; email: string } })?.user) {
       const u = (res.data as { user: { id: string; name: string; email: string } }).user;
-      setMyReceptionists((prev) => [...prev, u]);
+      setMyReceptionists([{ ...u, isBlocked: false, isEnabled: true }]);
       setReceptionistForm({ name: "", email: "", password: "" });
       setReceptionistSuccess(true);
       setTimeout(() => setReceptionistSuccess(false), 3000);
@@ -431,13 +449,60 @@ const SettingsPage = () => {
   const handleSaveAssignedPodiatrists = async () => {
     if (!isReceptionist || !user?.id) return;
     try {
-      const res = await api.patch<{ success?: boolean }>(`/receptionists/${user.id}/assigned-podiatrists`, { assignedPodiatristIds });
+      const res = await api.patch<{ success?: boolean; assignedPodiatristIds?: string[] }>(
+        `/receptionists/${user.id}/assigned-podiatrists`,
+        { assignedPodiatristIds }
+      );
       if (res.success) {
+        const ids = res.data?.assignedPodiatristIds ?? assignedPodiatristIds;
+        updateUser({ assignedPodiatristIds: ids });
         setAssignedPodiatristsSaved(true);
         setTimeout(() => setAssignedPodiatristsSaved(false), 2000);
       }
     } catch {
       // No marcar como guardado si la API falla
+    }
+  };
+
+  const handleToggleMyReceptionistBlock = async (rec: { id: string; isBlocked?: boolean }) => {
+    try {
+      setReceptionistActionLoadingId(rec.id);
+      const endpoint = rec.isBlocked ? `/users/${rec.id}/unblock` : `/users/${rec.id}/block`;
+      await api.post(endpoint);
+      await loadMyReceptionists();
+    } catch (err) {
+      console.error("Error cambiando bloqueo de recepcionista:", err);
+    } finally {
+      setReceptionistActionLoadingId(null);
+    }
+  };
+
+  const handleToggleMyReceptionistEnabled = async (rec: { id: string; isEnabled?: boolean }) => {
+    try {
+      setReceptionistActionLoadingId(rec.id);
+      const endpoint = rec.isEnabled === false ? `/users/${rec.id}/enable` : `/users/${rec.id}/disable`;
+      await api.post(endpoint);
+      await loadMyReceptionists();
+    } catch (err) {
+      console.error("Error cambiando estado de recepcionista:", err);
+    } finally {
+      setReceptionistActionLoadingId(null);
+    }
+  };
+
+  const handleDeleteMyReceptionist = async (rec: { id: string; name: string; email: string }) => {
+    const confirmed = window.confirm(
+      `¿Eliminar a la recepcionista ${rec.name} (${rec.email})? Esta acción no se puede deshacer.`
+    );
+    if (!confirmed) return;
+    try {
+      setReceptionistActionLoadingId(rec.id);
+      await api.delete(`/users/${rec.id}`);
+      setMyReceptionists([]);
+    } catch (err) {
+      console.error("Error eliminando recepcionista:", err);
+    } finally {
+      setReceptionistActionLoadingId(null);
     }
   };
 
@@ -655,7 +720,7 @@ const SettingsPage = () => {
 
         {/* Language Settings */}
         <div className="bg-white dark:bg-[#1a1a1a] rounded-xl border border-gray-100 dark:border-white/10 p-6">
-          <h3 className="text-lg font-semibold text-[#1a1a1a] mb-4">{t.settings.language}</h3>
+          <h3 className="text-lg font-semibold text-[#1a1a1a] dark:text-white mb-4">{t.settings.language}</h3>
           
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             {availableLanguages.map((lang) => (
@@ -699,7 +764,7 @@ const SettingsPage = () => {
                     type="text"
                     value={user?.name || ""}
                     disabled
-                    className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-gray-500 cursor-not-allowed"
+                    className="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-gray-500 dark:text-gray-400 cursor-not-allowed"
                   />
                 </div>
                 <div>
@@ -708,7 +773,7 @@ const SettingsPage = () => {
                     type="email"
                     value={user?.email || ""}
                     disabled
-                    className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-gray-500 cursor-not-allowed"
+                    className="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-gray-500 dark:text-gray-400 cursor-not-allowed"
                   />
                 </div>
               </div>
@@ -721,9 +786,9 @@ const SettingsPage = () => {
 
         {/* Contactar PodoAdmin - mensajería bidireccional con soporte (no admin/super_admin) */}
         {!isAdminRole && (
-          <div className="bg-white rounded-xl border border-gray-100 p-6">
-            <h3 className="text-lg font-semibold text-[#1a1a1a] mb-2 flex items-center gap-2">
-              <svg className="w-5 h-5 text-[#1a1a1a]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-100 dark:border-gray-800 p-6">
+            <h3 className="text-lg font-semibold text-[#1a1a1a] dark:text-white mb-2 flex items-center gap-2">
+              <svg className="w-5 h-5 text-[#1a1a1a] dark:text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
               </svg>
               {t.support.contactPodoAdmin}
@@ -740,7 +805,7 @@ const SettingsPage = () => {
                       value={supportSubject}
                       onChange={(e) => setSupportSubject(e.target.value)}
                       placeholder={t.support.subjectPlaceholder}
-                      className="w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#1a1a1a] focus:border-transparent"
+                      className="w-full px-4 py-2.5 border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 text-[#1a1a1a] dark:text-white focus:ring-2 focus:ring-[#1a1a1a] dark:focus:ring-gray-500 focus:border-transparent"
                       required
                     />
                   </div>
@@ -751,7 +816,7 @@ const SettingsPage = () => {
                       onChange={(e) => setSupportMessage(e.target.value)}
                       placeholder={t.support.messagePlaceholder}
                       rows={4}
-                      className="w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#1a1a1a] focus:border-transparent resize-none"
+                      className="w-full px-4 py-2.5 border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 text-[#1a1a1a] dark:text-white focus:ring-2 focus:ring-[#1a1a1a] dark:focus:ring-gray-500 focus:border-transparent resize-none"
                       required
                     />
                   </div>
@@ -765,7 +830,7 @@ const SettingsPage = () => {
                 </form>
 
                 <div className="border-t border-gray-100 pt-4">
-                  <h4 className="text-sm font-medium text-[#1a1a1a] mb-3">{t.support.myConversations}</h4>
+                  <h4 className="text-sm font-medium text-[#1a1a1a] dark:text-white mb-3">{t.support.myConversations}</h4>
                   {supportConversations.length === 0 ? (
                     <p className="text-sm text-gray-500">{t.support.noConversations}</p>
                   ) : (
@@ -777,7 +842,7 @@ const SettingsPage = () => {
                           className="w-full text-left p-3 rounded-lg border border-gray-100 hover:bg-gray-50 transition-colors"
                         >
                           <div className="flex justify-between items-start">
-                            <span className="font-medium text-[#1a1a1a]">{c.subject}</span>
+                            <span className="font-medium text-[#1a1a1a] dark:text-white">{c.subject}</span>
                             <span className={`text-xs px-2 py-0.5 rounded-full ${c.status === "open" ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-600"}`}>
                               {c.status === "open" ? t.support.open : t.support.closed}
                             </span>
@@ -793,11 +858,11 @@ const SettingsPage = () => {
               <div>
                 <button
                   onClick={() => setSelectedSupportConv(null)}
-                  className="text-sm text-gray-500 hover:text-[#1a1a1a] mb-4 flex items-center gap-1"
+                  className="text-sm text-gray-500 hover:text-[#1a1a1a] dark:hover:text-white mb-4 flex items-center gap-1"
                 >
                   ← {t.common.back}
                 </button>
-                <h4 className="font-medium text-[#1a1a1a] mb-4">{selectedSupportConv.subject}</h4>
+                <h4 className="font-medium text-[#1a1a1a] dark:text-white mb-4">{selectedSupportConv.subject}</h4>
                 <div className="space-y-3 mb-4 max-h-64 overflow-y-auto form-modal-scroll">
                   {selectedSupportConv.messages.map((m) => (
                     <div
@@ -805,7 +870,7 @@ const SettingsPage = () => {
                       className={`p-3 rounded-lg ${m.isFromSupport ? "bg-blue-50 ml-4" : "bg-gray-50 mr-4"}`}
                     >
                       <p className="text-xs text-gray-500 mb-1">{m.isFromSupport ? "PodoAdmin" : user?.name} · {new Date(m.createdAt).toLocaleString()}</p>
-                      <p className="text-sm text-[#1a1a1a] whitespace-pre-wrap">{m.body}</p>
+                      <p className="text-sm text-[#1a1a1a] dark:text-white whitespace-pre-wrap">{m.body}</p>
                     </div>
                   ))}
                 </div>
@@ -816,7 +881,7 @@ const SettingsPage = () => {
                       onChange={(e) => setSupportReply(e.target.value)}
                       placeholder={t.support.replyPlaceholder}
                       rows={2}
-                      className="flex-1 px-4 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#1a1a1a] resize-none"
+                      className="flex-1 px-4 py-2.5 border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 text-[#1a1a1a] dark:text-white focus:ring-2 focus:ring-[#1a1a1a] dark:focus:ring-gray-500 resize-none"
                     />
                     <button
                       onClick={handleSendSupportReply}
@@ -841,8 +906,8 @@ const SettingsPage = () => {
             : allUsersList.filter((u) => ids.includes(u.id));
           const isFromClinic = !!user.clinicId;
           return (
-            <div className="bg-white rounded-xl border border-gray-100 p-6">
-              <h3 className="text-lg font-semibold text-[#1a1a1a] mb-2">Podólogos asignados</h3>
+            <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-100 dark:border-gray-800 p-6">
+              <h3 className="text-lg font-semibold text-[#1a1a1a] dark:text-white mb-2">Podólogos asignados</h3>
               <p className="text-sm text-gray-500 mb-4">
                 {isFromClinic
                   ? "Podólogos de tu clínica a los que puedes dar servicio. Marca o desmarca para gestionar citas y pacientes de cada uno."
@@ -870,7 +935,7 @@ const SettingsPage = () => {
                             }}
                             className="rounded border-gray-300 text-[#1a1a1a] focus:ring-[#1a1a1a]"
                           />
-                          <span className="font-medium text-[#1a1a1a]">{pod.name}</span>
+                          <span className="font-medium text-[#1a1a1a] dark:text-white">{pod.name}</span>
                           <span className="text-sm text-gray-500">{pod.email}</span>
                         </label>
                       );
@@ -898,7 +963,7 @@ const SettingsPage = () => {
                     allUsersList
                       .filter((u) => ids.includes(u.id))
                       .map((u) => (
-                        <p key={u.id} className="font-medium text-[#1a1a1a]">
+                        <p key={u.id} className="font-medium text-[#1a1a1a] dark:text-white">
                           {u.name} <span className="text-gray-500 font-normal">({u.email})</span>
                         </p>
                       ))
@@ -944,8 +1009,8 @@ const SettingsPage = () => {
         <>
         {/* Clinic Logo Upload - Only for Clinic Admin and Podiatrist with clinic */}
         {(canUploadLogo || isPodiatristWithClinic) && (
-          <div className="bg-white rounded-xl border border-gray-100 p-6">
-            <h3 className="text-lg font-semibold text-[#1a1a1a] mb-2">Logo de la clínica</h3>
+          <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-100 dark:border-gray-800 p-6">
+            <h3 className="text-lg font-semibold text-[#1a1a1a] dark:text-white mb-2">Logo de la clínica</h3>
 
             {isPodiatristWithClinic ? (
               <div className="space-y-4">
@@ -1039,7 +1104,7 @@ const SettingsPage = () => {
                       />
                       <label
                         htmlFor={isLogoBlocked ? undefined : "logo-upload"}
-                        className={`inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors ${isLogoBlocked ? "bg-gray-200 text-gray-500 cursor-not-allowed" : "bg-gray-100 text-[#1a1a1a] hover:bg-gray-200 cursor-pointer"}`}
+                        className={`inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors ${isLogoBlocked ? "bg-gray-200 text-gray-500 cursor-not-allowed" : "bg-gray-100 dark:bg-gray-800 text-[#1a1a1a] dark:text-gray-100 hover:bg-gray-200 cursor-pointer"}`}
                       >
                         <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
@@ -1075,7 +1140,7 @@ const SettingsPage = () => {
                             setLogoPreview(null);
                             if (fileInputRef.current) fileInputRef.current.value = "";
                           }}
-                          className="px-4 py-2 bg-gray-100 text-[#1a1a1a] rounded-lg text-sm font-medium hover:bg-gray-200 transition-colors"
+                          className="px-4 py-2 bg-gray-100 dark:bg-gray-800 text-[#1a1a1a] dark:text-gray-100 rounded-lg text-sm font-medium hover:bg-gray-200 transition-colors"
                         >
                           Cancelar
                         </button>
@@ -1099,8 +1164,8 @@ const SettingsPage = () => {
 
         {/* Professional Logo Upload - Only for Independent Podiatrists (no clinic) */}
         {isPodiatristIndependent && (
-          <div className="bg-white rounded-xl border border-gray-100 p-6">
-            <h3 className="text-lg font-semibold text-[#1a1a1a] mb-2">Logo Profesional</h3>
+          <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-100 dark:border-gray-800 p-6">
+            <h3 className="text-lg font-semibold text-[#1a1a1a] dark:text-white mb-2">Logo Profesional</h3>
             <p className="text-sm text-gray-500 mb-4">
               Sube tu logo profesional personal. Este logo se mostrará en los documentos PDF que generes. Dimensiones recomendadas: 200x80px
             </p>
@@ -1142,7 +1207,7 @@ const SettingsPage = () => {
                   />
                   <label
                     htmlFor="professional-logo-upload"
-                    className="inline-flex items-center gap-2 px-4 py-2.5 bg-gray-100 text-[#1a1a1a] rounded-lg text-sm font-medium hover:bg-gray-200 transition-colors cursor-pointer"
+                    className="inline-flex items-center gap-2 px-4 py-2.5 bg-gray-100 dark:bg-gray-800 text-[#1a1a1a] dark:text-gray-100 rounded-lg text-sm font-medium hover:bg-gray-200 transition-colors cursor-pointer"
                   >
                     <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
@@ -1177,7 +1242,7 @@ const SettingsPage = () => {
                         setLogoPreview(null);
                         if (fileInputRef.current) fileInputRef.current.value = "";
                       }}
-                      className="px-4 py-2 bg-gray-100 text-[#1a1a1a] rounded-lg text-sm font-medium hover:bg-gray-200 transition-colors"
+                      className="px-4 py-2 bg-gray-100 dark:bg-gray-800 text-[#1a1a1a] dark:text-gray-100 rounded-lg text-sm font-medium hover:bg-gray-200 transition-colors"
                     >
                       Cancelar
                     </button>
@@ -1198,8 +1263,8 @@ const SettingsPage = () => {
 
         {/* Consentimiento informado - Misma lógica que Logo: clinic_admin edita, podólogo clínica solo lectura, independiente edita */}
         {(canUploadLogo || isPodiatristWithClinic || isPodiatristIndependent) && (
-          <div className="bg-white rounded-xl border border-gray-100 p-6">
-            <h3 className="text-lg font-semibold text-[#1a1a1a] mb-2">Consentimiento informado</h3>
+          <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-100 dark:border-gray-800 p-6">
+            <h3 className="text-lg font-semibold text-[#1a1a1a] dark:text-white mb-2">Consentimiento informado</h3>
 
             {/* Clínica: admin edita, podólogo con clínica solo lectura */}
             {isPodiatristWithClinic && userClinic && (
@@ -1218,8 +1283,8 @@ const SettingsPage = () => {
                 {(userClinic.consentTextVersion ?? 0) > 0 && (
                   <p className="text-xs text-gray-500">Versión actual: {userClinic.consentTextVersion}</p>
                 )}
-                <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
-                  <p className="text-sm text-[#1a1a1a] whitespace-pre-wrap">
+                <div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 p-4 text-[#1a1a1a] dark:text-gray-200">
+                  <p className="text-sm text-[#1a1a1a] dark:text-white whitespace-pre-wrap">
                     {userClinic.consentText?.trim() || "Sin texto configurado."}
                   </p>
                 </div>
@@ -1244,7 +1309,7 @@ const SettingsPage = () => {
                   placeholder="Redacta aquí los términos y el consentimiento informado que el paciente debe aceptar."
                   rows={6}
                   disabled={isInfoBlocked}
-                  className={`w-full px-4 py-2.5 border border-gray-200 rounded-lg transition-all resize-y ${isInfoBlocked ? "bg-gray-50 cursor-not-allowed" : "bg-white focus:ring-2 focus:ring-[#1a1a1a] focus:border-transparent"}`}
+                  className={`w-full px-4 py-2.5 border border-gray-200 rounded-lg transition-all resize-y ${isInfoBlocked ? "bg-gray-50 dark:bg-gray-800 text-gray-500 dark:text-gray-400 cursor-not-allowed" : "bg-white dark:bg-gray-900 text-[#1a1a1a] dark:text-white focus:ring-2 focus:ring-[#1a1a1a] dark:focus:ring-gray-500 focus:border-transparent"}`}
                 />
                 {clinicConsentError && (
                   <p className="text-sm text-red-600 mt-2">{clinicConsentError}</p>
@@ -1284,7 +1349,7 @@ const SettingsPage = () => {
                   onChange={(e) => handleProfessionalInfoChange("consentText", e.target.value)}
                   placeholder="Redacta aquí los términos y el consentimiento informado que el paciente debe aceptar."
                   rows={6}
-                  className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#1a1a1a] focus:border-transparent transition-all resize-y"
+                  className="w-full px-4 py-2.5 bg-white dark:bg-gray-900 text-[#1a1a1a] dark:text-white border border-gray-200 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-[#1a1a1a] dark:focus:ring-gray-500 focus:border-transparent transition-all resize-y"
                 />
                 <div className="flex items-center gap-3 pt-4 border-t border-gray-100">
                   <button
@@ -1310,21 +1375,55 @@ const SettingsPage = () => {
         {/* Recepcionista - Solo podólogo independiente: una sola recepcionista ligada directamente */}
         {isPodiatristIndependent && user?.id && (() => {
           const hasReceptionist = myReceptionists.length >= 1;
+          const rec = myReceptionists[0];
           return (
-            <div className="bg-white rounded-xl border border-gray-100 p-6">
-              <h3 className="text-lg font-semibold text-[#1a1a1a] mb-2">Recepcionista</h3>
+            <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-100 dark:border-gray-800 p-6">
+              <h3 className="text-lg font-semibold text-[#1a1a1a] dark:text-white mb-2">Recepcionista</h3>
               <p className="text-sm text-gray-500 mb-4">
-                Como podólogo independiente puedes crear una recepcionista vinculada a tu cuenta. Tendrá acceso sin créditos a crear pacientes, crear y editar citas en tu calendario.
+                Como podólogo independiente puedes crear una recepcionista vinculada a tu cuenta. Tendrá acceso sin créditos a crear pacientes, crear y editar citas en tu calendario. Deberá cambiar la contraseña en su primer acceso.
               </p>
-              {hasReceptionist ? (
-                <div className="bg-green-50 border border-green-100 rounded-lg p-4">
-                  <p className="text-sm text-green-700 font-medium">Recepcionista asignada</p>
-                  <p className="text-sm text-green-600 mt-1">
-                    {myReceptionists[0].name} ({myReceptionists[0].email})
-                  </p>
-                  <p className="text-xs text-green-600 mt-2">
-                    Ya tienes una recepcionista ligada a tu cuenta. Solo puedes tener una.
-                  </p>
+              {hasReceptionist && rec ? (
+                <div className="space-y-4">
+                  <div className="bg-gray-50 border border-gray-100 rounded-lg p-4">
+                    <p className="font-medium text-[#1a1a1a] dark:text-white">{rec.name}</p>
+                    <p className="text-sm text-gray-600">{rec.email}</p>
+                    <div className="flex flex-wrap gap-2 mt-3">
+                      {rec.isBlocked ? (
+                        <span className="text-xs px-2 py-0.5 rounded-full bg-red-100 text-red-700">Bloqueada</span>
+                      ) : rec.isEnabled === false ? (
+                        <span className="text-xs px-2 py-0.5 rounded-full bg-amber-100 text-amber-700">Deshabilitada</span>
+                      ) : (
+                        <span className="text-xs px-2 py-0.5 rounded-full bg-green-100 text-green-700">Activa</span>
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      onClick={() => handleToggleMyReceptionistBlock(rec)}
+                      disabled={receptionistActionLoadingId === rec.id}
+                      className="px-3 py-1.5 text-xs rounded-lg border border-gray-200 text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+                    >
+                      {rec.isBlocked ? "Desbloquear" : "Bloquear"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleToggleMyReceptionistEnabled(rec)}
+                      disabled={receptionistActionLoadingId === rec.id}
+                      className="px-3 py-1.5 text-xs rounded-lg border border-gray-200 text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+                    >
+                      {rec.isEnabled === false ? "Habilitar" : "Deshabilitar"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteMyReceptionist(rec)}
+                      disabled={receptionistActionLoadingId === rec.id}
+                      className="px-3 py-1.5 text-xs rounded-lg border border-red-200 text-red-600 hover:bg-red-50 disabled:opacity-50"
+                    >
+                      Eliminar
+                    </button>
+                  </div>
+                  <p className="text-xs text-gray-500">Solo puedes tener una recepcionista vinculada. Elimínala para crear otra.</p>
                 </div>
               ) : (
                 <form onSubmit={handleCreateReceptionist} className="space-y-4">
@@ -1334,7 +1433,7 @@ const SettingsPage = () => {
                       type="text"
                       value={receptionistForm.name}
                       onChange={(e) => setReceptionistForm((f) => ({ ...f, name: e.target.value }))}
-                      className="w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#1a1a1a] focus:border-transparent"
+                      className="w-full px-4 py-2.5 border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 text-[#1a1a1a] dark:text-white focus:ring-2 focus:ring-[#1a1a1a] dark:focus:ring-gray-500 focus:border-transparent"
                       required
                     />
                   </div>
@@ -1344,7 +1443,7 @@ const SettingsPage = () => {
                       type="email"
                       value={receptionistForm.email}
                       onChange={(e) => setReceptionistForm((f) => ({ ...f, email: e.target.value }))}
-                      className="w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#1a1a1a] focus:border-transparent"
+                      className="w-full px-4 py-2.5 border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 text-[#1a1a1a] dark:text-white focus:ring-2 focus:ring-[#1a1a1a] dark:focus:ring-gray-500 focus:border-transparent"
                       required
                     />
                   </div>
@@ -1354,7 +1453,7 @@ const SettingsPage = () => {
                       type="password"
                       value={receptionistForm.password}
                       onChange={(e) => setReceptionistForm((f) => ({ ...f, password: e.target.value }))}
-                      className="w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#1a1a1a] focus:border-transparent"
+                      className="w-full px-4 py-2.5 border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 text-[#1a1a1a] dark:text-white focus:ring-2 focus:ring-[#1a1a1a] dark:focus:ring-gray-500 focus:border-transparent"
                       required
                       minLength={6}
                     />
@@ -1364,7 +1463,7 @@ const SettingsPage = () => {
                   )}
                   {receptionistSuccess && (
                     <div className="text-sm text-green-600 bg-green-50 border border-green-100 rounded-lg p-3">
-                      Recepcionista creada. Ya puede iniciar sesión con su email y contraseña.
+                      Recepcionista creada. Deberá iniciar sesión y cambiar la contraseña en el primer acceso.
                     </div>
                   )}
                   <button
@@ -1381,8 +1480,8 @@ const SettingsPage = () => {
         
         {/* Clinic Information - Only for Clinic Admin (editable) or Podiatrists with clinic (read-only) */}
         {(canUploadLogo || isPodiatristWithClinic) && userClinic && (
-          <div className="bg-white rounded-xl border border-gray-100 p-6">
-            <h3 className="text-lg font-semibold text-[#1a1a1a] mb-2">Información de la Clínica</h3>
+          <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-100 dark:border-gray-800 p-6">
+            <h3 className="text-lg font-semibold text-[#1a1a1a] dark:text-white mb-2">Información de la Clínica</h3>
             
             {canUploadLogo ? (
               // Clinic Admin can edit clinic information
@@ -1410,7 +1509,7 @@ const SettingsPage = () => {
                       onChange={(e) => handleClinicInfoChange("clinicName", e.target.value)}
                       placeholder="Mi Clínica Podológica"
                       disabled={isInfoBlocked}
-                      className={`w-full px-4 py-2.5 border border-gray-200 rounded-lg transition-all ${isInfoBlocked ? "bg-gray-50 cursor-not-allowed" : "bg-white focus:ring-2 focus:ring-[#1a1a1a] focus:border-transparent"}`}
+                      className={`w-full px-4 py-2.5 border border-gray-200 rounded-lg transition-all ${isInfoBlocked ? "bg-gray-50 dark:bg-gray-800 text-gray-500 dark:text-gray-400 cursor-not-allowed" : "bg-white dark:bg-gray-900 text-[#1a1a1a] dark:text-white focus:ring-2 focus:ring-[#1a1a1a] dark:focus:ring-gray-500 focus:border-transparent"}`}
                     />
                   </div>
                   <div>
@@ -1422,11 +1521,23 @@ const SettingsPage = () => {
                       placeholder="MICP"
                       maxLength={8}
                       disabled={isInfoBlocked}
-                      className={`w-full px-4 py-2.5 border border-gray-200 rounded-lg transition-all ${isInfoBlocked ? "bg-gray-50 cursor-not-allowed" : "bg-white focus:ring-2 focus:ring-[#1a1a1a] focus:border-transparent"}`}
+                      className={`w-full px-4 py-2.5 border border-gray-200 rounded-lg transition-all ${isInfoBlocked ? "bg-gray-50 dark:bg-gray-800 text-gray-500 dark:text-gray-400 cursor-not-allowed" : "bg-white dark:bg-gray-900 text-[#1a1a1a] dark:text-white focus:ring-2 focus:ring-[#1a1a1a] dark:focus:ring-gray-500 focus:border-transparent"}`}
                     />
                     <p className="text-xs text-gray-500 mt-1">Máx. 8 caracteres. Se usa en folios (ej: MICP-2025-001)</p>
                   </div>
                   
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">País (prefijo telefónico)</label>
+                    <CountrySelect
+                      value={clinicInfoForm.countryCode}
+                      onChange={(code) => handleClinicInfoChange("countryCode", code)}
+                      disabled={isInfoBlocked}
+                    />
+                    <p className="text-xs text-gray-500 mt-1">
+                      Se usa para WhatsApp y teléfonos de pacientes sin prefijo internacional.
+                    </p>
+                  </div>
+
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">Teléfono</label>
@@ -1434,9 +1545,9 @@ const SettingsPage = () => {
                         type="tel"
                         value={clinicInfoForm.phone}
                         onChange={(e) => handleClinicInfoChange("phone", e.target.value)}
-                        placeholder="+34 912 345 678"
+                        placeholder={phonePlaceholderForCountry(resolveTenantCountryCode(clinicInfoForm.countryCode))}
                         disabled={isInfoBlocked}
-                        className={`w-full px-4 py-2.5 border border-gray-200 rounded-lg transition-all ${isInfoBlocked ? "bg-gray-50 cursor-not-allowed" : "bg-white focus:ring-2 focus:ring-[#1a1a1a] focus:border-transparent"}`}
+                        className={`w-full px-4 py-2.5 border border-gray-200 rounded-lg transition-all ${isInfoBlocked ? "bg-gray-50 dark:bg-gray-800 text-gray-500 dark:text-gray-400 cursor-not-allowed" : "bg-white dark:bg-gray-900 text-[#1a1a1a] dark:text-white focus:ring-2 focus:ring-[#1a1a1a] dark:focus:ring-gray-500 focus:border-transparent"}`}
                       />
                     </div>
                     <div>
@@ -1447,7 +1558,7 @@ const SettingsPage = () => {
                         onChange={(e) => handleClinicInfoChange("email", e.target.value)}
                         placeholder="info@clinica.es"
                         disabled={isInfoBlocked}
-                        className={`w-full px-4 py-2.5 border border-gray-200 rounded-lg transition-all ${isInfoBlocked ? "bg-gray-50 cursor-not-allowed" : "bg-white focus:ring-2 focus:ring-[#1a1a1a] focus:border-transparent"}`}
+                        className={`w-full px-4 py-2.5 border border-gray-200 rounded-lg transition-all ${isInfoBlocked ? "bg-gray-50 dark:bg-gray-800 text-gray-500 dark:text-gray-400 cursor-not-allowed" : "bg-white dark:bg-gray-900 text-[#1a1a1a] dark:text-white focus:ring-2 focus:ring-[#1a1a1a] dark:focus:ring-gray-500 focus:border-transparent"}`}
                       />
                     </div>
                   </div>
@@ -1460,7 +1571,7 @@ const SettingsPage = () => {
                       onChange={(e) => handleClinicInfoChange("address", e.target.value)}
                       placeholder="Calle Gran Vía, 45, 2º Izquierda"
                       disabled={isInfoBlocked}
-                      className={`w-full px-4 py-2.5 border border-gray-200 rounded-lg transition-all ${isInfoBlocked ? "bg-gray-50 cursor-not-allowed" : "bg-white focus:ring-2 focus:ring-[#1a1a1a] focus:border-transparent"}`}
+                      className={`w-full px-4 py-2.5 border border-gray-200 rounded-lg transition-all ${isInfoBlocked ? "bg-gray-50 dark:bg-gray-800 text-gray-500 dark:text-gray-400 cursor-not-allowed" : "bg-white dark:bg-gray-900 text-[#1a1a1a] dark:text-white focus:ring-2 focus:ring-[#1a1a1a] dark:focus:ring-gray-500 focus:border-transparent"}`}
                     />
                   </div>
                   
@@ -1473,7 +1584,7 @@ const SettingsPage = () => {
                         onChange={(e) => handleClinicInfoChange("city", e.target.value)}
                         placeholder="Madrid"
                         disabled={isInfoBlocked}
-                        className={`w-full px-4 py-2.5 border border-gray-200 rounded-lg transition-all ${isInfoBlocked ? "bg-gray-50 cursor-not-allowed" : "bg-white focus:ring-2 focus:ring-[#1a1a1a] focus:border-transparent"}`}
+                        className={`w-full px-4 py-2.5 border border-gray-200 rounded-lg transition-all ${isInfoBlocked ? "bg-gray-50 dark:bg-gray-800 text-gray-500 dark:text-gray-400 cursor-not-allowed" : "bg-white dark:bg-gray-900 text-[#1a1a1a] dark:text-white focus:ring-2 focus:ring-[#1a1a1a] dark:focus:ring-gray-500 focus:border-transparent"}`}
                       />
                     </div>
                     <div>
@@ -1484,7 +1595,7 @@ const SettingsPage = () => {
                         onChange={(e) => handleClinicInfoChange("postalCode", e.target.value)}
                         placeholder="28001"
                         disabled={isInfoBlocked}
-                        className={`w-full px-4 py-2.5 border border-gray-200 rounded-lg transition-all ${isInfoBlocked ? "bg-gray-50 cursor-not-allowed" : "bg-white focus:ring-2 focus:ring-[#1a1a1a] focus:border-transparent"}`}
+                        className={`w-full px-4 py-2.5 border border-gray-200 rounded-lg transition-all ${isInfoBlocked ? "bg-gray-50 dark:bg-gray-800 text-gray-500 dark:text-gray-400 cursor-not-allowed" : "bg-white dark:bg-gray-900 text-[#1a1a1a] dark:text-white focus:ring-2 focus:ring-[#1a1a1a] dark:focus:ring-gray-500 focus:border-transparent"}`}
                       />
                     </div>
                   </div>
@@ -1498,7 +1609,7 @@ const SettingsPage = () => {
                         onChange={(e) => handleClinicInfoChange("licenseNumber", e.target.value)}
                         placeholder="CS-28/2024-POD-001"
                         disabled={isInfoBlocked}
-                        className={`w-full px-4 py-2.5 border border-gray-200 rounded-lg transition-all ${isInfoBlocked ? "bg-gray-50 cursor-not-allowed" : "bg-white focus:ring-2 focus:ring-[#1a1a1a] focus:border-transparent"}`}
+                        className={`w-full px-4 py-2.5 border border-gray-200 rounded-lg transition-all ${isInfoBlocked ? "bg-gray-50 dark:bg-gray-800 text-gray-500 dark:text-gray-400 cursor-not-allowed" : "bg-white dark:bg-gray-900 text-[#1a1a1a] dark:text-white focus:ring-2 focus:ring-[#1a1a1a] dark:focus:ring-gray-500 focus:border-transparent"}`}
                       />
                     </div>
                     <div>
@@ -1509,7 +1620,7 @@ const SettingsPage = () => {
                         onChange={(e) => handleClinicInfoChange("website", e.target.value)}
                         placeholder="https://www.clinica.es"
                         disabled={isInfoBlocked}
-                        className={`w-full px-4 py-2.5 border border-gray-200 rounded-lg transition-all ${isInfoBlocked ? "bg-gray-50 cursor-not-allowed" : "bg-white focus:ring-2 focus:ring-[#1a1a1a] focus:border-transparent"}`}
+                        className={`w-full px-4 py-2.5 border border-gray-200 rounded-lg transition-all ${isInfoBlocked ? "bg-gray-50 dark:bg-gray-800 text-gray-500 dark:text-gray-400 cursor-not-allowed" : "bg-white dark:bg-gray-900 text-[#1a1a1a] dark:text-white focus:ring-2 focus:ring-[#1a1a1a] dark:focus:ring-gray-500 focus:border-transparent"}`}
                       />
                     </div>
                   </div>
@@ -1522,7 +1633,7 @@ const SettingsPage = () => {
                         value={clinicInfoForm.legalName}
                         onChange={(e) => handleClinicInfoChange("legalName", e.target.value)}
                         disabled={isInfoBlocked}
-                        className={`w-full px-4 py-2.5 border border-gray-200 rounded-lg ${isInfoBlocked ? "bg-gray-50 cursor-not-allowed" : "bg-white"}`}
+                        className={`w-full px-4 py-2.5 border border-gray-200 rounded-lg ${isInfoBlocked ? "bg-gray-50 dark:bg-gray-800 text-gray-500 dark:text-gray-400 cursor-not-allowed" : "bg-white dark:bg-gray-900 text-[#1a1a1a] dark:text-white"}`}
                       />
                     </div>
                     <div>
@@ -1532,7 +1643,7 @@ const SettingsPage = () => {
                         value={clinicInfoForm.rfc}
                         onChange={(e) => handleClinicInfoChange("rfc", e.target.value.toUpperCase())}
                         disabled={isInfoBlocked}
-                        className={`w-full px-4 py-2.5 border border-gray-200 rounded-lg ${isInfoBlocked ? "bg-gray-50 cursor-not-allowed" : "bg-white"}`}
+                        className={`w-full px-4 py-2.5 border border-gray-200 rounded-lg ${isInfoBlocked ? "bg-gray-50 dark:bg-gray-800 text-gray-500 dark:text-gray-400 cursor-not-allowed" : "bg-white dark:bg-gray-900 text-[#1a1a1a] dark:text-white"}`}
                       />
                     </div>
                     <div>
@@ -1542,7 +1653,7 @@ const SettingsPage = () => {
                         value={clinicInfoForm.clues}
                         onChange={(e) => handleClinicInfoChange("clues", e.target.value)}
                         disabled={isInfoBlocked}
-                        className={`w-full px-4 py-2.5 border border-gray-200 rounded-lg ${isInfoBlocked ? "bg-gray-50 cursor-not-allowed" : "bg-white"}`}
+                        className={`w-full px-4 py-2.5 border border-gray-200 rounded-lg ${isInfoBlocked ? "bg-gray-50 dark:bg-gray-800 text-gray-500 dark:text-gray-400 cursor-not-allowed" : "bg-white dark:bg-gray-900 text-[#1a1a1a] dark:text-white"}`}
                       />
                     </div>
                     <div>
@@ -1552,7 +1663,7 @@ const SettingsPage = () => {
                         value={clinicInfoForm.cofeprisRegistration}
                         onChange={(e) => handleClinicInfoChange("cofeprisRegistration", e.target.value)}
                         disabled={isInfoBlocked}
-                        className={`w-full px-4 py-2.5 border border-gray-200 rounded-lg ${isInfoBlocked ? "bg-gray-50 cursor-not-allowed" : "bg-white"}`}
+                        className={`w-full px-4 py-2.5 border border-gray-200 rounded-lg ${isInfoBlocked ? "bg-gray-50 dark:bg-gray-800 text-gray-500 dark:text-gray-400 cursor-not-allowed" : "bg-white dark:bg-gray-900 text-[#1a1a1a] dark:text-white"}`}
                       />
                     </div>
                   </div>
@@ -1599,24 +1710,24 @@ const SettingsPage = () => {
                 <div className="grid gap-3 text-sm">
                   <div className="flex">
                     <span className="w-32 text-gray-500">Nombre:</span>
-                    <span className="font-medium text-[#1a1a1a]">{userClinic.clinicName}</span>
+                    <span className="font-medium text-[#1a1a1a] dark:text-white">{userClinic.clinicName}</span>
                   </div>
                   {userClinic.phone && (
                     <div className="flex">
                       <span className="w-32 text-gray-500">Teléfono:</span>
-                      <span className="font-medium text-[#1a1a1a]">{userClinic.phone}</span>
+                      <span className="font-medium text-[#1a1a1a] dark:text-white">{userClinic.phone}</span>
                     </div>
                   )}
                   {userClinic.email && (
                     <div className="flex">
                       <span className="w-32 text-gray-500">Email:</span>
-                      <span className="font-medium text-[#1a1a1a]">{userClinic.email}</span>
+                      <span className="font-medium text-[#1a1a1a] dark:text-white">{userClinic.email}</span>
                     </div>
                   )}
                   {userClinic.address && (
                     <div className="flex">
                       <span className="w-32 text-gray-500">Dirección:</span>
-                      <span className="font-medium text-[#1a1a1a]">
+                      <span className="font-medium text-[#1a1a1a] dark:text-white">
                         {userClinic.address}{userClinic.city && `, ${userClinic.city}`}{userClinic.postalCode && ` ${userClinic.postalCode}`}
                       </span>
                     </div>
@@ -1624,7 +1735,7 @@ const SettingsPage = () => {
                   {userClinic.licenseNumber && (
                     <div className="flex">
                       <span className="w-32 text-gray-500">Licencia:</span>
-                      <span className="font-medium text-[#1a1a1a]">{userClinic.licenseNumber}</span>
+                      <span className="font-medium text-[#1a1a1a] dark:text-white">{userClinic.licenseNumber}</span>
                     </div>
                   )}
                   {userClinic.consentDocumentUrl && (
@@ -1678,8 +1789,8 @@ const SettingsPage = () => {
         
         {/* Consultorio Information - Only for Independent Podiatrists (no clinic) */}
         {isPodiatristIndependent && (
-          <div className="bg-white rounded-xl border border-gray-100 p-6">
-            <h3 className="text-lg font-semibold text-[#1a1a1a] mb-2">Información del Consultorio</h3>
+          <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-100 dark:border-gray-800 p-6">
+            <h3 className="text-lg font-semibold text-[#1a1a1a] dark:text-white mb-2">Información del Consultorio</h3>
             <p className="text-sm text-gray-500 mb-4">
               Completa la información de tu consultorio profesional. Estos datos aparecerán en los documentos PDF que generes.
             </p>
@@ -1693,8 +1804,19 @@ const SettingsPage = () => {
                     value={professionalInfoForm.name}
                     onChange={(e) => handleProfessionalInfoChange("name", e.target.value)}
                     placeholder="Dr. Juan Pérez García"
-                    className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#1a1a1a] focus:border-transparent transition-all"
+                    className="w-full px-4 py-2.5 bg-white dark:bg-gray-900 text-[#1a1a1a] dark:text-white border border-gray-200 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-[#1a1a1a] dark:focus:ring-gray-500 focus:border-transparent transition-all"
                   />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">País (prefijo telefónico)</label>
+                  <CountrySelect
+                    value={professionalInfoForm.countryCode || DEFAULT_TENANT_COUNTRY}
+                    onChange={(code) => handleProfessionalInfoChange("countryCode", code)}
+                  />
+                  <p className="text-xs text-gray-500 mt-1">
+                    Se aplica a teléfonos de pacientes y enlaces de WhatsApp sin prefijo +.
+                  </p>
                 </div>
                 
                 <div className="grid grid-cols-2 gap-4">
@@ -1704,8 +1826,10 @@ const SettingsPage = () => {
                       type="tel"
                       value={professionalInfoForm.phone}
                       onChange={(e) => handleProfessionalInfoChange("phone", e.target.value)}
-                      placeholder="+34 912 345 678"
-                      className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#1a1a1a] focus:border-transparent transition-all"
+                      placeholder={phonePlaceholderForCountry(
+                        resolveTenantCountryCode(professionalInfoForm.countryCode)
+                      )}
+                      className="w-full px-4 py-2.5 bg-white dark:bg-gray-900 text-[#1a1a1a] dark:text-white border border-gray-200 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-[#1a1a1a] dark:focus:ring-gray-500 focus:border-transparent transition-all"
                     />
                   </div>
                   <div>
@@ -1715,7 +1839,7 @@ const SettingsPage = () => {
                       value={professionalInfoForm.email}
                       onChange={(e) => handleProfessionalInfoChange("email", e.target.value)}
                       placeholder="doctor@consultorio.es"
-                      className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#1a1a1a] focus:border-transparent transition-all"
+                      className="w-full px-4 py-2.5 bg-white dark:bg-gray-900 text-[#1a1a1a] dark:text-white border border-gray-200 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-[#1a1a1a] dark:focus:ring-gray-500 focus:border-transparent transition-all"
                     />
                   </div>
                 </div>
@@ -1727,7 +1851,7 @@ const SettingsPage = () => {
                     value={professionalInfoForm.address}
                     onChange={(e) => handleProfessionalInfoChange("address", e.target.value)}
                     placeholder="Calle Gran Vía, 45, 2º Izquierda"
-                    className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#1a1a1a] focus:border-transparent transition-all"
+                    className="w-full px-4 py-2.5 bg-white dark:bg-gray-900 text-[#1a1a1a] dark:text-white border border-gray-200 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-[#1a1a1a] dark:focus:ring-gray-500 focus:border-transparent transition-all"
                   />
                 </div>
                 
@@ -1739,7 +1863,7 @@ const SettingsPage = () => {
                       value={professionalInfoForm.city}
                       onChange={(e) => handleProfessionalInfoChange("city", e.target.value)}
                       placeholder="Madrid"
-                      className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#1a1a1a] focus:border-transparent transition-all"
+                      className="w-full px-4 py-2.5 bg-white dark:bg-gray-900 text-[#1a1a1a] dark:text-white border border-gray-200 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-[#1a1a1a] dark:focus:ring-gray-500 focus:border-transparent transition-all"
                     />
                   </div>
                   <div>
@@ -1749,7 +1873,7 @@ const SettingsPage = () => {
                       value={professionalInfoForm.postalCode}
                       onChange={(e) => handleProfessionalInfoChange("postalCode", e.target.value)}
                       placeholder="28001"
-                      className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#1a1a1a] focus:border-transparent transition-all"
+                      className="w-full px-4 py-2.5 bg-white dark:bg-gray-900 text-[#1a1a1a] dark:text-white border border-gray-200 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-[#1a1a1a] dark:focus:ring-gray-500 focus:border-transparent transition-all"
                     />
                   </div>
                 </div>
@@ -1762,7 +1886,7 @@ const SettingsPage = () => {
                       value={professionalInfoForm.licenseNumber}
                       onChange={(e) => handleProfessionalInfoChange("licenseNumber", e.target.value)}
                       placeholder="CS-28/2024-POD-001"
-                      className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#1a1a1a] focus:border-transparent transition-all"
+                      className="w-full px-4 py-2.5 bg-white dark:bg-gray-900 text-[#1a1a1a] dark:text-white border border-gray-200 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-[#1a1a1a] dark:focus:ring-gray-500 focus:border-transparent transition-all"
                     />
                   </div>
                   <div>
@@ -1772,7 +1896,7 @@ const SettingsPage = () => {
                       value={professionalInfoForm.professionalLicense}
                       onChange={(e) => handleProfessionalInfoChange("professionalLicense", e.target.value)}
                       placeholder="12345678"
-                      className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#1a1a1a] focus:border-transparent transition-all"
+                      className="w-full px-4 py-2.5 bg-white dark:bg-gray-900 text-[#1a1a1a] dark:text-white border border-gray-200 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-[#1a1a1a] dark:focus:ring-gray-500 focus:border-transparent transition-all"
                     />
                   </div>
                 </div>
@@ -1800,8 +1924,8 @@ const SettingsPage = () => {
         
         {/* Professional Credentials - For Podiatrists with Clinic */}
         {isPodiatristWithClinic && userClinic && (
-          <div className="bg-white rounded-xl border border-gray-100 p-6">
-            <h3 className="text-lg font-semibold text-[#1a1a1a] mb-2">Credenciales Profesionales</h3>
+          <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-100 dark:border-gray-800 p-6">
+            <h3 className="text-lg font-semibold text-[#1a1a1a] dark:text-white mb-2">Credenciales Profesionales</h3>
             <p className="text-sm text-gray-500 mb-4">
               Ingresa tus credenciales profesionales individuales. La información de la clínica es gestionada por tu administrador.
             </p>
@@ -1816,7 +1940,7 @@ const SettingsPage = () => {
                     value={credentialsCedula}
                     onChange={(e) => setCredentialsCedula(e.target.value)}
                     placeholder="12345678"
-                    className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#1a1a1a] focus:border-transparent transition-all"
+                    className="w-full px-4 py-2.5 bg-white dark:bg-gray-900 text-[#1a1a1a] dark:text-white border border-gray-200 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-[#1a1a1a] dark:focus:ring-gray-500 focus:border-transparent transition-all"
                   />
                 </div>
                 <div>
@@ -1826,7 +1950,7 @@ const SettingsPage = () => {
                     value={credentialsRegistro}
                     onChange={(e) => setCredentialsRegistro(e.target.value)}
                     placeholder="REG-2024-001"
-                    className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#1a1a1a] focus:border-transparent transition-all"
+                    className="w-full px-4 py-2.5 bg-white dark:bg-gray-900 text-[#1a1a1a] dark:text-white border border-gray-200 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-[#1a1a1a] dark:focus:ring-gray-500 focus:border-transparent transition-all"
                   />
                 </div>
               </div>
@@ -1875,11 +1999,25 @@ const SettingsPage = () => {
                       type="text"
                       value={userClinic.clinicName}
                       disabled
-                      className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-gray-500 cursor-not-allowed"
+                      className="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-gray-500 dark:text-gray-400 cursor-not-allowed"
                     />
                   </div>
                   
                   <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-500 mb-1 flex items-center gap-2">
+                        País (prefijo)
+                        <svg className="w-3.5 h-3.5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                        </svg>
+                      </label>
+                      <input
+                        type="text"
+                        value={(userClinic as { countryCode?: string }).countryCode || DEFAULT_TENANT_COUNTRY}
+                        disabled
+                        className="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-gray-500 dark:text-gray-400 cursor-not-allowed"
+                      />
+                    </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-500 mb-1 flex items-center gap-2">
                         Teléfono
@@ -1891,7 +2029,7 @@ const SettingsPage = () => {
                         type="text"
                         value={userClinic.phone || "—"}
                         disabled
-                        className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-gray-500 cursor-not-allowed"
+                        className="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-gray-500 dark:text-gray-400 cursor-not-allowed"
                       />
                     </div>
                     <div>
@@ -1905,7 +2043,7 @@ const SettingsPage = () => {
                         type="text"
                         value={userClinic.email || "—"}
                         disabled
-                        className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-gray-500 cursor-not-allowed"
+                        className="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-gray-500 dark:text-gray-400 cursor-not-allowed"
                       />
                     </div>
                   </div>
@@ -1921,7 +2059,7 @@ const SettingsPage = () => {
                       type="text"
                       value={userClinic.address || "—"}
                       disabled
-                      className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-gray-500 cursor-not-allowed"
+                      className="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-gray-500 dark:text-gray-400 cursor-not-allowed"
                     />
                   </div>
                   
@@ -1937,7 +2075,7 @@ const SettingsPage = () => {
                         type="text"
                         value={userClinic.city || "—"}
                         disabled
-                        className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-gray-500 cursor-not-allowed"
+                        className="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-gray-500 dark:text-gray-400 cursor-not-allowed"
                       />
                     </div>
                     <div>
@@ -1951,7 +2089,7 @@ const SettingsPage = () => {
                         type="text"
                         value={userClinic.postalCode || "—"}
                         disabled
-                        className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-gray-500 cursor-not-allowed"
+                        className="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-gray-500 dark:text-gray-400 cursor-not-allowed"
                       />
                     </div>
                   </div>

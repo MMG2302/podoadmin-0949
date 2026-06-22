@@ -88,7 +88,11 @@ async function removeLegacyOfflineSupport() {
 }
 
 async function bootstrap() {
-  await initSentry();
+  // No bloquear el primer render si Sentry/config tarda (worker arrancando).
+  await Promise.race([
+    initSentry(),
+    new Promise<void>((resolve) => setTimeout(resolve, 2500)),
+  ]);
   await removeLegacyOfflineSupport();
   createRoot(document.getElementById("root")!).render(
     <StrictMode>

@@ -1,12 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-  createDefaultDigitalAlterations,
-  createDefaultHelomas,
-  createDefaultLimbAssessment,
-  createDefaultOnychopathies,
-  createDefaultSweatDisorders,
-} from "../types/podiatry";
-import { detectPodiatryDiagramWithMeta, resolvePodiatryDiagramContext } from "./podiatry-print-detect";
+import { detectPodiatryDiagramWithMeta } from "./podiatry-print-detect";
 
 describe("detectPodiatryDiagramWithMeta — negaciones", () => {
   it("ignora tipos negados y toma el afirmativo (ejemplo del usuario)", () => {
@@ -41,41 +34,5 @@ describe("detectPodiatryDiagramWithMeta — negaciones", () => {
     ]);
     expect(r.footType).toBe("roman");
     expect(r.archType).toBe("normal");
-  });
-});
-
-describe("resolvePodiatryDiagramContext — campos estructurados", () => {
-  it("prioriza selectores de sesion sobre texto libre", () => {
-    const r = resolvePodiatryDiagramContext([
-      {
-        id: "1",
-        patientId: "p1",
-        sessionDate: "2025-06-01",
-        status: "completed",
-        clinicalNotes: "pie griego arco cavo",
-        anamnesis: "",
-        physicalExamination: "",
-        diagnosis: "",
-        treatmentPlan: "",
-        footType: "roman",
-        archType: "normal",
-        sweatDisorders: createDefaultSweatDisorders(),
-        limbAssessment: createDefaultLimbAssessment(),
-        helomas: createDefaultHelomas(),
-        digitalAlterations: createDefaultDigitalAlterations(),
-        onychopathies: createDefaultOnychopathies(),
-        images: [],
-        createdAt: "",
-        updatedAt: "",
-        completedAt: null,
-        createdBy: "",
-        nextAppointmentDate: null,
-        followUpNotes: null,
-        appointmentReason: null,
-      },
-    ]);
-    expect(r.footType).toBe("roman");
-    expect(r.archType).toBe("normal");
-    expect(r.footMatchedLabel).toContain("selector sesión");
   });
 });

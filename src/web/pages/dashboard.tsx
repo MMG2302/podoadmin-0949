@@ -7,8 +7,10 @@ import { useLanguage } from "../contexts/language-context";
 import { useAuth, getPostLoginPath, hasActiveSystemAccess, isClinicalAppPath } from "../contexts/auth-context";
 import { usePermissions } from "../hooks/use-permissions";
 import { api } from "../lib/api-client";
+import { fetchAllClinicalPages } from "../lib/clinical-list-fetch";
 import PatientsPage from "./patients-page";
 import SessionsPage from "./sessions-page";
+import { ClinicalListLoading } from "../components/clinical/clinical-list-states";
 import SettingsPage from "./settings-page";
 import AuditLogPage from "./audit-log-page";
 import SecurityMetricsPage from "./security-metrics-page";
@@ -114,12 +116,14 @@ const PodiatristDashboard = () => {
 
   useEffect(() => {
     if (!user?.id) return;
-    api.get<{ success?: boolean; patients?: PatientRow[] }>("/patients").then((r) => {
-      if (r.success && Array.isArray(r.data?.patients)) setPatients(r.data.patients.filter((p: PatientRow) => p.createdBy === user?.id));
-    });
-    api.get<{ success?: boolean; sessions?: SessionRow[] }>("/sessions").then((r) => {
-      if (r.success && Array.isArray(r.data?.sessions)) setSessions(r.data.sessions.filter((s: SessionRow) => s.createdBy === user?.id));
-    });
+    void (async () => {
+      const [p, s] = await Promise.all([
+        fetchAllClinicalPages<PatientRow>("/patients", "patients", () => "Error pacientes"),
+        fetchAllClinicalPages<SessionRow>("/sessions", "sessions", () => "Error sesiones"),
+      ]);
+      setPatients(p);
+      setSessions(s);
+    })();
   }, [user?.id]);
 
   const sessionsThisMonth = sessions.filter((s) => {
@@ -169,24 +173,30 @@ const PodiatristDashboard = () => {
         {/* Recent Activity */}
         <div>
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold text-[#1a1a1a]">{t.dashboard.recentActivity}</h3>
-            <Link href="/sessions" className="text-sm text-gray-500 hover:text-[#1a1a1a] transition-colors">
+            <h3 className="text-lg font-semibold text-[#1a1a1a] dark:text-white">{t.dashboard.recentActivity}</h3>
+            <Link href="/sessions" className="text-sm text-gray-500 dark:text-gray-400 hover:text-[#1a1a1a] dark:hover:text-white transition-colors">
               Ver todo →
             </Link>
           </div>
-          <div className="bg-white rounded-xl border border-gray-100 divide-y divide-gray-50">
+          <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-100 dark:border-gray-800 divide-y divide-gray-50 dark:divide-gray-800">
             {recentSessions.length === 0 ? (
               <div className="p-8 text-center">
-                <p className="text-gray-500">{t.dashboard.noRecentActivity}</p>
+                <p className="text-gray-500 dark:text-gray-400">{t.dashboard.noRecentActivity}</p>
               </div>
             ) : (
               recentSessions.map((session) => (
                 <Link key={session.id} href={`/sessions?patient=${session.patientId}`}>
-                  <div className="p-4 flex items-center gap-4 hover:bg-gray-50 cursor-pointer transition-colors">
+                  <div className="p-4 flex items-center gap-4 hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer transition-colors">
                     <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
-                      session.status === "completed" ? "bg-green-100" : "bg-yellow-100"
+                      session.status === "completed"
+                        ? "bg-green-100 dark:bg-green-900/30"
+                        : "bg-yellow-100 dark:bg-yellow-900/30"
                     }`}>
-                      <svg className={`w-5 h-5 ${session.status === "completed" ? "text-green-600" : "text-yellow-600"}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <svg className={`w-5 h-5 ${
+                        session.status === "completed"
+                          ? "text-green-600 dark:text-green-400"
+                          : "text-yellow-600 dark:text-yellow-400"
+                      }`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         {session.status === "completed" ? (
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M5 13l4 4L19 7" />
                         ) : (
@@ -195,13 +205,15 @@ const PodiatristDashboard = () => {
                       </svg>
                     </div>
                     <div className="flex-1">
-                      <p className="text-sm font-medium text-[#1a1a1a]">
+                      <p className="text-sm font-medium text-[#1a1a1a] dark:text-white">
                         {getPatientName(session.patientId)} - {session.status === "completed" ? "Sesión completada" : "Borrador"}
                       </p>
-                      <p className="text-xs text-gray-500">{formatDate(session.createdAt)}</p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">{formatDate(session.createdAt)}</p>
                     </div>
                     <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                      session.status === "completed" ? "bg-green-100 text-green-700" : "bg-yellow-100 text-yellow-700"
+                      session.status === "completed"
+                        ? "bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300"
+                        : "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/40 dark:text-yellow-300"
                     }`}>
                       {session.status === "completed" ? t.sessions.completed : t.sessions.draft}
                     </span>
@@ -337,9 +349,17 @@ const DashboardHome = () => {
 };
 
 const Dashboard = () => {
-  const { user } = useAuth();
+  const { user, isLoading } = useAuth();
   const [location] = useLocation();
   const { isSuperAdmin, isClinicAdmin, isAdmin, isPodiatrist, isReceptionist } = usePermissions();
+
+  if (isLoading) {
+    return (
+      <div className="min-h-dvh flex items-center justify-center bg-gray-50 dark:bg-gray-950">
+        <ClinicalListLoading label="Cargando…" />
+      </div>
+    );
+  }
 
   if (user && !hasActiveSystemAccess(user) && isClinicalAppPath(location)) {
     return <Redirect to={getPostLoginPath(user)} />;
@@ -359,29 +379,21 @@ const Dashboard = () => {
       {/* Admin routes */}
       {isAdmin && <Route path="/users" component={UsersManagementPage} />}
       {isAdmin && <Route path="/support" component={SupportPage} />}
+      {/* Rutas clínicas compartidas (evita que /patients caiga en DashboardHome) */}
+      {user && <Route path="/patients" component={PatientsPage} />}
+      {user && <Route path="/patients/:id" component={PatientsPage} />}
+      {user && <Route path="/sessions" component={SessionsPage} />}
+      {user && <Route path="/sessions/:id" component={SessionsPage} />}
+      {user && <Route path="/calendar" component={CalendarPage} />}
+
       {/* Clinic Admin routes */}
       {isClinicAdmin && <Route path="/clinic" component={ClinicManagementPage} />}
-      {isClinicAdmin && <Route path="/patients" component={PatientsPage} />}
-      {isClinicAdmin && <Route path="/patients/:id" component={PatientsPage} />}
-      {isClinicAdmin && <Route path="/sessions" component={SessionsPage} />}
-      {isClinicAdmin && <Route path="/sessions/:id" component={SessionsPage} />}
-      {isClinicAdmin && <Route path="/calendar" component={CalendarPage} />}
       {isClinicAdmin && <Route path="/whatsapp-messages" component={WhatsAppMessagesPage} />}
       {isClinicAdmin && <Route path="/whatsapp-campaigns" component={WhatsAppCampaignsPage} />}
       {isClinicAdmin && <Route path="/clinical-tools" component={ClinicalToolsPage} />}
       {isClinicAdmin && <Route path="/billing" component={BillingPage} />}
       
-      {/* Receptionist routes - pacientes y calendario, sin sesiones */}
-      {isReceptionist && <Route path="/patients" component={PatientsPage} />}
-      {isReceptionist && <Route path="/patients/:id" component={PatientsPage} />}
-      {isReceptionist && <Route path="/calendar" component={CalendarPage} />}
-      
       {/* Podiatrist routes */}
-      {isPodiatrist && <Route path="/patients" component={PatientsPage} />}
-      {isPodiatrist && <Route path="/patients/:id" component={PatientsPage} />}
-      {isPodiatrist && <Route path="/sessions" component={SessionsPage} />}
-      {isPodiatrist && <Route path="/sessions/:id" component={SessionsPage} />}
-      {isPodiatrist && <Route path="/calendar" component={CalendarPage} />}
       {isPodiatrist && <Route path="/whatsapp-messages" component={WhatsAppMessagesPage} />}
       {isPodiatrist && <Route path="/whatsapp-campaigns" component={WhatsAppCampaignsPage} />}
       {isPodiatrist && <Route path="/clinical-tools" component={ClinicalToolsPage} />}

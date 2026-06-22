@@ -112,11 +112,11 @@ const CreateUserModal = ({
     <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 overflow-y-auto">
       <div className="bg-white rounded-2xl w-full max-w-md shadow-xl my-8">
         <div className="p-6 border-b border-gray-100">
-          <h3 className="text-lg font-semibold text-[#1a1a1a]">Crear nuevo usuario</h3>
+          <h3 className="text-lg font-semibold text-[#1a1a1a] dark:text-white">Crear nuevo usuario</h3>
         </div>
         <form onSubmit={handleSubmit} className="p-6 space-y-4 max-h-[70vh] overflow-y-auto">
           <div>
-            <label className="block text-sm font-medium text-[#1a1a1a] mb-1">Nombre</label>
+            <label className="block text-sm font-medium text-[#1a1a1a] dark:text-gray-100 mb-1">Nombre</label>
             <input
               type="text"
               value={formData.name}
@@ -126,7 +126,7 @@ const CreateUserModal = ({
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-[#1a1a1a] mb-1">Email</label>
+            <label className="block text-sm font-medium text-[#1a1a1a] dark:text-gray-100 mb-1">Email</label>
             <input
               type="email"
               value={formData.email}
@@ -138,7 +138,7 @@ const CreateUserModal = ({
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-[#1a1a1a] mb-1">Contraseña</label>
+            <label className="block text-sm font-medium text-[#1a1a1a] dark:text-gray-100 mb-1">Contraseña</label>
             <input
               type="password"
               value={formData.password}
@@ -148,7 +148,7 @@ const CreateUserModal = ({
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-[#1a1a1a] mb-1">Rol</label>
+            <label className="block text-sm font-medium text-[#1a1a1a] dark:text-gray-100 mb-1">Rol</label>
             <select
               value={formData.role}
               onChange={(e) => setFormData({ ...formData, role: e.target.value as UserRole, clinicId: "", clinicMode: "existing" })}
@@ -164,7 +164,7 @@ const CreateUserModal = ({
           {needsClinic && (
             <>
               <div>
-                <label className="block text-sm font-medium text-[#1a1a1a] mb-1">
+                <label className="block text-sm font-medium text-[#1a1a1a] dark:text-gray-100 mb-1">
                   {formData.role === "clinic_admin" ? "Clínica" : "Clínica (opcional)"}
                 </label>
                 <select
@@ -180,7 +180,7 @@ const CreateUserModal = ({
 
               {showClinicSelector && (
                 <div>
-                  <label className="block text-sm font-medium text-[#1a1a1a] mb-1">Clínica</label>
+                  <label className="block text-sm font-medium text-[#1a1a1a] dark:text-gray-100 mb-1">Clínica</label>
                   <select
                     value={formData.clinicId}
                     onChange={(e) => setFormData({ ...formData, clinicId: e.target.value })}
@@ -204,7 +204,7 @@ const CreateUserModal = ({
                   </p>
                   {formData.role === "clinic_admin" && (
                     <div>
-                      <label className="block text-sm font-medium text-[#1a1a1a] mb-1">Límite de podólogos (opcional)</label>
+                      <label className="block text-sm font-medium text-[#1a1a1a] dark:text-gray-100 mb-1">Límite de podólogos (opcional)</label>
                       <input
                         type="number"
                         min="1"
@@ -233,7 +233,7 @@ const CreateUserModal = ({
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 px-4 py-2.5 border border-gray-200 rounded-lg text-[#1a1a1a] font-medium hover:bg-gray-50 transition-colors"
+              className="flex-1 px-4 py-2.5 border border-gray-200 dark:border-gray-700 rounded-lg text-[#1a1a1a] dark:text-gray-100 font-medium hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
             >
               {t.common.cancel}
             </button>
@@ -463,7 +463,7 @@ const BulkImportModal = ({
     <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 overflow-y-auto">
       <div className="bg-white rounded-2xl w-full max-w-2xl shadow-xl my-8 max-h-[90vh] flex flex-col">
         <div className="p-6 border-b border-gray-100 flex-shrink-0">
-          <h3 className="text-lg font-semibold text-[#1a1a1a] flex items-center gap-2">
+          <h3 className="text-lg font-semibold text-[#1a1a1a] dark:text-white flex items-center gap-2">
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
             </svg>
@@ -479,7 +479,7 @@ const BulkImportModal = ({
             <button
               type="button"
               onClick={downloadTemplate}
-              className="px-4 py-2 border border-gray-200 rounded-lg text-sm font-medium text-[#1a1a1a] hover:bg-gray-50 transition-colors flex items-center gap-2"
+              className="px-4 py-2 border border-gray-200 rounded-lg text-sm font-medium text-[#1a1a1a] dark:text-white hover:bg-gray-50 transition-colors flex items-center gap-2"
             >
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
@@ -495,7 +495,7 @@ const BulkImportModal = ({
             </label>
           </div>
           <div>
-            <label className="block text-sm font-medium text-[#1a1a1a] mb-1">Contraseña por defecto (si falta en CSV)</label>
+            <label className="block text-sm font-medium text-[#1a1a1a] dark:text-gray-100 mb-1">Contraseña por defecto (si falta en CSV)</label>
             <input
               type="password"
               value={defaultPassword}
@@ -507,7 +507,7 @@ const BulkImportModal = ({
           {parseError && <div className="p-3 bg-red-50 border border-red-100 rounded-lg text-sm text-red-700">{parseError}</div>}
           {parsedRows.length > 0 && !importDone && (
             <div className="border border-gray-200 rounded-lg overflow-hidden">
-              <p className="p-3 bg-gray-50 text-sm font-medium text-[#1a1a1a]">
+              <p className="p-3 bg-gray-50 dark:bg-gray-800 text-sm font-medium text-[#1a1a1a] dark:text-gray-100 dark:text-white">
                 {parsedRows.length} usuario(s) listo(s) para importar
               </p>
               <div className="max-h-40 overflow-y-auto">
@@ -535,7 +535,7 @@ const BulkImportModal = ({
           )}
           {importDone && importResults.length > 0 && (
             <div className="border border-gray-200 rounded-lg overflow-hidden">
-              <p className="p-3 bg-gray-50 text-sm font-medium text-[#1a1a1a]">
+              <p className="p-3 bg-gray-50 dark:bg-gray-800 text-sm font-medium text-[#1a1a1a] dark:text-gray-100 dark:text-white">
                 Resultados: {importResults.filter((r) => r.success).length} creados, {importResults.filter((r) => !r.success).length} con error
               </p>
               <div className="max-h-48 overflow-y-auto">
@@ -553,7 +553,7 @@ const BulkImportModal = ({
           <button
             type="button"
             onClick={handleClose}
-            className="flex-1 px-4 py-2.5 border border-gray-200 rounded-lg text-[#1a1a1a] font-medium hover:bg-gray-50 transition-colors"
+            className="flex-1 px-4 py-2.5 border border-gray-200 dark:border-gray-700 rounded-lg text-[#1a1a1a] dark:text-gray-100 font-medium hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
           >
             {importDone ? "Cerrar" : "Cancelar"}
           </button>
@@ -824,7 +824,7 @@ const TransferHistoryModal = ({
     <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
       <div className="bg-white rounded-2xl w-full max-w-lg shadow-xl">
         <div className="p-6 border-b border-gray-100">
-          <h3 className="text-lg font-semibold text-[#1a1a1a]">Transferir historial clínico</h3>
+          <h3 className="text-lg font-semibold text-[#1a1a1a] dark:text-white">Transferir historial clínico</h3>
           <p className="text-sm text-gray-500 mt-1">Copiar todos los pacientes y sesiones de un usuario a otro</p>
         </div>
         <div className="p-6 space-y-4">
@@ -836,7 +836,7 @@ const TransferHistoryModal = ({
           ) : (
             <>
               <div>
-                <label className="block text-sm font-medium text-[#1a1a1a] mb-1">Usuario origen</label>
+                <label className="block text-sm font-medium text-[#1a1a1a] dark:text-gray-100 mb-1">Usuario origen</label>
                 <select
                   value={sourceUserId}
                   onChange={(e) => setSourceUserId(e.target.value)}
@@ -852,7 +852,7 @@ const TransferHistoryModal = ({
               {sourceUserId && (
                 <div className="bg-gray-50 rounded-lg p-3">
                   <p className="text-sm text-gray-500">
-                    <span className="font-medium text-[#1a1a1a]">{sourcePatientCount}</span> pacientes para transferir
+                    <span className="font-medium text-[#1a1a1a] dark:text-white">{sourcePatientCount}</span> pacientes para transferir
                   </p>
                 </div>
               )}
@@ -864,7 +864,7 @@ const TransferHistoryModal = ({
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-[#1a1a1a] mb-1">Usuario destino</label>
+                <label className="block text-sm font-medium text-[#1a1a1a] dark:text-gray-100 mb-1">Usuario destino</label>
                 <select
                   value={targetUserId}
                   onChange={(e) => setTargetUserId(e.target.value)}
@@ -894,7 +894,7 @@ const TransferHistoryModal = ({
                 setTargetUserId("");
                 onClose();
               }}
-              className="flex-1 px-4 py-2.5 border border-gray-200 rounded-lg text-[#1a1a1a] font-medium hover:bg-gray-50 transition-colors"
+              className="flex-1 px-4 py-2.5 border border-gray-200 dark:border-gray-700 rounded-lg text-[#1a1a1a] dark:text-gray-100 font-medium hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
             >
               {result ? "Cerrar" : t.common.cancel}
             </button>
@@ -962,7 +962,7 @@ const UserProfileModal = ({
               <span className="text-white text-xl font-medium">{user.name.charAt(0)}</span>
             </div>
             <div>
-              <h3 className="text-lg font-semibold text-[#1a1a1a]">{user.name}</h3>
+              <h3 className="text-lg font-semibold text-[#1a1a1a] dark:text-white">{user.name}</h3>
               <p className="text-sm text-gray-500">{user.email}</p>
             </div>
           </div>
@@ -986,22 +986,22 @@ const UserProfileModal = ({
           <div className="grid grid-cols-2 gap-4">
             <div className="bg-gray-50 rounded-lg p-4">
               <p className="text-sm text-gray-500">Pacientes</p>
-              <p className="text-2xl font-semibold text-[#1a1a1a]">{patientCount}</p>
+              <p className="text-2xl font-semibold text-[#1a1a1a] dark:text-white">{patientCount}</p>
             </div>
             <div className="bg-gray-50 rounded-lg p-4">
               <p className="text-sm text-gray-500">Sesiones</p>
-              <p className="text-2xl font-semibold text-[#1a1a1a]">{sessionCount}</p>
+              <p className="text-2xl font-semibold text-[#1a1a1a] dark:text-white">{sessionCount}</p>
             </div>
           </div>
 
           {/* Patients list */}
           {patients.length > 0 && (
             <div>
-              <h4 className="text-sm font-semibold text-[#1a1a1a] mb-3">Pacientes ({patientCount})</h4>
+              <h4 className="text-sm font-semibold text-[#1a1a1a] dark:text-gray-100 mb-3">Pacientes ({patientCount})</h4>
               <div className="bg-gray-50 rounded-lg divide-y divide-gray-100 max-h-48 overflow-y-auto form-modal-scroll">
                 {patients.slice(0, 10).map((patient) => (
                   <div key={patient.id} className="p-3 flex items-center justify-between">
-                    <span className="text-sm text-[#1a1a1a]">{patient.firstName} {patient.lastName}</span>
+                    <span className="text-sm text-[#1a1a1a] dark:text-gray-100">{patient.firstName} {patient.lastName}</span>
                     <span className="text-xs text-gray-500">{patient.email}</span>
                   </div>
                 ))}
@@ -1943,7 +1943,7 @@ const UsersPage = () => {
               {pendingPasswordResets.map((req) => (
                 <div key={req.id} className="flex flex-wrap items-center justify-between gap-2 bg-white rounded-lg p-3 border border-amber-100">
                   <div>
-                    <span className="font-medium text-[#1a1a1a]">{req.userName || "—"}</span>
+                    <span className="font-medium text-[#1a1a1a] dark:text-white">{req.userName || "—"}</span>
                     <span className="text-gray-500 text-sm ml-2">({req.email})</span>
                     <span className="text-xs text-gray-400 ml-2">
                       {new Date(req.requestedAt).toLocaleString()}
@@ -1985,7 +1985,7 @@ const UsersPage = () => {
               {pendingRegistrationLists.map((list) => (
                 <div key={list.id} className="flex flex-wrap items-center justify-between gap-2 bg-white rounded-lg p-3 border border-blue-100">
                   <div>
-                    <span className="font-medium text-[#1a1a1a]">{list.name}</span>
+                    <span className="font-medium text-[#1a1a1a] dark:text-white">{list.name}</span>
                     {list.creatorName && (
                       <span className="text-gray-500 text-sm ml-2">por {list.creatorName}</span>
                     )}
@@ -1996,7 +1996,7 @@ const UsersPage = () => {
                   <div className="flex gap-2">
                     <button
                       onClick={() => handleDownloadRegistrationListCsv(list.id)}
-                      className="px-3 py-1.5 border border-gray-200 text-[#1a1a1a] text-sm font-medium rounded-lg hover:bg-gray-50"
+                      className="px-3 py-1.5 border border-gray-200 dark:border-gray-700 text-[#1a1a1a] dark:text-gray-100 text-sm font-medium rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800"
                     >
                       Descargar CSV
                     </button>
@@ -2024,7 +2024,7 @@ const UsersPage = () => {
           <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
             <div className="bg-white rounded-2xl w-full max-w-lg shadow-xl">
               <div className="p-6 border-b border-gray-100">
-                <h3 className="text-lg font-semibold text-[#1a1a1a] flex items-center gap-2">
+                <h3 className="text-lg font-semibold text-[#1a1a1a] dark:text-white flex items-center gap-2">
                   <svg className="w-5 h-5 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
@@ -2040,7 +2040,7 @@ const UsersPage = () => {
                     type="text"
                     readOnly
                     value={approvedResetLink}
-                    className="flex-1 px-4 py-2.5 rounded-lg border border-gray-200 bg-gray-50 text-sm font-mono text-[#1a1a1a]"
+                    className="flex-1 px-4 py-2.5 rounded-lg border border-gray-200 bg-gray-50 dark:bg-gray-900 text-sm font-mono text-[#1a1a1a] dark:text-gray-100 dark:text-gray-100"
                   />
                   <button
                     type="button"
@@ -2062,7 +2062,7 @@ const UsersPage = () => {
                 <button
                   type="button"
                   onClick={() => setApprovedResetLink(null)}
-                  className="px-4 py-2.5 bg-gray-100 text-[#1a1a1a] rounded-lg font-medium hover:bg-gray-200 transition-colors"
+                  className="px-4 py-2.5 bg-gray-100 dark:bg-gray-800 text-[#1a1a1a] dark:text-gray-100 rounded-lg font-medium hover:bg-gray-200 transition-colors"
                 >
                   Cerrar
                 </button>
@@ -2080,10 +2080,10 @@ const UsersPage = () => {
               <div className="mobile-card-header">
                 <div className="flex items-center gap-3 flex-1 min-w-0">
                   <div className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center flex-shrink-0">
-                    <span className="font-medium text-[#1a1a1a]">{u.name.charAt(0)}</span>
+                    <span className="font-medium text-[#1a1a1a] dark:text-white">{u.name.charAt(0)}</span>
                   </div>
                   <div className="min-w-0">
-                    <p className="font-medium text-[#1a1a1a] truncate">{u.name}</p>
+                    <p className="font-medium text-[#1a1a1a] dark:text-white truncate">{u.name}</p>
                     <p className="text-xs text-gray-500 truncate">{u.email}</p>
                     <div className="mt-1">
                       {getUserStatusBadge(u)}
@@ -2150,14 +2150,14 @@ const UsersPage = () => {
               <div className="mobile-card-actions">
                 <button
                   onClick={() => { setSelectedUser(u); setShowProfileModal(true); }}
-                  className="flex-1 py-2.5 bg-gray-100 text-[#1a1a1a] rounded-lg hover:bg-gray-200 active:bg-gray-300 transition-colors text-sm font-medium min-h-[44px]"
+                  className="flex-1 py-2.5 bg-gray-100 dark:bg-gray-800 text-[#1a1a1a] dark:text-gray-100 rounded-lg hover:bg-gray-200 active:bg-gray-300 transition-colors text-sm font-medium min-h-[44px]"
                 >
                   Ver
                 </button>
                 {isSuperAdmin && (
                   <button
                     onClick={() => { setSelectedUser(u); setShowEditModal(true); }}
-                    className="flex-1 py-2.5 bg-gray-100 text-[#1a1a1a] rounded-lg hover:bg-gray-200 active:bg-gray-300 transition-colors text-sm font-medium min-h-[44px]"
+                    className="flex-1 py-2.5 bg-gray-100 dark:bg-gray-800 text-[#1a1a1a] dark:text-gray-100 rounded-lg hover:bg-gray-200 active:bg-gray-300 transition-colors text-sm font-medium min-h-[44px]"
                   >
                     Editar
                   </button>
@@ -2334,7 +2334,7 @@ const UsersPage = () => {
                             setSelectedUser(u);
                             setShowProfileModal(true);
                           }}
-                          className="p-2 text-gray-400 hover:text-[#1a1a1a] hover:bg-gray-100 rounded-lg transition-colors"
+                          className="p-2 text-gray-400 hover:text-[#1a1a1a] dark:hover:text-white hover:bg-gray-100 rounded-lg transition-colors"
                           title="Ver perfil"
                         >
                           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -2350,7 +2350,7 @@ const UsersPage = () => {
                               setSelectedUser(u);
                               setShowEditModal(true);
                             }}
-                            className="p-2 text-gray-400 hover:text-[#1a1a1a] hover:bg-gray-100 rounded-lg transition-colors"
+                            className="p-2 text-gray-400 hover:text-[#1a1a1a] dark:hover:text-white hover:bg-gray-100 rounded-lg transition-colors"
                             title="Editar"
                           >
                             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -2364,7 +2364,7 @@ const UsersPage = () => {
                         {isSuperAdmin && u.role === "podiatrist" && u.patientCount > 0 && (
                           <button
                             onClick={() => handleExportUserData(u)}
-                            className="p-2 text-gray-400 hover:text-[#1a1a1a] hover:bg-gray-100 rounded-lg transition-colors"
+                            className="p-2 text-gray-400 hover:text-[#1a1a1a] dark:hover:text-white hover:bg-gray-100 rounded-lg transition-colors"
                             title="Descargar JSON"
                           >
                             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -2377,7 +2377,7 @@ const UsersPage = () => {
                         {(isSuperAdmin || currentUser?.role === "clinic_admin") && canManageUser(u) && (
                           <div className="inline-block">
                             <button
-                              className="p-2 text-gray-400 hover:text-[#1a1a1a] hover:bg-gray-100 rounded-lg transition-colors"
+                              className="p-2 text-gray-400 hover:text-[#1a1a1a] dark:hover:text-white hover:bg-gray-100 rounded-lg transition-colors"
                               title="Gestionar cuenta"
                               onClick={(e) => {
                                 e.stopPropagation();

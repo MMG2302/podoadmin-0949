@@ -129,6 +129,7 @@ export const clinics = sqliteTable('clinics', {
   address: text('address'),
   city: text('city'),
   postalCode: text('postal_code'),
+  countryCode: text('country_code').default('MX'),
   licenseNumber: text('license_number'),
   website: text('website'),
   consentText: text('consent_text'), // Términos y condiciones / consentimiento informado (texto editable por clinic_admin)
@@ -304,6 +305,7 @@ export const professionalInfo = sqliteTable('professional_info', {
   address: text('address').notNull().default(''),
   city: text('city').notNull().default(''),
   postalCode: text('postal_code').notNull().default(''),
+  countryCode: text('country_code').notNull().default('MX'),
   licenseNumber: text('license_number').notNull().default(''),
   professionalLicense: text('professional_license').notNull().default(''),
   consentText: text('consent_text'), // Términos y condiciones / consentimiento informado (texto editable por podólogo)

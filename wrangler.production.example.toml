@@ -1,0 +1,55 @@
+# Ejemplo de configuración de PRODUCCIÓN para wrangler.toml
+# Copia las secciones que necesites a tu wrangler.toml real.
+# Plan masivo: docs/DEPLOY_MASIVO.md
+
+name = "podoadmin-mi-clinica"   # Cambia por un nombre único
+
+# ... resto de tu wrangler.toml (main, assets, compatibility_flags, crons) ...
+
+[[d1_databases]]
+binding = "DB"
+database_name = "podoadmin-prod"
+database_id = "PEGA-AQUI-EL-DATABASE-ID-DE-CLOUDFLARE"
+migrations_dir = "src/api/migrations"
+
+[[r2_buckets]]
+binding = "BUCKET"
+bucket_name = "podoadmin-prod"
+
+[vars]
+NODE_ENV = "production"
+APP_BASE_URL = "https://podoadmin-mi-clinica.workers.dev"
+ALLOWED_ORIGINS = "https://podoadmin-mi-clinica.workers.dev"
+OFFICIAL_APP_DOMAIN = "https://podoadmin-mi-clinica.workers.dev"
+
+# --- Rate limiting (tier standard: ~100 clínicas × 25 usuarios) ---
+# Ver docs/DEPLOY_MASIVO.md para tier scale / pilot
+RATE_LIMIT_ANON_READ_PER_MIN = "180"
+RATE_LIMIT_ANON_WRITE_PER_MIN = "90"
+RATE_LIMIT_AUTH_READ_PER_MIN = "600"
+RATE_LIMIT_AUTH_WRITE_PER_MIN = "300"
+RATE_LIMIT_BURST_PER_10S = "80"
+RATE_LIMIT_TENANT_READ_PER_MIN = "2000"
+RATE_LIMIT_TENANT_WRITE_PER_MIN = "800"
+
+# --- Registro público y CAPTCHA (recomendado en producción masiva) ---
+CAPTCHA_PROVIDER = "turnstile"
+CAPTCHA_SITE_KEY = "0x..."   # Site Key de producción Turnstile
+
+# RESEND_FROM_EMAIL = "noreply@tudominio.com"
+
+# Secrets (NO van en este archivo — usar terminal):
+# npx wrangler secret put JWT_SECRET
+# npx wrangler secret put REFRESH_TOKEN_SECRET
+# npx wrangler secret put CSRF_SECRET
+# npx wrangler secret put RESEND_API_KEY
+# npx wrangler secret put CAPTCHA_SECRET_KEY
+# npx wrangler secret put SENTRY_DSN
+# npx wrangler secret put D1_BACKUP_API_TOKEN
+
+# --- Backup D1 automático (cron 04:00 UTC → R2) ---
+# Requiere Workers Paid + R2. Time Travel nativo de D1 sigue activo (30 días).
+# D1_BACKUP_ENABLED = "1"
+# CLOUDFLARE_ACCOUNT_ID = "tu-account-id"
+# D1_DATABASE_ID = "PEGA-AQUI-EL-DATABASE-ID-DE-CLOUDFLARE"
+# D1_BACKUP_RETENTION_DAYS = "30"

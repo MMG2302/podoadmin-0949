@@ -1,12 +1,12 @@
-# 📋 Resumen de Configuración - Registro Público
+# ðŸ“‹ Resumen de ConfiguraciÃ³n - Registro PÃºblico
 
-## ✅ Estado de Implementación
+## âœ… Estado de ImplementaciÃ³n
 
-El registro público está **completamente implementado** con todas las medidas de seguridad. Solo falta configurar las variables de entorno.
+El registro pÃºblico estÃ¡ **completamente implementado** con todas las medidas de seguridad. Solo falta configurar las variables de entorno.
 
-## 🔧 Variables de Entorno Requeridas
+## ðŸ”§ Variables de Entorno Requeridas
 
-### 1. Secrets de Seguridad (Ya deberían estar configurados)
+### 1. Secrets de Seguridad (Ya deberÃ­an estar configurados)
 
 ```env
 JWT_SECRET=tu-jwt-secret-minimo-32-caracteres
@@ -18,7 +18,7 @@ CSRF_SECRET=tu-csrf-secret-minimo-32-caracteres
 
 **Elige UNO de estos:**
 
-#### Opción A: Resend (Recomendado para desarrollo)
+#### OpciÃ³n A: Resend (Recomendado para desarrollo)
 ```env
 RESEND_API_KEY=re_xxxxxxxxxxxxx
 ```
@@ -26,10 +26,10 @@ RESEND_API_KEY=re_xxxxxxxxxxxxx
 **Pasos:**
 1. Ve a https://resend.com/
 2. Crea cuenta gratuita
-3. Obtén API key
+3. ObtÃ©n API key
 4. Agrega a `.env`
 
-#### Opción B: SendGrid
+#### OpciÃ³n B: SendGrid
 ```env
 SENDGRID_API_KEY=SG.xxxxxxxxxxxxx
 ```
@@ -40,7 +40,7 @@ SENDGRID_API_KEY=SG.xxxxxxxxxxxxx
 3. Genera API key
 4. Agrega a `.env`
 
-#### Opción C: AWS SES
+#### OpciÃ³n C: AWS SES
 ```env
 AWS_ACCESS_KEY_ID=AKIAxxxxxxxxxxxxx
 AWS_SECRET_ACCESS_KEY=xxxxxxxxxxxxx
@@ -56,7 +56,7 @@ AWS_REGION=us-east-1
 
 **Elige UNO de estos:**
 
-#### Opción A: Cloudflare Turnstile (Recomendado)
+#### OpciÃ³n A: Cloudflare Turnstile (Recomendado)
 ```env
 CAPTCHA_PROVIDER=turnstile
 CAPTCHA_SITE_KEY=tu-site-key-aqui
@@ -70,7 +70,7 @@ CAPTCHA_SECRET_KEY=tu-secret-key-aqui
 4. Copia Site Key y Secret Key
 5. Agrega a `.env`
 
-#### Opción B: Google reCAPTCHA
+#### OpciÃ³n B: Google reCAPTCHA
 ```env
 CAPTCHA_PROVIDER=recaptcha
 CAPTCHA_SITE_KEY=tu-site-key-aqui
@@ -83,7 +83,7 @@ CAPTCHA_SECRET_KEY=tu-secret-key-aqui
 3. Copia las claves
 4. Agrega a `.env`
 
-#### Opción C: hCaptcha
+#### OpciÃ³n C: hCaptcha
 ```env
 CAPTCHA_PROVIDER=hcaptcha
 CAPTCHA_SITE_KEY=tu-site-key-aqui
@@ -96,24 +96,24 @@ CAPTCHA_SECRET_KEY=tu-secret-key-aqui
 3. Copia las claves
 4. Agrega a `.env`
 
-### 4. Base URL (REQUERIDO para enlaces de verificación)
+### 4. Base URL (REQUERIDO para enlaces de verificaciÃ³n)
 
 ```env
 # Desarrollo
-VITE_BASE_URL=http://localhost:5173
+APP_BASE_URL=http://localhost:5173
 
-# Producción
-# VITE_BASE_URL=https://tu-dominio.com
+# ProducciÃ³n
+# APP_BASE_URL=https://tu-dominio.com
 ```
 
-### 5. Opcional: Restricción de Dominios
+### 5. Opcional: RestricciÃ³n de Dominios
 
 ```env
 # Solo permitir ciertos dominios de email
 ALLOWED_EMAIL_DOMAINS=gmail.com,outlook.com,hotmail.com,empresa.com
 ```
 
-## 📝 Archivo .env Completo de Ejemplo
+## ðŸ“ Archivo .env Completo de Ejemplo
 
 ```env
 # ============================================
@@ -154,12 +154,12 @@ CAPTCHA_SECRET_KEY=tu-secret-key-aqui
 # ============================================
 # BASE URL (REQUERIDO para enlaces)
 # ============================================
-VITE_BASE_URL=http://localhost:5173
+APP_BASE_URL=http://localhost:5173
 
 # ============================================
 # OPCIONALES
 # ============================================
-# Restricción de dominios de email
+# RestricciÃ³n de dominios de email
 # ALLOWED_EMAIL_DOMAINS=gmail.com,outlook.com
 
 # IP Whitelist (para desarrollo)
@@ -169,22 +169,22 @@ VITE_BASE_URL=http://localhost:5173
 NODE_ENV=development
 ```
 
-## 🚀 Pasos Rápidos para Configurar
+## ðŸš€ Pasos RÃ¡pidos para Configurar
 
-1. **Crear archivo `.env`** en la raíz del proyecto
+1. **Crear archivo `.env`** en la raÃ­z del proyecto
 2. **Copiar las variables** del ejemplo anterior
 3. **Obtener credenciales:**
    - Resend: https://resend.com/
-   - Turnstile: https://dash.cloudflare.com/ → Turnstile
+   - Turnstile: https://dash.cloudflare.com/ â†’ Turnstile
 4. **Reemplazar valores** con tus credenciales reales
 5. **Reiniciar el servidor** para cargar las variables
 
-## 🧪 Probar el Sistema
+## ðŸ§ª Probar el Sistema
 
-Una vez configurado, sigue la guía completa en:
-- **`GUIA_PRUEBAS_REGISTRO.md`** - Guía paso a paso de pruebas
+Una vez configurado, sigue la guÃ­a completa en:
+- **`GUIA_PRUEBAS_REGISTRO.md`** - GuÃ­a paso a paso de pruebas
 
-### Prueba Rápida
+### Prueba RÃ¡pida
 
 1. **Registrar usuario:**
    ```bash
@@ -215,14 +215,14 @@ Una vez configurado, sigue la guía completa en:
    }
    ```
 
-## 📚 Documentación Completa
+## ðŸ“š DocumentaciÃ³n Completa
 
 - **`ENV_VARIABLES.md`** - Todas las variables de entorno
-- **`CONFIGURACION_SEGURIDAD.md`** - Configuración de seguridad
-- **`GUIA_PRUEBAS_REGISTRO.md`** - Guía completa de pruebas
-- **`REGISTRO_IMPLEMENTADO.md`** - Documentación técnica
+- **`CONFIGURACION_SEGURIDAD.md`** - ConfiguraciÃ³n de seguridad
+- **`GUIA_PRUEBAS_REGISTRO.md`** - GuÃ­a completa de pruebas
+- **`REGISTRO_IMPLEMENTADO.md`** - DocumentaciÃ³n tÃ©cnica
 
-## ✅ Checklist de Configuración
+## âœ… Checklist de ConfiguraciÃ³n
 
 - [ ] Archivo `.env` creado
 - [ ] `JWT_SECRET` configurado (32+ caracteres)
@@ -230,13 +230,13 @@ Una vez configurado, sigue la guía completa en:
 - [ ] `CSRF_SECRET` configurado (32+ caracteres)
 - [ ] Servicio de email configurado (Resend/SendGrid/AWS SES)
 - [ ] CAPTCHA configurado (Turnstile/reCAPTCHA/hCaptcha)
-- [ ] `VITE_BASE_URL` configurado
+- [ ] `APP_BASE_URL` configurado
 - [ ] Servidor reiniciado
 - [ ] Prueba de registro exitosa
-- [ ] Email de verificación recibido
-- [ ] Verificación de email exitosa
+- [ ] Email de verificaciÃ³n recibido
+- [ ] VerificaciÃ³n de email exitosa
 - [ ] Login con usuario verificado exitoso
 
-## 🎉 ¡Listo!
+## ðŸŽ‰ Â¡Listo!
 
-Una vez completado el checklist, el sistema de registro público estará completamente funcional y listo para usar.
+Una vez completado el checklist, el sistema de registro pÃºblico estarÃ¡ completamente funcional y listo para usar.

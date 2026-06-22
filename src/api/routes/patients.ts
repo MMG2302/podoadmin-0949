@@ -2,11 +2,11 @@ import { Hono } from 'hono';
 import { requireAuth } from '../middleware/auth';
 import { requirePermission } from '../middleware/authorization';
 import { sanitizePathParam } from '../utils/sanitization';
-import { validateData, createPatientSchema, updatePatientSchema } from '../utils/validation';
+import { validateData, createPatientSchema, updatePatientSchema, patientsListQuerySchema, validateQuery } from '../utils/validation';
 import { database } from '../database';
 import { patients as patientsTable, clinicalSessions as sessionsTable, appointments as appointmentsTable, creditTransactions as creditTransactionsTable, createdUsers as createdUsersTable } from '../database/schema';
 import { canUserAccess } from '../utils/user-retention';
-import { eq, inArray } from 'drizzle-orm';
+import { and, eq, inArray } from 'drizzle-orm';
 import { logAuditEvent } from '../utils/audit-log';
 import { notifyPatientReassignment } from '../utils/notifications-service';
 import { getClientIP } from '../utils/ip-tracking';
@@ -16,6 +16,12 @@ import {
   getCreatedUserByIdOrUserId,
   isClinicAdminWithoutClinic,
 } from '../utils/tenant-isolation';
+import { normalizePhoneE164 } from '../../lib/phone-country';
+import { resolvePatientPhoneCountry } from '../utils/tenant-country';
+import { resolveClinicalListScope, mergeScopeWhere } from '../utils/clinical-list-scope';
+import { parsePaginationQuery, buildPaginationMeta } from '../utils/pagination';
+import { generateNextPatientFolio } from '../utils/patient-folio';
+import { createDefaultMedicalHistory, normalizeMedicalHistory } from '../../web/types/medical-history';
 
 const patientsRoutes = new Hono();
 
@@ -26,17 +32,12 @@ type DbPatient = typeof patientsTable.$inferSelect;
 
 // Mapea el registro de DB al shape esperado por el frontend (Patient de storage.ts)
 function mapDbPatient(row: DbPatient) {
-  let medicalHistory: any = { allergies: [], medications: [], conditions: [] };
+  let medicalHistory = createDefaultMedicalHistory();
   let consent: any = { given: false, date: null };
 
   try {
     if (row.medicalHistory) {
-      const parsed = JSON.parse(row.medicalHistory);
-      medicalHistory = {
-        allergies: parsed.allergies || [],
-        medications: parsed.medications || [],
-        conditions: parsed.conditions || [],
-      };
+      medicalHistory = normalizeMedicalHistory(JSON.parse(row.medicalHistory));
     }
   } catch {
     // dejar valores por defecto
@@ -76,23 +77,9 @@ function mapDbPatient(row: DbPatient) {
   };
 }
 
-// Genera folio simple basado en clinicId (o IND) y año
+// Folio IND (independientes) o por clínica — sin full table scan
 async function generateFolio(clinicId?: string | null): Promise<string> {
-  const year = new Date().getFullYear();
-  const prefix = clinicId || 'IND';
-
-  const all = await database.select().from(patientsTable);
-  const re = new RegExp(`^${prefix}-${year}-(\\d+)$`);
-  let maxSeq = 0;
-  for (const p of all) {
-    const m = p.folio.match(re);
-    if (m) {
-      const n = parseInt(m[1], 10);
-      if (!Number.isNaN(n) && n > maxSeq) maxSeq = n;
-    }
-  }
-  const next = (maxSeq + 1).toString().padStart(5, '0');
-  return `${prefix}-${year}-${next}`;
+  return generateNextPatientFolio(clinicId);
 }
 
 // Todas las rutas de pacientes requieren autenticación
@@ -233,29 +220,34 @@ patientsRoutes.get(
         );
       }
 
-      // Cargar todos los pacientes desde la DB
-      let rows = await database.select().from(patientsTable);
-
-      // Reglas de visibilidad en backend:
-      // - super_admin: todos
-      // - podiatrist: solo sus pacientes (createdBy === user.userId)
-      // - receptionist: solo pacientes de los podólogos asignados (createdBy in assignedPodiatristIds)
-      // - clinic_admin: solo pacientes de su clínica (clinicId === user.clinicId)
-      if (user?.role === 'podiatrist') {
-        rows = rows.filter((p) => p.createdBy === user.userId);
-      } else if (user?.role === 'receptionist') {
-        const assignedIds = await getAssignedPodiatristUserIds(user.userId);
-        if (assignedIds.length === 0) {
-          rows = [];
-        } else {
-          rows = rows.filter((p) => assignedIds.includes(p.createdBy));
-        }
-      } else if (user?.role === 'clinic_admin') {
-        rows = rows.filter((p) => p.clinicId === user.clinicId);
+      const queryResult = validateQuery(patientsListQuerySchema, c.req.query());
+      if (!queryResult.success) {
+        return c.json({ error: 'Parámetros inválidos', message: queryResult.error, issues: queryResult.issues }, 400);
       }
+      const pagination = parsePaginationQuery({
+        limit: queryResult.data.limit,
+        offset: queryResult.data.offset,
+      });
+
+      const scope = await resolveClinicalListScope(user);
+      const where = mergeScopeWhere(scope, {
+        createdBy: patientsTable.createdBy,
+        clinicId: patientsTable.clinicId,
+      });
+
+      let query = database.select().from(patientsTable).$dynamic();
+      if (where) query = query.where(where);
+      const rows = await query
+        .orderBy(patientsTable.updatedAt)
+        .limit(pagination.limit)
+        .offset(pagination.offset);
 
       const patients = rows.map(mapDbPatient);
-      return c.json({ success: true, patients });
+      return c.json({
+        success: true,
+        patients,
+        pagination: buildPaginationMeta(pagination, rows.length),
+      });
     } catch (error) {
       console.error('Error obteniendo pacientes:', error);
       return c.json(
@@ -427,15 +419,19 @@ patientsRoutes.post(
       const id = generateId();
       const folio = await generateFolio(clinicIdForPatient);
 
-      const medicalHistory = JSON.stringify(
-        body.medicalHistory || { allergies: [], medications: [], conditions: [] }
-      );
+      const medicalHistory = JSON.stringify(normalizeMedicalHistory(body.medicalHistory));
       const consent = JSON.stringify(
         body.consent || { given: false, date: null }
       );
 
       // Asegurar que idNumber sea siempre string (evita error si llega como número o undefined)
       const idNumber = typeof body.idNumber === 'string' ? body.idNumber : String(body.idNumber ?? '');
+
+      const phoneCountry = await resolvePatientPhoneCountry({
+        clinicId: clinicIdForPatient,
+        createdByUserId: createdBy,
+      });
+      const normalizedPhone = normalizePhoneE164(body.phone, phoneCountry) ?? body.phone.trim();
 
       await database.insert(patientsTable).values({
         id,
@@ -446,7 +442,7 @@ patientsRoutes.post(
         gender: body.gender,
         idNumber,
         curp: body.curp?.trim() ? body.curp.trim().toUpperCase() : null,
-        phone: body.phone,
+        phone: normalizedPhone,
         email: body.email || null,
         address: body.address || null,
         city: body.city || null,
@@ -575,17 +571,37 @@ patientsRoutes.put(
       if (body.gender !== undefined) updateData.gender = body.gender;
       if (body.idNumber !== undefined) updateData.idNumber = body.idNumber;
       if (body.curp !== undefined) {
-        updateData.curp = body.curp?.trim() ? body.curp.trim().toUpperCase() : null;
+        const existingCurp = existing.curp?.trim();
+        const nextCurp = body.curp?.trim() ? body.curp.trim().toUpperCase() : null;
+        if (existingCurp) {
+          if (nextCurp && nextCurp !== existingCurp.toUpperCase()) {
+            return c.json(
+              {
+                error: 'Campo inmutable',
+                message: 'La CURP no puede modificarse una vez registrada.',
+              },
+              400
+            );
+          }
+        } else if (nextCurp) {
+          updateData.curp = nextCurp;
+        } else {
+          updateData.curp = null;
+        }
       }
-      if (body.phone !== undefined) updateData.phone = body.phone;
+      if (body.phone !== undefined) {
+        const phoneCountry = await resolvePatientPhoneCountry({
+          clinicId: existing.clinicId,
+          createdByUserId: existing.createdBy,
+        });
+        updateData.phone = normalizePhoneE164(body.phone, phoneCountry) ?? body.phone.trim();
+      }
       if (body.email !== undefined) updateData.email = body.email || null;
       if (body.address !== undefined) updateData.address = body.address || null;
       if (body.city !== undefined) updateData.city = body.city || null;
       if (body.postalCode !== undefined) updateData.postalCode = body.postalCode || null;
       if (body.medicalHistory !== undefined) {
-        updateData.medicalHistory = JSON.stringify(
-          body.medicalHistory || { allergies: [], medications: [], conditions: [] }
-        );
+        updateData.medicalHistory = JSON.stringify(normalizeMedicalHistory(body.medicalHistory));
       }
       if (body.consent !== undefined) {
         updateData.consent = JSON.stringify(

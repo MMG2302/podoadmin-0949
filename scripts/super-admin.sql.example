@@ -1,0 +1,7 @@
+-- Plantilla: NO commitear scripts/super-admin.sql (contiene hash real).
+-- Generar: node scripts/create-super-admin.cjs "tu@email.com" "ContraseñaSegura" "Tu Nombre"
+-- Aplicar local:  bunx wrangler d1 execute DB --local --file=scripts/super-admin.sql
+-- Aplicar remoto: bunx wrangler d1 execute DB --remote --file=scripts/super-admin.sql
+
+-- INSERT OR REPLACE INTO created_users (...) VALUES (...);
+-- INSERT OR REPLACE INTO user_credits (...) VALUES (...);

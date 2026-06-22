@@ -50,7 +50,7 @@ export function PatientClinicalAlertsSection({
 
   return (
     <div>
-      <h4 className="font-medium text-[#1a1a1a] mb-3">Alertas clínicas</h4>
+      <h4 className="font-medium text-[#1a1a1a] dark:text-white mb-3">Alertas clínicas</h4>
       <ul className="space-y-2 mb-3">
         {alerts.map((a, i) => (
           <li
@@ -174,7 +174,7 @@ export function PatientLabAttachmentsSection({ patientId }: { patientId: string 
 
   return (
     <div className="mt-6">
-      <h4 className="font-medium text-[#1a1a1a] mb-3">Informes de laboratorio</h4>
+      <h4 className="font-medium text-[#1a1a1a] dark:text-white mb-3">Informes de laboratorio</h4>
       <p className="text-xs text-gray-500 mb-2">PDF o imagen (máx. 10 MB).</p>
       <div className="flex flex-wrap gap-2 mb-3">
         <input

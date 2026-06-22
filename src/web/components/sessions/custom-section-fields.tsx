@@ -9,9 +9,9 @@ import {
 } from "../../types/clinical-layout";
 
 const inputClass =
-  "w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#1a1a1a] dark:bg-gray-900 dark:border-gray-700";
+  "w-full px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 text-[#1a1a1a] dark:text-white text-sm focus:outline-none focus:border-[#1a1a1a] dark:focus:border-gray-400 focus:ring-1 focus:ring-[#1a1a1a] dark:focus:ring-gray-500";
 const inputSm =
-  "w-full px-2 py-1 border border-gray-200 rounded text-xs focus:outline-none focus:border-[#1a1a1a] dark:bg-gray-900 dark:border-gray-700";
+  "w-full px-2 py-1 border border-gray-200 dark:border-gray-700 rounded bg-white dark:bg-gray-900 text-[#1a1a1a] dark:text-white text-xs focus:outline-none focus:border-[#1a1a1a] dark:focus:border-gray-400";
 
 type Props = {
   section: ClinicalLayoutSection;

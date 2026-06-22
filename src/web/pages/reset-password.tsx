@@ -98,7 +98,7 @@ const ResetPassword = () => {
               {t.auth.contactToVerifyRecovery}{" "}
               <a
                 href={`mailto:${supportEmail || "soporte@podoadmin.com"}?subject=${encodeURIComponent("Verificación de identidad - Recuperación de contraseña")}`}
-                className="font-medium text-[#1a1a1a] hover:underline"
+                className="font-medium text-[#1a1a1a] dark:text-white hover:underline"
               >
                 {supportEmail || "soporte@podoadmin.com"}
               </a>
@@ -112,7 +112,7 @@ const ResetPassword = () => {
           </button>
           <button
             onClick={() => setLocation("/login")}
-            className="w-full mt-3 py-3 bg-gray-100 text-[#1a1a1a] font-medium rounded-lg hover:bg-gray-200"
+            className="w-full mt-3 py-3 bg-gray-100 dark:bg-gray-800 text-[#1a1a1a] dark:text-gray-100 font-medium rounded-lg hover:bg-gray-200"
           >
             {t.auth.backToLogin}
           </button>
@@ -153,7 +153,7 @@ const ResetPassword = () => {
         <div className="flex-1 min-h-0 overflow-y-auto overflow-scrolling-touch flex flex-col items-center justify-center p-8">
           <div className="w-full max-w-md py-4 pb-mobile-safe">
             <div className="lg:hidden text-center mb-12">
-              <h1 className="text-[#1a1a1a] text-4xl font-light tracking-tight">
+              <h1 className="text-[#1a1a1a] dark:text-white text-4xl font-light tracking-tight">
                 Podo<span className="font-bold">Admin</span>
               </h1>
             </div>
@@ -165,7 +165,7 @@ const ResetPassword = () => {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                   </svg>
                 </div>
-                <h2 className="text-xl font-semibold text-[#1a1a1a] mb-2">
+                <h2 className="text-xl font-semibold text-[#1a1a1a] dark:text-white mb-2">
                   {t.auth.resetPasswordSuccess}
                 </h2>
                 <p className="text-gray-600">{t.auth.resetPasswordRedirecting}</p>
@@ -173,7 +173,7 @@ const ResetPassword = () => {
             ) : (
               <>
                 <div className="mb-10">
-                  <h2 className="text-[#1a1a1a] text-3xl font-semibold mb-2">
+                  <h2 className="text-[#1a1a1a] dark:text-white text-3xl font-semibold mb-2">
                     {t.auth.resetPasswordTitle}
                   </h2>
                   <p className="text-gray-500">
@@ -186,7 +186,7 @@ const ResetPassword = () => {
                     {t.auth.contactToVerifyRecovery}{" "}
                     <a
                       href={`mailto:${supportEmail || "soporte@podoadmin.com"}?subject=${encodeURIComponent("Verificación de identidad - Recuperación de contraseña")}`}
-                      className="font-medium text-[#1a1a1a] hover:underline"
+                      className="font-medium text-[#1a1a1a] dark:text-white hover:underline"
                     >
                       {supportEmail || "soporte@podoadmin.com"}
                     </a>
@@ -200,7 +200,7 @@ const ResetPassword = () => {
                     </div>
                   )}
                   <div>
-                    <label className="block text-sm font-medium text-[#1a1a1a] mb-2">
+                    <label className="block text-sm font-medium text-[#1a1a1a] dark:text-gray-100 mb-2">
                       {t.auth.newPasswordLabel}
                     </label>
                     <div className="relative">
@@ -208,7 +208,7 @@ const ResetPassword = () => {
                         type={showNewPassword ? "text" : "password"}
                         value={newPassword}
                         onChange={(e) => setNewPassword(e.target.value)}
-                        className="w-full px-4 py-3.5 pr-11 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:border-[#1a1a1a] focus:ring-1 focus:ring-[#1a1a1a] transition-all text-[#1a1a1a] placeholder:text-gray-400"
+                        className="w-full px-4 py-3.5 pr-11 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:border-[#1a1a1a] focus:ring-1 focus:ring-[#1a1a1a] transition-all text-[#1a1a1a] dark:text-white bg-gray-50 dark:bg-gray-900 border-gray-200 dark:border-gray-700 placeholder:text-gray-400 dark:placeholder:text-gray-500"
                         placeholder="••••••••"
                         required
                         minLength={12}
@@ -217,7 +217,7 @@ const ResetPassword = () => {
                       <button
                         type="button"
                         onClick={() => setShowNewPassword((v) => !v)}
-                        className="absolute inset-y-0 right-0 flex items-center px-3 text-gray-500 hover:text-[#1a1a1a]"
+                        className="absolute inset-y-0 right-0 flex items-center px-3 text-gray-500 hover:text-[#1a1a1a] dark:hover:text-white"
                         aria-label={showNewPassword ? "Ocultar contraseña" : "Mostrar contraseña"}
                       >
                         {showNewPassword ? (
@@ -265,7 +265,7 @@ const ResetPassword = () => {
                     </div>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-[#1a1a1a] mb-2">
+                    <label className="block text-sm font-medium text-[#1a1a1a] dark:text-gray-100 mb-2">
                       {t.auth.resetPasswordRepeatPassword}
                     </label>
                     <div className="relative">
@@ -273,7 +273,7 @@ const ResetPassword = () => {
                         type={showConfirmPassword ? "text" : "password"}
                         value={confirmPassword}
                         onChange={(e) => setConfirmPassword(e.target.value)}
-                        className="w-full px-4 py-3.5 pr-11 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:border-[#1a1a1a] focus:ring-1 focus:ring-[#1a1a1a] transition-all text-[#1a1a1a] placeholder:text-gray-400"
+                        className="w-full px-4 py-3.5 pr-11 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:border-[#1a1a1a] focus:ring-1 focus:ring-[#1a1a1a] transition-all text-[#1a1a1a] dark:text-white bg-gray-50 dark:bg-gray-900 border-gray-200 dark:border-gray-700 placeholder:text-gray-400 dark:placeholder:text-gray-500"
                         placeholder="••••••••"
                         required
                         minLength={12}
@@ -282,7 +282,7 @@ const ResetPassword = () => {
                       <button
                         type="button"
                         onClick={() => setShowConfirmPassword((v) => !v)}
-                        className="absolute inset-y-0 right-0 flex items-center px-3 text-gray-500 hover:text-[#1a1a1a]"
+                        className="absolute inset-y-0 right-0 flex items-center px-3 text-gray-500 hover:text-[#1a1a1a] dark:hover:text-white"
                         aria-label={showConfirmPassword ? "Ocultar contraseña" : "Mostrar contraseña"}
                       >
                         {showConfirmPassword ? (
@@ -321,7 +321,7 @@ const ResetPassword = () => {
                   <button
                     type="button"
                     onClick={() => setLocation("/login")}
-                    className="text-[#1a1a1a] font-medium hover:underline"
+                    className="text-[#1a1a1a] dark:text-white font-medium hover:underline"
                   >
                     {t.auth.backToLogin}
                   </button>

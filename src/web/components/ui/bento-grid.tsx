@@ -89,7 +89,7 @@ const BentoStatCard = ({
           </div>
           <div>
             <p className="text-sm text-gray-500 dark:text-gray-400">{name}</p>
-            <p className="mt-1 text-3xl font-semibold text-[#1a1a1a] dark:text-white group-hover:text-[#1a1a1a]/90 dark:group-hover:text-white/90 transition-colors">
+            <p className="mt-1 text-3xl font-semibold text-[#1a1a1a] dark:text-white group-hover:text-[#1a1a1a] dark:hover:text-white/90 dark:group-hover:text-white/90 transition-colors">
               {value}
             </p>
           </div>

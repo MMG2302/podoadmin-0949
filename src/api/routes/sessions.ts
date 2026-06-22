@@ -11,8 +11,8 @@ import {
 } from '../utils/validation';
 import { database } from '../database';
 import { clinicalSessions as sessionsTable, patients as patientsTable, createdUsers as createdUsersTable } from '../database/schema';
-import { eq } from 'drizzle-orm';
-import { validateImageDataUri, MAX_SESSION_IMAGE_BYTES } from '../utils/logo-upload';
+import { eq, and } from 'drizzle-orm';
+import { validateImageDataUri, MAX_SESSION_IMAGE_BYTES, MAX_D1_STORED_DATA_URI_BYTES } from '../utils/logo-upload';
 import { syncClinicalRetentionForSession } from '../utils/clinical-retention';
 import { attachSessionImages, replaceSessionImages } from '../utils/session-images';
 import { canUserAccess } from '../utils/user-retention';
@@ -23,6 +23,8 @@ import {
   getSessionAccessDeniedReason,
   isClinicAdminWithoutClinic,
 } from '../utils/tenant-isolation';
+import { resolveClinicalListScope, mergeScopeWhere } from '../utils/clinical-list-scope';
+import { parsePaginationQuery, buildPaginationMeta } from '../utils/pagination';
 import type { ClinicalSession } from '../../web/types/clinical';
 import {
   normalizeDigitalAlterations,
@@ -65,7 +67,7 @@ const sessionsRoutes = new Hono();
 // UUID criptográfico: imposible de adivinar por fuerza bruta, evita acceso por rutas predecibles
 const generateId = () => crypto.randomUUID();
 
-// Serializa una sesión clínica completa en el campo notes (JSON)
+// Serializa una sesión clínica completa en el campo notes (JSON). Imágenes van en clinical_session_images.
 function buildNotesPayload(session: ClinicalSession): string {
   const payload = {
     clinicalNotes: session.clinicalNotes,
@@ -89,11 +91,35 @@ function buildNotesPayload(session: ClinicalSession): string {
     completedAt: session.completedAt,
   };
 
-  return JSON.stringify(payload);
+  const json = JSON.stringify(payload);
+  if (json.length > MAX_D1_STORED_DATA_URI_BYTES) {
+    throw new Error('notes_stored_too_large');
+  }
+  return json;
 }
 
 function sessionSaveErrorResponse(error: unknown) {
   const message = error instanceof Error ? error.message : String(error);
+  if (/notes_stored_too_large/i.test(message)) {
+    return {
+      status: 413 as const,
+      body: {
+        error: 'payload_too_large',
+        message:
+          'El texto de la historia clínica es demasiado extenso. Reduzca notas, tablas o secciones personalizadas e intente de nuevo.',
+      },
+    };
+  }
+  if (/image_stored_too_large/i.test(message)) {
+    return {
+      status: 413 as const,
+      body: {
+        error: 'payload_too_large',
+        message:
+          'Una o más fotos son demasiado pesadas para guardarse. Elimine fotos grandes o use imágenes más pequeñas (máx. ~1,3 MB por foto).',
+      },
+    };
+  }
   if (/too large|TOOBIG|SQLITE_FULL|string too long|hung|canceled/i.test(message)) {
     return {
       status: 413 as const,
@@ -132,33 +158,31 @@ sessionsRoutes.get(
         return c.json({ error: 'Parámetros inválidos', message: queryResult.error, issues: queryResult.issues }, 400);
       }
       const patientFilter = queryResult.data.patient;
+      const pagination = parsePaginationQuery({
+        limit: queryResult.data.limit,
+        offset: queryResult.data.offset,
+      });
 
-      let rows = await database.select().from(sessionsTable);
+      const scope = await resolveClinicalListScope(user);
+      const extra = patientFilter ? eq(sessionsTable.patientId, patientFilter) : undefined;
+      const where = mergeScopeWhere(scope, {
+        createdBy: sessionsTable.createdBy,
+        clinicId: sessionsTable.clinicId,
+      }, extra);
 
-      // Reglas de visibilidad:
-      // - super_admin: todas
-      // - podiatrist: solo sus propias sesiones (createdBy === user.userId)
-      // - clinic_admin: solo sesiones de su clínica (clinicId === user.clinicId)
-      // - receptionist: solo sesiones de podólogos asignados
-      if (user?.role === 'podiatrist') {
-        rows = rows.filter((s) => s.createdBy === user.userId);
-      } else if (user?.role === 'clinic_admin') {
-        rows = rows.filter((s) => s.clinicId === user.clinicId);
-      } else if (user?.role === 'receptionist') {
-        const assignedIds = await getAssignedPodiatristUserIds(user.userId);
-        if (assignedIds.length === 0) {
-          rows = [];
-        } else {
-          rows = rows.filter((s) => assignedIds.includes(s.createdBy));
-        }
-      }
+      let query = database.select().from(sessionsTable).$dynamic();
+      if (where) query = query.where(where);
+      const rows = await query
+        .orderBy(sessionsTable.sessionDate)
+        .limit(pagination.limit)
+        .offset(pagination.offset);
 
-      if (patientFilter) {
-        rows = rows.filter((s) => s.patientId === patientFilter);
-      }
-
-      const sessions = await attachSessionImages(rows.map(mapDbSession));
-      return c.json({ success: true, sessions });
+      const sessions = rows.map(mapDbSession).map((s) => ({ ...s, images: [] }));
+      return c.json({
+        success: true,
+        sessions,
+        pagination: buildPaginationMeta(pagination, rows.length),
+      });
     } catch (error) {
       console.error('Error obteniendo sesiones:', error);
       return c.json(

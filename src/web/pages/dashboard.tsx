@@ -7,7 +7,6 @@ import { useLanguage } from "../contexts/language-context";
 import { useAuth, getPostLoginPath, hasActiveSystemAccess, isClinicalAppPath } from "../contexts/auth-context";
 import { usePermissions } from "../hooks/use-permissions";
 import { api } from "../lib/api-client";
-import { fetchAllClinicalPages } from "../lib/clinical-list-fetch";
 import PatientsPage from "./patients-page";
 import SessionsPage from "./sessions-page";
 import { ClinicalListLoading } from "../components/clinical/clinical-list-states";
@@ -103,38 +102,41 @@ const SuperAdminDashboard = () => {
   );
 };
 
-// Tipos mínimos para pacientes/sesiones desde API
-type PatientRow = { id: string; firstName: string; lastName: string; createdBy: string };
-type SessionRow = { id: string; patientId: string; sessionDate: string; status: string; createdAt: string; createdBy: string };
+type DashboardOverview = {
+  patientCount: number;
+  sessionsThisMonth: number;
+  recentSessions: {
+    id: string;
+    patientId: string;
+    patientName: string;
+    sessionDate: string;
+    status: string;
+    createdAt: string;
+  }[];
+};
 
-// Podiatrist Dashboard - Patient and session focused (datos desde API)
+// Podiatrist Dashboard - resumen ligero (sin cargar todos los pacientes)
 const PodiatristDashboard = () => {
   const { t } = useLanguage();
   const { user } = useAuth();
-  const [patients, setPatients] = useState<PatientRow[]>([]);
-  const [sessions, setSessions] = useState<SessionRow[]>([]);
+  const [overview, setOverview] = useState<DashboardOverview | null>(null);
 
   useEffect(() => {
     if (!user?.id) return;
-    void (async () => {
-      const [p, s] = await Promise.all([
-        fetchAllClinicalPages<PatientRow>("/patients", "patients", () => "Error pacientes"),
-        fetchAllClinicalPages<SessionRow>("/sessions", "sessions", () => "Error sesiones"),
-      ]);
-      setPatients(p);
-      setSessions(s);
-    })();
+    api
+      .get<{ success?: boolean } & DashboardOverview>("/clinical-dashboard/overview")
+      .then((r) => {
+        if (r.success && r.data) {
+          setOverview({
+            patientCount: r.data.patientCount ?? 0,
+            sessionsThisMonth: r.data.sessionsThisMonth ?? 0,
+            recentSessions: r.data.recentSessions ?? [],
+          });
+        }
+      });
   }, [user?.id]);
 
-  const sessionsThisMonth = sessions.filter((s) => {
-    const sessionDate = new Date(s.sessionDate);
-    const now = new Date();
-    return sessionDate.getMonth() === now.getMonth() && sessionDate.getFullYear() === now.getFullYear();
-  });
-
-  const recentSessions = sessions
-    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-    .slice(0, 5);
+  const recentSessions = overview?.recentSessions ?? [];
 
   const formatDate = (dateStr: string) => {
     const date = new Date(dateStr);
@@ -149,9 +151,9 @@ const PodiatristDashboard = () => {
     return `Hace ${diffDays} días`;
   };
 
-  const getPatientName = (patientId: string) => {
-    const patient = patients.find((p) => p.id === patientId);
-    return patient ? `${patient.firstName} ${patient.lastName}` : "Paciente";
+  const getPatientName = (patientId: string, fallback?: string) => {
+    const fromRecent = recentSessions.find((s) => s.patientId === patientId)?.patientName;
+    return fromRecent ?? fallback ?? "Paciente";
   };
 
   return (
@@ -160,8 +162,8 @@ const PodiatristDashboard = () => {
         welcomeTitle={<>{t.auth.welcomeBack}, <span className="font-semibold">{user?.name}</span></>}
         welcomeDescription={t.roles.podiatristDesc}
         statItems={[
-          { Icon: UserCircle, label: t.dashboard.totalPatients, value: patients.length.toString(), path: "/patients" },
-          { Icon: CalendarCheck, label: t.dashboard.sessionsThisMonth, value: sessionsThisMonth.length.toString(), path: "/sessions" },
+          { Icon: UserCircle, label: t.dashboard.totalPatients, value: String(overview?.patientCount ?? 0), path: "/patients" },
+          { Icon: CalendarCheck, label: t.dashboard.sessionsThisMonth, value: String(overview?.sessionsThisMonth ?? 0), path: "/sessions" },
         ]}
         actionItems={[
           { Icon: UserPlus, name: t.patients.addPatient, description: "Registrar nuevo paciente", href: "/patients" },
@@ -206,7 +208,7 @@ const PodiatristDashboard = () => {
                     </div>
                     <div className="flex-1">
                       <p className="text-sm font-medium text-[#1a1a1a] dark:text-white">
-                        {getPatientName(session.patientId)} - {session.status === "completed" ? "Sesión completada" : "Borrador"}
+                        {session.patientName ?? getPatientName(session.patientId)} - {session.status === "completed" ? "Sesión completada" : "Borrador"}
                       </p>
                       <p className="text-xs text-gray-500 dark:text-gray-400">{formatDate(session.createdAt)}</p>
                     </div>
@@ -273,17 +275,14 @@ const ClinicAdminDashboard = () => {
 const ReceptionistDashboard = () => {
   const { t } = useLanguage();
   const { user } = useAuth();
-  const [allPatients, setAllPatients] = useState<{ createdBy: string }[]>([]);
+  const [patientCount, setPatientCount] = useState(0);
   const [clinic, setClinic] = useState<{ clinicName: string } | null>(null);
   const [assignedPodiatrists, setAssignedPodiatrists] = useState<{ id: string; name: string }[]>([]);
 
-  const assignedIds = user?.assignedPodiatristIds ?? [];
-  const patientCount = allPatients.filter((p) => assignedIds.includes(p.createdBy)).length;
-
   useEffect(() => {
     if (!user?.id) return;
-    api.get<{ success?: boolean; patients?: { createdBy: string }[] }>("/patients").then((r) => {
-      if (r.success && Array.isArray(r.data?.patients)) setAllPatients(r.data.patients);
+    api.get<{ success?: boolean; patientCount?: number }>("/clinical-dashboard/overview").then((r) => {
+      if (r.success) setPatientCount(r.data?.patientCount ?? 0);
     });
     api
       .get<{ success?: boolean; assignedPodiatristIds?: string[]; podiatrists?: { id: string; name: string }[] }>(

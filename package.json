@@ -62,8 +62,8 @@
     "deploy": "wrangler deploy",
     "deploy:prep": "node scripts/prepare-deploy.cjs",
     "deploy:prep:full": "node scripts/prepare-deploy.cjs --full",
-    "deploy:production": "node scripts/build-production.cjs && wrangler deploy",
-    "deploy:production:dry-run": "node scripts/build-production.cjs && wrangler deploy --dry-run",
+    "deploy:production": "node scripts/build-production.cjs && wrangler deploy --env production",
+    "deploy:production:dry-run": "node scripts/build-production.cjs && wrangler deploy --dry-run --env production",
     "dev": "vite",
     "dev:clean": "node scripts/dev-clean.cjs",
     "tunnel": "npx --yes cloudflared tunnel --url http://localhost:5173",
@@ -87,7 +87,8 @@
     "repomix": "npx repomix . -o repomix-output.xml --style xml",
     "repomix:remote": "npx repomix --remote MMG2302/podoadmin-0949 -o repomix-remote-output.xml --style xml",
     "alerts:check": "node scripts/check-alerts.cjs",
-    "alerts:check:remote": "node scripts/check-alerts.cjs --remote"
+    "alerts:check:remote": "node scripts/check-alerts.cjs --remote",
+    "setup:cf-bindings": "node scripts/setup-cloudflare-production-bindings.cjs"
   },
   "type": "module",
   "tasks": {

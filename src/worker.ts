@@ -12,6 +12,10 @@ import { lt, and, isNotNull } from 'drizzle-orm';
 import { logger } from './api/utils/logger';
 import { captureServerError } from './api/utils/sentry-server';
 import { cleanupOldAttemptsD1 } from './api/utils/rate-limit-d1';
+import { cleanupExpiredTokens } from './api/utils/token-blacklist';
+import { runOperationalCleanup } from './api/utils/operational-cleanup';
+import { handleNotificationQueueBatch } from './api/queues/consumer';
+import type { NotificationJob } from './api/queues/notification-messages';
 import { runD1BackupToR2, type D1BackupEnv } from './api/utils/d1-backup';
 import { runAppointmentRemindersCron } from './api/utils/appointment-reminders-cron';
 import { runClinicalRetentionPurge } from './api/utils/clinical-retention-purge';
@@ -42,7 +46,13 @@ async function runRetentionCron(): Promise<void> {
 
 async function runRateLimitCleanup(): Promise<void> {
   await cleanupOldAttemptsD1();
-  logger.info({ event: 'cron_rate_limit_cleanup_done' });
+  const tokensRemoved = await cleanupExpiredTokens();
+  const operational = await runOperationalCleanup();
+  logger.info({
+    event: 'cron_rate_limit_cleanup_done',
+    tokensRemoved,
+    ...operational,
+  });
 }
 
 async function runD1BackupCron(env: D1BackupEnv): Promise<void> {
@@ -60,6 +70,14 @@ async function runD1BackupCron(env: D1BackupEnv): Promise<void> {
 
 const workerHandler = {
   fetch: app.fetch,
+
+  async queue(
+    batch: MessageBatch<NotificationJob>,
+    _env: D1BackupEnv,
+    _ctx: ExecutionContext
+  ): Promise<void> {
+    await handleNotificationQueueBatch(batch);
+  },
 
   async scheduled(
     controller: ScheduledController,

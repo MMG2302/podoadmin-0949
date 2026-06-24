@@ -4,7 +4,9 @@ import { MainLayout } from "../components/layout/main-layout";
 import { useLanguage } from "../contexts/language-context";
 import { useAuth } from "../contexts/auth-context";
 import { usePermissions } from "../hooks/use-permissions";
-import { useClinicalListData, invalidateClinicalListCache } from "../hooks/use-clinical-list-data";
+import { useClinicalListPage } from "../hooks/use-clinical-list-page";
+import { usePatientPicker, fetchPatientById } from "../hooks/use-patient-picker";
+import { invalidateClinicalListCache } from "../hooks/use-clinical-list-data";
 import { ClinicalListError, ClinicalListLoading } from "../components/clinical/clinical-list-states";
 import { AppModal, AppModalBody, AppModalFooter, AppModalHeader } from "../components/ui/app-modal";
 import {
@@ -148,19 +150,44 @@ const SessionsPage = () => {
     }
   }
   
-  const {
-    patients,
-    sessions,
-    isLoading: clinicalListLoading,
-    error: clinicalListError,
-    reload: reloadClinicalLists,
-  } = useClinicalListData();
   const [searchQuery, setSearchQuery] = useState("");
+  const [debouncedQ, setDebouncedQ] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | "draft" | "completed">("all");
   const [showForm, setShowForm] = useState(false);
   const [editingSession, setEditingSession] = useState<ClinicalSession | null>(null);
   const [sessionTemplates, setSessionTemplates] = useState<SessionTemplate[]>([]);
   const [sessionPrescriptions, setSessionPrescriptions] = useState<Prescription[]>([]);
+  const [patientCache, setPatientCache] = useState<Record<string, Patient>>({});
+
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedQ(searchQuery.trim()), 350);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
+  const sessionFilters = useMemo(
+    () => ({
+      ...(filterPatientId ? { patient: filterPatientId } : {}),
+      ...(statusFilter !== "all" ? { status: statusFilter } : {}),
+      ...(debouncedQ ? { q: debouncedQ } : {}),
+    }),
+    [filterPatientId, statusFilter, debouncedQ]
+  );
+
+  const {
+    items: sessions,
+    hasMore: sessionsHasMore,
+    isLoading: clinicalListLoading,
+    isLoadingMore: sessionsLoadingMore,
+    error: clinicalListError,
+    reload: reloadClinicalLists,
+    loadMore: loadMoreSessions,
+  } = useClinicalListPage<ClinicalSession>({
+    path: "/sessions",
+    listKey: "sessions",
+    filters: sessionFilters,
+  });
+
+  const { patients: pickerPatients, reload: reloadPickerPatients } = usePatientPicker(showForm);
 
   const loadSessionTemplates = useCallback(async () => {
     try {
@@ -203,12 +230,27 @@ const SessionsPage = () => {
 
   useEffect(() => {
     if (showForm) {
-      void reloadClinicalLists();
       loadSessionTemplates();
     }
-  }, [showForm, reloadClinicalLists, loadSessionTemplates]);
+  }, [showForm, loadSessionTemplates]);
 
-  const getPatientById = (id: string) => patients.find((p) => p.id === id);
+  const getPatientById = useCallback(
+    (id: string): Patient | undefined => {
+      const fromPicker = pickerPatients.find((p) => p.id === id);
+      if (fromPicker) return fromPicker;
+      return patientCache[id];
+    },
+    [pickerPatients, patientCache]
+  );
+
+  const ensurePatientLoaded = useCallback(
+    async (id: string) => {
+      if (getPatientById(id)) return;
+      const p = await fetchPatientById(id);
+      if (p) setPatientCache((prev) => ({ ...prev, [id]: p }));
+    },
+    [getPatientById]
+  );
 
   const isPatientCompleteForSessions = (p: Patient | undefined) => {
     if (!p) return false;
@@ -397,31 +439,7 @@ const SessionsPage = () => {
     notes: "",
   });
 
-  const filteredSessions = useMemo(() => {
-    let filtered = sessions;
-    
-    if (filterPatientId) {
-      filtered = filtered.filter((s) => s.patientId === filterPatientId);
-    }
-    
-    if (statusFilter !== "all") {
-      filtered = filtered.filter((s) => s.status === statusFilter);
-    }
-    
-    if (searchQuery) {
-      const query = searchQuery.toLowerCase();
-      filtered = filtered.filter((s) => {
-        const patient = getPatientById(s.patientId);
-        return (
-          patient?.firstName.toLowerCase().includes(query) ||
-          patient?.lastName.toLowerCase().includes(query) ||
-          s.diagnosis.toLowerCase().includes(query)
-        );
-      });
-    }
-    
-    return filtered.sort((a, b) => new Date(b.sessionDate).getTime() - new Date(a.sessionDate).getTime());
-  }, [sessions, searchQuery, statusFilter, filterPatientId]);
+  const filteredSessions = sessions;
 
   const [imageUploadError, setImageUploadError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -705,7 +723,15 @@ const SessionsPage = () => {
   };
 
   const handlePrint = async (session: ClinicalSession) => {
-    const patient = getPatientById(session.patientId);
+    await ensurePatientLoaded(session.patientId);
+    let patient = getPatientById(session.patientId);
+    if (!patient) {
+      const fetched = await fetchPatientById(session.patientId);
+      if (fetched) {
+        setPatientCache((prev) => ({ ...prev, [fetched.id]: fetched }));
+        patient = fetched;
+      }
+    }
     if (!patient) return;
 
     void api.post("/compliance/record-access", { patientId: patient.id, action: "print" });
@@ -725,9 +751,13 @@ const SessionsPage = () => {
         podiatristLicense = pr.data?.license || profInfo?.professionalLicense || profInfo?.license || null;
       }
     }
-    const patientSessions = sessions
-      .filter((s) => s.patientId === patient.id)
-      .sort((a, b) => new Date(b.sessionDate).getTime() - new Date(a.sessionDate).getTime());
+    const historyRes = await api.get<{ success?: boolean; sessions?: ClinicalSession[] }>(
+      `/sessions?patient=${encodeURIComponent(patient.id)}&limit=200`
+    );
+    const patientSessions = (historyRes.success && historyRes.data?.sessions
+      ? historyRes.data.sessions
+      : [session]
+    ).sort((a, b) => new Date(b.sessionDate).getTime() - new Date(a.sessionDate).getTime());
     const latestSession = patientSessions[0] ?? session;
 
     const opened = openPodiatryHistoryPrint({
@@ -766,6 +796,8 @@ const SessionsPage = () => {
   };
 
   const getPatientName = (patientId: string) => {
+    const fromSession = sessions.find((s) => s.patientId === patientId)?.patientName;
+    if (fromSession) return fromSession;
     const patient = getPatientById(patientId);
     return patient ? `${patient.firstName} ${patient.lastName}` : "Paciente desconocido";
   };
@@ -1370,7 +1402,7 @@ const SessionsPage = () => {
                     disabled={!!editingSession}
                   >
                     <option value="">Seleccionar...</option>
-                    {patients
+                    {pickerPatients
                       .filter((p) => isPatientCompleteForSessions(p) || (editingSession && p.id === editingSession.patientId))
                       .map((p) => (
                         <option key={p.id} value={p.id}>
@@ -1379,7 +1411,7 @@ const SessionsPage = () => {
                       ))}
                   </select>
                   {formData.patientId && (() => {
-                    const p = patients.find((x) => x.id === formData.patientId);
+                    const p = pickerPatients.find((x) => x.id === formData.patientId);
                     return p && !isPatientCompleteForSessions(p);
                   })() && (
                     <div className="mt-2 p-3 bg-amber-50 border border-amber-200 rounded-lg space-y-2">
@@ -1396,7 +1428,7 @@ const SessionsPage = () => {
                         </button>
                         <button
                           type="button"
-                          onClick={() => void reloadClinicalLists()}
+                          onClick={() => void reloadPickerPatients()}
                           className="px-4 py-2 bg-white border border-amber-300 text-amber-800 text-sm font-medium rounded-lg hover:bg-amber-50 transition-colors"
                         >
                           Actualizar datos (si ya editó el paciente)
@@ -1658,7 +1690,7 @@ const SessionsPage = () => {
 
               {/* Actions */}
               {(() => {
-                const selectedPatient = patients.find((x) => x.id === formData.patientId);
+                const selectedPatient = pickerPatients.find((x) => x.id === formData.patientId);
                 const patientComplete = selectedPatient ? isPatientCompleteForSessions(selectedPatient) : false;
                 const canSave = !!formData.patientId && patientComplete;
                 const disableReason = !formData.patientId
@@ -2011,6 +2043,18 @@ const SessionsPage = () => {
                 </div>
               </div>
             ))}
+            {sessionsHasMore && (
+              <div className="flex justify-center pt-2">
+                <button
+                  type="button"
+                  onClick={() => loadMoreSessions()}
+                  disabled={sessionsLoadingMore}
+                  className="px-6 py-2.5 border border-gray-200 dark:border-gray-700 rounded-lg text-sm font-medium text-[#1a1a1a] dark:text-white hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-50"
+                >
+                  {sessionsLoadingMore ? "Cargando…" : "Cargar más sesiones"}
+                </button>
+              </div>
+            )}
           </div>
         )}
       </div>

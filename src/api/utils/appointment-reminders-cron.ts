@@ -5,11 +5,11 @@ import {
   patients,
   userWhatsappIntegrations,
   appointmentReminderSent,
-  createdUsers,
 } from '../database/schema';
-import { decryptSecret } from './field-encryption';
-import { sendWhatsAppTemplateMessage } from './whatsapp-meta-api';
 import { logger } from './logger';
+import { enqueueNotification } from '../queues/producer';
+import { processWhatsAppReminderJob } from '../queues/processor';
+import type { WhatsAppReminderJob } from '../queues/notification-messages';
 
 export interface ReminderSchedule {
   daysBefore: number[];
@@ -39,9 +39,22 @@ function appointmentDateTimeMs(date: string, time: string): number {
   return new Date(iso).getTime();
 }
 
-export async function runAppointmentRemindersCron(): Promise<{ sent: number; skipped: number }> {
+async function dispatchReminder(job: WhatsAppReminderJob): Promise<'sent' | 'skipped' | 'queued'> {
+  const queued = await enqueueNotification(job);
+  if (queued) return 'queued';
+  const result = await processWhatsAppReminderJob(job);
+  if (result.skipped) return 'skipped';
+  return result.ok ? 'sent' : 'skipped';
+}
+
+export async function runAppointmentRemindersCron(): Promise<{
+  sent: number;
+  skipped: number;
+  queued: number;
+}> {
   let sent = 0;
   let skipped = 0;
+  let queued = 0;
   const now = Date.now();
 
   const scheduled = await database
@@ -104,37 +117,33 @@ export async function runAppointmentRemindersCron(): Promise<{ sent: number; ski
       const already = await database
         .select()
         .from(appointmentReminderSent)
-        .where(and(eq(appointmentReminderSent.appointmentId, appt.id), eq(appointmentReminderSent.reminderKind, kind)))
+        .where(
+          and(
+            eq(appointmentReminderSent.appointmentId, appt.id),
+            eq(appointmentReminderSent.reminderKind, kind)
+          )
+        )
         .limit(1);
       if (already[0]) continue;
 
-      try {
-        const token = await decryptSecret(wa.accessTokenEnc);
-        const result = await sendWhatsAppTemplateMessage({
-          phoneNumberId: wa.phoneNumberId,
-          accessToken: token,
-          toPhoneE164: phone,
-          templateName: wa.templateName || 'appointment_reminder',
-          templateLanguage: wa.templateLanguage,
-          bodyParams: [patientName, appt.sessionDate, appt.sessionTime],
-        });
-        if (!result.ok) {
-          skipped++;
-          continue;
-        }
-        await database.insert(appointmentReminderSent).values({
-          id: crypto.randomUUID(),
-          appointmentId: appt.id,
-          reminderKind: kind,
-          sentAt: new Date().toISOString(),
-        });
-        sent++;
-      } catch (err) {
-        logger.error({ event: 'reminder_send_failed', appointmentId: appt.id, kind, message: String(err) });
-        skipped++;
-      }
+      const job: WhatsAppReminderJob = {
+        type: 'whatsapp_reminder',
+        appointmentId: appt.id,
+        reminderKind: kind,
+        creatorUserId: creatorId,
+        patientName,
+        phoneE164: phone,
+        sessionDate: appt.sessionDate,
+        sessionTime: appt.sessionTime,
+      };
+
+      const outcome = await dispatchReminder(job);
+      if (outcome === 'queued') queued++;
+      else if (outcome === 'sent') sent++;
+      else skipped++;
     }
   }
 
-  return { sent, skipped };
+  logger.info({ event: 'appointment_reminders_cron_done', sent, skipped, queued });
+  return { sent, skipped, queued };
 }

@@ -1,6 +1,12 @@
 import { database } from '../database';
 import { rateLimitAttempts } from '../database/schema';
 import { eq } from 'drizzle-orm';
+import {
+  buildKvRateLimitKey,
+  checkKvWindowRateLimit,
+  type ActionRateLimitResult,
+} from './kv-rate-limit';
+import { getRateLimitKv } from './rate-limit-kv-binding';
 
 /**
  * Rate limit por acción (mensajes, subida de logos, creación de sesiones).
@@ -14,10 +20,7 @@ function key(action: string, identifier: string): string {
   return PREFIX + action + ':' + identifier;
 }
 
-export interface ActionRateLimitResult {
-  allowed: boolean;
-  retryAfterSeconds?: number;
-}
+export type { ActionRateLimitResult } from './kv-rate-limit';
 
 /**
  * Comprueba si la acción está permitida y, si sí, registra la solicitud.
@@ -137,8 +140,26 @@ export const TENANT_RATE_LIMITS = {
 export const ONE_MINUTE_MS = 60 * 1000;
 export const TEN_SECONDS_MS = 10 * 1000;
 
+/**
+ * Rate limit del middleware (global/tenant): KV si está configurado, D1 como fallback.
+ * Los límites por acción (login, logos, mensajes) siguen en D1.
+ */
+async function checkMiddlewareRateLimit(
+  action: string,
+  identifier: string,
+  limit: number,
+  windowMs: number
+): Promise<ActionRateLimitResult> {
+  const kv = getRateLimitKv();
+  if (kv) {
+    const key = buildKvRateLimitKey(action, identifier);
+    return checkKvWindowRateLimit(kv, key, limit, windowMs);
+  }
+  return checkAndRecordActionRateLimit(action, identifier, limit, windowMs);
+}
+
 export async function checkGlobalBurstRateLimit(clientIP: string): Promise<ActionRateLimitResult> {
-  return checkAndRecordActionRateLimit(
+  return checkMiddlewareRateLimit(
     'global_burst',
     clientIP,
     GLOBAL_RATE_LIMITS.burstPer10Seconds,
@@ -156,7 +177,7 @@ export async function checkGlobalIPRateLimit(
     auth_read: GLOBAL_RATE_LIMITS.authReadPerMinute,
     auth_write: GLOBAL_RATE_LIMITS.authWritePerMinute,
   };
-  return checkAndRecordActionRateLimit(`global_${tier}`, clientIP, limits[tier], ONE_MINUTE_MS);
+  return checkMiddlewareRateLimit(`global_${tier}`, clientIP, limits[tier], ONE_MINUTE_MS);
 }
 
 export async function checkTenantRateLimit(
@@ -165,7 +186,7 @@ export async function checkTenantRateLimit(
 ): Promise<ActionRateLimitResult> {
   const limit =
     tier === 'write' ? TENANT_RATE_LIMITS.writePerMinute : TENANT_RATE_LIMITS.readPerMinute;
-  return checkAndRecordActionRateLimit(`tenant_${tier}`, tenantKey, limit, ONE_MINUTE_MS);
+  return checkMiddlewareRateLimit(`tenant_${tier}`, tenantKey, limit, ONE_MINUTE_MS);
 }
 
 export function buildTenantRateLimitKey(clinicId?: string | null, userId?: string): string {

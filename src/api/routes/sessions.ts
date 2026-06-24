@@ -11,10 +11,11 @@ import {
 } from '../utils/validation';
 import { database } from '../database';
 import { clinicalSessions as sessionsTable, patients as patientsTable, createdUsers as createdUsersTable } from '../database/schema';
-import { eq, and } from 'drizzle-orm';
+import { eq, and, desc } from 'drizzle-orm';
 import { validateImageDataUri, MAX_SESSION_IMAGE_BYTES, MAX_D1_STORED_DATA_URI_BYTES } from '../utils/logo-upload';
 import { syncClinicalRetentionForSession } from '../utils/clinical-retention';
-import { attachSessionImages, replaceSessionImages } from '../utils/session-images';
+import { isR2Reference, isSessionImageFilePath, getR2Bucket } from '../utils/r2-media';
+import { attachSessionImages, replaceSessionImages, loadSessionImagesMap } from '../utils/session-images';
 import { canUserAccess } from '../utils/user-retention';
 import { checkSessionCreateRateLimit } from '../utils/action-rate-limit';
 import {
@@ -24,6 +25,11 @@ import {
   isClinicAdminWithoutClinic,
 } from '../utils/tenant-isolation';
 import { resolveClinicalListScope, mergeScopeWhere } from '../utils/clinical-list-scope';
+import {
+  buildSessionSearchCondition,
+  buildSessionStatusCondition,
+  mergeAnd,
+} from '../utils/clinical-list-search';
 import { parsePaginationQuery, buildPaginationMeta } from '../utils/pagination';
 import type { ClinicalSession } from '../../web/types/clinical';
 import {
@@ -55,7 +61,15 @@ function validateSessionImages(images: unknown): { ok: true; sanitized: string[]
   }
   const sanitized: string[] = [];
   for (let i = 0; i < images.length; i++) {
-    const v = validateImageDataUri(typeof images[i] === 'string' ? images[i] : null, MAX_SESSION_IMAGE_BYTES);
+    const raw = typeof images[i] === 'string' ? images[i] : null;
+    if (!raw) {
+      return { ok: false, error: 'image_invalid', message: 'Imagen no válida o vacía.' };
+    }
+    if (isSessionImageFilePath(raw) || isR2Reference(raw)) {
+      sanitized.push(raw);
+      continue;
+    }
+    const v = validateImageDataUri(raw, MAX_SESSION_IMAGE_BYTES);
     if (!v.valid) return { ok: false, error: v.error, message: v.message };
     sanitized.push(v.sanitized);
   }
@@ -158,26 +172,44 @@ sessionsRoutes.get(
         return c.json({ error: 'Parámetros inválidos', message: queryResult.error, issues: queryResult.issues }, 400);
       }
       const patientFilter = queryResult.data.patient;
+      const searchQ = queryResult.data.q;
+      const statusFilter = queryResult.data.status ?? 'all';
       const pagination = parsePaginationQuery({
         limit: queryResult.data.limit,
         offset: queryResult.data.offset,
       });
 
       const scope = await resolveClinicalListScope(user);
-      const extra = patientFilter ? eq(sessionsTable.patientId, patientFilter) : undefined;
-      const where = mergeScopeWhere(scope, {
+      const scopeWhere = mergeScopeWhere(scope, {
         createdBy: sessionsTable.createdBy,
         clinicId: sessionsTable.clinicId,
-      }, extra);
+      });
+      const patientEq = patientFilter ? eq(sessionsTable.patientId, patientFilter) : undefined;
+      const statusCond =
+        statusFilter === 'all' ? undefined : buildSessionStatusCondition(statusFilter);
+      const searchCond = buildSessionSearchCondition(searchQ ?? '');
+      const where = mergeAnd(scopeWhere, patientEq, statusCond, searchCond);
 
-      let query = database.select().from(sessionsTable).$dynamic();
+      let query = database
+        .select({
+          session: sessionsTable,
+          patientFirstName: patientsTable.firstName,
+          patientLastName: patientsTable.lastName,
+        })
+        .from(sessionsTable)
+        .innerJoin(patientsTable, eq(sessionsTable.patientId, patientsTable.id))
+        .$dynamic();
       if (where) query = query.where(where);
       const rows = await query
-        .orderBy(sessionsTable.sessionDate)
+        .orderBy(desc(sessionsTable.sessionDate))
         .limit(pagination.limit)
         .offset(pagination.offset);
 
-      const sessions = rows.map(mapDbSession).map((s) => ({ ...s, images: [] }));
+      const sessions = rows.map(({ session, patientFirstName, patientLastName }) => ({
+        ...mapDbSession(session),
+        images: [] as string[],
+        patientName: `${patientFirstName} ${patientLastName}`.trim(),
+      }));
       return c.json({
         success: true,
         sessions,
@@ -414,7 +446,13 @@ sessionsRoutes.post(
         clinicId: user?.clinicId ?? patient.clinicId ?? null,
       });
 
-      await replaceSessionImages(session.id, sessionImages);
+      await replaceSessionImages(session.id, sessionImages, {
+        bucket: getR2Bucket(c.env as { BUCKET?: R2Bucket }),
+        userId: user.userId,
+      });
+
+      const resolvedImages =
+        (await loadSessionImagesMap([session.id]))[session.id] ?? sessionImages;
 
       await syncClinicalRetentionForSession({
         sessionId: session.id,
@@ -424,7 +462,7 @@ sessionsRoutes.post(
         updatedAtIso: session.updatedAt,
       });
 
-      return c.json({ success: true, session: { ...session, images: sessionImages } }, 201);
+      return c.json({ success: true, session: { ...session, images: resolvedImages } }, 201);
     } catch (error) {
       console.error('Error creando sesión:', error);
       const saveErr = sessionSaveErrorResponse(error);
@@ -646,8 +684,14 @@ sessionsRoutes.put(
         .where(eq(sessionsTable.id, sessionId));
 
       if (body.images !== undefined) {
-        await replaceSessionImages(sessionId, updatedImages);
+        await replaceSessionImages(sessionId, updatedImages, {
+          bucket: getR2Bucket(c.env as { BUCKET?: R2Bucket }),
+          userId: user.userId,
+        });
       }
+
+      const imageMap = await loadSessionImagesMap([sessionId]);
+      const resolvedImages = imageMap[sessionId] ?? updatedImages;
 
       await syncClinicalRetentionForSession({
         sessionId,
@@ -657,7 +701,7 @@ sessionsRoutes.put(
         updatedAtIso: updatedSession.updatedAt,
       });
 
-      return c.json({ success: true, session: { ...updatedSession, images: updatedImages } });
+      return c.json({ success: true, session: { ...updatedSession, images: resolvedImages } });
     } catch (error) {
       console.error('Error actualizando sesión:', error);
       const saveErr = sessionSaveErrorResponse(error);

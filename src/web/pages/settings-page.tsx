@@ -14,6 +14,7 @@ import { WorkspaceWatermarkSettingsSection } from "../components/settings/worksp
 import { CountrySelect } from "../components/settings/country-select";
 import { phonePlaceholderForCountry } from "../lib/whatsapp-web-link";
 import { DEFAULT_TENANT_COUNTRY, resolveTenantCountryCode } from "../../lib/phone-country";
+import { compressImageForLogo } from "../lib/image-compress";
 
 interface ClinicInfoForm {
   clinicName: string;
@@ -506,33 +507,30 @@ const SettingsPage = () => {
     }
   };
 
-  const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!canUploadLogo || isLogoBlocked) return;
     
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Validate file type (solo JPEG/PNG/WebP; sin SVG por seguridad)
     const validTypes = ["image/png", "image/jpeg", "image/jpg", "image/webp"];
     if (!validTypes.includes(file.type)) {
       setLogoError("Formato no válido. Use PNG, JPG o WebP (máx. 2MB).");
       return;
     }
 
-    // Validate file size (max 2MB)
     if (file.size > 2 * 1024 * 1024) {
       setLogoError("El archivo es demasiado grande. Máximo 2MB.");
       return;
     }
 
     setLogoError(null);
-
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const base64 = event.target?.result as string;
+    try {
+      const base64 = await compressImageForLogo(file);
       setLogoPreview(base64);
-    };
-    reader.readAsDataURL(file);
+    } catch (err) {
+      setLogoError(err instanceof Error ? err.message : "No se pudo procesar la imagen.");
+    }
   };
 
   const handleSaveLogo = async () => {
@@ -570,33 +568,30 @@ const SettingsPage = () => {
   };
 
   // Professional logo upload handler for independent podiatrists
-  const handleProfessionalLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleProfessionalLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!isPodiatristIndependent) return;
     
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Validate file type (solo JPEG/PNG/WebP; sin SVG por seguridad)
     const validTypes = ["image/png", "image/jpeg", "image/jpg", "image/webp"];
     if (!validTypes.includes(file.type)) {
       setLogoError("Formato no válido. Use PNG, JPG o WebP (máx. 2MB).");
       return;
     }
 
-    // Validate file size (max 2MB)
     if (file.size > 2 * 1024 * 1024) {
       setLogoError("El archivo es demasiado grande. Máximo 2MB.");
       return;
     }
 
     setLogoError(null);
-
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const base64 = event.target?.result as string;
+    try {
+      const base64 = await compressImageForLogo(file);
       setLogoPreview(base64);
-    };
-    reader.readAsDataURL(file);
+    } catch (err) {
+      setLogoError(err instanceof Error ? err.message : "No se pudo procesar la imagen.");
+    }
   };
 
   const handleSaveProfessionalLogo = async () => {

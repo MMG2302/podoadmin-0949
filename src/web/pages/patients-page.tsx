@@ -4,7 +4,7 @@ import { MainLayout } from "../components/layout/main-layout";
 import { useLanguage } from "../contexts/language-context";
 import { useAuth } from "../contexts/auth-context";
 import { usePermissions } from "../hooks/use-permissions";
-import type { Patient, ClinicalSession } from "../types/clinical";
+import type { Patient } from "../types/clinical";
 import { postAuditLog } from "../lib/audit-client";
 import {
   PatientClinicalAlertsSection,
@@ -14,7 +14,9 @@ import { PatientEvolutionNotesSection } from "../components/patients/patient-evo
 import { PatientEvolutionReportButton } from "../components/sessions/session-clinical-extras";
 import { api } from "../lib/api-client";
 import { useClinicalLayout } from "../hooks/use-clinical-layout";
-import { useClinicalListData, invalidateClinicalListCache } from "../hooks/use-clinical-list-data";
+import { useClinicalListPage } from "../hooks/use-clinical-list-page";
+import { fetchPatientById } from "../hooks/use-patient-picker";
+import { invalidateClinicalListCache } from "../hooks/use-clinical-list-data";
 import { ClinicalListError, ClinicalListLoading } from "../components/clinical/clinical-list-states";
 import { AppModal, AppModalBody, AppModalFooter, AppModalHeader } from "../components/ui/app-modal";
 import { isPatientFieldEnabled } from "../types/clinical-layout";
@@ -91,14 +93,27 @@ const PatientsPage = () => {
     isReceptionist && !!user?.assignedPodiatristIds?.length;
   const canCreatePatient = isPodiatrist || receptionistHasAssignedPodiatrists;
   
+  const [searchQuery, setSearchQuery] = useState("");
+  const [debouncedQ, setDebouncedQ] = useState("");
+
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedQ(searchQuery.trim()), 350);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
   const {
-    patients,
-    sessions,
+    items: patients,
+    hasMore,
     isLoading: clinicalListLoading,
+    isLoadingMore,
     error: clinicalListError,
     reload: reloadClinicalLists,
-  } = useClinicalListData();
-  const [searchQuery, setSearchQuery] = useState("");
+    loadMore,
+  } = useClinicalListPage<Patient>({
+    path: "/patients",
+    listKey: "patients",
+    filters: debouncedQ ? { q: debouncedQ } : {},
+  });
   const [showForm, setShowForm] = useState(false);
   const [editingPatient, setEditingPatient] = useState<Patient | null>(null);
   const [formData, setFormData] = useState<PatientFormData>(emptyForm);
@@ -149,35 +164,26 @@ const PatientsPage = () => {
 
   const sessionCountByPatient = useMemo(() => {
     const counts: Record<string, number> = {};
-    for (const s of sessions) {
-      counts[s.patientId] = (counts[s.patientId] ?? 0) + 1;
+    for (const p of patients) {
+      counts[p.id] = p.sessionCount ?? 0;
     }
     return counts;
-  }, [sessions]);
-
-  const filteredPatients = useMemo(() => {
-    if (!searchQuery) return patients;
-    const query = searchQuery.toLowerCase();
-    return patients.filter(
-      (p) =>
-        p.firstName.toLowerCase().includes(query) ||
-        p.lastName.toLowerCase().includes(query) ||
-        p.email.toLowerCase().includes(query) ||
-        p.phone.includes(query)
-    );
-  }, [patients, searchQuery]);
+  }, [patients]);
 
   // Abrir/cerrar automáticamente el modal de detalles según /patients?id=...
   useEffect(() => {
-    if (patientIdFromUrl) {
-      const patient = patients.find((p) => p.id === patientIdFromUrl);
-      if (patient) {
-        setSelectedPatient(patient);
-      }
-    } else {
-      // Si ya no hay id en la URL, cerramos el modal
+    if (!patientIdFromUrl) {
       setSelectedPatient(null);
+      return;
     }
+    const inList = patients.find((p) => p.id === patientIdFromUrl);
+    if (inList) {
+      setSelectedPatient(inList);
+      return;
+    }
+    void fetchPatientById(patientIdFromUrl).then((p) => {
+      if (p) setSelectedPatient(p);
+    });
   }, [patientIdFromUrl, patients]);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -1189,9 +1195,9 @@ const PatientsPage = () => {
         {clinicalListError && (
           <ClinicalListError message={clinicalListError} onRetry={() => void reloadClinicalLists()} />
         )}
-        {clinicalListLoading && filteredPatients.length === 0 ? (
+        {clinicalListLoading && patients.length === 0 ? (
           <ClinicalListLoading label="Cargando pacientes…" />
-        ) : filteredPatients.length === 0 ? (
+        ) : patients.length === 0 ? (
           <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-100 dark:border-gray-800 p-12 text-center">
             <div className="w-16 h-16 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center mx-auto mb-4">
               <svg className="w-8 h-8 text-gray-400 dark:text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -1221,7 +1227,7 @@ const PatientsPage = () => {
           <>
             {/* Mobile: Card Layout */}
             <div className="md:hidden space-y-3">
-              {filteredPatients.map((patient) => (
+              {patients.map((patient) => (
                 <div key={patient.id} className="mobile-card">
                   <div className="mobile-card-header">
                     <button
@@ -1295,7 +1301,7 @@ const PatientsPage = () => {
                     </tr>
                   </thead>
                   <tbody>
-                    {filteredPatients.map((patient) => (
+                    {patients.map((patient) => (
                       <tr key={patient.id} className="border-b border-gray-50 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800/50">
                         <td className="px-6 py-4">
                           <button
@@ -1349,6 +1355,18 @@ const PatientsPage = () => {
                 </table>
               </div>
             </div>
+            {hasMore && (
+              <div className="flex justify-center pt-4">
+                <button
+                  type="button"
+                  onClick={() => loadMore()}
+                  disabled={isLoadingMore}
+                  className="px-6 py-2.5 border border-gray-200 dark:border-gray-700 rounded-lg text-sm font-medium text-[#1a1a1a] dark:text-white hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-50"
+                >
+                  {isLoadingMore ? "Cargando…" : "Cargar más pacientes"}
+                </button>
+              </div>
+            )}
           </>
         )}
       </div>

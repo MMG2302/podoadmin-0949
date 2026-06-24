@@ -31,8 +31,9 @@
 | Build (`npm run build`) | ✅ Pasa | Bundle JS ~1.2 MB (aviso de rendimiento, no bloquea) |
 | `wrangler.json` production | ❌ Pendiente | Placeholders: `podoadmin-pendiente`, `PENDIENTE-DATABASE-ID` |
 | Secretos en Cloudflare | ❌ Pendiente | JWT, REFRESH, CSRF obligatorios |
-| Tests (`npm test`) | ❌ Roto | Falta `vitest.config.ts` (hay 7 archivos `.test.ts`) |
-| CI/CD | ❌ No existe | Deploy manual con Wrangler |
+| **Stripe (facturación)** | ❌ Pendiente | Claves, precios y webhook — **requerido para cobrar suscripciones** |
+| Tests (`npm test`) | ✅ 45/45 | `vitest.config.ts` restaurado |
+| CI/CD | ⚠️ Parcial | `.github/workflows/ci.yml` (solo `bun run check`, sin tests) |
 | Deuda `localStorage` | ⚠️ Parcial | Ver `REVISION_PENDIENTE.md` |
 | Documentación | ✅ Buena | Varios MD; **este es el índice maestro operativo** |
 
@@ -63,6 +64,7 @@ Marca en orden. No saltar al deploy sin completar Fase 1 y 2.
 - [ ] `JWT_SECRET` → `wrangler secret put --env production`
 - [ ] `REFRESH_TOKEN_SECRET` → secret production
 - [ ] `CSRF_SECRET` → secret production
+- [ ] **Stripe** — cuenta, precios, secretos y webhook (ver [§5.2](#52-stripe-facturación--dato-inicial-pendiente))
 - [ ] Email configurado (si registro / reset / verificación)
 - [ ] CAPTCHA configurado (si registro público)
 - [ ] (Opcional) Sentry, Safe Browsing, SUPPORT_EMAIL
@@ -75,8 +77,8 @@ Marca en orden. No saltar al deploy sin completar Fase 1 y 2.
 - [ ] Smoke tests (ver [§6.4](#64-smoke-tests-post-deploy))
 
 ### Fase 4 — Endurecimiento
-- [ ] Corregir `deploy:production` para incluir `--env production`
-- [ ] Restaurar `vitest.config.ts` y `npm test` verde
+- [x] Corregir `deploy:production` para incluir `--env production`
+- [x] Restaurar `vitest.config.ts` y `npm test` verde
 - [ ] Cerrar deuda alta de `REVISION_PENDIENTE.md`
 - [ ] Entorno staging (recomendado)
 - [ ] CI/CD en GitHub Actions (recomendado)
@@ -231,7 +233,61 @@ npx wrangler secret put CSRF_SECRET --env production
 
 Validación en código: `src/api/utils/validate-env.ts` y `validate-production-safety.ts`.
 
-### 5.2 Email transaccional
+### 5.2 Stripe (facturación) — dato inicial pendiente
+
+**Obligatorio** si en producción los podólogos/clínicas pagan por suscripción (acceso vía `stripe_paid`). Sin esto, `stripeEnabled` queda en `false` y checkout/portal devuelven 503.
+
+#### Cuenta y productos en Stripe Dashboard
+
+1. Crear cuenta Stripe (modo **test** primero, luego **live**).
+2. Crear **2 precios recurrentes mensuales** (alineados con `billing-pricing.ts`):
+   - **Clínica** — $100 USD/mes (hasta 8 podólogos por defecto)
+   - **Podólogo independiente** — $25 USD/mes
+3. Anotar cada `price_...` (ID de precio).
+
+#### Variables en Cloudflare (production)
+
+| Variable | Tipo | Obligatorio | Uso |
+|----------|------|-------------|-----|
+| `STRIPE_SECRET_KEY` | **secret** | Sí | API backend (`sk_live_...` o `sk_test_...`) |
+| `STRIPE_WEBHOOK_SECRET` | **secret** | Sí | Firma de `POST /api/stripe/webhook` (`whsec_...`) |
+| `STRIPE_PUBLISHABLE_KEY` | var | Sí (front) | Checkout / billing (`pk_live_...`) |
+| `STRIPE_PRICE_CLINIC_MONTHLY_STANDARD` | var | Sí* | Precio clínica mensual |
+| `STRIPE_PRICE_INDEPENDENT_MONTHLY` | var | Sí* | Precio independiente mensual |
+| `CLINIC_PODIATRIST_LIMIT` | var | No | Default `8` (podólogos incluidos en plan clínica) |
+
+\* En producción conviene configurar **ambos** precios.
+
+```bash
+npx wrangler secret put STRIPE_SECRET_KEY --env production
+npx wrangler secret put STRIPE_WEBHOOK_SECRET --env production
+# Vars en wrangler.json → env.production.vars:
+# STRIPE_PUBLISHABLE_KEY, STRIPE_PRICE_CLINIC_MONTHLY_STANDARD, STRIPE_PRICE_INDEPENDENT_MONTHLY
+```
+
+Referencia local: `.env.example` y `docs/DEV_MOCK_RESET.md`.
+
+#### Webhook en Stripe
+
+Stripe → **Developers → Webhooks → Add endpoint**:
+
+| Campo | Valor |
+|-------|--------|
+| URL | `https://app.tudominio.com/api/stripe/webhook` |
+| Eventos | `checkout.session.completed`, `customer.subscription.updated`, `customer.subscription.deleted` |
+
+Copiar el **Signing secret** → `STRIPE_WEBHOOK_SECRET`.
+
+#### Verificación
+
+```bash
+curl -s https://app.tudominio.com/api/public/config
+# stripeEnabled: true  ·  stripePublishableKey presente
+```
+
+En la app: **Facturación** → «Suscribirse» debe abrir Stripe Checkout (no `stripe_not_configured`).
+
+### 5.3 Email transaccional
 
 **Obligatorio** si hay registro público, verificación de email o reset de contraseña.
 
@@ -247,7 +303,7 @@ DNS del dominio de envío (reduce spam/phishing):
 - **DKIM** — firma; el proveedor da registros TXT
 - **DMARC** — política de rechazo/cuarentena
 
-### 5.3 CAPTCHA (registro público)
+### 5.4 CAPTCHA (registro público)
 
 Recomendado: **Cloudflare Turnstile**.
 
@@ -257,7 +313,7 @@ Recomendado: **Cloudflare Turnstile**.
 | `CAPTCHA_SITE_KEY` | var pública |
 | `CAPTCHA_SECRET_KEY` | secret |
 
-### 5.4 Opcionales recomendables
+### 5.5 Opcionales recomendables
 
 | Variable | Uso |
 |----------|-----|
@@ -325,11 +381,12 @@ npx wrangler deploy --dry-run --env production
 | 4 | Dashboard | Carga sin errores en consola |
 | 5 | CRUD clínico | Crear/editar paciente, sesión, cita (según rol) |
 | 6 | Archivos R2 | Subir imagen o adjunto en sesión/paciente |
-| 7 | Email | Reset password o verificación (si email configurado) |
-| 8 | CORS | Sin errores de origen en consola del navegador |
-| 9 | Rate limit | Varios intentos de login fallidos → bloqueo razonable |
-| 10 | Logs | Error de API incluye `requestId` (JSON o cabecera `X-Request-Id`) |
-| 11 | Sistema | Super admin → `/system` (diagnóstico Worker + D1) |
+| 7 | **Stripe / billing** | `GET /api/public/config` → `stripeEnabled: true`; checkout y portal en `/billing` |
+| 8 | Email | Reset password o verificación (si email configurado) |
+| 9 | CORS | Sin errores de origen en consola del navegador |
+| 10 | Rate limit | Varios intentos de login fallidos → bloqueo razonable |
+| 11 | Logs | Error de API incluye `requestId` (JSON o cabecera `X-Request-Id`) |
+| 12 | Sistema | Super admin → `/system` (diagnóstico Worker + D1) |
 
 ---
 
@@ -421,6 +478,8 @@ npm run check                                # typecheck + build + dry-run defau
 npx wrangler secret put JWT_SECRET --env production
 npx wrangler secret put REFRESH_TOKEN_SECRET --env production
 npx wrangler secret put CSRF_SECRET --env production
+npx wrangler secret put STRIPE_SECRET_KEY --env production
+npx wrangler secret put STRIPE_WEBHOOK_SECRET --env production
 ```
 
 ### Alertas
@@ -443,6 +502,7 @@ npm run alerts:check:remote
 | 404 en ruta API nueva | Segmento no en lista blanca | `src/api/middleware/block-sensitive-paths.ts` |
 | Migraciones fallan | Schema desactualizado | `db:migrate:remote:production` tras cada release con cambios D1 |
 | Build falla en OneDrive | Sync de archivos | Usar `C:\proyectos\podoadmin-0949` |
+| Checkout / suscripción no funciona | Stripe sin configurar o `price_` incorrecto | §5.2: secretos + precios + webhook |
 | Emails no llegan | SPF/DKIM/DMARC o API key | Revisar proveedor + DNS |
 
 ---
@@ -456,6 +516,7 @@ npm run alerts:check:remote
 - ❌ Reutilizar secrets de desarrollo en production
 - ❌ `wrangler deploy` sin `--env production` cuando el objetivo es prod
 - ❌ Desplegar sin migraciones aplicadas en la D1 remota
+- ❌ Usar claves Stripe **test** (`sk_test_` / `pk_test_`) en production con clientes reales
 
 ---
 
@@ -519,4 +580,4 @@ Implementación: `scripts/prepare-deploy.cjs`
 
 ## Orden recomendado (resumen de una línea)
 
-**Local OK → D1+R2 → wrangler.json → secrets → migrate → super admin → deploy `--env production` → smoke tests → endurecimiento (tests, CI, deuda código).**
+**Local OK → D1+R2 → wrangler.json → secrets (JWT + Stripe) → migrate → super admin → deploy `--env production` → smoke tests → endurecimiento (tests, CI, deuda código).**

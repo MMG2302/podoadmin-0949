@@ -7,6 +7,8 @@ import { clinics as clinicsTable, patients as patientsTable, clinicCredits as cl
 import { logAuditEvent } from '../utils/audit-log';
 import { getClientIP } from '../utils/ip-tracking';
 import { validateLogoPayload } from '../utils/logo-upload';
+import { getR2Bucket, resolveLogoForClient, persistLogoPayload } from '../utils/r2-media';
+import { purgeLogoR2 } from '../utils/r2-purge';
 import { getSafeUserAgent } from '../utils/request-headers';
 import { sanitizePathParam } from '../utils/sanitization';
 import { checkLogoUploadRateLimit } from '../utils/action-rate-limit';
@@ -398,7 +400,7 @@ clinicsRoutes.get('/:clinicId/logo', async (c) => {
     return c.json({ error: 'Acceso denegado' }, 403);
   }
   const rows = await database.select({ logo: clinicsTable.logo }).from(clinicsTable).where(eq(clinicsTable.clinicId, clinicId)).limit(1);
-  const logo = rows[0]?.logo ?? null;
+  const logo = resolveLogoForClient(rows[0]?.logo ?? null, 'clinic', clinicId);
   return c.json({ success: true, logo });
 });
 
@@ -452,7 +454,14 @@ clinicsRoutes.put('/:clinicId/logo', async (c) => {
   }
   const logoUpdateRows = await database.select().from(clinicsTable).where(eq(clinicsTable.clinicId, clinicId)).limit(1);
   if (!logoUpdateRows[0]) return c.json({ error: 'Clínica no encontrada' }, 404);
-  await database.update(clinicsTable).set({ logo: validation.sanitized, logoUpdatedAt: new Date().toISOString() }).where(eq(clinicsTable.clinicId, clinicId));
+  const storedLogo = await persistLogoPayload(
+    validation.sanitized,
+    'clinic',
+    clinicId,
+    getR2Bucket(c.env as { BUCKET?: R2Bucket }),
+    logoUpdateRows[0].logo
+  );
+  await database.update(clinicsTable).set({ logo: storedLogo, logoUpdatedAt: new Date().toISOString() }).where(eq(clinicsTable.clinicId, clinicId));
   await logAuditEvent({
     userId: user.userId,
     action: 'UPDATE',
@@ -478,7 +487,7 @@ clinicsRoutes.delete('/:clinicId/logo', async (c) => {
   if (!user || !canEditClinic(user, clinicId)) {
     return c.json({ error: 'Acceso denegado' }, 403);
   }
-  const delLogoRows = await database.select({ logoUpdatedAt: clinicsTable.logoUpdatedAt }).from(clinicsTable).where(eq(clinicsTable.clinicId, clinicId)).limit(1);
+  const delLogoRows = await database.select({ logo: clinicsTable.logo, logoUpdatedAt: clinicsTable.logoUpdatedAt }).from(clinicsTable).where(eq(clinicsTable.clinicId, clinicId)).limit(1);
   if (!delLogoRows[0]) return c.json({ error: 'Clínica no encontrada' }, 404);
   if (!canBypassCooldown(user) && isWithinCooldown(delLogoRows[0].logoUpdatedAt)) {
     const nextAt = getNextAllowedAt(delLogoRows[0].logoUpdatedAt);
@@ -489,6 +498,7 @@ clinicsRoutes.delete('/:clinicId/logo', async (c) => {
       logoBlockedUntil: nextAt,
     }, 429);
   }
+  await purgeLogoR2(delLogoRows[0].logo, getR2Bucket(c.env as { BUCKET?: R2Bucket }));
   await database.update(clinicsTable).set({ logo: null, logoUpdatedAt: new Date().toISOString() }).where(eq(clinicsTable.clinicId, clinicId));
   await logAuditEvent({
     userId: user.userId,

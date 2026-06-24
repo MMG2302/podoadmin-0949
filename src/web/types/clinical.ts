@@ -42,6 +42,8 @@ export interface Patient {
   /** Presente cuando el API lo expone (campañas / filtros por clínica) */
   clinicId?: string | null;
   clinicalAlerts?: ClinicalAlert[];
+  /** Conteo de sesiones (listado paginado) */
+  sessionCount?: number;
 }
 
 export interface Appointment {
@@ -112,6 +114,8 @@ export interface ClinicalSession {
   nextAppointmentDate: string | null;
   followUpNotes: string | null;
   appointmentReason: AppointmentReason | null;
+  /** Nombre del paciente (listado paginado) */
+  patientName?: string;
 }
 
 export type ClinicalStatsMap = Record<

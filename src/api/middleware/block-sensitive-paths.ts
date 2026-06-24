@@ -34,7 +34,12 @@ const ALLOWED_API_FIRST_SEGMENTS: ReadonlySet<string> = new Set([
   'subscriptions',
   'prescriptions',
   'clinical',
+  'clinical-dashboard',
   'lab-attachments',
+  'session-images',
+  'media',
+  'admin',
+  'trial',
   'whatsapp-campaigns',
   'stripe',
 ]);

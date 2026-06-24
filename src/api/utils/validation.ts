@@ -327,11 +327,15 @@ export const clinicalListPaginationSchema = z.object({
 });
 
 /** Query: listado de pacientes */
-export const patientsListQuerySchema = clinicalListPaginationSchema;
+export const patientsListQuerySchema = clinicalListPaginationSchema.extend({
+  q: z.string().max(100).optional(),
+});
 
 /** Query: listado de sesiones */
 export const sessionsListQuerySchema = clinicalListPaginationSchema.extend({
   patient: z.string().max(128).optional(),
+  q: z.string().max(100).optional(),
+  status: z.enum(['all', 'draft', 'completed']).optional(),
 });
 
 /** Query: listado de citas */

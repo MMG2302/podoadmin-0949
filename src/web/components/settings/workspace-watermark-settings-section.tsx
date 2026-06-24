@@ -5,20 +5,15 @@ import {
   type WorkspaceWatermarkSource,
 } from "../../types/workspace-watermark";
 import { saveWorkspaceWatermark, useWorkspaceWatermark } from "../../hooks/use-workspace-watermark";
+import { compressImageForLogo } from "../../lib/image-compress";
 
 const MAX_FILE_BYTES = 2 * 1024 * 1024;
 
-function readImageFile(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    if (file.size > MAX_FILE_BYTES) {
-      reject(new Error("La imagen no puede superar 2 MB."));
-      return;
-    }
-    const reader = new FileReader();
-    reader.onload = () => resolve(String(reader.result));
-    reader.onerror = () => reject(new Error("No se pudo leer la imagen."));
-    reader.readAsDataURL(file);
-  });
+async function readImageFile(file: File): Promise<string> {
+  if (file.size > MAX_FILE_BYTES) {
+    throw new Error("La imagen no puede superar 2 MB.");
+  }
+  return compressImageForLogo(file);
 }
 
 export function WorkspaceWatermarkSettingsSection() {

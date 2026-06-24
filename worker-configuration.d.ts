@@ -8,6 +8,8 @@ declare namespace Cloudflare {
 	interface Env {
 		BUCKET: R2Bucket;
 		DB: D1Database;
+		RATE_LIMIT_KV: KVNamespace;
+		NOTIFICATIONS_QUEUE: Queue;
 		BETTER_AUTH_SECRET: string;
 		APP_BASE_URL: string;
 		AI_GATEWAY_BASE_URL: string;

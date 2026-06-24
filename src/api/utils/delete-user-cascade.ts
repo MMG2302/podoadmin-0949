@@ -28,6 +28,8 @@ import {
   sentMessages,
 } from '../database/schema';
 import { eq, inArray } from 'drizzle-orm';
+import { purgePatientMediaR2, purgeLogoR2 } from './r2-purge';
+import { getR2Bucket } from './r2-media';
 
 export async function deleteUserCascade(userId: string, userRecordId: string): Promise<{ deleted: boolean; error?: string }> {
   try {
@@ -64,6 +66,12 @@ export async function deleteUserCascade(userId: string, userRecordId: string): P
     await database.delete(twoFactorAuth).where(eq(twoFactorAuth.userId, userRecordId));
 
     // 3. Datos profesionales
+    const logoRows = await database
+      .select({ logo: professionalLogos.logo })
+      .from(professionalLogos)
+      .where(eq(professionalLogos.userId, userId))
+      .limit(1);
+    await purgeLogoR2(logoRows[0]?.logo, getR2Bucket());
     await database.delete(professionalLogos).where(eq(professionalLogos.userId, userId));
     await database.delete(professionalCredentials).where(eq(professionalCredentials.userId, userId));
     await database.delete(professionalLicenses).where(eq(professionalLicenses.userId, userId));
@@ -93,6 +101,18 @@ export async function deleteUserCascade(userId: string, userRecordId: string): P
             error: blockReason,
           };
         }
+      }
+      const bucket = getR2Bucket();
+      for (const pid of patientIds) {
+        const sessionsForPatient = await database
+          .select({ id: clinicalSessions.id })
+          .from(clinicalSessions)
+          .where(eq(clinicalSessions.patientId, pid));
+        await purgePatientMediaR2(
+          pid,
+          sessionsForPatient.map((s) => s.id),
+          bucket
+        );
       }
       await database.delete(appointments).where(inArray(appointments.patientId, patientIds));
       await database.delete(clinicalSessions).where(inArray(clinicalSessions.patientId, patientIds));

@@ -15,6 +15,8 @@ import {
 } from './retention-policy';
 import { hasActiveLegalHold } from './legal-hold';
 import { logAuditEvent } from './audit-log';
+import { purgePatientMediaR2 } from './r2-purge';
+import { getR2Bucket } from './r2-media';
 
 export type ClinicalPurgeStats = {
   patientsPurged: number;
@@ -106,8 +108,16 @@ export async function runClinicalRetentionPurge(): Promise<ClinicalPurgeStats> {
       .where(eq(appointments.patientId, p.id));
 
     if (sessionRows.length > 0) {
+      const bucket = getR2Bucket();
+      await purgePatientMediaR2(
+        p.id,
+        sessionRows.map((s) => s.id),
+        bucket
+      );
       await database.delete(clinicalSessions).where(eq(clinicalSessions.patientId, p.id));
       stats.sessionsPurged += sessionRows.length;
+    } else {
+      await purgePatientMediaR2(p.id, [], getR2Bucket());
     }
     if (apptRows.length > 0) {
       await database.delete(appointments).where(eq(appointments.patientId, p.id));

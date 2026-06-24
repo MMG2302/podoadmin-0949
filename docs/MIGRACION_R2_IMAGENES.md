@@ -1,6 +1,8 @@
 # Migración de imágenes de sesión a R2 / CDN
 
-Guía para pasar de almacenar imágenes como **data URI en el JSON de la sesión** a almacenarlas en **Cloudflare R2** (o S3) y guardar solo **URLs** en la base de datos. Reduce el tamaño del respaldo y mejora tiempos de respuesta.
+**Estado:** implementado en Fase 2b. Las nuevas imágenes de sesión y logos se suben a R2 cuando el binding `BUCKET` está disponible; las existentes en base64 siguen funcionando.
+
+Guía histórica para pasar de almacenar imágenes como **data URI en D1** a **R2** con URLs proxy por API.
 
 Ver también: `docs/ALIGERAR_SISTEMA.md` (opción 3), `DEFENSA_TEXTO_FOTOS.md`, `UPLOAD_ISOLATION.md`.
 

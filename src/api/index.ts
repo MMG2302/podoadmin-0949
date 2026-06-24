@@ -31,11 +31,15 @@ import whatsappMessagesRoutes from './routes/whatsapp-messages';
 import prescriptionsRoutes from './routes/prescriptions';
 import subscriptionsRoutes from './routes/subscriptions';
 import clinicalFeaturesRoutes from './routes/clinical-features';
+import clinicalDashboardRoutes from './routes/clinical-dashboard';
 import complianceRoutes from './routes/compliance';
 import labAttachmentsRoutes from './routes/lab-attachments';
+import sessionImagesRoutes from './routes/session-images';
+import mediaRoutes from './routes/media';
 import whatsappCampaignsRoutes from './routes/whatsapp-campaigns';
 import stripeWebhookRoutes from './routes/stripe-webhook';
 import trialActivationRoutes from './routes/trial-activation';
+import adminMediaRoutes from './routes/admin-media';
 import { requireActiveSubscription } from './middleware/subscription';
 import { getCaptchaConfig, isCaptchaExplicitlyDisabledInDev } from './utils/captcha';
 import { isEmailVerificationRequired } from './utils/email-verification';
@@ -128,6 +132,7 @@ app.get('/public/config', (c) => {
   const supportEmail = process.env.SUPPORT_EMAIL || process.env.ADMIN_EMAIL || '';
   const captchaConfig = getCaptchaConfig();
   const sentryDsn = process.env.SENTRY_DSN?.trim() || null;
+  c.header('Cache-Control', 'public, max-age=300, stale-while-revalidate=60');
   return c.json({
     officialDomain: officialDomain || null,
     supportEmail: supportEmail || null,
@@ -200,16 +205,23 @@ app.use('/professionals/*', requireActiveSubscription);
 app.use('/consent-document/*', requireActiveSubscription);
 app.use('/clinics/*', requireActiveSubscription);
 app.use('/lab-attachments/*', requireActiveSubscription);
+app.use('/session-images/*', requireActiveSubscription);
+app.use('/media/*', requireActiveSubscription);
+app.use('/clinical-dashboard/*', requireActiveSubscription);
 
 app.route('/users', usersRoutes);
 app.route('/patients', patientsRoutes);
 app.route('/sessions', sessionsRoutes);
 app.route('/prescriptions', prescriptionsRoutes);
 app.route('/subscriptions', subscriptionsRoutes);
+app.route('/admin/media', adminMediaRoutes);
 app.route('/trial', trialActivationRoutes);
 app.route('/clinical', clinicalFeaturesRoutes);
+app.route('/clinical-dashboard', clinicalDashboardRoutes);
 app.route('/compliance', complianceRoutes);
 app.route('/lab-attachments', labAttachmentsRoutes);
+app.route('/session-images', sessionImagesRoutes);
+app.route('/media', mediaRoutes);
 app.route('/whatsapp-campaigns', whatsappCampaignsRoutes);
 app.route('/2fa', twoFactorRoutes);
 app.route('/security-metrics', metricsRoutes);

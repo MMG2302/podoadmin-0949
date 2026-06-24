@@ -3,10 +3,6 @@
  * D1 limita cada celda TEXT a 2 MB; en base64 ~1,3 MB de binario es el techo seguro.
  */
 
-/** Lado máximo en píxeles. */
-const MAX_SIDE_PX = 1400;
-/** Objetivo de binario tras comprimir (base64 ≈ +33 %). */
-const TARGET_BINARY_BYTES = 900_000;
 const MIN_WEBP_QUALITY = 0.45;
 const INITIAL_WEBP_QUALITY = 0.82;
 
@@ -22,6 +18,19 @@ function binaryLengthFromDataUrl(dataUrl: string): number {
  * Devuelve un data URI listo para enviar al API (image/webp;base64,...).
  */
 export function compressImageForSession(file: File): Promise<string> {
+  return compressImage(file, { maxSidePx: 1400, targetBinaryBytes: 900_000 });
+}
+
+/** Logos y marca de agua: menor resolución, mismo formato WebP. */
+export function compressImageForLogo(file: File): Promise<string> {
+  return compressImage(file, { maxSidePx: 800, targetBinaryBytes: 400_000 });
+}
+
+function compressImage(
+  file: File,
+  opts: { maxSidePx: number; targetBinaryBytes: number }
+): Promise<string> {
+  const { maxSidePx, targetBinaryBytes } = opts;
   return new Promise((resolve, reject) => {
     const url = URL.createObjectURL(file);
     const img = new Image();
@@ -33,13 +42,13 @@ export function compressImageForSession(file: File): Promise<string> {
         const h = img.naturalHeight;
         let width = w;
         let height = h;
-        if (w > MAX_SIDE_PX || h > MAX_SIDE_PX) {
+        if (w > maxSidePx || h > maxSidePx) {
           if (w >= h) {
-            width = MAX_SIDE_PX;
-            height = Math.round((h * MAX_SIDE_PX) / w);
+            width = maxSidePx;
+            height = Math.round((h * maxSidePx) / w);
           } else {
-            height = MAX_SIDE_PX;
-            width = Math.round((w * MAX_SIDE_PX) / h);
+            height = maxSidePx;
+            width = Math.round((w * maxSidePx) / h);
           }
         }
 
@@ -61,14 +70,14 @@ export function compressImageForSession(file: File): Promise<string> {
 
         while (
           dataUrl.startsWith("data:image/webp") &&
-          binaryLengthFromDataUrl(dataUrl) > TARGET_BINARY_BYTES &&
+          binaryLengthFromDataUrl(dataUrl) > targetBinaryBytes &&
           quality > MIN_WEBP_QUALITY
         ) {
           quality = Math.max(MIN_WEBP_QUALITY, quality - 0.08);
           dataUrl = canvas.toDataURL("image/webp", quality);
         }
 
-        if (binaryLengthFromDataUrl(dataUrl) > TARGET_BINARY_BYTES * 1.15) {
+        if (binaryLengthFromDataUrl(dataUrl) > targetBinaryBytes * 1.15) {
           reject(
             new Error(
               "La imagen sigue siendo demasiado pesada tras comprimir. Pruebe con otra foto o recorte la imagen."

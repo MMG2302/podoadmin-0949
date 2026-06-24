@@ -6,7 +6,7 @@ import { validateData, createPatientSchema, updatePatientSchema, patientsListQue
 import { database } from '../database';
 import { patients as patientsTable, clinicalSessions as sessionsTable, appointments as appointmentsTable, creditTransactions as creditTransactionsTable, createdUsers as createdUsersTable } from '../database/schema';
 import { canUserAccess } from '../utils/user-retention';
-import { and, eq, inArray } from 'drizzle-orm';
+import { and, eq, inArray, sql } from 'drizzle-orm';
 import { logAuditEvent } from '../utils/audit-log';
 import { notifyPatientReassignment } from '../utils/notifications-service';
 import { getClientIP } from '../utils/ip-tracking';
@@ -19,9 +19,12 @@ import {
 import { normalizePhoneE164 } from '../../lib/phone-country';
 import { resolvePatientPhoneCountry } from '../utils/tenant-country';
 import { resolveClinicalListScope, mergeScopeWhere } from '../utils/clinical-list-scope';
+import { buildPatientSearchCondition, mergeAnd } from '../utils/clinical-list-search';
 import { parsePaginationQuery, buildPaginationMeta } from '../utils/pagination';
 import { generateNextPatientFolio } from '../utils/patient-folio';
 import { createDefaultMedicalHistory, normalizeMedicalHistory } from '../../web/types/medical-history';
+import { getR2Bucket } from '../utils/r2-media';
+import { purgePatientMediaR2 } from '../utils/r2-purge';
 
 const patientsRoutes = new Hono();
 
@@ -228,12 +231,14 @@ patientsRoutes.get(
         limit: queryResult.data.limit,
         offset: queryResult.data.offset,
       });
+      const searchQ = queryResult.data.q;
 
       const scope = await resolveClinicalListScope(user);
-      const where = mergeScopeWhere(scope, {
+      const scopeWhere = mergeScopeWhere(scope, {
         createdBy: patientsTable.createdBy,
         clinicId: patientsTable.clinicId,
       });
+      const where = mergeAnd(scopeWhere, buildPatientSearchCondition(searchQ ?? ''));
 
       let query = database.select().from(patientsTable).$dynamic();
       if (where) query = query.where(where);
@@ -242,7 +247,26 @@ patientsRoutes.get(
         .limit(pagination.limit)
         .offset(pagination.offset);
 
-      const patients = rows.map(mapDbPatient);
+      const patientIds = rows.map((r) => r.id);
+      const sessionCountByPatient = new Map<string, number>();
+      if (patientIds.length > 0) {
+        const countRows = await database
+          .select({
+            patientId: sessionsTable.patientId,
+            count: sql<number>`count(*)`,
+          })
+          .from(sessionsTable)
+          .where(inArray(sessionsTable.patientId, patientIds))
+          .groupBy(sessionsTable.patientId);
+        for (const row of countRows) {
+          sessionCountByPatient.set(row.patientId, Number(row.count));
+        }
+      }
+
+      const patients = rows.map((row) => ({
+        ...mapDbPatient(row),
+        sessionCount: sessionCountByPatient.get(row.id) ?? 0,
+      }));
       return c.json({
         success: true,
         patients,
@@ -747,10 +771,14 @@ patientsRoutes.delete(
       }
 
       // Cascade: eliminar en orden por restricciones FK
+      const bucket = getR2Bucket(c.env as { BUCKET?: R2Bucket });
       if (hasSessions) {
         const sessionIds = sessionsOfPatient.map((s) => s.id);
+        await purgePatientMediaR2(patientId, sessionIds, bucket);
         await database.delete(creditTransactionsTable).where(inArray(creditTransactionsTable.sessionId, sessionIds));
         await database.delete(sessionsTable).where(eq(sessionsTable.patientId, patientId));
+      } else {
+        await purgePatientMediaR2(patientId, [], bucket);
       }
       if (hasAppointments) {
         await database.delete(appointmentsTable).where(eq(appointmentsTable.patientId, patientId));

@@ -28,6 +28,28 @@
       "binding": "BUCKET"
     }
   ],
+  "kv_namespaces": [
+    {
+      "binding": "RATE_LIMIT_KV",
+      "id": "local-rate-limit-kv-dev"
+    }
+  ],
+  "queues": {
+    "producers": [
+      {
+        "binding": "NOTIFICATIONS_QUEUE",
+        "queue": "podoadmin-notifications"
+      }
+    ],
+    "consumers": [
+      {
+        "queue": "podoadmin-notifications",
+        "max_batch_size": 10,
+        "max_batch_timeout": 5,
+        "max_retries": 3
+      }
+    ]
+  },
   "env": {
     "production": {
       "name": "podoadmin-pendiente",
@@ -57,7 +79,29 @@
           "bucket_name": "podoadmin-prod",
           "binding": "BUCKET"
         }
-      ]
+      ],
+      "kv_namespaces": [
+        {
+          "binding": "RATE_LIMIT_KV",
+          "id": "PENDIENTE-KV-NAMESPACE-ID"
+        }
+      ],
+      "queues": {
+        "producers": [
+          {
+            "binding": "NOTIFICATIONS_QUEUE",
+            "queue": "podoadmin-notifications-prod"
+          }
+        ],
+        "consumers": [
+          {
+            "queue": "podoadmin-notifications-prod",
+            "max_batch_size": 10,
+            "max_batch_timeout": 5,
+            "max_retries": 3
+          }
+        ]
+      }
     }
   }
 }

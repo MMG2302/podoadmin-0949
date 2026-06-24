@@ -78,13 +78,23 @@ Visibilidad centralizada en `clinical-list-scope.ts` (podólogo / recepcionista 
 
 ---
 
-## Fase 2 (pendiente — mayor impacto)
+## Fase 2
 
-1. **Rate limit en KV** en lugar de D1 por request (reduce writes ~70%)
-2. **Logos solo en R2** (no base64 en `clinics` / `professional_logos`)
-3. **Cola WhatsApp** para recordatorios horarios masivos
-4. **Listados lazy** en UI (no cargar todos los pacientes al entrar al dashboard)
-5. **D1 producción dedicada** con `database_id` real en `wrangler.toml`
+### Implementado (2a)
+
+1. **Rate limit middleware en KV** — `src/api/utils/kv-rate-limit.ts`; fallback D1 si KV no configurado
+2. **Cleanup `token_blacklist`** — cron diario junto a `rate_limit_attempts`
+3. **Migración `0036_scale_indexes_independents.sql`** — índices `created_by`, `session_date`, `updated_at`
+
+Ver análisis completo: `docs/CONCURRENCIA_CARGA_ALTA.md`
+
+### Pendiente (2b — mayor impacto restante)
+
+1. **Logos solo en R2** (no base64 en `clinics` / `professional_logos`)
+2. **Cola WhatsApp** para recordatorios horarios masivos
+3. **Listados lazy** en UI (no cargar todos los pacientes al entrar al dashboard)
+4. **D1 producción dedicada** con `database_id` real en `wrangler.json`
+5. **Caché KV** para `resolveSystemAccess` (sustituir Map en memoria)
 
 ---
 

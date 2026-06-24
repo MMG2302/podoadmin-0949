@@ -7,6 +7,7 @@ import {
   setStripeCustomerOnSubject,
 } from '../utils/subscription-service';
 import { logger } from '../utils/logger';
+import { invalidateBillingSubjectAccessCache } from '../utils/access-cache';
 
 const stripeWebhook = new Hono();
 
@@ -47,6 +48,7 @@ stripeWebhook.post('/', async (c) => {
         await setStripeCustomerOnSubject(subjectType, subjectId, String(session.customer));
         const stripeSub = await retrieveSubscription(String(session.subscription));
         await upsertSubscriptionFromStripe(subjectType, subjectId, stripeSub, String(session.customer));
+        await invalidateBillingSubjectAccessCache(subjectType, subjectId);
         break;
       }
       case 'customer.subscription.updated':
@@ -82,6 +84,7 @@ stripeWebhook.post('/', async (c) => {
           },
           String(sub.customer)
         );
+        await invalidateBillingSubjectAccessCache(subjectType, subjectId);
         break;
       }
       case 'invoice.paid': {
@@ -101,6 +104,7 @@ stripeWebhook.post('/', async (c) => {
           stripeSub,
           String(invoice.customer || stripeSub.customer)
         );
+        await invalidateBillingSubjectAccessCache(subjectType, subjectId);
         break;
       }
       default:

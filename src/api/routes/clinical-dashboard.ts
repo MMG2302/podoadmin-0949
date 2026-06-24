@@ -1,0 +1,100 @@
+import { Hono } from 'hono';
+import { and, desc, eq, gte, inArray, sql } from 'drizzle-orm';
+import { requireAuth } from '../middleware/auth';
+import { requireActiveSubscription } from '../middleware/subscription';
+import { database } from '../database';
+import { clinicalSessions, patients } from '../database/schema';
+import { mergeScopeWhere, resolveClinicalListScope } from '../utils/clinical-list-scope';
+
+const clinicalDashboardRoutes = new Hono();
+
+clinicalDashboardRoutes.use('*', requireAuth, requireActiveSubscription);
+
+clinicalDashboardRoutes.get('/overview', async (c) => {
+  const user = c.get('user')!;
+  const scope = await resolveClinicalListScope(user);
+
+  if (scope.mode === 'none') {
+    return c.json({
+      success: true,
+      patientCount: 0,
+      sessionsThisMonth: 0,
+      recentSessions: [],
+    });
+  }
+
+  const patientWhere = mergeScopeWhere(scope, {
+    createdBy: patients.createdBy,
+    clinicId: patients.clinicId,
+  });
+  const sessionWhere = mergeScopeWhere(scope, {
+    createdBy: clinicalSessions.createdBy,
+    clinicId: clinicalSessions.clinicId,
+  });
+
+  const patientCountRows = patientWhere
+    ? await database.select({ count: sql<number>`count(*)` }).from(patients).where(patientWhere)
+    : await database.select({ count: sql<number>`count(*)` }).from(patients);
+  const patientCount = Number(patientCountRows[0]?.count ?? 0);
+
+  const now = new Date();
+  const monthStart = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
+
+  const sessionsThisMonthRows = sessionWhere
+    ? await database
+        .select({ count: sql<number>`count(*)` })
+        .from(clinicalSessions)
+        .where(and(sessionWhere, gte(clinicalSessions.sessionDate, monthStart)))
+    : await database
+        .select({ count: sql<number>`count(*)` })
+        .from(clinicalSessions)
+        .where(gte(clinicalSessions.sessionDate, monthStart));
+  const sessionsThisMonth = Number(sessionsThisMonthRows[0]?.count ?? 0);
+
+  const recentQuery = database
+    .select({
+      id: clinicalSessions.id,
+      patientId: clinicalSessions.patientId,
+      sessionDate: clinicalSessions.sessionDate,
+      status: sql<string>`json_extract(${clinicalSessions.notes}, '$.status')`,
+      createdAt: clinicalSessions.createdAt,
+    })
+    .from(clinicalSessions)
+    .orderBy(desc(clinicalSessions.createdAt))
+    .limit(5);
+  const recentRows = sessionWhere
+    ? await recentQuery.where(sessionWhere)
+    : await recentQuery;
+
+  const patientIds = [...new Set(recentRows.map((r) => r.patientId))];
+  const patientNameById = new Map<string, string>();
+  if (patientIds.length > 0) {
+    const patientRows = await database
+      .select({
+        id: patients.id,
+        firstName: patients.firstName,
+        lastName: patients.lastName,
+      })
+      .from(patients)
+      .where(inArray(patients.id, patientIds));
+    for (const p of patientRows) {
+      patientNameById.set(p.id, `${p.firstName} ${p.lastName}`.trim());
+    }
+  }
+
+  return c.json({
+    success: true,
+    patientCount,
+    sessionsThisMonth,
+    recentSessions: recentRows.map((row) => ({
+      id: row.id,
+      patientId: row.patientId,
+      patientName: patientNameById.get(row.patientId) ?? 'Paciente',
+      sessionDate: row.sessionDate,
+      status: row.status === 'completed' ? 'completed' : 'draft',
+      createdAt: row.createdAt,
+    })),
+  });
+});
+
+export default clinicalDashboardRoutes;

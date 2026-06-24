@@ -12,6 +12,8 @@ import {
 import { logAuditEvent } from '../utils/audit-log';
 import { getClientIP } from '../utils/ip-tracking';
 import { validateLogoPayload } from '../utils/logo-upload';
+import { getR2Bucket, resolveLogoForClient, persistLogoPayload } from '../utils/r2-media';
+import { purgeLogoR2 } from '../utils/r2-purge';
 import { getSafeUserAgent } from '../utils/request-headers';
 import { sanitizePathParam } from '../utils/sanitization';
 import { checkLogoUploadRateLimit } from '../utils/action-rate-limit';
@@ -237,7 +239,7 @@ professionalsRoutes.get('/logo/:userId', async (c) => {
     return c.json({ error: 'Acceso denegado' }, 403);
   }
   const rows = await database.select().from(professionalLogosTable).where(eq(professionalLogosTable.userId, userId)).limit(1);
-  const logo = rows[0]?.logo ?? null;
+  const logo = resolveLogoForClient(rows[0]?.logo ?? null, 'professional', userId);
   return c.json({ success: true, logo });
 });
 
@@ -276,9 +278,21 @@ professionalsRoutes.put('/logo/:userId', async (c) => {
     });
     return c.json({ error: validation.error, message: validation.message }, 400);
   }
-  await database.insert(professionalLogosTable).values({ userId, logo: validation.sanitized }).onConflictDoUpdate({
+  const existingRows = await database
+    .select({ logo: professionalLogosTable.logo })
+    .from(professionalLogosTable)
+    .where(eq(professionalLogosTable.userId, userId))
+    .limit(1);
+  const storedLogo = await persistLogoPayload(
+    validation.sanitized,
+    'professional',
+    userId,
+    getR2Bucket(c.env as { BUCKET?: R2Bucket }),
+    existingRows[0]?.logo ?? null
+  );
+  await database.insert(professionalLogosTable).values({ userId, logo: storedLogo }).onConflictDoUpdate({
     target: professionalLogosTable.userId,
-    set: { logo: validation.sanitized },
+    set: { logo: storedLogo },
   });
   await logAuditEvent({
     userId: user.userId,
@@ -302,6 +316,12 @@ professionalsRoutes.delete('/logo/:userId', async (c) => {
   if (!user || !canAccessProfessional(user, userId)) {
     return c.json({ error: 'Acceso denegado' }, 403);
   }
+  const existingRows = await database
+    .select({ logo: professionalLogosTable.logo })
+    .from(professionalLogosTable)
+    .where(eq(professionalLogosTable.userId, userId))
+    .limit(1);
+  await purgeLogoR2(existingRows[0]?.logo, getR2Bucket(c.env as { BUCKET?: R2Bucket }));
   await database.delete(professionalLogosTable).where(eq(professionalLogosTable.userId, userId));
   await logAuditEvent({
     userId: user.userId,

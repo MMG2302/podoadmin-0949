@@ -47,9 +47,6 @@ declare global {
       ) => number;
       reset: (widgetId?: number) => void;
     };
-    onTurnstileLoad?: () => void;
-    onHcaptchaLoad?: () => void;
-    onRecaptchaLoad?: () => void;
   }
 }
 

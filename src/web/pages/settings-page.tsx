@@ -4,10 +4,12 @@ import { useLanguage } from "../contexts/language-context";
 import { useAuth } from "../contexts/auth-context";
 import { AnimatedThemeToggler } from "../components/ui/animated-theme-toggler";
 import { useDarkMode } from "../hooks/use-dark-mode";
-import { ProfessionalInfo, type Clinic } from "../lib/storage";
+import { ProfessionalInfo } from "../types/professional";
+import type { Clinic } from "../types/clinic";
 import { api } from "../lib/api-client";
 import { WhatsAppSettingsSection } from "../components/settings/whatsapp-settings-section";
 import { ComplianceSettingsSection } from "../components/settings/compliance-settings-section";
+import { ClinicalHistoriesDownloadSection } from "../components/settings/clinical-histories-download-section";
 import { SettingsTabBar, type SettingsTabId } from "../components/settings/settings-tab-bar";
 import { ClinicalLayoutSettingsSection } from "../components/settings/clinical-layout-settings-section";
 import { WorkspaceWatermarkSettingsSection } from "../components/settings/workspace-watermark-settings-section";
@@ -64,15 +66,19 @@ const SettingsPage = () => {
   const canConfigureWhatsApp =
     user?.role === "podiatrist" || user?.role === "clinic_admin";
   const showClinicalTab =
-    user?.role === "podiatrist" ||
-    user?.role === "clinic_admin" ||
-    user?.role === "receptionist";
+    user?.role === "podiatrist" || user?.role === "clinic_admin";
   const showClinicTab =
     user?.role === "clinic_admin" ||
     !!isPodiatristWithClinic ||
     !!isPodiatristIndependent;
 
   const [activeTab, setActiveTab] = useState<SettingsTabId>("general");
+
+  useEffect(() => {
+    if (!showClinicalTab && activeTab === "clinical") {
+      setActiveTab("general");
+    }
+  }, [showClinicalTab, activeTab]);
   
   const [userClinic, setUserClinic] = useState<Clinic | null>(null);
   const [saved, setSaved] = useState(false);
@@ -229,13 +235,16 @@ const SettingsPage = () => {
     }
   }, [userClinic]);
   
-  // Cargar professional info desde API (podólogos independientes)
+  // Cargar professional info desde API (podólogos)
   useEffect(() => {
-    if (isPodiatristIndependent && user?.id) {
-      api.get<{ success?: boolean; info?: ProfessionalInfo | null }>(`/professionals/info/${user.id}`).then((res) => {
+    if (user?.role === "podiatrist" && user?.id) {
+      api.get<{ success?: boolean; info?: ProfessionalInfo & { countryCode?: string } | null }>(`/professionals/info/${user.id}`).then((res) => {
         if (res.success && res.data?.info) {
-          setProfessionalInfoForm(res.data.info);
-        } else {
+          setProfessionalInfoForm({
+            ...res.data.info,
+            countryCode: res.data.info.countryCode || DEFAULT_TENANT_COUNTRY,
+          });
+        } else if (isPodiatristIndependent) {
           setProfessionalInfoForm({
             name: user?.name || "",
             phone: "",
@@ -251,7 +260,7 @@ const SettingsPage = () => {
         }
       });
     }
-  }, [isPodiatristIndependent, user?.id, user?.name, user?.email]);
+  }, [user?.role, user?.id, user?.name, user?.email, isPodiatristIndependent]);
   
   // Cargar professional license desde API
   useEffect(() => {
@@ -268,10 +277,11 @@ const SettingsPage = () => {
       api.get<{ success?: boolean; assignedPodiatristIds?: string[] }>(`/receptionists/assigned-podiatrists/${user.id}`).then((res) => {
         if (res.success && Array.isArray(res.data?.assignedPodiatristIds)) {
           setAssignedPodiatristIds(res.data.assignedPodiatristIds);
+          updateUser({ assignedPodiatristIds: res.data.assignedPodiatristIds });
         }
       });
     }
-  }, [isReceptionist, user?.id]);
+  }, [isReceptionist, user?.id, updateUser]);
 
   // Cargar professional credentials desde API (podólogos de clínica)
   useEffect(() => {
@@ -387,9 +397,15 @@ const SettingsPage = () => {
   };
   
   const handleSaveProfessionalInfo = async () => {
-    if (!isPodiatristIndependent || !user?.id) return;
+    if (user?.role !== "podiatrist" || !user?.id) return;
+    if (!isPodiatristIndependent && !isPodiatristWithClinic) return;
     try {
-      const res = await api.put<{ success?: boolean }>(`/professionals/info/${user.id}`, professionalInfoForm);
+      const payload = {
+        ...professionalInfoForm,
+        name: professionalInfoForm.name || user.name || "",
+        email: professionalInfoForm.email || user.email || "",
+      };
+      const res = await api.put<{ success?: boolean }>(`/professionals/info/${user.id}`, payload);
       if (res.success) {
         setProfessionalInfoSaved(true);
         setTimeout(() => setProfessionalInfoSaved(false), 2000);
@@ -1926,6 +1942,46 @@ const SettingsPage = () => {
             </p>
             
             <div className="space-y-6">
+              <div className="rounded-lg border border-emerald-100 bg-emerald-50/60 p-4 space-y-4">
+                <div>
+                  <h4 className="text-sm font-semibold text-[#1a1a1a] dark:text-white">Teléfono de contacto</h4>
+                  <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">
+                    Aparece en documentos PDF. La recepción puede enviarte la agenda por WhatsApp directamente a este número si está configurado.
+                  </p>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">País (prefijo)</label>
+                  <CountrySelect
+                    value={professionalInfoForm.countryCode || DEFAULT_TENANT_COUNTRY}
+                    onChange={(code) => handleProfessionalInfoChange("countryCode", code)}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Teléfono móvil</label>
+                  <input
+                    type="tel"
+                    value={professionalInfoForm.phone}
+                    onChange={(e) => handleProfessionalInfoChange("phone", e.target.value)}
+                    placeholder={phonePlaceholderForCountry(
+                      resolveTenantCountryCode(professionalInfoForm.countryCode)
+                    )}
+                    className="w-full px-4 py-2.5 bg-white dark:bg-gray-900 text-[#1a1a1a] dark:text-white border border-gray-200 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-[#1a1a1a] dark:focus:ring-gray-500 focus:border-transparent transition-all"
+                  />
+                </div>
+                <div className="flex items-center gap-4">
+                  <button
+                    type="button"
+                    onClick={handleSaveProfessionalInfo}
+                    className="px-4 py-2 bg-[#1a1a1a] text-white rounded-lg text-sm font-medium hover:bg-[#2a2a2a] transition-colors"
+                  >
+                    Guardar teléfono
+                  </button>
+                  {professionalInfoSaved && (
+                    <span className="text-sm text-green-600 font-medium">Guardado</span>
+                  )}
+                </div>
+              </div>
+
               {/* Editable credentials */}
               <div className="grid gap-4">
                 <div>
@@ -2093,6 +2149,8 @@ const SettingsPage = () => {
             </div>
           </div>
         )}
+
+        {user?.role === "podiatrist" && <ClinicalHistoriesDownloadSection />}
 
         <ComplianceSettingsSection />
         </>

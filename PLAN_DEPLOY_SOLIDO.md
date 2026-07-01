@@ -29,12 +29,15 @@
 |------|--------|-------|
 | Arquitectura | ✅ Lista | Worker único: SPA (`dist/client`) + API (`/api/*`), D1, R2, crons |
 | Build (`npm run build`) | ✅ Pasa | Bundle JS ~1.2 MB (aviso de rendimiento, no bloquea) |
-| `wrangler.json` production | ❌ Pendiente | Placeholders: `podoadmin-pendiente`, `PENDIENTE-DATABASE-ID` |
+| `wrangler.json` production | ❌ Pendiente | Placeholders: `podoadmin-pendiente`, `PENDIENTE-DATABASE-ID`, `PENDIENTE-KV-NAMESPACE-ID` |
 | Secretos en Cloudflare | ❌ Pendiente | JWT, REFRESH, CSRF obligatorios |
+| **Email (Resend)** | ⚠️ Parcial | `RESEND_API_KEY` en `.dev.vars` (local ✅). Producción: `wrangler secret put` + `RESEND_FROM_EMAIL` pendiente |
 | **Stripe (facturación)** | ❌ Pendiente | Claves, precios y webhook — **requerido para cobrar suscripciones** |
+| **CAPTCHA (Turnstile)** | ⚠️ Parcial | Widget listo; pendiente site/secret key en production |
 | Tests (`npm test`) | ✅ 45/45 | `vitest.config.ts` restaurado |
+| Scripts `deploy:production` | ✅ Listo | Incluye `--env production` en `package.json` |
 | CI/CD | ⚠️ Parcial | `.github/workflows/ci.yml` (solo `bun run check`, sin tests) |
-| Deuda `localStorage` | ⚠️ Parcial | Ver `REVISION_PENDIENTE.md` |
+| Deuda `localStorage` | ✅ Cerrada | Tipos en `src/web/types/`; `storage.ts` eliminado |
 | Documentación | ✅ Buena | Varios MD; **este es el índice maestro operativo** |
 
 **Veredicto:** el código es desplegable; el cuello de botella es **configuración Cloudflare**, no arquitectura.
@@ -57,6 +60,7 @@ Marca en orden. No saltar al deploy sin completar Fase 1 y 2.
 ### Fase 1 — Cloudflare
 - [ ] D1 creada: `podoadmin-prod` + `database_id` anotado
 - [ ] R2 creado: bucket `podoadmin-prod`
+- [ ] KV creado: namespace rate limit + `id` en `RATE_LIMIT_KV`
 - [ ] `wrangler.json` → `env.production` completado (sin placeholders)
 - [ ] Dominio configurado (Custom Domain) o URL `*.workers.dev` decidida
 
@@ -65,21 +69,20 @@ Marca en orden. No saltar al deploy sin completar Fase 1 y 2.
 - [ ] `REFRESH_TOKEN_SECRET` → secret production
 - [ ] `CSRF_SECRET` → secret production
 - [ ] **Stripe** — cuenta, precios, secretos y webhook (ver [§5.2](#52-stripe-facturación--dato-inicial-pendiente))
-- [ ] Email configurado (si registro / reset / verificación)
-- [ ] CAPTCHA configurado (si registro público)
+- [x] **Resend (local)** — `RESEND_API_KEY` en `.dev.vars` (jun 2026)
+- [ ] **Resend (producción)** — `wrangler secret put RESEND_API_KEY --env production` + `RESEND_FROM_EMAIL` verificado
+- [ ] **Turnstile** — site key + secret en production (ver [§5.4](#54-captcha-registro-público))
 - [ ] (Opcional) Sentry, Safe Browsing, SUPPORT_EMAIL
 
 ### Fase 3 — Deploy
 - [ ] `npm run db:migrate:remote:production`
 - [ ] Super admin creado (script + SQL remoto)
-- [ ] `npm run build:production`
-- [ ] `npx wrangler deploy --env production` ← **siempre con `--env production`**
+- [ ] `npm run deploy:production` (build + deploy con `--env production`)
 - [ ] Smoke tests (ver [§6.4](#64-smoke-tests-post-deploy))
 
 ### Fase 4 — Endurecimiento
-- [x] Corregir `deploy:production` para incluir `--env production`
-- [x] Restaurar `vitest.config.ts` y `npm test` verde
-- [ ] Cerrar deuda alta de `REVISION_PENDIENTE.md`
+- [x] Limpieza legacy `storage.ts` (tipos en `src/web/types/`)
+- [ ] (Opcional) Quitar copia `podoadmin_user` de localStorage
 - [ ] Entorno staging (recomendado)
 - [ ] CI/CD en GitHub Actions (recomendado)
 - [ ] Backup D1 antes de migraciones grandes
@@ -118,6 +121,8 @@ npm run setup:env
 
 Genera `.dev.vars` con secretos locales. **No commitear** este archivo.
 
+**Estado (jun 2026):** `RESEND_API_KEY` configurada en `.dev.vars` para desarrollo local. Pendiente `RESEND_FROM_EMAIL` (dominio verificado en Resend) y secret en Cloudflare para producción (ver [§5.3](#53-email-transaccional)).
+
 Requisitos (validados por `scripts/prepare-deploy.cjs`):
 
 | Variable | Regla |
@@ -155,6 +160,9 @@ npx wrangler d1 create podoadmin-prod
 # Guardar el database_id que imprime el comando
 
 npx wrangler r2 bucket create podoadmin-prod
+
+npx wrangler kv namespace create "podoadmin-rate-limit-prod"
+# Guardar el id para RATE_LIMIT_KV en env.production
 ```
 
 En el dashboard: Workers habilitado, plan adecuado (Workers Paid si aplica volumen).
@@ -183,6 +191,10 @@ Sustituir **todos** los placeholders:
   "r2_buckets": [{
     "bucket_name": "podoadmin-prod",
     "binding": "BUCKET"
+  }],
+  "kv_namespaces": [{
+    "binding": "RATE_LIMIT_KV",
+    "id": "<ID-REAL-KV-NAMESPACE>"
   }]
 }
 ```
@@ -291,6 +303,12 @@ En la app: **Facturación** → «Suscribirse» debe abrir Stripe Checkout (no `
 
 **Obligatorio** si hay registro público, verificación de email o reset de contraseña.
 
+| Estado | Detalle |
+|--------|---------|
+| Local | ✅ `RESEND_API_KEY` en `.dev.vars` (jun 2026) |
+| Producción | ❌ `wrangler secret put RESEND_API_KEY --env production` |
+| Pendiente | `RESEND_FROM_EMAIL` — remitente verificado en Resend |
+
 | Proveedor | Secret / var |
 |-----------|----------------|
 | **Resend** (recomendado) | `RESEND_API_KEY` (secret), `RESEND_FROM_EMAIL` (var) |
@@ -305,13 +323,27 @@ DNS del dominio de envío (reduce spam/phishing):
 
 ### 5.4 CAPTCHA (registro público)
 
-Recomendado: **Cloudflare Turnstile**.
+Proveedor del proyecto: **[Cloudflare Turnstile](https://developers.cloudflare.com/turnstile/)** (hosted en Cloudflare, sin VPS ni Docker).
 
-| Variable | Tipo |
-|----------|------|
-| `CAPTCHA_PROVIDER` | `turnstile` |
-| `CAPTCHA_SITE_KEY` | var pública |
-| `CAPTCHA_SECRET_KEY` | secret |
+1. En [Cloudflare Dashboard](https://dash.cloudflare.com/) → Turnstile → crear widget.
+2. Añadir dominios: producción (`app.tudominio.com`) y, si pruebas en local, `localhost`.
+3. Configurar en Cloudflare (production):
+
+| Variable | Tipo | Uso |
+|----------|------|-----|
+| `CAPTCHA_PROVIDER` | var | `turnstile` (por defecto si se omite) |
+| `CAPTCHA_SITE_KEY` | var | Site key pública del widget |
+| `CAPTCHA_SECRET_KEY` | secret | Secret key para `siteverify` |
+
+```bash
+npx wrangler secret put CAPTCHA_SECRET_KEY --env production
+# Vars en wrangler.json → env.production.vars:
+# CAPTCHA_PROVIDER=turnstile, CAPTCHA_SITE_KEY=0x...
+```
+
+**Desarrollo local:** CAPTCHA desactivado por defecto. Para probar: `CAPTCHA_FORCE_IN_DEV=1` en `.dev.vars` + claves de prueba de Turnstile (ver `.dev.vars.example` y [testing keys](https://developers.cloudflare.com/turnstile/troubleshooting/testing/)).
+
+También se soportan hCaptcha y reCAPTCHA vía `CAPTCHA_PROVIDER`, pero **Turnstile es el camino previsto** (mismo ecosistema Cloudflare que el Worker).
 
 ### 5.5 Opcionales recomendables
 
@@ -355,38 +387,36 @@ Verificar login como `super_admin` en la URL de producción.
 
 ### 6.3 Deploy a producción
 
-> **Importante:** `npm run deploy:production` hace build con entorno production pero el script actual puede **no** pasar `--env production` a Wrangler. Para producción real, usar siempre:
-
 ```bash
-npm run build:production
-npx wrangler deploy --env production
+npm run deploy:production
 ```
+
+Equivale a `build:production` + `wrangler deploy --env production`.
 
 Dry-run previo:
 
 ```bash
-npm run build:production
-npx wrangler deploy --dry-run --env production
+npm run deploy:production:dry-run
 ```
 
-**No usar** `npm run deploy` a ciegas en producción: despliega el entorno por defecto (`sandbox-website-template`).
+**No usar** `npm run deploy` ni `wrangler deploy` sin `--env production`: despliega el entorno por defecto (`sandbox-website-template`).
 
 ### 6.4 Smoke tests post-deploy
 
 | # | Prueba | Cómo verificar |
 |---|--------|----------------|
-| 1 | Salud | `GET https://app.tudominio.com/api/health` → `{ "status": "ok", "timestamp": "..." }` |
+| 1 | Salud API | `GET https://app.tudominio.com/api/ping` → respuesta JSON con timestamp |
 | 2 | Login / logout | Super admin creado en §6.2 |
 | 3 | Anti-phishing | Pantalla login muestra dominio oficial |
-| 4 | Dashboard | Carga sin errores en consola |
-| 5 | CRUD clínico | Crear/editar paciente, sesión, cita (según rol) |
-| 6 | Archivos R2 | Subir imagen o adjunto en sesión/paciente |
-| 7 | **Stripe / billing** | `GET /api/public/config` → `stripeEnabled: true`; checkout y portal en `/billing` |
-| 8 | Email | Reset password o verificación (si email configurado) |
-| 9 | CORS | Sin errores de origen en consola del navegador |
-| 10 | Rate limit | Varios intentos de login fallidos → bloqueo razonable |
-| 11 | Logs | Error de API incluye `requestId` (JSON o cabecera `X-Request-Id`) |
-| 12 | Sistema | Super admin → `/system` (diagnóstico Worker + D1) |
+| 4 | Registro + Turnstile | Registro público completa el widget (si está habilitado) |
+| 5 | Dashboard | Carga sin errores en consola |
+| 6 | CRUD clínico | Crear/editar paciente, sesión, cita (según rol) |
+| 7 | Archivos R2 | Subir imagen o adjunto en sesión/paciente |
+| 8 | **Stripe / billing** | `GET /api/public/config` → `stripeEnabled: true`; checkout y portal en `/billing` |
+| 9 | Email | Reset password o verificación (si email configurado) |
+| 10 | CORS | Sin errores de origen en consola del navegador |
+| 11 | Rate limit | Varios intentos de login fallidos → bloqueo razonable |
+| 12 | Logs | Error de API incluye `requestId` (JSON o cabecera `X-Request-Id`) |
 
 ---
 
@@ -394,26 +424,22 @@ npx wrangler deploy --dry-run --env production
 
 Para que el deploy sea **sólido**, no solo “que arranque”.
 
-### 7.1 Correcciones técnicas en el repo
+### 7.1 Correcciones técnicas pendientes en el repo
 
 | Prioridad | Tarea | Motivo |
 |-----------|-------|--------|
-| **Alta** | Añadir `--env production` a scripts `deploy:production` y `deploy:production:dry-run` en `package.json` | Evita desplegar al sandbox |
-| **Alta** | Crear `vitest.config.ts` (7 tests existen) | Regresiones en políticas de seguridad |
-| **Media** | Cerrar `REVISION_PENDIENTE.md` (auth, créditos, audit solo API) | Una sola fuente de verdad en prod |
+| **Baja** | Quitar copia `podoadmin_user` de localStorage | Redundante con cookies de sesión |
 | **Media** | Code-splitting del bundle (~1.2 MB) | Tiempo de carga inicial |
+| **Media** | Ampliar CI: `npm test` + dry-run `--env production` | Regresiones y deploy al sandbox |
 | **Baja** | Unificar páginas auth públicas con `authPage` | Consistencia UI / modo oscuro |
 
 ### 7.2 Deuda localStorage (resumen)
 
 Archivo completo: `REVISION_PENDIENTE.md`.
 
-**Alta prioridad antes de confiar en prod multi-usuario:**
+**Migración funcional:** ✅ completa. **`storage.ts` eliminado;** tipos en `src/web/types/`.
 
-1. Auth backend sin `getAllUsersWithCredentials` / storage
-2. Usuarios desde API en frontend (no `getCreatedUsers()`)
-3. Créditos solo vía `/credits/me`
-4. Audit log escritura vía `api.post("/audit-logs")`
+**Opcional:** quitar copia `podoadmin_user` de localStorage en `auth-context`.
 
 ### 7.3 CI/CD sugerido (GitHub Actions)
 
@@ -435,7 +461,7 @@ Deploy real solo en merge a `main`, con secrets en GitHub (`CLOUDFLARE_API_TOKEN
 | Escenario | Tiempo |
 |-----------|--------|
 | MVP en Workers (sin dominio propio, sin email) | 2–4 h |
-| Producción seria (dominio, email, CAPTCHA, staging) | 1–2 días |
+| Producción seria (dominio, email, Turnstile, staging) | 1–2 días |
 | Producción + endurecimiento (tests, CI, deuda código) | 3–5 días |
 
 ---
@@ -466,9 +492,8 @@ npm run db:seed:local                        # solo local — NUNCA en prod
 ```bash
 npm run deploy:prep
 npm run deploy:prep:full
-npm run build:production
-npx wrangler deploy --env production
-npx wrangler deploy --dry-run --env production
+npm run deploy:production                    # build + deploy --env production
+npm run deploy:production:dry-run
 npm run check                                # typecheck + build + dry-run default
 ```
 
@@ -480,6 +505,7 @@ npx wrangler secret put REFRESH_TOKEN_SECRET --env production
 npx wrangler secret put CSRF_SECRET --env production
 npx wrangler secret put STRIPE_SECRET_KEY --env production
 npx wrangler secret put STRIPE_WEBHOOK_SECRET --env production
+npx wrangler secret put CAPTCHA_SECRET_KEY --env production   # si registro público con Turnstile
 ```
 
 ### Alertas
@@ -504,6 +530,8 @@ npm run alerts:check:remote
 | Build falla en OneDrive | Sync de archivos | Usar `C:\proyectos\podoadmin-0949` |
 | Checkout / suscripción no funciona | Stripe sin configurar o `price_` incorrecto | §5.2: secretos + precios + webhook |
 | Emails no llegan | SPF/DKIM/DMARC o API key | Revisar proveedor + DNS |
+| Registro falla en prod | Turnstile sin keys o dominio no autorizado en el widget | Ver §5.4; probar widget en login/registro |
+| Rate limit global no aplica | KV `RATE_LIMIT_KV` con placeholder | Crear namespace y actualizar `wrangler.json` |
 
 ---
 
@@ -528,7 +556,7 @@ npm run alerts:check:remote
 | Migraciones | Tras cada release con cambios en `src/api/migrations` |
 | Revisar logs | Cloudflare → Workers → Logs; correlacionar con `requestId` |
 | Rotación secrets | Cada 6–12 meses o tras incidente |
-| Health check externo | Monitor en `GET /api/health` |
+| Health check externo | Monitor en `GET /api/ping` |
 | Crons | Configurados en `wrangler.json` (mantenimiento horario) |
 
 ### Arquitectura de deploy (recordatorio)
@@ -558,7 +586,7 @@ Si añades `/api/mi-modulo/...`, registrar el primer segmento en:
 |---------|----------------|
 | **`PLAN_DEPLOY_SOLIDO.md`** (este) | Referencia constante y checklist completo |
 | `CHECKLIST_DEPLOY_PRODUCCION.md` | Lista de casillas pre-deploy |
-| `DESPLIEGUE_PRODUCCION.md` | Guía técnica (health, requestId, R2, rutas) |
+| `DESPLIEGUE_PRODUCCION.md` | Guía técnica (ping, requestId, R2, rutas) |
 | `PRODUCCION_CONFIG.md` | Tablas de variables y orden de configuración |
 | `ENV_VARIABLES.md` | Referencia exhaustiva de entorno |
 | `docs/DEPLOY_AHORA.md` | Guía corta “desplegar hoy” |
@@ -580,4 +608,4 @@ Implementación: `scripts/prepare-deploy.cjs`
 
 ## Orden recomendado (resumen de una línea)
 
-**Local OK → D1+R2 → wrangler.json → secrets (JWT + Stripe) → migrate → super admin → deploy `--env production` → smoke tests → endurecimiento (tests, CI, deuda código).**
+**Local OK → D1+R2+KV → wrangler.json → secrets (JWT + Stripe + Turnstile) → migrate → super admin → `npm run deploy:production` → smoke tests → endurecimiento (CI, deuda código).**

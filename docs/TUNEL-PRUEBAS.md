@@ -29,3 +29,4 @@ El puerto por defecto es **5173** (Vite). Si usas otro en `vite.config.ts`, edit
 - **Solo para pruebas**: no uses el túnel para tráfico real ni datos sensibles.
 - **CORS**: si tu API valida el origen, puede que tengas que permitir temporalmente el dominio `*.trycloudflare.com` en dev.
 - **HTTPS**: la URL del túnel es HTTPS; tu app local sigue en HTTP.
+- **CAPTCHA (Turnstile)**: funciona también por túnel (`*.trycloudflare.com`); no requiere servicio aparte.

@@ -23,6 +23,48 @@ export const podiatryFootLabel = (id: PodiatryFootType | null | undefined): stri
 export const podiatryArchLabel = (id: PodiatryArchType | null | undefined): string =>
   PODIATRY_ARCH_OPTIONS.find((o) => o.value === id)?.label ?? "—";
 
+function buildPodiatryValueLookup<T extends string>(
+  options: { value: T; label: string }[]
+): Map<string, T> {
+  const map = new Map<string, T>();
+  for (const opt of options) {
+    map.set(opt.value.toLowerCase(), opt.value);
+    map.set(
+      opt.label
+        .toLowerCase()
+        .normalize("NFD")
+        .replace(/\p{M}/gu, ""),
+      opt.value
+    );
+  }
+  return map;
+}
+
+const FOOT_VALUE_LOOKUP = buildPodiatryValueLookup(PODIATRY_FOOT_OPTIONS);
+const ARCH_VALUE_LOOKUP = buildPodiatryValueLookup(PODIATRY_ARCH_OPTIONS);
+
+/** Acepta ID canónico o etiqueta en español (p. ej. seed legacy: «Plano», «Egipcio»). */
+export function normalizePodiatryFootType(raw: unknown): PodiatryFootType | null {
+  if (raw == null || raw === "") return null;
+  const key = String(raw)
+    .trim()
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/\p{M}/gu, "");
+  return FOOT_VALUE_LOOKUP.get(key) ?? null;
+}
+
+/** Acepta ID canónico o etiqueta en español (p. ej. «Plano», «Cavo»). */
+export function normalizePodiatryArchType(raw: unknown): PodiatryArchType | null {
+  if (raw == null || raw === "") return null;
+  const key = String(raw)
+    .trim()
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/\p{M}/gu, "");
+  return ARCH_VALUE_LOOKUP.get(key) ?? null;
+}
+
 export type OnychopathyId =
   | "anoniquia"
   | "microniquia"

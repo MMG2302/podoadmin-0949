@@ -3,10 +3,18 @@ import {
   patients as patientsTable,
   clinicalSessions as sessionsTable,
   createdUsers,
+  clinics as clinicsTable,
+  professionalInfo as professionalInfoTable,
+  professionalLicenses as professionalLicensesTable,
+  professionalLogos as professionalLogosTable,
 } from '../database/schema';
 import { eq, or } from 'drizzle-orm';
 import { getAssignedPodiatristUserIds } from './tenant-isolation';
 import { formatPatientExport, mapDbPatient, mapDbSession } from './clinical-maps';
+import { resolveClinicalLayoutForUser } from './clinical-layout';
+import { resolveLogoForClient } from './r2-media';
+import type { ClinicalLayoutConfig } from '../../web/types/clinical-layout';
+import type { ClinicalSession, Patient } from '../../web/types/clinical';
 
 type Requester = {
   userId: string;
@@ -204,6 +212,153 @@ export async function buildUserClinicalExport(targetUserId: string, exportedByNa
     statistics: {
       totalPatients: profile.patientCount,
       totalSessions: profile.sessionCount,
+    },
+  };
+}
+
+export type PodiatristClinicalHistoriesBundle = {
+  exportedAt: string;
+  podiatristName: string;
+  podiatristLicense: string | null;
+  clinic: {
+    clinicName?: string;
+    legalName?: string;
+    rfc?: string;
+    clues?: string;
+    cofeprisRegistration?: string;
+    phone?: string;
+    email?: string;
+    address?: string;
+    city?: string;
+    postalCode?: string;
+    licenseNumber?: string;
+  } | null;
+  clinicLogo: string | null;
+  professional: {
+    name?: string;
+    phone?: string;
+    email?: string;
+    address?: string;
+    city?: string;
+    postalCode?: string;
+    licenseNumber?: string;
+    professionalLicense?: string;
+    license?: string;
+  } | null;
+  layout: ClinicalLayoutConfig;
+  patients: Patient[];
+  sessions: ClinicalSession[];
+  statistics: {
+    patientCount: number;
+    sessionCount: number;
+  };
+};
+
+/** Datos para generar HTML/PDF de todos los historiales del podólogo (solo su createdBy). */
+export async function buildPodiatristClinicalHistoriesBundle(
+  userId: string
+): Promise<PodiatristClinicalHistoriesBundle | null> {
+  const user = await getUserRowByAnyId(userId);
+  if (!user || user.role !== 'podiatrist') return null;
+
+  const patientRows = await database
+    .select()
+    .from(patientsTable)
+    .where(eq(patientsTable.createdBy, user.userId));
+  const sessionRows = await database
+    .select()
+    .from(sessionsTable)
+    .where(eq(sessionsTable.createdBy, user.userId));
+
+  const patients = patientRows.map(mapDbPatient).sort((a, b) => a.folio.localeCompare(b.folio));
+  const sessions = sessionRows.map(mapDbSession);
+
+  const layoutResolved = await resolveClinicalLayoutForUser({
+    role: user.role,
+    userId: user.userId,
+    clinicId: user.clinicId,
+  });
+
+  let clinic: PodiatristClinicalHistoriesBundle['clinic'] = null;
+  let clinicLogo: string | null = null;
+  if (user.clinicId) {
+    const clinicRows = await database
+      .select()
+      .from(clinicsTable)
+      .where(eq(clinicsTable.clinicId, user.clinicId))
+      .limit(1);
+    const row = clinicRows[0];
+    if (row) {
+      clinic = {
+        clinicName: row.clinicName ?? undefined,
+        legalName: row.legalName ?? undefined,
+        rfc: row.rfc ?? undefined,
+        clues: row.clues ?? undefined,
+        cofeprisRegistration: row.cofeprisRegistration ?? undefined,
+        phone: row.phone ?? undefined,
+        email: row.email ?? undefined,
+        address: row.address ?? undefined,
+        city: row.city ?? undefined,
+        postalCode: row.postalCode ?? undefined,
+        licenseNumber: row.licenseNumber ?? undefined,
+      };
+      clinicLogo = resolveLogoForClient(row.logo ?? null, 'clinic', user.clinicId);
+    }
+  }
+
+  let professional: PodiatristClinicalHistoriesBundle['professional'] = null;
+  let podiatristLicense: string | null = null;
+  const profRows = await database
+    .select()
+    .from(professionalInfoTable)
+    .where(eq(professionalInfoTable.userId, user.userId))
+    .limit(1);
+  if (profRows[0]) {
+    const p = profRows[0];
+    professional = {
+      name: p.name ?? undefined,
+      phone: p.phone ?? undefined,
+      email: p.email ?? undefined,
+      address: p.address ?? undefined,
+      city: p.city ?? undefined,
+      postalCode: p.postalCode ?? undefined,
+      licenseNumber: p.licenseNumber ?? undefined,
+      professionalLicense: p.professionalLicense ?? undefined,
+    };
+  }
+  const licenseRows = await database
+    .select({ license: professionalLicensesTable.license })
+    .from(professionalLicensesTable)
+    .where(eq(professionalLicensesTable.userId, user.userId))
+    .limit(1);
+  podiatristLicense =
+    licenseRows[0]?.license ||
+    professional?.professionalLicense ||
+    professional?.licenseNumber ||
+    null;
+
+  if (!clinicLogo) {
+    const logoRows = await database
+      .select({ logo: professionalLogosTable.logo })
+      .from(professionalLogosTable)
+      .where(eq(professionalLogosTable.userId, user.userId))
+      .limit(1);
+    clinicLogo = resolveLogoForClient(logoRows[0]?.logo ?? null, 'professional', user.userId);
+  }
+
+  return {
+    exportedAt: new Date().toISOString(),
+    podiatristName: user.name,
+    podiatristLicense,
+    clinic,
+    clinicLogo,
+    professional,
+    layout: layoutResolved.layout,
+    patients,
+    sessions,
+    statistics: {
+      patientCount: patients.length,
+      sessionCount: sessions.length,
     },
   };
 }

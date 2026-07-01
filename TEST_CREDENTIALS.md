@@ -216,6 +216,22 @@
 
 ---
 
+## 🛡️ Turnstile CAPTCHA (desarrollo local)
+
+En `.dev.vars` con `CAPTCHA_FORCE_IN_DEV=1` y claves de prueba de Cloudflare:
+
+| Variable | Valor de prueba (siempre pasa) |
+|----------|-------------------------------|
+| `CAPTCHA_PROVIDER` | `turnstile` |
+| `CAPTCHA_SITE_KEY` | `1x00000000000000000000AA` |
+| `CAPTCHA_SECRET_KEY` | `1x0000000000000000000000000000000AA` |
+
+Documentación: [Turnstile testing](https://developers.cloudflare.com/turnstile/troubleshooting/testing/)
+
+No requiere Docker ni segundo deploy. Funciona también vía túnel `*.trycloudflare.com` si el dominio del túnel está permitido en el widget de Turnstile (o usas claves de prueba).
+
+---
+
 ## 🚀 Cómo Validar Todo el Sistema
 
 ```bash

@@ -41,7 +41,7 @@ import stripeWebhookRoutes from './routes/stripe-webhook';
 import trialActivationRoutes from './routes/trial-activation';
 import adminMediaRoutes from './routes/admin-media';
 import { requireActiveSubscription } from './middleware/subscription';
-import { getCaptchaConfig, isCaptchaExplicitlyDisabledInDev } from './utils/captcha';
+import { getCaptchaConfig, isCaptchaExplicitlyDisabledInDev, isCaptchaRequiredForForms } from './utils/captcha';
 import { isEmailVerificationRequired } from './utils/email-verification';
 import { isStripeConfigured, getStripePublishableKey } from './utils/stripe-client';
 import { requestIdMiddleware } from './middleware/request-id';
@@ -137,10 +137,13 @@ app.get('/public/config', (c) => {
     officialDomain: officialDomain || null,
     supportEmail: supportEmail || null,
     captcha: captchaConfig
-      ? { provider: captchaConfig.provider, siteKey: captchaConfig.siteKey }
+      ? {
+          provider: captchaConfig.provider,
+          siteKey: captchaConfig.siteKey,
+        }
       : null,
     captchaDisabledInDev: isCaptchaExplicitlyDisabledInDev(),
-    captchaRequired: process.env.NODE_ENV === 'production',
+    captchaRequired: isCaptchaRequiredForForms(),
     emailVerificationRequired: isEmailVerificationRequired(),
     publicRegistrationEnabled: true,
     googleOAuthEnabled: Boolean(process.env.GOOGLE_CLIENT_ID?.trim()),

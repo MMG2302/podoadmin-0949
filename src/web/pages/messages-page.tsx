@@ -4,7 +4,7 @@ import { useLanguage } from "../contexts/language-context";
 import { useAuth } from "../contexts/auth-context";
 import { useRefreshOnFocus } from "../hooks/use-refresh-on-focus";
 import { api } from "../lib/api-client";
-import { SentMessage } from "../lib/storage";
+import { SentMessage } from "../types/message";
 
 type RecipientMode = "all" | "specific" | "single";
 type ViewMode = "compose" | "sent";

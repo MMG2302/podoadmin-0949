@@ -196,6 +196,14 @@ export function getSectionOptions(section: ClinicalLayoutSection): string[] {
   return (section.checklistItems ?? []).filter((x) => x.trim());
 }
 
+export const MAX_TABLE_COLUMNS = 6;
+
+export function getTableColumns(section: ClinicalLayoutSection): string[] {
+  const cols = (section.tableColumns ?? []).map((c) => c.trim()).filter(Boolean);
+  if (cols.length > 0) return cols.slice(0, MAX_TABLE_COLUMNS);
+  return ["Columna 1", "Columna 2"];
+}
+
 export function getCustomKindLabel(kind: CustomSectionKind): string {
   return CUSTOM_KIND_META[kind]?.label ?? "Personalizada";
 }
@@ -542,7 +550,7 @@ export function ensureTableRows(
   section: ClinicalLayoutSection,
   existing?: string[][]
 ): string[][] {
-  const cols = section.tableColumns?.length ?? 2;
+  const cols = getTableColumns(section).length;
   const rows = section.tableRowCount ?? 3;
   const current = existing ?? [];
   return Array.from({ length: rows }, (_, ri) =>

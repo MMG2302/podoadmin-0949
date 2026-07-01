@@ -56,7 +56,7 @@ export type ProfessionalPrintInfo = {
   license?: string;
 };
 
-type PodiatryHistoryPrintInput = {
+export type PodiatryHistoryPrintInput = {
   patient: Patient;
   sessions: ClinicalSession[];
   latestSession: ClinicalSession | null;
@@ -66,6 +66,8 @@ type PodiatryHistoryPrintInput = {
   podiatristName?: string;
   podiatristLicense?: string | null;
   layout?: ClinicalLayoutConfig;
+  /** Por defecto 10 filas en evolución; exportación masiva puede usar más. */
+  maxEvolutionRows?: number;
 };
 
 const esc = (value: unknown): string =>
@@ -82,6 +84,69 @@ const escAttr = (value: unknown): string =>
     .replaceAll("&", "&amp;")
     .replaceAll('"', "&quot;");
 
+function resolvePrintAssetUrl(url: string | null | undefined): string | null {
+  if (!url) return null;
+  const trimmed = url.trim();
+  if (!trimmed) return null;
+  if (trimmed.startsWith("data:") || /^https?:/i.test(trimmed)) return trimmed;
+  if (trimmed.startsWith("r2://")) {
+    const key = trimmed.slice(5);
+    const clinic = key.match(/^logos\/clinic\/(.+?)\.webp$/i);
+    if (clinic) return `/api/media/logo/clinic/${clinic[1]}`;
+    const prof = key.match(/^logos\/professional\/(.+?)\.webp$/i);
+    if (prof) return `/api/media/logo/professional/${prof[1]}`;
+    const sessionImg = key.match(/^sessions\/.+\/(.+?)\.webp$/i);
+    if (sessionImg) return `/api/session-images/${sessionImg[1]}/file`;
+  }
+  if (trimmed.startsWith("/")) {
+    if (typeof window !== "undefined" && window.location?.origin) {
+      return `${window.location.origin}${trimmed}`;
+    }
+    return trimmed;
+  }
+  return trimmed;
+}
+
+function toAbsoluteFetchUrl(resolved: string): string {
+  if (/^https?:/i.test(resolved)) return resolved;
+  if (typeof window !== "undefined" && window.location?.origin && resolved.startsWith("/")) {
+    return `${window.location.origin}${resolved}`;
+  }
+  return resolved;
+}
+
+function blobToDataUri(blob: Blob): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result));
+    reader.onerror = () => reject(reader.error ?? new Error("No se pudo leer la imagen"));
+    reader.readAsDataURL(blob);
+  });
+}
+
+/**
+ * Convierte logo/imagen de API o r2:// a data URI para HTML descargable (file:// sin sesión).
+ */
+export async function embedImageAsDataUri(src: string | null | undefined): Promise<string | null> {
+  if (!src?.trim()) return null;
+  const trimmed = src.trim();
+  if (trimmed.startsWith("data:")) return trimmed;
+
+  const resolved = resolvePrintAssetUrl(trimmed);
+  if (!resolved) return null;
+
+  const fetchUrl = toAbsoluteFetchUrl(resolved);
+  try {
+    const res = await fetch(fetchUrl, { credentials: "include" });
+    if (!res.ok) return resolved.startsWith("data:") ? resolved : null;
+    const blob = await res.blob();
+    if (!blob.size) return null;
+    return await blobToDataUri(blob);
+  } catch {
+    return null;
+  }
+}
+
 function resolveSessionImageSrc(img: unknown): string | null {
   if (img == null) return null;
   if (typeof img === "object" && "data" in (img as object)) {
@@ -94,6 +159,9 @@ function resolveSessionImageSrc(img: unknown): string | null {
   if (!trimmed) return null;
   if (/^data:image\//i.test(trimmed)) return trimmed;
   if (/^(blob:|https?:)/i.test(trimmed)) return trimmed;
+  if (trimmed.startsWith("r2://") || trimmed.startsWith("/api/")) {
+    return resolvePrintAssetUrl(trimmed);
+  }
   return `data:image/webp;base64,${trimmed.replace(/\s/g, "")}`;
 }
 
@@ -229,6 +297,19 @@ const PRINT_STYLES = `
     background: #fff;
   }
   .avoid-break { break-inside: avoid; page-break-inside: avoid; }
+  .document + .document {
+    page-break-before: always;
+    break-before: page;
+    margin-top: 8mm;
+  }
+  .export-cover {
+    margin: 0 auto 6mm;
+    padding: 6px 8px;
+    border: 1px solid var(--line);
+    background: var(--panel);
+    font-size: 9px;
+    max-width: 210mm;
+  }
   .diagram-row {
     display: flex;
     justify-content: space-between;
@@ -353,7 +434,7 @@ function buildClinicalPhotosHtml(sessions: ClinicalSession[]): string {
   `;
 }
 
-export function openPodiatryHistoryPrint(input: PodiatryHistoryPrintInput): boolean {
+export function buildPodiatryHistoryDocumentInner(input: PodiatryHistoryPrintInput): string {
   const {
     patient,
     sessions,
@@ -368,9 +449,6 @@ export function openPodiatryHistoryPrint(input: PodiatryHistoryPrintInput): bool
 
   const layout = inputLayout ?? createDefaultClinicalLayout();
   const printOn = (id: Parameters<typeof isSectionActive>[1]) => isSectionActive(layout, id, "print");
-
-  const printWindow = window.open("", "_blank");
-  if (!printWindow) return false;
 
   const clinicName =
     clinic?.legalName || clinic?.clinicName || professional?.name || podiatristName || "Consulta Podológica";
@@ -435,8 +513,9 @@ export function openPodiatryHistoryPrint(input: PodiatryHistoryPrintInput): bool
             </div>`
       : "";
 
+  const evolutionLimit = input.maxEvolutionRows ?? 10;
   const evolutionRows = sessions
-    .slice(0, 10)
+    .slice(0, evolutionLimit)
     .map(
       (s) => `
       <tr>
@@ -522,9 +601,11 @@ export function openPodiatryHistoryPrint(input: PodiatryHistoryPrintInput): bool
           </div>`
     : "";
 
+  const resolvedClinicLogo = resolvePrintAssetUrl(clinicLogo ?? null);
+
   const headerBlock = `
     <header class="head">
-      ${clinicLogo ? `<img src="${escAttr(clinicLogo)}" alt="Logo" />` : ""}
+      ${resolvedClinicLogo ? `<img src="${escAttr(resolvedClinicLogo)}" alt="Logo" />` : ""}
       <div style="flex:1">
         <h1>${esc(clinicName)}</h1>
         ${podiatristLicense ? `<div class="meta"><strong>Lic./Cédula:</strong> ${esc(podiatristLicense)}</div>` : ""}
@@ -543,15 +624,7 @@ export function openPodiatryHistoryPrint(input: PodiatryHistoryPrintInput): bool
     </header>
   `;
 
-  const html = `
-    <!DOCTYPE html>
-    <html lang="es">
-      <head>
-        <meta charset="UTF-8" />
-        <title>Historia Podológica - ${esc(patient.firstName)} ${esc(patient.lastName)}</title>
-        <style>${PRINT_STYLES}</style>
-      </head>
-      <body>
+  return `
         <div class="document">
           ${headerBlock}
 
@@ -626,9 +699,89 @@ export function openPodiatryHistoryPrint(input: PodiatryHistoryPrintInput): bool
             </p>
           </div>
         </div>
-      </body>
-    </html>
   `;
+}
+
+export function buildPodiatryHistoryPrintHtml(input: PodiatryHistoryPrintInput): string {
+  const title = `Historia Podológica - ${input.patient.firstName} ${input.patient.lastName}`;
+  const inner = buildPodiatryHistoryDocumentInner(input);
+  return `<!DOCTYPE html>
+    <html lang="es">
+      <head>
+        <meta charset="UTF-8" />
+        <title>${esc(title)}</title>
+        <style>${PRINT_STYLES}</style>
+      </head>
+      <body>${inner}</body>
+    </html>`;
+}
+
+export function buildCombinedPodiatryHistoriesPrintHtml(
+  inputs: PodiatryHistoryPrintInput[],
+  meta: { podiatristName?: string; exportedAt?: string }
+): string {
+  const title = `Historiales clínicos — ${meta.podiatristName || "Podólogo"}`;
+  const exportedLabel = meta.exportedAt
+    ? new Date(meta.exportedAt).toLocaleString("es-ES")
+    : new Date().toLocaleString("es-ES");
+  const cover =
+    inputs.length > 0
+      ? `<div class="export-cover"><strong>Exportación PodoAdmin</strong> · ${esc(exportedLabel)} · <strong>${inputs.length}</strong> paciente(s). Abra este archivo en el navegador y use <em>Imprimir → Guardar como PDF</em>.</div>`
+      : "";
+  const docs = inputs.map((item) => buildPodiatryHistoryDocumentInner(item)).join("");
+  return `<!DOCTYPE html>
+    <html lang="es">
+      <head>
+        <meta charset="UTF-8" />
+        <title>${esc(title)}</title>
+        <style>${PRINT_STYLES}</style>
+      </head>
+      <body>${cover}${docs}</body>
+    </html>`;
+}
+
+export function downloadHtmlFile(html: string, filename: string): boolean {
+  try {
+    const safeFilename = filename.replace(/[<>:"/\\|?*\u0000-\u001f]/g, "_").trim() || "historiales.html";
+    const blob = new Blob([html], { type: "text/html;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = safeFilename;
+    a.style.display = "none";
+    a.rel = "noopener";
+    document.body.appendChild(a);
+    a.click();
+    // Revocar tarde: si se hace al instante algunos navegadores cancelan la descarga.
+    window.setTimeout(() => {
+      a.remove();
+      URL.revokeObjectURL(url);
+    }, 5000);
+    return true;
+  } catch (err) {
+    console.error("downloadHtmlFile:", err);
+    return false;
+  }
+}
+
+/** Abre el HTML en una pestaña nueva (respaldo si falla la descarga directa). */
+export function openHtmlInNewTab(html: string): boolean {
+  try {
+    const blob = new Blob([html], { type: "text/html;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const tab = window.open(url, "_blank", "noopener,noreferrer");
+    if (!tab) return false;
+    window.setTimeout(() => URL.revokeObjectURL(url), 120_000);
+    return true;
+  } catch (err) {
+    console.error("openHtmlInNewTab:", err);
+    return false;
+  }
+}
+
+export function openHtmlForPrint(html: string): boolean {
+  const printWindow = window.open("", "_blank");
+  if (!printWindow) return false;
 
   printWindow.document.write(html);
   printWindow.document.close();
@@ -663,4 +816,44 @@ export function openPodiatryHistoryPrint(input: PodiatryHistoryPrintInput): bool
 
   window.setTimeout(triggerPrint, 4000);
   return true;
+}
+
+export function openPodiatryHistoryPrint(input: PodiatryHistoryPrintInput): boolean {
+  return openHtmlForPrint(buildPodiatryHistoryPrintHtml(input));
+}
+
+export type PodiatryHistoriesBundleForPrint = {
+  patients: Patient[];
+  sessions: ClinicalSession[];
+  clinicLogo?: string | null;
+  clinic: ClinicPrintInfo | null;
+  professional: ProfessionalPrintInfo | null;
+  podiatristName?: string;
+  podiatristLicense?: string | null;
+  layout?: ClinicalLayoutConfig;
+};
+
+/** Convierte el bundle de la API en entradas para impresión (un documento por paciente). */
+export function buildPodiatryPrintInputsFromBundle(
+  bundle: PodiatryHistoriesBundleForPrint,
+  options?: { maxEvolutionRows?: number }
+): PodiatryHistoryPrintInput[] {
+  const maxEvolutionRows = options?.maxEvolutionRows ?? 50;
+  return bundle.patients.map((patient) => {
+    const patientSessions = bundle.sessions
+      .filter((s) => s.patientId === patient.id)
+      .sort((a, b) => new Date(b.sessionDate).getTime() - new Date(a.sessionDate).getTime());
+    return {
+      patient,
+      sessions: patientSessions,
+      latestSession: patientSessions[0] ?? null,
+      clinicLogo: bundle.clinicLogo ?? undefined,
+      clinic: bundle.clinic,
+      professional: bundle.professional,
+      podiatristName: bundle.podiatristName,
+      podiatristLicense: bundle.podiatristLicense,
+      layout: bundle.layout,
+      maxEvolutionRows,
+    };
+  });
 }

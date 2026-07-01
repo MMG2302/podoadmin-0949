@@ -6,6 +6,7 @@ import type {
 import {
   ensureTableRows,
   getSectionOptions,
+  getTableColumns,
 } from "../../types/clinical-layout";
 
 const inputClass =
@@ -292,7 +293,7 @@ export function CustomSectionField({ section, value, readOnly = false, onPatch }
       );
 
     case "custom_table": {
-      const cols = section.tableColumns ?? ["Col 1", "Col 2"];
+      const cols = getTableColumns(section);
       const rows = ensureTableRows(section, val.tableRows);
       if (readOnly) {
         const hasData = rows.some((r) => r.some((c) => c.trim()));
@@ -414,7 +415,7 @@ export function CustomSectionPreview({ section }: { section: ClinicalLayoutSecti
     case "custom_table":
       return (
         <p className="mt-1 text-xs text-gray-500">
-          Tabla {section.tableRowCount ?? 3}×{(section.tableColumns ?? []).length}
+          Tabla {section.tableRowCount ?? 3}×{getTableColumns(section).length}
         </p>
       );
     default:

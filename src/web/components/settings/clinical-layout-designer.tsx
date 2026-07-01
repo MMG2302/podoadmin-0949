@@ -11,6 +11,9 @@ import {
   CUSTOM_KIND_META,
   CUSTOM_SECTION_KINDS,
   getCustomKindLabel,
+  getSectionOptions,
+  getTableColumns,
+  MAX_TABLE_COLUMNS,
   reorderSections,
 } from "../../types/clinical-layout";
 import { saveClinicalLayout } from "../../hooks/use-clinical-layout";
@@ -146,14 +149,15 @@ export function ClinicalLayoutDesigner({ initialLayout, canEdit, scope, onSaved 
   const addTableColumn = (sectionId: string) => {
     const section = layout.sections.find((s) => s.id === sectionId);
     if (!section) return;
-    const cols = [...(section.tableColumns ?? ["Columna 1"]), `Columna ${(section.tableColumns?.length ?? 0) + 1}`];
-    patchSection(sectionId, { tableColumns: cols });
+    const cols = getTableColumns(section);
+    if (cols.length >= MAX_TABLE_COLUMNS) return;
+    patchSection(sectionId, { tableColumns: [...cols, `Columna ${cols.length + 1}`] });
   };
 
   const updateTableColumn = (sectionId: string, index: number, value: string) => {
     const section = layout.sections.find((s) => s.id === sectionId);
     if (!section) return;
-    const cols = [...(section.tableColumns ?? [])];
+    const cols = [...getTableColumns(section)];
     cols[index] = value;
     patchSection(sectionId, { tableColumns: cols });
   };
@@ -161,7 +165,7 @@ export function ClinicalLayoutDesigner({ initialLayout, canEdit, scope, onSaved 
   const removeTableColumn = (sectionId: string, index: number) => {
     const section = layout.sections.find((s) => s.id === sectionId);
     if (!section) return;
-    const cols = (section.tableColumns ?? []).filter((_, i) => i !== index);
+    const cols = getTableColumns(section).filter((_, i) => i !== index);
     patchSection(sectionId, { tableColumns: cols.length > 0 ? cols : ["Columna 1"] });
   };
 

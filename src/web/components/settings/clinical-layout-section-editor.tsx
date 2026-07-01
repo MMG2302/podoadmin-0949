@@ -1,5 +1,10 @@
 import type { ClinicalLayoutSection } from "../../types/clinical-layout";
-import { CUSTOM_KIND_META, getSectionOptions } from "../../types/clinical-layout";
+import {
+  CUSTOM_KIND_META,
+  getSectionOptions,
+  getTableColumns,
+  MAX_TABLE_COLUMNS,
+} from "../../types/clinical-layout";
 
 type Props = {
   section: ClinicalLayoutSection;
@@ -22,6 +27,7 @@ function OptionListEditor({
   onUpdate,
   onRemove,
   addLabel,
+  maxItems,
 }: {
   label: string;
   hint?: string;
@@ -31,8 +37,10 @@ function OptionListEditor({
   onUpdate: (index: number, value: string) => void;
   onRemove: (index: number) => void;
   addLabel: string;
+  maxItems?: number;
 }) {
-  if (!canEdit) return null;
+  const atMax = maxItems != null && items.length >= maxItems;
+
   return (
     <div>
       <label className="block text-xs font-medium text-gray-500 mb-1">{label}</label>
@@ -41,31 +49,45 @@ function OptionListEditor({
         {items.map((item, index) => (
           <li key={`${index}-${item}`} className="flex items-center gap-2">
             <span className="text-xs text-gray-400 w-5 shrink-0">{index + 1}.</span>
-            <input
-              type="text"
-              value={item}
-              onChange={(e) => onUpdate(index, e.target.value)}
-              className="flex-1 px-3 py-2 text-sm border rounded-lg dark:bg-gray-950"
-            />
-            <button
-              type="button"
-              onClick={() => onRemove(index)}
-              disabled={items.length <= 1}
-              className="p-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-lg disabled:opacity-30"
-              title="Quitar"
-            >
-              ×
-            </button>
+            {canEdit ? (
+              <>
+                <input
+                  type="text"
+                  value={item}
+                  onChange={(e) => onUpdate(index, e.target.value)}
+                  className="flex-1 px-3 py-2 text-sm border rounded-lg dark:bg-gray-950"
+                />
+                <button
+                  type="button"
+                  onClick={() => onRemove(index)}
+                  disabled={items.length <= 1}
+                  className="p-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-lg disabled:opacity-30"
+                  title="Quitar"
+                >
+                  ×
+                </button>
+              </>
+            ) : (
+              <span className="flex-1 text-sm text-gray-700 dark:text-gray-300 py-2">{item}</span>
+            )}
           </li>
         ))}
       </ul>
-      <button
-        type="button"
-        onClick={onAdd}
-        className="mt-2 w-full py-2 text-sm border border-dashed border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 text-gray-600 dark:text-gray-300"
-      >
-        {addLabel}
-      </button>
+      {canEdit && (
+        <>
+          <button
+            type="button"
+            onClick={onAdd}
+            disabled={atMax}
+            className="mt-2 w-full py-2 text-sm border border-dashed border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 text-gray-600 dark:text-gray-300 disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            {addLabel}
+          </button>
+          {atMax && maxItems != null && (
+            <p className="text-xs text-gray-400 mt-1">Máximo {maxItems} columnas.</p>
+          )}
+        </>
+      )}
     </div>
   );
 }
@@ -166,31 +188,37 @@ export function ClinicalLayoutSectionEditor({
         </div>
       )}
 
-      {section.kind === "custom_table" && canEdit && (
+      {section.kind === "custom_table" && (
         <>
           <OptionListEditor
             label="Columnas de la tabla"
-            items={section.tableColumns ?? ["Columna 1"]}
+            hint="Nombre de cada columna (p. ej. producto, cantidad, lote)."
+            items={getTableColumns(section)}
             canEdit={canEdit}
             onAdd={onAddTableColumn}
             onUpdate={onUpdateTableColumn}
             onRemove={onRemoveTableColumn}
             addLabel="+ Añadir columna"
+            maxItems={MAX_TABLE_COLUMNS}
           />
           <div>
-            <label className="block text-xs font-medium text-gray-500 mb-1">Filas</label>
-            <input
-              type="number"
-              min={1}
-              max={10}
-              value={section.tableRowCount ?? 3}
-              onChange={(e) =>
-                onPatch({
-                  tableRowCount: Math.min(10, Math.max(1, Number(e.target.value) || 3)),
-                })
-              }
-              className="w-24 px-3 py-2 text-sm border rounded-lg dark:bg-gray-950"
-            />
+            <label className="block text-xs font-medium text-gray-500 mb-1">Filas en sesión</label>
+            {canEdit ? (
+              <input
+                type="number"
+                min={1}
+                max={10}
+                value={section.tableRowCount ?? 3}
+                onChange={(e) =>
+                  onPatch({
+                    tableRowCount: Math.min(10, Math.max(1, Number(e.target.value) || 3)),
+                  })
+                }
+                className="w-24 px-3 py-2 text-sm border rounded-lg dark:bg-gray-950"
+              />
+            ) : (
+              <p className="text-sm text-gray-700 dark:text-gray-300">{section.tableRowCount ?? 3}</p>
+            )}
           </div>
         </>
       )}

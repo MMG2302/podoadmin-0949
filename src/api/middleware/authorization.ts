@@ -129,23 +129,28 @@ export function requirePermission(...permissions: Permission[]) {
   });
 }
 
-/** Roles que pueden ver el diseño clínico (Configuración → Historia clínica). */
-const CLINICAL_LAYOUT_VIEW_ROLES: UserRole[] = [
+/** Lectura del diseño clínico (formularios de pacientes/sesiones). */
+const CLINICAL_LAYOUT_READ_ROLES: UserRole[] = [
   'super_admin',
   'clinic_admin',
   'podiatrist',
   'receptionist',
 ];
 
-/** Roles que pueden intentar guardar diseño (la lógica de negocio valida el alcance). */
+/** Roles que pueden guardar diseño (la lógica de negocio valida el alcance). */
 const CLINICAL_LAYOUT_EDIT_ROLES: UserRole[] = [
   'super_admin',
   'clinic_admin',
   'podiatrist',
 ];
 
+export function requireClinicalLayoutRead() {
+  return requireRole(...CLINICAL_LAYOUT_READ_ROLES);
+}
+
+/** @deprecated Usar requireClinicalLayoutRead */
 export function requireClinicalLayoutView() {
-  return requireRole(...CLINICAL_LAYOUT_VIEW_ROLES);
+  return requireClinicalLayoutRead();
 }
 
 export function requireClinicalLayoutEdit() {

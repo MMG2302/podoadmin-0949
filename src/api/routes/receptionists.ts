@@ -216,6 +216,7 @@ receptionistsRoutes.get('/assigned-podiatrists/:receptionistId', async (c) => {
       .from(createdUsers)
       .where(or(inArray(createdUsers.userId, ids), inArray(createdUsers.id, ids)));
     podiatrists = podRows.map((r) => ({ id: r.userId, name: r.name }));
+    ids = podiatrists.map((p) => p.id);
   }
   return c.json({ success: true, assignedPodiatristIds: ids, podiatrists });
 });

@@ -4,7 +4,7 @@ import { z } from 'zod';
 import { requireAuth } from '../middleware/auth';
 import {
   requireClinicalLayoutEdit,
-  requireClinicalLayoutView,
+  requireClinicalLayoutRead,
   requirePermission,
 } from '../middleware/authorization';
 import { requireActiveSubscription } from '../middleware/subscription';
@@ -480,7 +480,7 @@ ${clinicHeader}
 });
 
 // --- Diseño de historia clínica (secciones activables / personalizadas) ---
-clinicalRoutes.get('/layout', requireClinicalLayoutView(), async (c) => {
+clinicalRoutes.get('/layout', requireClinicalLayoutRead(), async (c) => {
   const user = c.get('user')!;
   const resolved = await resolveClinicalLayoutForUser(user);
   return c.json({

@@ -8,7 +8,12 @@
  */
 import type { ArchTypeId, FootTypeId } from "./podiatry-logo-foot";
 import type { ClinicalSession } from "../types/clinical";
-import { podiatryArchLabel, podiatryFootLabel } from "../types/podiatry";
+import {
+  normalizePodiatryArchType,
+  normalizePodiatryFootType,
+  podiatryArchLabel,
+  podiatryFootLabel,
+} from "../types/podiatry";
 
 export type PodiatryDiagramContext = {
   footType: FootTypeId | null;
@@ -238,8 +243,10 @@ export function detectPodiatryDiagramWithMeta(
 export function resolvePodiatryDiagramContext(sessions: ClinicalSession[]): DetectionMatch {
   const sorted = [...sessions].sort((a, b) => b.sessionDate.localeCompare(a.sessionDate));
 
-  const structuredFoot = sorted.find((s) => s.footType)?.footType ?? null;
-  const structuredArch = sorted.find((s) => s.archType)?.archType ?? null;
+  const structuredFootRaw = sorted.find((s) => s.footType)?.footType ?? null;
+  const structuredArchRaw = sorted.find((s) => s.archType)?.archType ?? null;
+  const structuredFoot = normalizePodiatryFootType(structuredFootRaw);
+  const structuredArch = normalizePodiatryArchType(structuredArchRaw);
 
   const textDetected = detectPodiatryDiagramWithMeta(
     sessions.flatMap((s) => [

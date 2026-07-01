@@ -33,7 +33,7 @@ const generateId = () => crypto.randomUUID();
 
 type DbPatient = typeof patientsTable.$inferSelect;
 
-// Mapea el registro de DB al shape esperado por el frontend (Patient de storage.ts)
+// Mapea el registro de DB al shape esperado por el frontend (Patient en web/types/clinical.ts)
 function mapDbPatient(row: DbPatient) {
   let medicalHistory = createDefaultMedicalHistory();
   let consent: any = { given: false, date: null };

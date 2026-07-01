@@ -9,7 +9,16 @@ import {
   createAppointmentSchema,
   updateAppointmentSchema,
   appointmentsListQuerySchema,
+  appointmentsExportQuerySchema,
 } from '../utils/validation';
+import {
+  assertAppointmentsExportAccess,
+  buildAppointmentsIcsForUser,
+  getClinicContactForAgendaExport,
+  getPodiatristDirectPhoneForExport,
+  resolveAgendaClinicId,
+  listAppointmentsForExport,
+} from '../utils/appointments-export';
 import { database } from '../database';
 import { appointments as appointmentsTable, createdUsers as createdUsersTable } from '../database/schema';
 import { canUserAccess } from '../utils/user-retention';
@@ -177,6 +186,107 @@ appointmentsRoutes.get('/', requirePermission('view_patients'), async (c) => {
     return c.json({ success: true, appointments });
   } catch (err) {
     console.error('Error listando citas:', err);
+    return c.json({ error: 'Error interno' }, 500);
+  }
+});
+
+function resolveExportPodiatristId(
+  user: { userId: string; role: string },
+  podiatristId?: string
+): string | undefined {
+  if (user.role === 'podiatrist') return user.userId;
+  return podiatristId;
+}
+
+/**
+ * GET /api/appointments/export/preview
+ * Vista previa de agenda del día (texto WhatsApp + datos de clínica).
+ */
+appointmentsRoutes.get('/export/preview', requirePermission('manage_appointments'), async (c) => {
+  try {
+    const user = c.get('user')!;
+    const queryResult = validateQuery(appointmentsExportQuerySchema, c.req.query());
+    if (!queryResult.success) {
+      return c.json({ error: 'Parámetros inválidos', message: queryResult.error, issues: queryResult.issues }, 400);
+    }
+    const { date } = queryResult.data;
+    const podiatristId = resolveExportPodiatristId(user, queryResult.data.podiatristId);
+
+    const access = await assertAppointmentsExportAccess(user, podiatristId);
+    if (!access.ok) {
+      return c.json({ error: 'Acceso denegado', message: access.message }, access.status);
+    }
+
+    const items = await listAppointmentsForExport(user, date, podiatristId);
+    const targetPodiatristId = podiatristId ?? items[0]?.podiatristId;
+    const agendaClinicId = await resolveAgendaClinicId(user, targetPodiatristId ?? undefined);
+    const { clinicPhone, clinicCountryCode } = await getClinicContactForAgendaExport(agendaClinicId);
+    const podiatristContact = targetPodiatristId
+      ? await getPodiatristDirectPhoneForExport(targetPodiatristId)
+      : { phone: null, countryCode: null };
+
+    return c.json({
+      success: true,
+      date,
+      podiatristId: targetPodiatristId ?? null,
+      podiatristName: items[0]?.podiatristName ?? null,
+      podiatristPhone: podiatristContact.phone,
+      podiatristCountryCode: podiatristContact.countryCode,
+      clinicPhone,
+      clinicCountryCode,
+      appointments: items,
+      count: items.length,
+    });
+  } catch (err) {
+    console.error('Error en vista previa de agenda:', err);
+    return c.json({ error: 'Error interno' }, 500);
+  }
+});
+
+/**
+ * GET /api/appointments/export/ics
+ * Descarga .ics del día para importar en calendario móvil.
+ */
+appointmentsRoutes.get('/export/ics', requirePermission('manage_appointments'), async (c) => {
+  try {
+    const user = c.get('user')!;
+    const queryResult = validateQuery(appointmentsExportQuerySchema, c.req.query());
+    if (!queryResult.success) {
+      return c.json({ error: 'Parámetros inválidos', message: queryResult.error, issues: queryResult.issues }, 400);
+    }
+    const { date } = queryResult.data;
+    const podiatristId = resolveExportPodiatristId(user, queryResult.data.podiatristId);
+
+    const access = await assertAppointmentsExportAccess(user, podiatristId);
+    if (!access.ok) {
+      return c.json({ error: 'Acceso denegado', message: access.message }, access.status);
+    }
+
+    const { ics, count, calendarName } = await buildAppointmentsIcsForUser(user, date, podiatristId);
+
+    await logAuditEvent({
+      userId: user.userId,
+      action: 'EXPORT',
+      resourceType: 'appointment',
+      resourceId: podiatristId ?? user.userId,
+      details: {
+        exportType: 'agenda_ics',
+        date,
+        appointmentCount: count,
+        podiatristId: podiatristId ?? null,
+      },
+      ipAddress: getClientIP(c.req.raw.headers),
+      userAgent: getSafeUserAgent(c),
+      clinicId: user.clinicId ?? undefined,
+    });
+
+    const safeDate = date.replace(/[^\d-]/g, '');
+    const filename = `agenda-${safeDate}.ics`;
+    c.header('Content-Type', 'text/calendar; charset=utf-8');
+    c.header('Content-Disposition', `attachment; filename="${filename}"`);
+    return c.body(ics);
+  } catch (err) {
+    console.error('Error exportando agenda ICS:', err);
     return c.json({ error: 'Error interno' }, 500);
   }
 });

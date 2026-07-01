@@ -2,6 +2,7 @@ import { and, eq, isNull } from 'drizzle-orm';
 
 import { database } from '../database';
 import { createdUsers } from '../database/schema';
+import { getCreatedUserByIdOrUserId } from './tenant-isolation';
 
 export const MAX_CLINIC_ACTIVE_RECEPTIONISTS = 10;
 export const MAX_INDEPENDENT_RECEPTIONISTS = 1;
@@ -79,7 +80,18 @@ export async function filterValidClinicPodiatristIds(
 ): Promise<string[]> {
   if (candidateIds.length === 0) return [];
   const allowed = new Set(await getClinicPodiatristUserIds(clinicId));
-  return candidateIds.filter((id) => allowed.has(id));
+  const normalized: string[] = [];
+  for (const id of candidateIds) {
+    if (allowed.has(id)) {
+      normalized.push(id);
+      continue;
+    }
+    const row = await getCreatedUserByIdOrUserId(id);
+    if (row?.role === 'podiatrist' && row.clinicId === clinicId && allowed.has(row.userId)) {
+      normalized.push(row.userId);
+    }
+  }
+  return [...new Set(normalized)];
 }
 
 export function canPodiatristManageReceptionist(

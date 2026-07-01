@@ -261,7 +261,24 @@ export interface Translations {
     holdRelease: string;
     holdsEmpty: string;
   };
-  
+
+  clinicalHistoriesExport: {
+    title: string;
+    subtitle: string;
+    desc: string;
+    stats: string;
+    downloadHtml: string;
+    printPdf: string;
+    pdfHint: string;
+    popupBlocked: string;
+    noPatients: string;
+    buildError: string;
+    downloadFailed: string;
+    downloadStarted: string;
+    openedInTab: string;
+    invalidResponse: string;
+  };
+
   // Navigation
   nav: {
     dashboard: string;
@@ -432,6 +449,17 @@ export interface Translations {
     errorCreateFailed: string;
     errorSaveFailed: string;
     errorDeleteFailed: string;
+    downloadIcs: string;
+    sendWhatsApp: string;
+    exportIcsHint: string;
+    exportWaHint: string;
+    exportSelectPodiatrist: string;
+    exportNoAppointments: string;
+    exportBusy: string;
+    exportWaHeader: string;
+    exportWaLine: string;
+    exportWaAttachHint: string;
+    exportWaInvalidPhone: string;
   };
   
   // Credits
@@ -1027,6 +1055,17 @@ export const translations: Record<Language, Translations> = {
       errorCreateFailed: "No se pudo crear la cita.",
       errorSaveFailed: "Error al guardar la cita.",
       errorDeleteFailed: "No se pudo eliminar la cita.",
+      downloadIcs: "Descargar .ics",
+      sendWhatsApp: "WhatsApp Web",
+      exportIcsHint: "Descarga las citas del día en formato calendario (.ics) para iOS o Android",
+      exportWaHint: "Descarga el .ics y abre WhatsApp. Si el podólogo tiene móvil en su perfil, se abre el chat directo; si no, eliges el contacto manualmente. Adjunta el .ics.",
+      exportSelectPodiatrist: "Selecciona un podólogo en el filtro para exportar la agenda.",
+      exportNoAppointments: "No hay citas programadas este día.",
+      exportBusy: "Exportando…",
+      exportWaHeader: "📅 Agenda del {{fecha}} — {{podólogo}} ({{count}} citas)",
+      exportWaLine: "• {{hora}} — {{paciente}} ({{duracion}} min) · {{telefono}}",
+      exportWaAttachHint: "📎 Se ha descargado el archivo agenda-.ics — adjúntalo en WhatsApp para importar al calendario del móvil.",
+      exportWaInvalidPhone: "El teléfono del podólogo no es válido para WhatsApp. Abre WhatsApp manualmente y pega el mensaje.",
     },
     credits: {
       title: "Créditos",
@@ -1444,6 +1483,22 @@ export const translations: Record<Language, Translations> = {
       holdRelease: "Liberar",
       holdsEmpty: "No hay bloqueos legales activos",
     },
+    clinicalHistoriesExport: {
+      title: "Descargar historiales clínicos",
+      subtitle: "Exporta todos tus expedientes en formato imprimible (HTML → PDF)",
+      desc: "Genera un archivo HTML con el mismo diseño que la impresión de sesiones. No se descarga JSON: abre el HTML en el navegador y guárdalo como PDF con Imprimir.",
+      stats: "{patients} paciente(s) · {sessions} sesión(es) incluidas",
+      downloadHtml: "Descargar HTML",
+      printPdf: "Imprimir / guardar PDF",
+      pdfHint: "En el diálogo de impresión del navegador elija «Guardar como PDF» como destino.",
+      popupBlocked: "Permita ventanas emergentes para abrir la vista de impresión.",
+      noPatients: "No hay pacientes en tu cuenta para exportar.",
+      buildError: "No se pudo generar el HTML del expediente. Revisa la consola o contacta soporte.",
+      downloadFailed: "No se pudo iniciar la descarga. Prueba «Imprimir / guardar PDF» o permite descargas del sitio.",
+      downloadStarted: "Descarga iniciada: {filename}",
+      openedInTab: "Se abrió el historial en una pestaña nueva. Use Imprimir → Guardar como PDF.",
+      invalidResponse: "La respuesta del servidor no incluye datos de pacientes válidos.",
+    },
   },
   
   en: {
@@ -1755,6 +1810,17 @@ export const translations: Record<Language, Translations> = {
       errorCreateFailed: "Could not create the appointment.",
       errorSaveFailed: "Error saving the appointment.",
       errorDeleteFailed: "Could not delete the appointment.",
+      downloadIcs: "Download .ics",
+      sendWhatsApp: "WhatsApp Web",
+      exportIcsHint: "Download the day's appointments as a calendar file (.ics) for iOS or Android",
+      exportWaHint: "Downloads the .ics and opens WhatsApp. If the podiatrist has a mobile on their profile, the chat opens directly; otherwise pick the contact manually. Attach the .ics.",
+      exportSelectPodiatrist: "Select a podiatrist in the filter to export the schedule.",
+      exportNoAppointments: "No scheduled appointments for this day.",
+      exportBusy: "Exporting…",
+      exportWaHeader: "📅 Schedule for {{fecha}} — {{podologo}} ({{count}} appointments)",
+      exportWaLine: "• {{hora}} — {{paciente}} ({{duracion}} min) · {{telefono}}",
+      exportWaAttachHint: "📎 The agenda-.ics file has been downloaded — attach it in WhatsApp to import to your mobile calendar.",
+      exportWaInvalidPhone: "The podiatrist's phone is not valid for WhatsApp. Open WhatsApp manually and paste the message.",
     },
     credits: {
       title: "Credits",
@@ -2167,6 +2233,22 @@ export const translations: Record<Language, Translations> = {
       holdRelease: "Release",
       holdsEmpty: "No active legal holds",
     },
+    clinicalHistoriesExport: {
+      title: "Download clinical histories",
+      subtitle: "Export all your records as printable HTML → PDF",
+      desc: "Generates an HTML file with the same layout as session print. No JSON download: open the HTML in your browser and save as PDF via Print.",
+      stats: "{patients} patient(s) · {sessions} session(s) included",
+      downloadHtml: "Download HTML",
+      printPdf: "Print / save PDF",
+      pdfHint: "In the browser print dialog choose «Save as PDF» as the destination.",
+      popupBlocked: "Allow pop-ups to open the print preview.",
+      noPatients: "There are no patients in your account to export.",
+      buildError: "Could not generate the record HTML. Check the console or contact support.",
+      downloadFailed: "Could not start the download. Try «Print / save PDF» or allow downloads from this site.",
+      downloadStarted: "Download started: {filename}",
+      openedInTab: "History opened in a new tab. Use Print → Save as PDF.",
+      invalidResponse: "Server response did not include valid patient data.",
+    },
   },
   
   pt: {
@@ -2476,6 +2558,17 @@ export const translations: Record<Language, Translations> = {
       errorCreateFailed: "Não foi possível criar a consulta.",
       errorSaveFailed: "Erro ao guardar a consulta.",
       errorDeleteFailed: "Não foi possível eliminar a consulta.",
+      downloadIcs: "Descarregar .ics",
+      sendWhatsApp: "WhatsApp Web",
+      exportIcsHint: "Descarrega as consultas do dia em formato calendário (.ics) para iOS ou Android",
+      exportWaHint: "Descarrega o .ics e abre o WhatsApp. Se o podologista tiver telemóvel no perfil, abre o chat direto; senão escolhe o contacto manualmente. Anexe o .ics.",
+      exportSelectPodiatrist: "Selecione um podologista no filtro para exportar a agenda.",
+      exportNoAppointments: "Não há consultas agendadas neste dia.",
+      exportBusy: "A exportar…",
+      exportWaHeader: "📅 Agenda de {{fecha}} — {{podologo}} ({{count}} consultas)",
+      exportWaLine: "• {{hora}} — {{paciente}} ({{duracion}} min) · {{telefono}}",
+      exportWaAttachHint: "📎 O ficheiro agenda-.ics foi descarregado — anexe-o no WhatsApp para importar no calendário do telemóvel.",
+      exportWaInvalidPhone: "O telefone do podologista não é válido para WhatsApp. Abra o WhatsApp manualmente e cole a mensagem.",
     },
     credits: {
       title: "Créditos",
@@ -2863,6 +2956,22 @@ export const translations: Record<Language, Translations> = {
       holdRelease: "Liberar",
       holdsEmpty: "Sem bloqueios ativos",
     },
+    clinicalHistoriesExport: {
+      title: "Baixar prontuários clínicos",
+      subtitle: "Exporte todos os expedientes em HTML imprimível → PDF",
+      desc: "Gera um arquivo HTML com o mesmo layout da impressão de sessões. Sem JSON: abra no navegador e salve como PDF em Imprimir.",
+      stats: "{patients} paciente(s) · {sessions} sessão(ões) incluídas",
+      downloadHtml: "Baixar HTML",
+      printPdf: "Imprimir / salvar PDF",
+      pdfHint: "No diálogo de impressão escolha «Salvar como PDF».",
+      popupBlocked: "Permita pop-ups para abrir a visualização de impressão.",
+      noPatients: "Não há pacientes na sua conta para exportar.",
+      buildError: "Não foi possível gerar o HTML do prontuário.",
+      downloadFailed: "Não foi possível iniciar o download. Tente «Imprimir / salvar PDF».",
+      downloadStarted: "Download iniciado: {filename}",
+      openedInTab: "Histórico aberto numa nova aba. Use Imprimir → Salvar como PDF.",
+      invalidResponse: "A resposta do servidor não inclui dados de pacientes válidos.",
+    },
   },
   
   fr: {
@@ -3174,6 +3283,17 @@ export const translations: Record<Language, Translations> = {
       errorCreateFailed: "Impossible de créer le rendez-vous.",
       errorSaveFailed: "Erreur lors de l'enregistrement du rendez-vous.",
       errorDeleteFailed: "Impossible de supprimer le rendez-vous.",
+      downloadIcs: "Télécharger .ics",
+      sendWhatsApp: "WhatsApp Web",
+      exportIcsHint: "Télécharge les rendez-vous du jour au format calendrier (.ics) pour iOS ou Android",
+      exportWaHint: "Télécharge le .ics et ouvre WhatsApp. Si le podologue a un mobile sur son profil, le chat s'ouvre directement ; sinon choisissez le contact manuellement. Joignez le .ics.",
+      exportSelectPodiatrist: "Sélectionnez un podologue dans le filtre pour exporter l'agenda.",
+      exportNoAppointments: "Aucun rendez-vous programmé ce jour.",
+      exportBusy: "Export en cours…",
+      exportWaHeader: "📅 Agenda du {{fecha}} — {{podologo}} ({{count}} rendez-vous)",
+      exportWaLine: "• {{hora}} — {{paciente}} ({{duracion}} min) · {{telefono}}",
+      exportWaAttachHint: "📎 Le fichier agenda-.ics a été téléchargé — joignez-le dans WhatsApp pour l'importer dans le calendrier mobile.",
+      exportWaInvalidPhone: "Le téléphone du podologue n'est pas valide pour WhatsApp. Ouvrez WhatsApp manuellement et collez le message.",
     },
     credits: {
       title: "Crédits",
@@ -3560,6 +3680,22 @@ export const translations: Record<Language, Translations> = {
       holdCreated: "Blocage créé",
       holdRelease: "Libérer",
       holdsEmpty: "Aucun blocage actif",
+    },
+    clinicalHistoriesExport: {
+      title: "Télécharger les dossiers cliniques",
+      subtitle: "Exporter tous les dossiers en HTML imprimable → PDF",
+      desc: "Génère un fichier HTML identique à l'impression des séances. Pas de JSON : ouvrez le HTML et enregistrez en PDF via Imprimer.",
+      stats: "{patients} patient(s) · {sessions} séance(s) incluses",
+      downloadHtml: "Télécharger HTML",
+      printPdf: "Imprimer / enregistrer PDF",
+      pdfHint: "Dans la boîte d'impression choisissez « Enregistrer au format PDF ».",
+      popupBlocked: "Autorisez les fenêtres pop-up pour l'aperçu avant impression.",
+      noPatients: "Aucun patient dans votre compte à exporter.",
+      buildError: "Impossible de générer le HTML du dossier.",
+      downloadFailed: "Impossible de démarrer le téléchargement. Essayez « Imprimer / enregistrer PDF ».",
+      downloadStarted: "Téléchargement démarré : {filename}",
+      openedInTab: "Dossier ouvert dans un nouvel onglet. Utilisez Imprimer → Enregistrer au format PDF.",
+      invalidResponse: "La réponse du serveur ne contient pas de données patients valides.",
     },
   },
 };

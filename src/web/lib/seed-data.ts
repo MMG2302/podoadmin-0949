@@ -1,13 +1,12 @@
-import {
-  Patient,
-  ClinicalSession,
-  CreditTransaction,
-  UserCredits,
-  AuditLog,
-  Clinic,
-  ClinicCredits,
-  generateId,
-} from "./storage";
+/**
+ * Seed de datos mock en localStorage — **solo desarrollo local**.
+ * No se importa en la app ni en producción. Usar `npm run db:seed:local` para D1.
+ */
+import type { Patient, ClinicalSession } from "../types/clinical";
+import type { CreditTransaction, UserCredits } from "../types/credits";
+import type { AuditLog } from "../types/audit-log";
+import type { Clinic, ClinicCredits } from "../types/clinic";
+import { generateId } from "./generate-id";
 
 const STORAGE_KEYS = {
   PATIENTS: "podoadmin_patients",

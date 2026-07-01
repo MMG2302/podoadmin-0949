@@ -81,12 +81,12 @@ authRoutes.post('/login', async (c) => {
       attemptCount = await getFailedAttemptCountD1(identifier);
     }
 
-    // Verificar CAPTCHA si hay muchos intentos fallidos
-    if (!isWhitelisted && attemptCount >= 3) {
-      const { getCaptchaConfig, verifyCaptcha, shouldShowCaptcha } = await import('../utils/captcha');
+    // Verificar CAPTCHA en login cuando está configurado (misma política que registro)
+    if (!isWhitelisted) {
+      const { getCaptchaConfig, verifyCaptcha } = await import('../utils/captcha');
       const captchaConfig = getCaptchaConfig();
-      
-      if (captchaConfig && shouldShowCaptcha(attemptCount, 3)) {
+
+      if (captchaConfig) {
         if (!captchaToken) {
           return c.json(
             {
@@ -101,12 +101,11 @@ authRoutes.post('/login', async (c) => {
 
         const captchaResult = await verifyCaptcha(captchaToken, captchaConfig);
         if (!captchaResult.success) {
-          // Registrar métrica
           const { recordSecurityMetric } = await import('../utils/security-metrics');
           await recordSecurityMetric({
             metricType: 'captcha_failed',
             ipAddress: clientIP,
-            details: { email: emailLower, error: captchaResult.error },
+            details: { email: emailLower, error: captchaResult.error, context: 'login' },
           });
 
           return c.json(
@@ -120,12 +119,11 @@ authRoutes.post('/login', async (c) => {
           );
         }
 
-        // Registrar métrica de CAPTCHA exitoso
         const { recordSecurityMetric } = await import('../utils/security-metrics');
         await recordSecurityMetric({
           metricType: 'captcha_passed',
           ipAddress: clientIP,
-          details: { email: emailLower },
+          details: { email: emailLower, context: 'login' },
         });
       }
     }
@@ -287,9 +285,9 @@ authRoutes.post('/login', async (c) => {
       }
 
       // Determinar si se requiere CAPTCHA
-      const { getCaptchaConfig, shouldShowCaptcha } = await import('../utils/captcha');
+      const { getCaptchaConfig } = await import('../utils/captcha');
       const captchaConfig = getCaptchaConfig();
-      const requiresCaptcha = captchaConfig && shouldShowCaptcha(attemptCount, 3);
+      const requiresCaptcha = !!captchaConfig;
 
       return c.json(
         {

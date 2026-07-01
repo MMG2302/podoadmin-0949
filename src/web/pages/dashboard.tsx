@@ -9,7 +9,6 @@ import { usePermissions } from "../hooks/use-permissions";
 import { api } from "../lib/api-client";
 import PatientsPage from "./patients-page";
 import SessionsPage from "./sessions-page";
-import { ClinicalListLoading } from "../components/clinical/clinical-list-states";
 import SettingsPage from "./settings-page";
 import AuditLogPage from "./audit-log-page";
 import SecurityMetricsPage from "./security-metrics-page";
@@ -348,17 +347,9 @@ const DashboardHome = () => {
 };
 
 const Dashboard = () => {
-  const { user, isLoading } = useAuth();
+  const { user } = useAuth();
   const [location] = useLocation();
   const { isSuperAdmin, isClinicAdmin, isAdmin, isPodiatrist, isReceptionist } = usePermissions();
-
-  if (isLoading) {
-    return (
-      <div className="min-h-dvh flex items-center justify-center bg-gray-50 dark:bg-gray-950">
-        <ClinicalListLoading label="Cargando…" />
-      </div>
-    );
-  }
 
   if (user && !hasActiveSystemAccess(user) && isClinicalAppPath(location)) {
     return <Redirect to={getPostLoginPath(user)} />;

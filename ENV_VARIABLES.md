@@ -129,17 +129,17 @@ RESEND_API_KEY=your-resend-api-key
 
 **Nota**: Para el registro pÃºblico, se requiere al menos UN servicio de email configurado para enviar emails de verificaciÃ³n.
 
-### CAPTCHA (Requerido para Registro PÃºblico)
+### CAPTCHA (Requerido para Registro Público)
 
-El sistema soporta tres proveedores de CAPTCHA. **Se requiere al menos uno configurado para el registro pÃºblico**.
-
-#### Cloudflare Turnstile (Recomendado)
+**Proveedor recomendado: Cloudflare Turnstile** (sin servidor propio; mismo panel que Workers).
 
 ```env
 CAPTCHA_PROVIDER=turnstile
 CAPTCHA_SITE_KEY=tu-site-key-aqui
 CAPTCHA_SECRET_KEY=tu-secret-key-aqui
 ```
+
+Obtener claves: [Cloudflare Dashboard → Turnstile](https://dash.cloudflare.com/). En desarrollo puedes usar las [claves de prueba](https://developers.cloudflare.com/turnstile/troubleshooting/testing/).
 
 #### Google reCAPTCHA
 

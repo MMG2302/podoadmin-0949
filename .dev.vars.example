@@ -8,9 +8,12 @@ CSRF_SECRET=
 NODE_ENV=development
 APP_BASE_URL=http://localhost:5173
 
-# CAPTCHA: en local (NODE_ENV=development) está desactivado por defecto.
-# Para probar Turnstile en local: CAPTCHA_FORCE_IN_DEV=1 y las keys CAPTCHA_*.
-# En producción (NODE_ENV=production) el CAPTCHA es obligatorio para registro público.
+# CAPTCHA (Cloudflare Turnstile). En dev: desactivado salvo CAPTCHA_FORCE_IN_DEV=1.
+# Claves de prueba: https://developers.cloudflare.com/turnstile/troubleshooting/testing/
+# CAPTCHA_FORCE_IN_DEV=1
+# CAPTCHA_PROVIDER=turnstile
+# CAPTCHA_SITE_KEY=1x00000000000000000000AA
+# CAPTCHA_SECRET_KEY=1x0000000000000000000000000000000AA
 
 # Verificación de email: desactivada en dev por defecto (email auto-verificado al registrarse).
 # Para probar el flujo completo en local: EMAIL_VERIFICATION_FORCE_IN_DEV=1

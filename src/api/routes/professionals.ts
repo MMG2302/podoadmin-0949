@@ -3,6 +3,7 @@ import { eq } from 'drizzle-orm';
 import { requireAuth } from '../middleware/auth';
 import { database } from '../database';
 import {
+  createdUsers,
   professionalInfo as professionalInfoTable,
   professionalLicenses as professionalLicensesTable,
   professionalCredentials as professionalCredentialsTable,
@@ -27,9 +28,26 @@ function getValidatedUserId(c: { req: { param: (name: string) => string } }): st
 
 professionalsRoutes.use('*', requireAuth);
 
-function canAccessProfessional(user: { userId: string; role: string; clinicId?: string }, targetUserId: string): boolean {
+async function canAccessProfessional(
+  user: { userId: string; role: string; clinicId?: string },
+  targetUserId: string
+): Promise<boolean> {
   if (user.role === 'super_admin' || user.role === 'admin') return true;
-  return user.userId === targetUserId;
+  if (user.userId === targetUserId) return true;
+  if (user.role === 'clinic_admin' && user.clinicId) {
+    const rows = await database
+      .select({ clinicId: createdUsers.clinicId, role: createdUsers.role })
+      .from(createdUsers)
+      .where(eq(createdUsers.userId, targetUserId))
+      .limit(1);
+    const target = rows[0];
+    return Boolean(
+      target &&
+        target.clinicId === user.clinicId &&
+        (target.role === 'podiatrist' || target.role === 'receptionist')
+    );
+  }
+  return false;
 }
 
 /**
@@ -39,7 +57,7 @@ professionalsRoutes.get('/info/:userId', async (c) => {
   const userId = getValidatedUserId(c);
   if (!userId) return c.json({ error: 'userId inválido' }, 400);
   const user = c.get('user');
-  if (!user || !canAccessProfessional(user, userId)) {
+  if (!user || !(await canAccessProfessional(user, userId))) {
     return c.json({ error: 'Acceso denegado' }, 403);
   }
   const rows = await database.select().from(professionalInfoTable).where(eq(professionalInfoTable.userId, userId)).limit(1);
@@ -56,6 +74,7 @@ professionalsRoutes.get('/info/:userId', async (c) => {
       postalCode: row.postalCode ?? '',
       licenseNumber: row.licenseNumber ?? '',
       professionalLicense: row.professionalLicense ?? '',
+      countryCode: row.countryCode ?? 'MX',
       consentText: row.consentText ?? '',
       consentTextVersion: row.consentTextVersion ?? 0,
     },
@@ -69,7 +88,7 @@ professionalsRoutes.put('/info/:userId', async (c) => {
   const userId = getValidatedUserId(c);
   if (!userId) return c.json({ error: 'userId inválido' }, 400);
   const user = c.get('user');
-  if (!user || !canAccessProfessional(user, userId)) {
+  if (!user || !(await canAccessProfessional(user, userId))) {
     return c.json({ error: 'Acceso denegado' }, 403);
   }
   const body = (await c.req.json().catch(() => ({}))) as Record<string, string>;
@@ -109,6 +128,7 @@ professionalsRoutes.put('/info/:userId', async (c) => {
     postalCode: body.postalCode ?? '',
     licenseNumber: body.licenseNumber ?? '',
     professionalLicense: body.professionalLicense ?? '',
+    countryCode: body.countryCode ? String(body.countryCode).trim().toUpperCase().slice(0, 2) : 'MX',
     ...(consentText !== undefined && { consentText }),
     ...(consentTextVersion !== undefined && { consentTextVersion }),
   };
@@ -121,6 +141,7 @@ professionalsRoutes.put('/info/:userId', async (c) => {
     postalCode: data.postalCode,
     licenseNumber: data.licenseNumber,
     professionalLicense: data.professionalLicense,
+    countryCode: data.countryCode,
   };
   if (consentText !== undefined) setData.consentText = consentText;
   if (consentTextVersion !== undefined) setData.consentTextVersion = consentTextVersion;
@@ -147,7 +168,7 @@ professionalsRoutes.get('/license/:userId', async (c) => {
   const userId = getValidatedUserId(c);
   if (!userId) return c.json({ error: 'userId inválido' }, 400);
   const user = c.get('user');
-  if (!user || !canAccessProfessional(user, userId)) {
+  if (!user || !(await canAccessProfessional(user, userId))) {
     return c.json({ error: 'Acceso denegado' }, 403);
   }
   const rows = await database.select().from(professionalLicensesTable).where(eq(professionalLicensesTable.userId, userId)).limit(1);
@@ -162,7 +183,7 @@ professionalsRoutes.put('/license/:userId', async (c) => {
   const userId = getValidatedUserId(c);
   if (!userId) return c.json({ error: 'userId inválido' }, 400);
   const user = c.get('user');
-  if (!user || !canAccessProfessional(user, userId)) {
+  if (!user || !(await canAccessProfessional(user, userId))) {
     return c.json({ error: 'Acceso denegado' }, 403);
   }
   const body = (await c.req.json().catch(() => ({}))) as { license?: string };
@@ -190,7 +211,7 @@ professionalsRoutes.get('/credentials/:userId', async (c) => {
   const userId = getValidatedUserId(c);
   if (!userId) return c.json({ error: 'userId inválido' }, 400);
   const user = c.get('user');
-  if (!user || !canAccessProfessional(user, userId)) {
+  if (!user || !(await canAccessProfessional(user, userId))) {
     return c.json({ error: 'Acceso denegado' }, 403);
   }
   const rows = await database.select().from(professionalCredentialsTable).where(eq(professionalCredentialsTable.userId, userId)).limit(1);
@@ -206,7 +227,7 @@ professionalsRoutes.put('/credentials/:userId', async (c) => {
   const userId = getValidatedUserId(c);
   if (!userId) return c.json({ error: 'userId inválido' }, 400);
   const user = c.get('user');
-  if (!user || !canAccessProfessional(user, userId)) {
+  if (!user || !(await canAccessProfessional(user, userId))) {
     return c.json({ error: 'Acceso denegado' }, 403);
   }
   const body = (await c.req.json().catch(() => ({}))) as { cedula?: string; registro?: string };
@@ -235,7 +256,7 @@ professionalsRoutes.get('/logo/:userId', async (c) => {
   const userId = getValidatedUserId(c);
   if (!userId) return c.json({ error: 'userId inválido' }, 400);
   const user = c.get('user');
-  if (!user || !canAccessProfessional(user, userId)) {
+  if (!user || !(await canAccessProfessional(user, userId))) {
     return c.json({ error: 'Acceso denegado' }, 403);
   }
   const rows = await database.select().from(professionalLogosTable).where(eq(professionalLogosTable.userId, userId)).limit(1);
@@ -250,7 +271,7 @@ professionalsRoutes.put('/logo/:userId', async (c) => {
   const user = c.get('user');
   const userId = sanitizePathParam(c.req.param('userId'), 128);
   if (!userId) return c.json({ error: 'ID de usuario inválido' }, 400);
-  if (!user || !canAccessProfessional(user, userId)) {
+  if (!user || !(await canAccessProfessional(user, userId))) {
     return c.json({ error: 'Acceso denegado' }, 403);
   }
   const body = (await c.req.json().catch(() => ({}))) as { logo: string };
@@ -313,7 +334,7 @@ professionalsRoutes.delete('/logo/:userId', async (c) => {
   const userId = getValidatedUserId(c);
   if (!userId) return c.json({ error: 'userId inválido' }, 400);
   const user = c.get('user');
-  if (!user || !canAccessProfessional(user, userId)) {
+  if (!user || !(await canAccessProfessional(user, userId))) {
     return c.json({ error: 'Acceso denegado' }, 403);
   }
   const existingRows = await database

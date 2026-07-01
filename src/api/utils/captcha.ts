@@ -1,12 +1,24 @@
 /**
- * Utilidades para CAPTCHA
- * Integración con servicios de CAPTCHA (reCAPTCHA, hCaptcha, etc.)
+ * Utilidades para CAPTCHA (Cloudflare Turnstile por defecto; también reCAPTCHA y hCaptcha).
  */
 
+export type CaptchaProvider = 'turnstile' | 'recaptcha' | 'hcaptcha';
+
+const SUPPORTED_PROVIDERS: CaptchaProvider[] = ['turnstile', 'recaptcha', 'hcaptcha'];
+
 export interface CaptchaConfig {
-  provider: 'recaptcha' | 'hcaptcha' | 'turnstile';
+  provider: CaptchaProvider;
   siteKey?: string;
   secretKey?: string;
+}
+
+function resolveProvider(): CaptchaProvider | null {
+  const raw = (process.env.CAPTCHA_PROVIDER?.trim() || 'turnstile').toLowerCase();
+  if ((SUPPORTED_PROVIDERS as string[]).includes(raw)) {
+    return raw as CaptchaProvider;
+  }
+  console.warn(`CAPTCHA_PROVIDER no soportado: ${raw}. Usa turnstile, recaptcha o hcaptcha.`);
+  return null;
 }
 
 /**
@@ -38,9 +50,6 @@ export async function verifyCaptcha(
   }
 }
 
-/**
- * Verifica reCAPTCHA v2/v3
- */
 async function verifyRecaptcha(
   token: string,
   secretKey: string
@@ -56,17 +65,14 @@ async function verifyRecaptcha(
 
     const data = await response.json();
     return {
-      success: data.success === true && (data.score || 0) >= 0.5, // Score mínimo 0.5 para v3
+      success: data.success === true && (data.score || 0) >= 0.5,
       error: data['error-codes']?.[0],
     };
-  } catch (error) {
+  } catch {
     return { success: false, error: 'Error de conexión con reCAPTCHA' };
   }
 }
 
-/**
- * Verifica hCaptcha
- */
 async function verifyHcaptcha(
   token: string,
   secretKey: string
@@ -85,14 +91,11 @@ async function verifyHcaptcha(
       success: data.success === true,
       error: data['error-codes']?.[0],
     };
-  } catch (error) {
+  } catch {
     return { success: false, error: 'Error de conexión con hCaptcha' };
   }
 }
 
-/**
- * Verifica Cloudflare Turnstile
- */
 async function verifyTurnstile(
   token: string,
   secretKey: string
@@ -111,14 +114,11 @@ async function verifyTurnstile(
       success: data.success === true,
       error: data['error-codes']?.[0],
     };
-  } catch (error) {
+  } catch {
     return { success: false, error: 'Error de conexión con Turnstile' };
   }
 }
 
-/**
- * Entorno de despliegue (Cloudflare Worker: NODE_ENV=production en prod).
- */
 export function isProductionDeploy(): boolean {
   return process.env.NODE_ENV === 'production';
 }
@@ -133,7 +133,6 @@ export function isCaptchaEnabled(): boolean {
   return process.env.CAPTCHA_FORCE_IN_DEV === '1';
 }
 
-/** true cuando estamos en dev/staging sin CAPTCHA (comportamiento por defecto). */
 export function isCaptchaExplicitlyDisabledInDev(): boolean {
   return !isCaptchaEnabled();
 }
@@ -141,24 +140,17 @@ export function isCaptchaExplicitlyDisabledInDev(): boolean {
 export function getCaptchaConfig(): CaptchaConfig | null {
   if (!isCaptchaEnabled()) return null;
 
-  const provider = process.env.CAPTCHA_PROVIDER as 'recaptcha' | 'hcaptcha' | 'turnstile' | undefined;
-  const siteKey = process.env.CAPTCHA_SITE_KEY;
-  const secretKey = process.env.CAPTCHA_SECRET_KEY;
+  const provider = resolveProvider();
+  const siteKey = process.env.CAPTCHA_SITE_KEY?.trim();
+  const secretKey = process.env.CAPTCHA_SECRET_KEY?.trim();
 
   if (!provider || !siteKey || !secretKey) {
     return null;
   }
 
-  return {
-    provider,
-    siteKey,
-    secretKey,
-  };
+  return { provider, siteKey, secretKey };
 }
 
-/**
- * Determina si se debe mostrar CAPTCHA basado en intentos fallidos
- */
-export function shouldShowCaptcha(failedAttempts: number, threshold: number = 3): boolean {
-  return failedAttempts >= threshold;
+export function isCaptchaRequiredForForms(): boolean {
+  return getCaptchaConfig() !== null;
 }

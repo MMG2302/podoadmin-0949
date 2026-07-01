@@ -1,14 +1,16 @@
 /**
  * Diagramas clínicos — logo PodoAdmin con alteraciones por tipo.
  */
-import type { ArchTypeId, FootTypeId } from "./podiatry-logo-foot";
 import {
   ARCH_TYPE_LABELS,
   brandMark,
   FOOT_TYPE_LABELS,
   renderLogoFoot,
+  type ArchTypeId,
+  type FootTypeId,
 } from "./podiatry-logo-foot";
 import type { DetectionMatch, PodiatryDiagramContext } from "./podiatry-print-detect";
+import { normalizePodiatryArchType, normalizePodiatryFootType } from "../types/podiatry";
 
 const VB_MINI = "0 0 88 100";
 const VB_ARCH = "0 0 88 100";
@@ -19,6 +21,47 @@ const FOOT_STD = { scale: 0.1, cx: 0, cy: 0 } as const;
 
 const FOOT_TYPE_IDS: FootTypeId[] = ["egyptian", "roman", "greek", "germanic", "celtic"];
 const ARCH_TYPE_IDS: ArchTypeId[] = ["flat", "normal", "cavus"];
+
+function normalizeDiagramFootType(raw: FootTypeId | string | null | undefined): FootTypeId | null {
+  return normalizePodiatryFootType(raw) as FootTypeId | null;
+}
+
+function normalizeDiagramArchType(raw: ArchTypeId | string | null | undefined): ArchTypeId | null {
+  return normalizePodiatryArchType(raw) as ArchTypeId | null;
+}
+
+function footTypeLabelSafe(raw: FootTypeId | string | null | undefined): string | null {
+  const id = normalizeDiagramFootType(raw);
+  if (!id) return raw ? String(raw) : null;
+  return FOOT_TYPE_LABELS[id] ?? String(raw);
+}
+
+function archTypeLabelSafe(raw: ArchTypeId | string | null | undefined): string | null {
+  const id = normalizeDiagramArchType(raw);
+  if (!id) return raw ? String(raw) : null;
+  return ARCH_TYPE_LABELS[id] ?? String(raw);
+}
+
+function footBlock(ox: number, label: string, mirror: boolean, ctx?: PodiatryDiagramContext): string {
+  const footType = normalizeDiagramFootType(ctx?.footType ?? null) ?? undefined;
+  const archType = normalizeDiagramArchType(ctx?.archType ?? null) ?? undefined;
+  return `
+    <g transform="translate(${ox}, 0)">
+      <text x="48" y="9" text-anchor="middle" font-size="7" font-weight="600" fill="#1C1B1B">${label}</text>
+      <g transform="translate(48, 62)">
+        ${renderLogoFoot({
+          ...FOOT_STD,
+          scale: 0.1,
+          rotation: -42,
+          mirror,
+          footType,
+          archType,
+          showBrandDisc: true,
+        })}
+      </g>
+    </g>
+  `;
+}
 
 function footTypeMini(id: FootTypeId, selected: boolean): string {
   return `
@@ -40,7 +83,7 @@ function footTypeMini(id: FootTypeId, selected: boolean): string {
 }
 
 export function svgFootTypeSelector(ctx?: PodiatryDiagramContext, meta?: DetectionMatch): string {
-  const selected = ctx?.footType ?? null;
+  const selected = normalizeDiagramFootType(ctx?.footType ?? null);
   const detected = selected
     ? `<p class="diagram-detected">Detectado en notas${meta?.footMatchedLabel ? ` («${meta.footMatchedLabel}»)` : ""}: <strong>${FOOT_TYPE_LABELS[selected]}</strong></p>`
     : "";
@@ -74,7 +117,7 @@ function archDiagram(id: ArchTypeId, selected: boolean): string {
 }
 
 export function svgArchTypeSelector(ctx?: PodiatryDiagramContext, meta?: DetectionMatch): string {
-  const selected = ctx?.archType ?? null;
+  const selected = normalizeDiagramArchType(ctx?.archType ?? null);
   const detected = selected
     ? `<p class="diagram-detected">Detectado en notas${meta?.archMatchedLabel ? ` («${meta.archMatchedLabel}»)` : ""}: <strong>${ARCH_TYPE_LABELS[selected]}</strong></p>`
     : "";
@@ -87,31 +130,14 @@ export function svgArchTypeSelector(ctx?: PodiatryDiagramContext, meta?: Detecti
   `;
 }
 
-function footBlock(ox: number, label: string, mirror: boolean, ctx?: PodiatryDiagramContext): string {
-  return `
-    <g transform="translate(${ox}, 0)">
-      <text x="48" y="9" text-anchor="middle" font-size="7" font-weight="600" fill="#1C1B1B">${label}</text>
-      <g transform="translate(48, 62)">
-        ${renderLogoFoot({
-          ...FOOT_STD,
-          scale: 0.1,
-          rotation: -42,
-          mirror,
-          footType: ctx?.footType ?? undefined,
-          archType: ctx?.archType ?? undefined,
-          showBrandDisc: true,
-        })}
-      </g>
-    </g>
-  `;
-}
-
 export function svgDualPlantarFeet(ctx?: PodiatryDiagramContext): string {
+  const footLabel = footTypeLabelSafe(ctx?.footType ?? null);
+  const archLabel = archTypeLabelSafe(ctx?.archType ?? null);
   const note =
-    ctx?.footType || ctx?.archType
+    footLabel || archLabel
       ? `<p class="diagram-detected">Anotado: ${[
-          ctx.footType ? FOOT_TYPE_LABELS[ctx.footType] : null,
-          ctx.archType ? `arco ${ARCH_TYPE_LABELS[ctx.archType].toLowerCase()}` : null,
+          footLabel,
+          archLabel ? `arco ${archLabel.toLowerCase()}` : null,
         ]
           .filter(Boolean)
           .join(" · ")}</p>`

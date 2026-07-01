@@ -5,6 +5,8 @@ import {
   normalizeHelomas,
   normalizeLimbAssessment,
   normalizeOnychopathies,
+  normalizePodiatryArchType,
+  normalizePodiatryFootType,
   normalizeSweatDisorders,
 } from '../../web/types/podiatry';
 import { normalizeCustomSections } from '../../web/types/clinical-layout';
@@ -130,8 +132,8 @@ export function mapDbSession(row: DbSession): ClinicalSession {
     nextAppointmentDate: extra.nextAppointmentDate ?? null,
     followUpNotes: extra.followUpNotes ?? null,
     appointmentReason: (extra.appointmentReason as ClinicalSession['appointmentReason']) ?? null,
-    footType: extra.footType ?? null,
-    archType: extra.archType ?? null,
+    footType: normalizePodiatryFootType(extra.footType),
+    archType: normalizePodiatryArchType(extra.archType),
     sweatDisorders: normalizeSweatDisorders(extra.sweatDisorders),
     limbAssessment: normalizeLimbAssessment(extra.limbAssessment),
     helomas: normalizeHelomas(extra.helomas),

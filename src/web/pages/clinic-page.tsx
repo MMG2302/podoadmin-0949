@@ -4,11 +4,7 @@ import { useLanguage } from "../contexts/language-context";
 import { useAuth, User } from "../contexts/auth-context";
 import { useRefreshOnFocus } from "../hooks/use-refresh-on-focus";
 import { api } from "../lib/api-client";
-import { 
-  getAllProfessionalLicenses,
-  Patient,
-  ClinicalSession,
-} from "../lib/storage";
+import type { Patient, ClinicalSession } from "../types/clinical";
 
 interface PodiatristStats {
   user: User;
@@ -173,6 +169,7 @@ const ClinicPage = () => {
   const [podiatristForm, setPodiatristForm] = useState({ name: "", email: "", password: "" });
   const [podiatristError, setPodiatristError] = useState<string | null>(null);
   const [clinicPodiatristLimit, setClinicPodiatristLimit] = useState<number | null>(null);
+  const [podiatristLicenses, setPodiatristLicenses] = useState<Record<string, string | null>>({});
 
   // Get podiatrists in this clinic
   const clinicPodiatrists = allUsers.filter(
@@ -204,6 +201,35 @@ const ClinicPage = () => {
     });
   }, [currentUser?.clinicId]);
 
+  // Licencias profesionales de podólogos de la clínica (API)
+  useEffect(() => {
+    if (clinicPodiatrists.length === 0) {
+      setPodiatristLicenses({});
+      return;
+    }
+    let cancelled = false;
+    void (async () => {
+      const entries = await Promise.all(
+        clinicPodiatrists.map(async (pod) => {
+          const res = await api.get<{ success?: boolean; license?: string | null }>(
+            `/professionals/license/${pod.id}`
+          );
+          const license =
+            res.success && typeof res.data?.license === "string" && res.data.license.trim()
+              ? res.data.license.trim()
+              : null;
+          return [pod.id, license] as const;
+        })
+      );
+      if (!cancelled) {
+        setPodiatristLicenses(Object.fromEntries(entries));
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [clinicPodiatrists]);
+
   // Pacientes y sesiones de la clínica (filtrados por podólogos de la clínica)
   const clinicPatients = useMemo(
     () => allPatients.filter((p) => clinicPodiatristIds.has(p.createdBy)),
@@ -219,7 +245,6 @@ const ClinicPage = () => {
     const now = new Date();
     const thisMonth = now.getMonth();
     const thisYear = now.getFullYear();
-    const allLicenses = getAllProfessionalLicenses();
 
     return clinicPodiatrists.map(pod => {
       const patients = clinicPatients.filter(p => p.createdBy === pod.id);
@@ -234,10 +259,10 @@ const ClinicPage = () => {
         patientCount: patients.length,
         sessionCount: sessions.length,
         sessionsThisMonth: sessionsThisMonth.length,
-        license: allLicenses[pod.id] || null,
+        license: podiatristLicenses[pod.id] ?? null,
       };
     });
-  }, [clinicPodiatrists, clinicPatients, clinicSessions]);
+  }, [clinicPodiatrists, clinicPatients, clinicSessions, podiatristLicenses]);
 
   // Get patients with podiatrist info
   const patientsWithPodiatrist: PatientWithPodiatrist[] = useMemo(() => {

@@ -14,6 +14,7 @@ import { deleteUserCascade } from '../utils/delete-user-cascade';
 import {
   buildClinicalStatsMap,
   buildUserClinicalExport,
+  buildPodiatristClinicalHistoriesBundle,
   getClinicalProfileForUserId,
   getUserRowByAnyId as getClinicalUserRow,
   transferClinicalHistory,
@@ -209,6 +210,43 @@ usersRoutes.get('/me/export', async (c) => {
   }
 });
 
+/**
+ * GET /api/users/me/clinical-histories-export
+ * Datos clínicos del podólogo autenticado para generar HTML/PDF en el cliente (no JSON de descarga).
+ */
+usersRoutes.get('/me/clinical-histories-export', async (c) => {
+  try {
+    const user = c.get('user');
+    if (user.role !== 'podiatrist') {
+      return c.json({ error: 'No autorizado', message: 'Solo podólogos pueden exportar historiales clínicos' }, 403);
+    }
+
+    const bundle = await buildPodiatristClinicalHistoriesBundle(user.userId);
+    if (!bundle) {
+      return c.json({ error: 'Usuario no encontrado' }, 404);
+    }
+
+    await logAuditEvent({
+      userId: user.userId,
+      action: 'EXPORT',
+      resourceType: 'clinical_history',
+      resourceId: user.userId,
+      details: {
+        exportType: 'podiatry_histories_html',
+        patientCount: bundle.statistics.patientCount,
+        sessionCount: bundle.statistics.sessionCount,
+      },
+      ipAddress: getClientIP(c.req.raw.headers),
+      userAgent: getSafeUserAgent(c),
+    });
+
+    return c.json({ success: true, ...bundle });
+  } catch (error) {
+    console.error('Error exportando historiales clínicos:', error);
+    return c.json({ error: 'Error interno', message: 'Error al exportar historiales clínicos' }, 500);
+  }
+});
+
 function canManageClinicalData(
   requester: { role: string; userId: string; clinicId?: string | null },
   target: { userId: string; clinicId: string | null }
@@ -281,7 +319,7 @@ usersRoutes.post('/transfer-clinical-history', requireRole('super_admin', 'clini
         patientsTransferred: result.patientsTransferred,
         sessionsTransferred: result.sessionsTransferred,
       },
-      ipAddress: getClientIP(c),
+      ipAddress: getClientIP(c.req.raw.headers),
       userAgent: getSafeUserAgent(c),
       clinicId: requester.clinicId ?? undefined,
     });
@@ -369,7 +407,7 @@ usersRoutes.get('/:userId/clinical-export', requireRole('super_admin', 'admin', 
         sessionsExported: exportData.statistics.totalSessions,
         exportType: 'json',
       },
-      ipAddress: getClientIP(c),
+      ipAddress: getClientIP(c.req.raw.headers),
       userAgent: getSafeUserAgent(c),
       clinicId: requester.clinicId ?? undefined,
     });

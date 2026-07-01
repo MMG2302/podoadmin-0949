@@ -23,7 +23,7 @@ import { createdUsers } from '../database/schema';
 const auditLogRoutes = new Hono();
 
 // Normaliza el registro de auditoría de la base de datos
-// al shape usado por el frontend (AuditLog de web/lib/storage)
+// al shape usado por el frontend (AuditLog en web/types/audit-log.ts)
 function mapDbLogToApiLog(log: any) {
   const rawDetails = log.details;
   const detailsString =

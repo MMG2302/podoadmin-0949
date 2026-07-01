@@ -2,7 +2,7 @@ import { useState, useMemo, useEffect } from "react";
 import { MainLayout } from "../components/layout/main-layout";
 import { useLanguage } from "../contexts/language-context";
 import { useAuth } from "../contexts/auth-context";
-import { AuditLog } from "../lib/storage";
+import { AuditLog } from "../types/audit-log";
 import { api } from "../lib/api-client";
 
 const ITEMS_PER_PAGE = 20;

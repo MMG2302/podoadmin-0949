@@ -1,9 +1,18 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "../contexts/auth-context";
 import { useLanguage } from "../contexts/language-context";
 import { AuthPublicToolbar } from "../components/auth/auth-public-toolbar";
+import { CaptchaWidget, type CaptchaProvider } from "../components/captcha-widget";
 import { useLocation } from "wouter";
 import { authPage as ap } from "../lib/auth-page-styles";
+
+type PublicConfig = {
+  officialDomain?: string | null;
+  supportEmail?: string | null;
+  googleOAuthEnabled?: boolean;
+  captcha?: { provider: CaptchaProvider; siteKey: string } | null;
+  captchaDisabledInDev?: boolean;
+};
 
 const Login = () => {
   const { login } = useAuth();
@@ -19,6 +28,7 @@ const Login = () => {
     attemptCount?: number;
     isBlocked?: boolean;
     blockDurationMinutes?: number;
+    requiresCaptcha?: boolean;
   }>({});
   const [isLoading, setIsLoading] = useState(false);
   const [countdown, setCountdown] = useState<number | null>(null);
@@ -26,14 +36,26 @@ const Login = () => {
   const [supportEmail, setSupportEmail] = useState<string | null>(null);
   const [originMismatch, setOriginMismatch] = useState(false);
   const [googleOAuthEnabled, setGoogleOAuthEnabled] = useState(false);
+  const [config, setConfig] = useState<PublicConfig | null>(null);
+  const [configLoading, setConfigLoading] = useState(true);
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
+  const [captchaKey, setCaptchaKey] = useState(0);
+
+  const handleCaptchaToken = useCallback((token: string | null) => {
+    setCaptchaToken(token);
+  }, []);
+
+  const captchaConfig = config?.captcha ?? null;
+  const captchaRequired = !!captchaConfig;
 
   // Obtener dominio oficial y email de soporte
   useEffect(() => {
     let cancelled = false;
     fetch("/api/public/config", { credentials: "include" })
       .then((res) => (res.ok ? res.json() : null))
-      .then((data: { officialDomain?: string | null; supportEmail?: string | null; googleOAuthEnabled?: boolean } | null) => {
+      .then((data: PublicConfig | null) => {
         if (cancelled) return;
+        if (data) setConfig(data);
         const domain = data?.officialDomain;
         if (domain) {
           setOfficialDomain(domain);
@@ -47,7 +69,10 @@ const Login = () => {
         if (data?.supportEmail) setSupportEmail(data.supportEmail);
         if (data?.googleOAuthEnabled) setGoogleOAuthEnabled(true);
       })
-      .catch(() => {});
+      .catch(() => {})
+      .finally(() => {
+        if (!cancelled) setConfigLoading(false);
+      });
     return () => { cancelled = true; };
   }, []);
 
@@ -76,6 +101,7 @@ const Login = () => {
     if (lower.includes("demasiados intentos") || lower.includes("too many attempts") || lower.includes("muitas tentativas") || lower.includes("trop de tentatives")) return t.auth.tooManyAttempts;
     if (lower.includes("cuenta temporalmente bloqueada") || lower.includes("account temporarily blocked") || lower.includes("conta temporariamente bloqueada") || lower.includes("compte temporairement bloqué")) return t.auth.accountTemporarilyBlocked;
     if (lower.includes("credenciales") || lower.includes("invalid credentials") || lower.includes("credenciais") || lower.includes("identifiants")) return t.auth.invalidCredentials;
+    if (lower.includes("captcha")) return apiError;
     return apiError;
   };
 
@@ -99,10 +125,15 @@ const Login = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
-    setErrorDetails({});
+
+    if (captchaRequired && !captchaToken) {
+      setError(t.auth.captchaRequired);
+      return;
+    }
+
     setIsLoading(true);
 
-    const result = await login(email, password);
+    const result = await login(email, password, captchaToken);
 
     if (result.success) {
       const dest = result.redirectPath ?? "/";
@@ -110,6 +141,7 @@ const Login = () => {
         requestAnimationFrame(() => setLocation(dest));
       });
     } else {
+      const needsCaptcha = result.requiresCaptcha === true || captchaRequired;
       setError(getLoginErrorDisplay(result.error) || t.auth.invalidCredentials);
       setErrorDetails({
         retryAfter: result.retryAfter,
@@ -117,7 +149,13 @@ const Login = () => {
         attemptCount: result.attemptCount,
         isBlocked: result.isBlocked,
         blockDurationMinutes: result.blockDurationMinutes,
+        requiresCaptcha: needsCaptcha,
       });
+
+      if (needsCaptcha || result.error?.toLowerCase().includes("captcha")) {
+        setCaptchaToken(null);
+        setCaptchaKey((k) => k + 1);
+      }
 
       // Iniciar countdown si hay retryAfter
       if (result.retryAfter) {
@@ -339,6 +377,25 @@ const Login = () => {
                 </div>
               </div>
 
+              {import.meta.env.DEV && !configLoading && !captchaRequired && (
+                <div className={`${ap.amber} mb-4`}>
+                  {config?.captchaDisabledInDev
+                    ? t.auth.captchaDisabledInDev
+                    : t.auth.captchaNotConfigured}
+                </div>
+              )}
+
+              {captchaConfig && (
+                <div className="flex flex-col items-center gap-2 min-h-[65px]">
+                  <CaptchaWidget
+                    key={captchaKey}
+                    provider={captchaConfig.provider}
+                    siteKey={captchaConfig.siteKey}
+                    onToken={handleCaptchaToken}
+                  />
+                </div>
+              )}
+
               {googleOAuthEnabled && (
                 <>
                   <button
@@ -364,7 +421,12 @@ const Login = () => {
 
               <button
                 type="submit"
-                disabled={isLoading || originMismatch || (countdown !== null && countdown > 0)}
+                disabled={
+                  isLoading ||
+                  originMismatch ||
+                  (countdown !== null && countdown > 0) ||
+                  (captchaRequired && !captchaToken)
+                }
                 className={ap.primaryBtn}
               >
                 <span className={isLoading ? "opacity-0" : ""}>

@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from "react";
+import { api } from "../lib/api-client";
 
 export type UserRole = "super_admin" | "clinic_admin" | "admin" | "podiatrist" | "receptionist";
 
@@ -29,6 +30,7 @@ import {
   isClinicalAppPath,
   normalizeUserSystemAccess,
 } from "../lib/system-access";
+import { refreshReceptionistAssignmentsInBackground } from "../lib/receptionist-assignments";
 
 export {
   getPostLoginPath,
@@ -42,7 +44,7 @@ interface AuthContextType {
   user: User | null;
   users: User[];
   isLoading: boolean;
-  login: (email: string, password: string) => Promise<{ 
+  login: (email: string, password: string, captchaToken?: string | null) => Promise<{ 
     success: boolean; 
     error?: string;
     redirectPath?: string;
@@ -51,6 +53,7 @@ interface AuthContextType {
     attemptCount?: number;
     isBlocked?: boolean;
     blockDurationMinutes?: number;
+    requiresCaptcha?: boolean;
   }>;
   logout: () => void;
   /** Lista de usuarios (desde API). Solo disponible para super_admin, admin, clinic_admin. */
@@ -65,16 +68,37 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+function readCachedUser(): User | null {
+  try {
+    const raw = localStorage.getItem("podoadmin_user");
+    if (!raw) return null;
+    return normalizeUserSystemAccess(JSON.parse(raw) as User);
+  } catch {
+    localStorage.removeItem("podoadmin_user");
+    return null;
+  }
+}
+
+const AUTH_VERIFY_TIMEOUT_MS = 12_000;
+
+function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<T>((_, reject) => {
+      setTimeout(() => reject(new Error("auth_verify_timeout")), ms);
+    }),
+  ]);
+}
+
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<User | null>(() => readCachedUser());
   const [users, setUsers] = useState<User[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  /** Solo bloquea rutas si aún no hay sesión en caché (primera visita). */
+  const [isLoading, setIsLoading] = useState(() => readCachedUser() === null);
 
   const fetchUsers = useCallback(async () => {
     if (!user) return;
     try {
-      const { api } = await import("../lib/api-client");
-      // /users/visible devuelve la lista según rol: admins/clinic todos o clínica; receptionist solo asignados; podiatrist su clínica
       const r = await api.get<{ success?: boolean; users?: User[] }>("/users/visible");
       if (r.success && Array.isArray(r.data?.users)) setUsers(r.data.users);
       else setUsers([]);
@@ -92,35 +116,53 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }, [user, fetchUsers]);
 
   useEffect(() => {
-    const verifyAuth = async () => {
-      try {
-        const { api } = await import("../lib/api-client");
-        await api.get("/csrf/token");
-      } catch (error) {
-        console.warn("No se pudo obtener token CSRF inicial:", error);
-      }
-
-      try {
-        const { api } = await import("../lib/api-client");
-        const response = await api.get<{ user: User }>("/auth/verify");
-
-        if (response.success && response.data?.user) {
-          const userData = normalizeUserSystemAccess(response.data.user);
-          setUser(userData);
-          localStorage.setItem("podoadmin_user", JSON.stringify(userData));
-        } else {
-          setUser(null);
-          localStorage.removeItem("podoadmin_user");
-        }
-      } catch (error) {
-        console.error("Error verificando autenticación:", error);
+    const applyUserSession = (raw: User | null) => {
+      if (!raw) {
         setUser(null);
         localStorage.removeItem("podoadmin_user");
+        return;
       }
-      setIsLoading(false);
+      const userData = normalizeUserSystemAccess(raw);
+      setUser(userData);
+      localStorage.setItem("podoadmin_user", JSON.stringify(userData));
+      refreshReceptionistAssignmentsInBackground(userData, (hydrated) => {
+        setUser(hydrated);
+        localStorage.setItem("podoadmin_user", JSON.stringify(hydrated));
+      });
     };
 
-    verifyAuth();
+    const verifyAuth = async () => {
+      try {
+        await withTimeout(api.get("/csrf/token"), AUTH_VERIFY_TIMEOUT_MS);
+      } catch {
+        /* servidor caído o lento */
+      }
+
+      try {
+        const response = await withTimeout(
+          api.get<{ user: User }>("/auth/verify"),
+          AUTH_VERIFY_TIMEOUT_MS
+        );
+
+        if (response.success && response.data?.user) {
+          applyUserSession(response.data.user);
+        } else {
+          applyUserSession(null);
+        }
+      } catch (error) {
+        const cached = readCachedUser();
+        const isTimeout = error instanceof Error && error.message === "auth_verify_timeout";
+        if (isTimeout && cached) {
+          applyUserSession(cached);
+        } else if (!isTimeout) {
+          applyUserSession(null);
+        }
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    void verifyAuth();
 
     const handleLogout = () => {
       setUser(null);
@@ -132,20 +174,18 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     return () => window.removeEventListener("auth:logout", handleLogout);
   }, []);
 
-  const login = async (email: string, password: string) => {
+  const login = async (email: string, password: string, captchaToken?: string | null) => {
     try {
-      const { api } = await import("../lib/api-client");
-
       try {
         await api.get("/csrf/token");
-      } catch (error) {
-        console.warn("No se pudo obtener token CSRF antes de login:", error);
+      } catch {
+        /* */
       }
 
-      const response = await api.post<{ user: User }>("/auth/login", {
-        email,
-        password,
-      });
+      const body: { email: string; password: string; captchaToken?: string } = { email, password };
+      if (captchaToken) body.captchaToken = captchaToken;
+
+      const response = await api.post<{ user: User }>("/auth/login", body);
 
       if (response.success && response.data) {
         const userData = normalizeUserSystemAccess({
@@ -155,10 +195,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         } as User);
         setUser(userData);
         localStorage.setItem("podoadmin_user", JSON.stringify(userData));
+        refreshReceptionistAssignmentsInBackground(userData, (hydrated) => {
+          setUser(hydrated);
+          localStorage.setItem("podoadmin_user", JSON.stringify(hydrated));
+        });
         try {
           await api.get("/csrf/token");
-        } catch (error) {
-          console.warn("No se pudo obtener token CSRF después de login:", error);
+        } catch {
+          /* */
         }
         return { success: true, redirectPath: getPostLoginPath(userData) };
       }
@@ -168,6 +212,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       const attemptCount = response.attemptCount;
       const isBlocked = response.isBlocked;
       const blockDurationMinutes = response.blockDurationMinutes;
+      const requiresCaptcha = response.requiresCaptcha;
       return {
         success: false,
         error: response.error || response.message || "Credenciales incorrectas",
@@ -176,6 +221,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         attemptCount,
         isBlocked,
         blockDurationMinutes,
+        requiresCaptcha,
       };
     } catch (error) {
       console.error("Error en login:", error);
@@ -185,7 +231,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const logout = async () => {
     try {
-      const { api } = await import("../lib/api-client");
       await api.post("/auth/logout");
     } catch (error) {
       console.error("Error en logout:", error);

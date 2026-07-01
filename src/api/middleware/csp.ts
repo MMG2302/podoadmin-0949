@@ -12,6 +12,7 @@ export const cspMiddleware = createMiddleware(async (c, next) => {
   const captchaScript = captcha.scriptSrc.length ? ` ${captcha.scriptSrc.join(' ')}` : '';
   const captchaFrame = captcha.frameSrc.length ? ` ${captcha.frameSrc.join(' ')}` : '';
   const captchaConnect = captcha.connectSrc.length ? ` ${captcha.connectSrc.join(' ')}` : '';
+  const captchaWorker = captcha.workerSrc.length ? ` ${captcha.workerSrc.join(' ')}` : '';
 
   const isProduction = process.env.NODE_ENV === 'production';
   const forwardedProto = c.req.header('x-forwarded-proto');
@@ -26,6 +27,7 @@ export const cspMiddleware = createMiddleware(async (c, next) => {
     : `connect-src 'self' http://localhost:* https://localhost:* ws://localhost:* wss://localhost:*${captchaConnect}`;
 
   const frameSrc = captcha.frameSrc.length ? `frame-src 'self'${captchaFrame}` : "frame-src 'none'";
+  const workerSrc = captcha.workerSrc.length ? `worker-src${captchaWorker}` : null;
 
   const cspDirectives = [
     "default-src 'self'",
@@ -35,6 +37,7 @@ export const cspMiddleware = createMiddleware(async (c, next) => {
     "font-src 'self' data:",
     connectSrc,
     frameSrc,
+    ...(workerSrc ? [workerSrc] : []),
     "frame-ancestors 'none'",
     "base-uri 'self'",
     "form-action 'self'",

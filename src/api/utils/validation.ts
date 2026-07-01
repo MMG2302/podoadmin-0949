@@ -348,6 +348,12 @@ export const appointmentsListQuerySchema = clinicalListPaginationSchema.extend({
     .optional(),
 });
 
+/** Query: exportación ICS / vista previa agenda */
+export const appointmentsExportQuerySchema = z.object({
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Fecha inválida (YYYY-MM-DD)'),
+  podiatristId: z.string().max(128).optional(),
+});
+
 /** Query: listas de registro pendientes */
 export const registrationListStatusQuerySchema = z.object({
   status: z.enum(['draft', 'submitted', 'approved', 'rejected']).optional(),
@@ -544,14 +550,14 @@ export const updateSessionSchema = z
   .partial();
 
 export const createAppointmentSchema = z.object({
-  patientId: z.string().max(128).optional(),
+  patientId: z.string().max(128).nullable().optional(),
   podiatristId: z.string().max(128).optional(),
   date: z
     .string()
     .regex(/^\d{4}-\d{2}-\d{2}$/, 'Fecha inválida')
     .optional(),
   time: z.string().max(16).optional(),
-  duration: z.number().int().min(5).max(480).optional(),
+  duration: z.coerce.number().int().min(5).max(480).optional(),
   notes: z.string().max(5000).optional(),
   clinicId: z.string().max(128).optional(),
   pendingPatientName: z.string().max(255).optional(),
@@ -583,7 +589,11 @@ export function validateData<T>(
   } catch (error) {
     if (error instanceof z.ZodError) {
       const issues = Array.isArray(error.errors) ? error.errors : [];
-      const firstMessage = issues.length > 0 && issues[0]?.message ? issues[0].message : 'Error de validación';
+      const firstIssue = issues[0];
+      const firstMessage =
+        firstIssue?.message && firstIssue.path?.length
+          ? `${firstIssue.path.join('.')}: ${firstIssue.message}`
+          : firstIssue?.message || 'Error de validación';
       return {
         success: false,
         error: firstMessage,

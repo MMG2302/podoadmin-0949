@@ -20,6 +20,7 @@ export interface ApiResponse<T = any> {
   attemptCount?: number;
   isBlocked?: boolean;
   blockDurationMinutes?: number;
+  requiresCaptcha?: boolean;
 }
 
 // Variable para evitar múltiples renovaciones simultáneas
@@ -284,6 +285,7 @@ export async function apiRequest<T = any>(
             retryAfter: retryData.retryAfter,
             blockedUntil: retryData.blockedUntil,
             attemptCount: retryData.attemptCount,
+            requiresCaptcha: retryData.requiresCaptcha,
             data: retryData,
           };
         }
@@ -328,6 +330,7 @@ export async function apiRequest<T = any>(
         attemptCount: data.attemptCount,
         isBlocked: data.isBlocked,
         blockDurationMinutes: data.blockDurationMinutes,
+        requiresCaptcha: data.requiresCaptcha,
       };
     }
 

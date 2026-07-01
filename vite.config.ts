@@ -3,6 +3,21 @@ import react from "@vitejs/plugin-react";
 import { cloudflare } from "@cloudflare/vite-plugin";
 import tailwind from "@tailwindcss/vite"
 import path from "path";
+import { buildHtmlCspMetaContent } from "./scripts/html-csp";
+
+/** Inyecta CSP en index.html (Turnstile y otros proveedores hosted). */
+function htmlCspPlugin(): Plugin {
+        return {
+                name: "html-csp-turnstile",
+                transformIndexHtml(html) {
+                        const csp = buildHtmlCspMetaContent();
+                        return html.replace(
+                                /<meta http-equiv="Content-Security-Policy" content="[^"]*"\s*\/>/,
+                                `<meta http-equiv="Content-Security-Policy" content="${csp}" />`
+                        );
+                },
+        };
+}
 
 /** Miniflare tarda unos segundos en arrancar; sin warmup la 1ª petición API falla con HTML/500. */
 function scheduleWorkerWarmup(server: ViteDevServer, delaysMs: number[]) {
@@ -45,6 +60,7 @@ export default defineConfig({
                 react(),
                 cloudflare({ inspectorPort: false }),
                 tailwind(),
+                htmlCspPlugin(),
                 warmupWorkerPlugin(),
         ],
         resolve: {

@@ -66,6 +66,14 @@ export function getSanitizedHeader(headers: Headers, name: string): string {
  * Obtiene User-Agent de forma segura para logs/audit.
  * Usa safeHeaders (del middleware) si está disponible; si no, el header crudo sanitizado.
  */
+/** Hostname sin puerto (x-forwarded-host tiene prioridad sobre host). */
+export function getRequestHostname(headers: Headers): string | undefined {
+  const forwarded = sanitizeHeaderValue(headers.get('x-forwarded-host'));
+  const raw = forwarded.split(',')[0]?.trim() || sanitizeHeaderValue(headers.get('host'));
+  if (!raw) return undefined;
+  return raw.split(':')[0].toLowerCase();
+}
+
 export function getSafeUserAgent(c: {
   get: (key: string) => unknown;
   req: { header: (name: string) => string | undefined };

@@ -4,7 +4,7 @@ import { useLanguage } from "../contexts/language-context";
 import { useAuth } from "../contexts/auth-context";
 import { useRefreshOnFocus } from "../hooks/use-refresh-on-focus";
 import { api } from "../lib/api-client";
-import { Notification, NotificationType } from "../lib/storage";
+import { Notification, NotificationType } from "../types/notification";
 
 type FilterTab = "all" | "unread" | "read";
 type TypeFilter = "all" | NotificationType;

@@ -147,7 +147,7 @@ appointmentsRoutes.get('/', requirePermission('view_patients'), async (c) => {
     if (!queryResult.success) {
       return c.json({ error: 'Parámetros inválidos', message: queryResult.error, issues: queryResult.issues }, 400);
     }
-    const { clinicId, podiatristId, date } = queryResult.data;
+    const { clinicId, podiatristId, date, from, to } = queryResult.data;
 
     if (user.role === 'clinic_admin' && clinicId && clinicId !== user.clinicId) {
       return c.json({ error: 'Acceso denegado', message: 'No puedes consultar otra clínica' }, 403);
@@ -179,6 +179,8 @@ appointmentsRoutes.get('/', requirePermission('view_patients'), async (c) => {
     if (clinicId) rows = rows.filter((r) => r.clinicId === clinicId);
     if (podiatristId) rows = rows.filter((r) => r.createdBy === podiatristId);
     if (date) rows = rows.filter((r) => r.sessionDate === date);
+    if (from) rows = rows.filter((r) => r.sessionDate >= from);
+    if (to) rows = rows.filter((r) => r.sessionDate <= to);
     // No devolver citas canceladas (si quedan registros antiguos con status cancelled)
     rows = rows.filter((r) => r.status !== 'cancelled');
 

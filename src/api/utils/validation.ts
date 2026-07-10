@@ -312,6 +312,9 @@ const roleEnum = z.enum(['super_admin', 'clinic_admin', 'admin', 'podiatrist', '
 /** Query: filtro opcional por rol en listados de usuarios */
 export const roleFilterQuerySchema = z.object({
   role: roleEnum.optional(),
+  q: z.string().max(100).optional(),
+  limit: z.string().optional(),
+  offset: z.string().optional(),
 });
 
 /** Paginación en listados clínicos */
@@ -329,6 +332,7 @@ export const clinicalListPaginationSchema = z.object({
 /** Query: listado de pacientes */
 export const patientsListQuerySchema = clinicalListPaginationSchema.extend({
   q: z.string().max(100).optional(),
+  ids: z.string().max(2000).optional(),
 });
 
 /** Query: listado de sesiones */
@@ -336,6 +340,14 @@ export const sessionsListQuerySchema = clinicalListPaginationSchema.extend({
   patient: z.string().max(128).optional(),
   q: z.string().max(100).optional(),
   status: z.enum(['all', 'draft', 'completed']).optional(),
+  from: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, 'Fecha inválida (YYYY-MM-DD)')
+    .optional(),
+  to: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, 'Fecha inválida (YYYY-MM-DD)')
+    .optional(),
 });
 
 /** Query: listado de citas */
@@ -343,6 +355,14 @@ export const appointmentsListQuerySchema = clinicalListPaginationSchema.extend({
   clinicId: z.string().max(128).optional(),
   podiatristId: z.string().max(128).optional(),
   date: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, 'Fecha inválida (YYYY-MM-DD)')
+    .optional(),
+  from: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, 'Fecha inválida (YYYY-MM-DD)')
+    .optional(),
+  to: z
     .string()
     .regex(/^\d{4}-\d{2}-\d{2}$/, 'Fecha inválida (YYYY-MM-DD)')
     .optional(),

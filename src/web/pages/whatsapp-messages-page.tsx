@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { MainLayout } from "../components/layout/main-layout";
 import { api } from "../lib/api-client";
-import { fetchAllClinicalPages } from "../lib/clinical-list-fetch";
 import { useAuth } from "../contexts/auth-context";
+import { usePermissions } from "../hooks/use-permissions";
 import type { Patient } from "../types/clinical";
 import {
   applyWhatsAppWebTemplate,
@@ -64,8 +64,17 @@ type TomorrowRow = {
   dateLabel: string;
 };
 
+type WhatsAppWorkspace = {
+  canUseWeb?: boolean;
+  canUseApi?: boolean;
+  apiConnected?: boolean;
+  receptionistApiEnabled?: boolean;
+  config?: WhatsAppConfigPublic;
+};
+
 export default function WhatsAppMessagesPage() {
   const { user } = useAuth();
+  const { canViewWhatsAppWeb, isReceptionist, canConfigureWhatsApp } = usePermissions();
   const tenantCountry = useTenantCountry(user);
   const [messages, setMessages] = useState<WhatsAppMessageRow[]>([]);
   const [appointments, setAppointments] = useState<AppointmentRow[]>([]);
@@ -76,18 +85,19 @@ export default function WhatsAppMessagesPage() {
   const [webTemplate, setWebTemplate] = useState(DEFAULT_WHATSAPP_WEB_TEMPLATE);
   const [webExtraNote, setWebExtraNote] = useState("");
   const [templateSaved, setTemplateSaved] = useState(false);
+  const [workspace, setWorkspace] = useState<WhatsAppWorkspace | null>(null);
   const [showApiSection, setShowApiSection] = useState(false);
+  const [showHistorySection, setShowHistorySection] = useState(false);
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
-  const canUse = user?.role === "podiatrist" || user?.role === "clinic_admin";
   const tomorrowIso = useMemo(() => getTomorrowLocalDateString(), []);
   const tomorrowLabel = useMemo(() => formatDisplayDate(tomorrowIso), [tomorrowIso]);
 
-  const apiConnected =
-    Boolean(whatsAppConfig?.configured && whatsAppConfig?.enabled && whatsAppConfig?.templateName);
+  const apiConnected = Boolean(workspace?.apiConnected);
+  const canUseApi = Boolean(workspace?.canUseApi && apiConnected);
 
   useEffect(() => {
     if (!user?.id) return;
@@ -97,29 +107,63 @@ export default function WhatsAppMessagesPage() {
   const loadData = async () => {
     setLoading(true);
     setError(null);
-    const [mRes, appointmentsList, patientsList, wRes] = await Promise.all([
+    const [mRes, aptRes, wRes] = await Promise.all([
       api.get<{ success?: boolean; messages?: WhatsAppMessageRow[] }>("/whatsapp-messages?limit=200"),
-      fetchAllClinicalPages<AppointmentRow>("/appointments", "appointments", () => "Error citas"),
-      fetchAllClinicalPages<Patient>("/patients", "patients", () => "Error pacientes"),
-      api.get<{ success?: boolean; config?: WhatsAppConfigPublic }>("/integrations/whatsapp/me"),
+      api.get<{ success?: boolean; appointments?: AppointmentRow[] }>(
+        `/appointments?from=${tomorrowIso}&to=${tomorrowIso}&limit=200`
+      ),
+      api.get<{ success?: boolean } & WhatsAppWorkspace>("/integrations/whatsapp/workspace"),
     ]);
     if (mRes.success && Array.isArray(mRes.data?.messages)) {
       setMessages(mRes.data.messages);
     }
+    const appointmentsList = aptRes.success && Array.isArray(aptRes.data?.appointments)
+      ? aptRes.data.appointments
+      : [];
     setAppointments(appointmentsList.filter((a) => a.status !== "cancelled"));
-    setPatients(patientsList);
-    if (wRes.success && wRes.data?.config) {
-      setWhatsAppConfig(wRes.data.config);
-      setShowApiSection(Boolean(wRes.data.config.configured && wRes.data.config.enabled));
+
+    const patientIds = [
+      ...new Set(
+        appointmentsList.filter((a) => a.patientId).map((a) => a.patientId as string)
+      ),
+    ];
+    if (patientIds.length > 0) {
+      const pRes = await api.get<{ success?: boolean; patients?: Patient[] }>(
+        `/patients?ids=${patientIds.join(",")}&limit=100`
+      );
+      if (pRes.success && Array.isArray(pRes.data?.patients)) {
+        setPatients(pRes.data.patients);
+      } else {
+        setPatients([]);
+      }
+    } else {
+      setPatients([]);
+    }
+    if (wRes.success && wRes.data) {
+      const ws = wRes.data;
+      setWorkspace(ws);
+      setWhatsAppConfig(ws.config ?? null);
+      const connected = Boolean(ws.apiConnected);
+      if (isReceptionist) {
+        setShowApiSection(connected);
+        setShowHistorySection(connected);
+      } else {
+        setShowApiSection(connected);
+        setShowHistorySection(connected && (mRes.data?.messages?.length ?? 0) > 0);
+      }
+    } else {
+      setWorkspace(null);
+      setShowApiSection(false);
+      setShowHistorySection(false);
     }
     setLoading(false);
   };
 
   useEffect(() => {
-    if (!canUse) return;
+    if (!canViewWhatsAppWeb) return;
     loadData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [canUse]);
+  }, [canViewWhatsAppWeb]);
 
   const patientById = useMemo(() => new Map(patients.map((p) => [p.id, p])), [patients]);
 
@@ -225,10 +269,10 @@ export default function WhatsAppMessagesPage() {
     return "bg-amber-100 text-amber-700";
   };
 
-  if (!canUse) {
+  if (!canViewWhatsAppWeb) {
     return (
       <MainLayout title="Mensajes WhatsApp">
-        <div className="max-w-2xl p-6 bg-white dark:bg-[#1a1a1a] rounded-xl border border-gray-100 dark:border-white/10">
+        <div className="max-w-2xl p-6 bg-brand-surface rounded-xl border border-brand-border">
           <p className="text-sm text-red-600">No tienes permisos para ver esta sección.</p>
         </div>
       </MainLayout>
@@ -241,7 +285,7 @@ export default function WhatsAppMessagesPage() {
         <div className="bg-emerald-50 dark:bg-emerald-950/30 rounded-xl border border-emerald-200 dark:border-emerald-900/50 p-6">
           <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-4">
             <div>
-              <h3 className="text-lg font-semibold text-[#1a1a1a] dark:text-white">
+              <h3 className="text-lg font-semibold text-brand-ink">
                 Recordatorios por WhatsApp Web
               </h3>
               <p className="text-sm text-emerald-900/80 dark:text-emerald-100/80 mt-1 max-w-2xl">
@@ -267,9 +311,9 @@ export default function WhatsAppMessagesPage() {
               value={webTemplate}
               onChange={(e) => setWebTemplate(e.target.value)}
               rows={5}
-              className="w-full px-4 py-2.5 border border-emerald-200 dark:border-emerald-900/60 rounded-lg bg-white dark:bg-gray-900 text-sm"
+              className="w-full px-4 py-2.5 border border-emerald-200 dark:border-emerald-900/60 rounded-lg bg-brand-surface text-sm"
             />
-            <p className="text-xs text-gray-600 dark:text-gray-400">
+            <p className="text-xs text-brand-muted">
               Variables:{" "}
               <code className="text-xs">{"{{nombre}}"}</code>,{" "}
               <code className="text-xs">{"{{fecha}}"}</code>,{" "}
@@ -281,7 +325,7 @@ export default function WhatsAppMessagesPage() {
                 value={webExtraNote}
                 onChange={(e) => setWebExtraNote(e.target.value.slice(0, 500))}
                 placeholder="Nota extra para todos los envíos de hoy (opcional)"
-                className="flex-1 px-4 py-2.5 border border-emerald-200 dark:border-emerald-900/60 rounded-lg bg-white dark:bg-gray-900 text-sm"
+                className="flex-1 px-4 py-2.5 border border-emerald-200 dark:border-emerald-900/60 rounded-lg bg-brand-surface text-sm"
               />
               <button
                 type="button"
@@ -293,26 +337,26 @@ export default function WhatsAppMessagesPage() {
             </div>
           </div>
 
-          <h4 className="text-sm font-semibold text-[#1a1a1a] dark:text-white mb-2">
+          <h4 className="text-sm font-semibold text-brand-ink mb-2">
             Citas de mañana ({tomorrowLabel})
           </h4>
 
           {loading ? (
             <p className="text-sm text-gray-500">Cargando citas…</p>
           ) : tomorrowAppointments.length === 0 ? (
-            <p className="text-sm text-gray-600 dark:text-gray-400 bg-white/60 dark:bg-gray-900/40 rounded-lg p-4">
+            <p className="text-sm text-brand-muted bg-white/60 dark:bg-gray-900/40 rounded-lg p-4">
               No hay citas programadas para mañana.
             </p>
           ) : (
-            <ul className="divide-y divide-emerald-100 dark:divide-emerald-900/40 bg-white dark:bg-gray-900 rounded-lg border border-emerald-100 dark:border-emerald-900/40 overflow-hidden">
+            <ul className="divide-y divide-emerald-100 dark:divide-emerald-900/40 bg-brand-surface rounded-lg border border-emerald-100 dark:border-emerald-900/40 overflow-hidden">
               {tomorrowAppointments.map((row) => (
                 <li
                   key={row.id}
                   className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4"
                 >
                   <div className="min-w-0">
-                    <p className="font-medium text-[#1a1a1a] dark:text-white">{row.patientName}</p>
-                    <p className="text-sm text-gray-500 dark:text-gray-400">
+                    <p className="font-medium text-brand-ink">{row.patientName}</p>
+                    <p className="text-sm text-brand-muted">
                       {row.time}
                       {row.phone ? ` · ${row.phone}` : " · Sin teléfono"}
                     </p>
@@ -332,51 +376,56 @@ export default function WhatsAppMessagesPage() {
           )}
         </div>
 
-        <div className="bg-white dark:bg-[#1a1a1a] rounded-xl border border-gray-100 dark:border-white/10 p-6">
+        {(canConfigureWhatsApp || canUseApi) && (
+        <div className="bg-brand-surface rounded-xl border border-brand-border p-6">
           <button
             type="button"
-            onClick={() => setShowApiSection((v) => !v)}
-            className="w-full flex items-center justify-between text-left"
+            onClick={() => !isReceptionist && setShowApiSection((v) => !v)}
+            className={`w-full flex items-center justify-between text-left ${isReceptionist ? "cursor-default" : ""}`}
           >
             <div>
-              <h3 className="text-lg font-semibold text-[#1a1a1a] dark:text-white">
+              <h3 className="text-lg font-semibold text-brand-ink">
                 Envío automático con API Meta {apiConnected ? "(conectado)" : "(opcional)"}
               </h3>
-              <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
-                Solo si configuraste WhatsApp Business en Ajustes. Puedes ignorar esta sección.
+              <p className="text-sm text-brand-muted mt-0.5">
+                {isReceptionist
+                  ? "Envío automático habilitado por tu podólogo. Los recordatorios se envían sin abrir WhatsApp Web."
+                  : "Solo si configuraste WhatsApp Business en Ajustes. Puedes ignorar esta sección."}
               </p>
             </div>
-            <span className="text-gray-400 text-sm ml-4">{showApiSection ? "▲" : "▼"}</span>
+            {!isReceptionist && (
+              <span className="text-gray-400 text-sm ml-4">{showApiSection ? "▲" : "▼"}</span>
+            )}
           </button>
 
           {showApiSection && (
-            <div className="mt-5 space-y-6 border-t border-gray-100 dark:border-gray-800 pt-5">
+            <div className="mt-5 space-y-6 border-t border-brand-border pt-5">
               {!whatsAppConfig ? (
                 <p className="text-sm text-gray-500">No se pudo obtener el estado de WhatsApp.</p>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-3 text-sm">
                   <div className="p-3 rounded-lg bg-gray-50 dark:bg-gray-900">
-                    <p className="text-gray-500 dark:text-gray-400">Conectado</p>
+                    <p className="text-brand-muted">Conectado</p>
                     <p className="font-semibold">{whatsAppConfig.configured && whatsAppConfig.enabled ? "Sí" : "No"}</p>
                   </div>
                   <div className="p-3 rounded-lg bg-gray-50 dark:bg-gray-900">
-                    <p className="text-gray-500 dark:text-gray-400">Estado API</p>
+                    <p className="text-brand-muted">Estado API</p>
                     <p className="font-semibold">{whatsAppConfig.status || "pending"}</p>
                   </div>
                   <div className="p-3 rounded-lg bg-gray-50 dark:bg-gray-900">
-                    <p className="text-gray-500 dark:text-gray-400">Plantilla</p>
+                    <p className="text-brand-muted">Plantilla</p>
                     <p className="font-semibold">{whatsAppConfig.templateName || "No definida"}</p>
                   </div>
                   <div className="p-3 rounded-lg bg-gray-50 dark:bg-gray-900">
-                    <p className="text-gray-500 dark:text-gray-400">Último error</p>
+                    <p className="text-brand-muted">Último error</p>
                     <p className="font-semibold truncate">{whatsAppConfig.lastError || "Sin errores"}</p>
                   </div>
                 </div>
               )}
 
               <div>
-                <h4 className="font-medium text-[#1a1a1a] dark:text-white mb-1">Enviar recordatorio automático</h4>
-                <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
+                <h4 className="font-medium text-brand-ink mb-1">Enviar recordatorio automático</h4>
+                <p className="text-sm text-brand-muted mb-4">
                   Requiere API Meta configurada en Ajustes → WhatsApp.
                 </p>
 
@@ -388,7 +437,7 @@ export default function WhatsAppMessagesPage() {
                     <select
                       value={selectedAppointmentId}
                       onChange={(e) => setSelectedAppointmentId(e.target.value)}
-                      className="flex-1 px-4 py-2.5 border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900"
+                      className="flex-1 px-4 py-2.5 border border-brand-border rounded-lg bg-brand-surface"
                     >
                       <option value="">Selecciona una cita próxima</option>
                       {upcomingAppointments.map((a) => {
@@ -403,7 +452,7 @@ export default function WhatsAppMessagesPage() {
                     <button
                       onClick={handleSendReminder}
                       disabled={sending || !selectedAppointmentId || !apiConnected}
-                      className="px-5 py-2.5 bg-[#1a1a1a] text-white rounded-lg font-medium disabled:opacity-50 md:self-start"
+                      className="px-5 py-2.5 bg-brand-ink text-brand-ink-fg rounded-lg font-medium disabled:opacity-50 md:self-start"
                     >
                       {sending ? "Enviando..." : "Enviar por API"}
                     </button>
@@ -412,7 +461,7 @@ export default function WhatsAppMessagesPage() {
                     value={extraNote}
                     onChange={(e) => setExtraNote(e.target.value.slice(0, 500))}
                     rows={2}
-                    className="w-full px-4 py-2.5 border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 text-sm"
+                    className="w-full px-4 py-2.5 border border-brand-border rounded-lg bg-brand-surface text-sm"
                     placeholder="Nota extra para este envío (opcional)"
                   />
                 </div>
@@ -420,55 +469,90 @@ export default function WhatsAppMessagesPage() {
             </div>
           )}
         </div>
+        )}
 
-        <div className="bg-white dark:bg-[#1a1a1a] rounded-xl border border-gray-100 dark:border-white/10 p-6">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold text-[#1a1a1a] dark:text-white">Historial (API automática)</h3>
-            <button
-              onClick={loadData}
-              className="text-sm px-3 py-1.5 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800"
-            >
-              Actualizar
-            </button>
-          </div>
+        {(canConfigureWhatsApp || canUseApi) && (
+        <div className="bg-brand-surface rounded-xl border border-brand-border p-6">
+          <button
+            type="button"
+            onClick={() => !isReceptionist && setShowHistorySection((v) => !v)}
+            className={`w-full flex items-center justify-between text-left ${isReceptionist ? "cursor-default" : ""}`}
+          >
+            <div>
+              <h3 className="text-lg font-semibold text-brand-ink">
+                Historial (API automática) {apiConnected ? "" : "(opcional)"}
+              </h3>
+              <p className="text-sm text-brand-muted mt-0.5">
+                {isReceptionist
+                  ? "Registro de envíos automáticos por API Meta."
+                  : apiConnected
+                    ? "Registro de envíos automáticos por API Meta."
+                    : "Solo si usas la API Meta. Los recordatorios por WhatsApp Web no quedan registrados aquí."}
+              </p>
+            </div>
+            {!isReceptionist && (
+              <span className="text-gray-400 text-sm ml-4 shrink-0">
+                {showHistorySection ? "▲" : "▼"}
+              </span>
+            )}
+          </button>
 
-          {loading ? (
-            <p className="text-sm text-gray-500">Cargando historial...</p>
-          ) : messages.length === 0 ? (
-            <p className="text-sm text-gray-500">
-              Sin envíos por API. Los recordatorios por WhatsApp Web no quedan registrados aquí.
-            </p>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="min-w-full text-sm">
-                <thead>
-                  <tr className="text-left border-b border-gray-100 dark:border-gray-800">
-                    <th className="py-2 pr-4">Fecha</th>
-                    <th className="py-2 pr-4">Paciente</th>
-                    <th className="py-2 pr-4">Teléfono</th>
-                    <th className="py-2 pr-4">Estado</th>
-                    <th className="py-2 pr-4">Nota</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {messages.map((m) => (
-                    <tr key={m.id} className="border-b border-gray-50 dark:border-gray-900">
-                      <td className="py-2 pr-4">{new Date(m.createdAt).toLocaleString("es-MX")}</td>
-                      <td className="py-2 pr-4">{m.patientName || "—"}</td>
-                      <td className="py-2 pr-4">{m.patientPhone || "—"}</td>
-                      <td className="py-2 pr-4">
-                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${statusClass(m.status)}`}>
-                          {m.status}
-                        </span>
-                      </td>
-                      <td className="py-2 pr-4 max-w-[200px] truncate">{m.extraNote || "—"}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+          {showHistorySection && (
+            <div className="mt-5 border-t border-brand-border pt-5">
+              <div className="flex items-center justify-between mb-4">
+                <p className="text-sm text-brand-muted">Últimos envíos por API</p>
+                <button
+                  onClick={loadData}
+                  className="text-sm px-3 py-1.5 border border-brand-border rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800"
+                >
+                  Actualizar
+                </button>
+              </div>
+
+              {loading ? (
+                <p className="text-sm text-gray-500">Cargando historial...</p>
+              ) : !apiConnected ? (
+                <p className="text-sm text-gray-500">
+                  Configura WhatsApp Business en Ajustes para usar el envío automático y ver el historial aquí.
+                </p>
+              ) : messages.length === 0 ? (
+                <p className="text-sm text-gray-500">
+                  Sin envíos por API. Los recordatorios por WhatsApp Web no quedan registrados aquí.
+                </p>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="min-w-full text-sm">
+                    <thead>
+                      <tr className="text-left border-b border-brand-border">
+                        <th className="py-2 pr-4">Fecha</th>
+                        <th className="py-2 pr-4">Paciente</th>
+                        <th className="py-2 pr-4">Teléfono</th>
+                        <th className="py-2 pr-4">Estado</th>
+                        <th className="py-2 pr-4">Nota</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {messages.map((m) => (
+                        <tr key={m.id} className="border-b border-gray-50 dark:border-gray-900">
+                          <td className="py-2 pr-4">{new Date(m.createdAt).toLocaleString("es-MX")}</td>
+                          <td className="py-2 pr-4">{m.patientName || "—"}</td>
+                          <td className="py-2 pr-4">{m.patientPhone || "—"}</td>
+                          <td className="py-2 pr-4">
+                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${statusClass(m.status)}`}>
+                              {m.status}
+                            </span>
+                          </td>
+                          <td className="py-2 pr-4 max-w-[200px] truncate">{m.extraNote || "—"}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </div>
           )}
         </div>
+        )}
       </div>
     </MainLayout>
   );

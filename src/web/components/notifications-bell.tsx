@@ -1,8 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { Link, useLocation } from "wouter";
 import { useLanguage } from "../contexts/language-context";
-import { useAuth } from "../contexts/auth-context";
-import { useRefreshOnFocus } from "../hooks/use-refresh-on-focus";
+import { useNotifications } from "../contexts/notifications-context";
 import { api } from "../lib/api-client";
 import { Notification, NotificationType } from "../types/notification";
 
@@ -59,38 +58,10 @@ const formatTimeAgo = (dateStr: string, t: any): string => {
 
 export const NotificationsBell = () => {
   const { t } = useLanguage();
-  const { user } = useAuth();
+  const { notifications, unreadCount, refresh, setNotificationsLocal } = useNotifications();
   const [, navigate] = useLocation();
   const [isOpen, setIsOpen] = useState(false);
-  const [notifications, setNotifications] = useState<Notification[]>([]);
-  const [unreadCount, setUnreadCount] = useState(0);
   const dropdownRef = useRef<HTMLDivElement>(null);
-
-  const loadNotifications = async () => {
-    if (!user?.id) return;
-    const [listRes, countRes] = await Promise.all([
-      api.get<{ success?: boolean; notifications?: Notification[] }>("/notifications"),
-      api.get<{ success?: boolean; unreadCount?: number }>("/notifications/unread-count"),
-    ]);
-    if (listRes.success && Array.isArray(listRes.data?.notifications)) {
-      setNotifications(listRes.data.notifications);
-    }
-    if (countRes.success && typeof countRes.data?.unreadCount === "number") {
-      setUnreadCount(countRes.data.unreadCount);
-    }
-  };
-
-  useEffect(() => {
-    loadNotifications();
-    // Refresh notifications every 5 seconds para actualizaciones casi instantáneas
-    const interval = setInterval(loadNotifications, 5000);
-
-    return () => {
-      clearInterval(interval);
-    };
-  }, [user?.id]);
-
-  useRefreshOnFocus(loadNotifications);
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -106,13 +77,20 @@ export const NotificationsBell = () => {
 
   const handleMarkAsRead = async (notificationId: string) => {
     const r = await api.patch<{ success?: boolean }>(`/notifications/${notificationId}/read`);
-    if (r.success) loadNotifications();
+    if (r.success) {
+      setNotificationsLocal((prev) =>
+        prev.map((n) => (n.id === notificationId ? { ...n, read: true } : n))
+      );
+      void refresh({ force: true });
+    }
   };
 
   const handleMarkAllAsRead = async () => {
-    if (!user?.id) return;
     const r = await api.post<{ success?: boolean }>("/notifications/read-all");
-    if (r.success) loadNotifications();
+    if (r.success) {
+      setNotificationsLocal((prev) => prev.map((n) => ({ ...n, read: true })));
+      void refresh({ force: true });
+    }
   };
 
   const recentNotifications = notifications.slice(0, 5);
@@ -125,7 +103,7 @@ export const NotificationsBell = () => {
         className="relative p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
         aria-label={t.notifications.title}
       >
-        <svg className="w-5 h-5 text-[#1a1a1a] dark:text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+        <svg className="w-5 h-5 text-brand-ink" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
           <path strokeLinecap="round" strokeLinejoin="round" d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0" />
         </svg>
         {/* Unread Badge */}
@@ -138,14 +116,14 @@ export const NotificationsBell = () => {
 
       {/* Dropdown Panel */}
       {isOpen && (
-        <div className="absolute right-0 mt-2 w-80 bg-white dark:bg-gray-900 rounded-xl shadow-lg border border-gray-100 dark:border-gray-800 z-50 overflow-hidden">
+        <div className="absolute right-0 mt-2 w-80 bg-brand-surface rounded-xl shadow-lg border border-brand-border z-50 overflow-hidden">
           {/* Header */}
-          <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 dark:border-gray-800">
-            <h3 className="font-semibold text-[#1a1a1a] dark:text-white">{t.notifications.title}</h3>
+          <div className="flex items-center justify-between px-4 py-3 border-b border-brand-border">
+            <h3 className="font-semibold text-brand-ink">{t.notifications.title}</h3>
             {unreadCount > 0 && (
               <button
                 onClick={handleMarkAllAsRead}
-                className="text-xs text-gray-500 dark:text-gray-400 hover:text-[#1a1a1a] dark:hover:text-white transition-colors"
+                className="text-xs text-brand-muted hover:text-brand-ink dark:hover:text-white transition-colors"
               >
                 {t.notifications.markAllAsRead}
               </button>
@@ -159,7 +137,7 @@ export const NotificationsBell = () => {
                 <svg className="w-12 h-12 mx-auto text-gray-300 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
                 </svg>
-                <p className="text-sm text-gray-500 dark:text-gray-400">{t.notifications.noNotifications}</p>
+                <p className="text-sm text-brand-muted">{t.notifications.noNotifications}</p>
               </div>
             ) : (
               recentNotifications.map((notification) => (
@@ -198,7 +176,7 @@ export const NotificationsBell = () => {
                     {/* Content */}
                     <div className="flex-1 min-w-0">
                       <div className="flex items-start justify-between gap-2">
-                        <p className="text-sm font-medium text-[#1a1a1a] dark:text-white truncate">
+                        <p className="text-sm font-medium text-brand-ink truncate">
                           {notification.title}
                         </p>
                         {!notification.read && (
@@ -212,7 +190,7 @@ export const NotificationsBell = () => {
                           </span>
                         )}
                       </div>
-                      <p className="text-xs text-gray-600 dark:text-gray-300 mt-0.5 line-clamp-2">
+                      <p className="text-xs text-brand-muted mt-0.5 line-clamp-2">
                         {notification.message}
                       </p>
                       {/* Show sender for admin messages */}
@@ -233,11 +211,11 @@ export const NotificationsBell = () => {
 
           {/* Footer */}
           {notifications.length > 0 && (
-            <div className="px-4 py-3 border-t border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-950">
+            <div className="px-4 py-3 border-t border-brand-border bg-brand-canvas">
               <Link
                 href="/notifications"
                 onClick={() => setIsOpen(false)}
-                className="block text-center text-sm font-medium text-[#1a1a1a] dark:text-white hover:underline"
+                className="block text-center text-sm font-medium text-brand-ink hover:underline"
               >
                 {t.notifications.viewAll} →
               </Link>

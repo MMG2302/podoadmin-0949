@@ -68,7 +68,7 @@ export function AppModal({
       <div
         id={panelId}
         data-session-form={panelId === "session-form-panel" ? true : undefined}
-        className={`relative z-10 flex w-full min-w-0 flex-col max-h-[95dvh] sm:max-h-[min(90dvh,100%)] ${MAX_WIDTH_CLASS[maxWidth]} rounded-t-2xl sm:rounded-2xl bg-white dark:bg-gray-900 shadow-xl overflow-hidden ${panelClassName}`}
+        className={`relative z-10 flex w-full min-w-0 flex-col max-h-[95dvh] sm:max-h-[min(90dvh,100%)] ${MAX_WIDTH_CLASS[maxWidth]} rounded-t-2xl sm:rounded-2xl bg-brand-surface shadow-xl overflow-hidden ${panelClassName}`}
         onClick={(event) => event.stopPropagation()}
       >
         {children}
@@ -87,7 +87,7 @@ export function AppModalHeader({
 }) {
   return (
     <div
-      className={`flex-shrink-0 border-b border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 px-4 py-4 sm:px-6 sm:py-5 ${className}`}
+      className={`flex-shrink-0 border-b border-brand-border bg-brand-surface px-4 py-4 sm:px-6 sm:py-5 ${className}`}
     >
       {children}
     </div>
@@ -119,7 +119,7 @@ export function AppModalFooter({
 }) {
   return (
     <div
-      className={`flex-shrink-0 border-t border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 px-4 py-4 sm:px-6 ${className}`}
+      className={`flex-shrink-0 border-t border-brand-border bg-brand-surface px-4 py-4 sm:px-6 ${className}`}
     >
       {children}
     </div>

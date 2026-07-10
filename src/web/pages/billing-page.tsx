@@ -232,7 +232,7 @@ const BillingPage = () => {
           !(subscription?.status === "trial" && subscription.isActive) &&
           trialVerification && (
             <div className="p-4 rounded-xl border border-gray-200 bg-gray-50 space-y-4 text-sm">
-              <p className="font-semibold text-[#1a1a1a] dark:text-white">Activar prueba gratuita (1 mes)</p>
+              <p className="font-semibold text-brand-ink">Activar prueba gratuita (1 mes)</p>
               <p className="text-gray-600">
                 Verifica tu correo y tarjeta. Una cuenta, una tarjeta y una conexión (IP) solo pueden
                 usarse una vez para la prueba.
@@ -261,7 +261,7 @@ const BillingPage = () => {
                     type="button"
                     disabled={busy}
                     onClick={startCardSetup}
-                    className="w-full py-2 bg-[#1a1a1a] text-white rounded-lg"
+                    className="w-full py-2 bg-brand-ink text-brand-ink-fg rounded-lg"
                   >
                     Verificar tarjeta (sin cobro hoy)
                   </button>
@@ -299,10 +299,10 @@ const BillingPage = () => {
         {loading ? (
           <p className="text-gray-500">Cargando…</p>
         ) : (
-          <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-100 dark:border-gray-800 p-6 space-y-4">
+          <div className="bg-brand-surface rounded-xl border border-brand-border p-6 space-y-4">
             <div>
               <p className="text-sm text-gray-500">Suscripción PodoAdmin</p>
-              <p className="text-lg font-semibold text-[#1a1a1a] dark:text-white">
+              <p className="text-lg font-semibold text-brand-ink">
                 {pricing?.plan.label ??
                   (pricing?.subjectType === "clinic" ? "Plan clínica" : "Plan podólogo independiente")}
               </p>
@@ -312,7 +312,7 @@ const BillingPage = () => {
             </div>
 
             {pricing?.subjectType === "clinic" && (
-              <div className="text-sm bg-gray-50 dark:bg-gray-800 rounded-lg p-3 space-y-1">
+              <div className="text-sm bg-brand-canvas rounded-lg p-3 space-y-1">
                 <p>
                   <span className="text-gray-500">Podólogos activos:</span>{" "}
                   <strong>
@@ -355,7 +355,7 @@ const BillingPage = () => {
                     type="button"
                     disabled={busy || !pricing?.plan.stripeConfigured || checkoutBlocked}
                     onClick={startCheckout}
-                    className="w-full py-2.5 bg-[#1a1a1a] text-white rounded-lg text-sm font-medium disabled:opacity-50"
+                    className="w-full py-2.5 bg-brand-ink text-brand-ink-fg rounded-lg text-sm font-medium disabled:opacity-50"
                   >
                     {`Suscribirse — $${pricing?.plan.amountUsd ?? ""} USD/mes`}
                   </button>
@@ -364,7 +364,7 @@ const BillingPage = () => {
                     type="button"
                     disabled={busy}
                     onClick={openPortal}
-                    className="w-full py-2.5 bg-[#1a1a1a] text-white rounded-lg text-sm font-medium disabled:opacity-50"
+                    className="w-full py-2.5 bg-brand-ink text-brand-ink-fg rounded-lg text-sm font-medium disabled:opacity-50"
                   >
                     Gestionar facturación en Stripe
                   </button>

@@ -186,23 +186,23 @@ export function ClinicalHistoriesDownloadSection() {
   };
 
   return (
-    <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-100 dark:border-gray-800 p-6 space-y-4">
+    <div className="bg-brand-surface rounded-xl border border-brand-border p-6 space-y-4">
       <div>
-        <h2 className="text-lg font-semibold text-[#1a1a1a] dark:text-white">{c.title}</h2>
-        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{c.subtitle}</p>
+        <h2 className="text-lg font-semibold text-brand-ink">{c.title}</h2>
+        <p className="text-sm text-brand-muted mt-1">{c.subtitle}</p>
       </div>
 
-      <p className="text-sm text-gray-600 dark:text-gray-400">{c.desc}</p>
+      <p className="text-sm text-brand-muted">{c.desc}</p>
 
       {stats && (
-        <p className="text-sm text-gray-700 dark:text-gray-300">
+        <p className="text-sm text-brand-muted">
           {c.stats
             .replace("{patients}", String(stats.patients))
             .replace("{sessions}", String(stats.sessions))}
         </p>
       )}
 
-      {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
+      {error && <p className="text-sm text-semantic-error">{error}</p>}
       {success && <p className="text-sm text-green-700 dark:text-green-400">{success}</p>}
 
       <div className="flex flex-wrap gap-3">
@@ -210,7 +210,7 @@ export function ClinicalHistoriesDownloadSection() {
           type="button"
           onClick={() => void downloadHtml()}
           disabled={loading}
-          className="px-4 py-2 bg-[#1a1a1a] dark:bg-white text-white dark:text-[#1a1a1a] rounded-lg text-sm font-medium disabled:opacity-50"
+          className="px-4 py-2 bg-brand-ink text-brand-ink-fg rounded-lg text-sm font-medium disabled:opacity-50"
         >
           {loading ? t.common.loading : c.downloadHtml}
         </button>
@@ -218,13 +218,13 @@ export function ClinicalHistoriesDownloadSection() {
           type="button"
           onClick={() => void printAsPdf()}
           disabled={loading}
-          className="px-4 py-2 border border-gray-300 dark:border-gray-600 text-[#1a1a1a] dark:text-white rounded-lg text-sm font-medium disabled:opacity-50"
+          className="px-4 py-2 border border-gray-300 dark:border-gray-600 text-brand-ink rounded-lg text-sm font-medium disabled:opacity-50"
         >
           {loading ? t.common.loading : c.printPdf}
         </button>
       </div>
 
-      <p className="text-xs text-gray-500 dark:text-gray-400">{c.pdfHint}</p>
+      <p className="text-xs text-brand-muted">{c.pdfHint}</p>
     </div>
   );
 }

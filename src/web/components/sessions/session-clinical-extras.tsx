@@ -32,7 +32,7 @@ export function SessionChecklistPanel({ sessionId }: { sessionId: string }) {
 
   return (
     <div className="mt-4 border-t pt-4">
-      <h4 className="text-sm font-semibold text-[#1a1a1a] dark:text-gray-100 mb-2">Protocolo / checklist</h4>
+      <h4 className="text-sm font-semibold text-brand-ink mb-2">Protocolo / checklist</h4>
       <ul className="space-y-1">
         {items.map((item) => (
           <li key={item.id} className="flex items-center gap-2 text-sm">
@@ -43,7 +43,7 @@ export function SessionChecklistPanel({ sessionId }: { sessionId: string }) {
               onChange={() => toggle(item.id)}
               className="rounded"
             />
-            <span className={item.done ? "line-through text-gray-400" : ""}>{item.label}</span>
+            <span className={item.done ? "text-brand-muted" : "text-brand-ink"}>{item.label}</span>
           </li>
         ))}
       </ul>
@@ -196,7 +196,7 @@ export function SessionPatientSignature({
         <button
           type="button"
           onClick={save}
-          className="px-3 py-1 bg-[#1a1a1a] text-white rounded text-xs"
+          className="px-3 py-1 bg-brand-ink text-brand-ink-fg rounded text-xs"
         >
           Guardar firma
         </button>

@@ -17,7 +17,7 @@ async function readImageFile(file: File): Promise<string> {
 }
 
 export function WorkspaceWatermarkSettingsSection() {
-  const { config: initial, scope, canEdit, loading, reload } = useWorkspaceWatermark();
+  const { config: initial, displayImage, scope, canEdit, loading, reload } = useWorkspaceWatermark();
   const [config, setConfig] = useState<WorkspaceWatermarkConfig>(DEFAULT_WORKSPACE_WATERMARK);
   const [preview, setPreview] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -29,9 +29,15 @@ export function WorkspaceWatermarkSettingsSection() {
     setPreview(null);
   }, [initial]);
 
+  useEffect(() => {
+    const onLogoUpdated = () => void reload();
+    window.addEventListener("clinic-logo:updated", onLogoUpdated);
+    return () => window.removeEventListener("clinic-logo:updated", onLogoUpdated);
+  }, [reload]);
+
   if (loading) {
     return (
-      <div className="bg-white dark:bg-[#1a1a1a] rounded-xl border border-gray-100 dark:border-white/10 p-8 text-center text-sm text-gray-500">
+      <div className="bg-brand-surface rounded-xl border border-brand-border p-8 text-center text-sm text-gray-500">
         Cargando marca de agua…
       </div>
     );
@@ -49,6 +55,13 @@ export function WorkspaceWatermarkSettingsSection() {
 
   const handleFile = async (file: File | null) => {
     if (!file) return;
+
+    const validTypes = ["image/png", "image/jpeg", "image/jpg", "image/webp"];
+    if (file.type && !validTypes.includes(file.type)) {
+      setError("Formato no válido. Use PNG, JPG o WebP (máx. 2 MB).");
+      return;
+    }
+
     try {
       const dataUri = await readImageFile(file);
       setPreview(dataUri);
@@ -75,13 +88,18 @@ export function WorkspaceWatermarkSettingsSection() {
   };
 
   const displayPreview =
-    preview ?? (config.source === "custom" ? config.image : null);
+    preview ??
+    (config.source === "custom"
+      ? config.image
+      : config.source === "clinic_logo"
+        ? displayImage
+        : null);
 
   return (
-    <div className="bg-white dark:bg-[#1a1a1a] rounded-xl border border-gray-100 dark:border-white/10 p-6 space-y-4">
+    <div className="bg-brand-surface rounded-xl border border-brand-border p-6 space-y-4">
       <div>
-        <h3 className="text-lg font-semibold text-[#1a1a1a] dark:text-white">Marca de agua del fondo</h3>
-        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+        <h3 className="text-lg font-semibold text-brand-ink">Marca de agua del fondo</h3>
+        <p className="text-sm text-brand-muted mt-1">
           Imagen sutil en el área principal. Ajusta tamaño, posición e intensidad.{" "}
           {scope === "clinic"
             ? "Aplica a toda la clínica."
@@ -122,43 +140,57 @@ export function WorkspaceWatermarkSettingsSection() {
             </div>
           </div>
 
-          {config.source === "custom" && (
+          {(config.source === "custom" || config.source === "clinic_logo") && (
             <div className="flex flex-col sm:flex-row gap-4 items-start">
               <div className="w-40 h-28 rounded-lg border border-dashed border-gray-300 dark:border-gray-600 flex items-center justify-center overflow-hidden bg-gray-50 dark:bg-gray-900">
                 {displayPreview ? (
-                  <img src={displayPreview} alt="" className="max-w-full max-h-full object-contain opacity-40" />
+                  <img
+                    src={displayPreview}
+                    alt=""
+                    className="max-w-full max-h-full object-contain"
+                    style={{ opacity: config.opacity }}
+                  />
                 ) : (
-                  <span className="text-xs text-gray-400 px-2 text-center">Sin imagen</span>
+                  <span className="text-xs text-gray-400 px-2 text-center">
+                    {config.source === "clinic_logo" ? "Sin logo configurado" : "Sin imagen"}
+                  </span>
                 )}
               </div>
-              <div className="space-y-2">
-                <input
-                  type="file"
-                  accept="image/jpeg,image/png,image/webp"
-                  id="workspace-watermark-upload"
-                  className="hidden"
-                  onChange={(e) => void handleFile(e.target.files?.[0] ?? null)}
-                />
-                <label
-                  htmlFor="workspace-watermark-upload"
-                  className="inline-block px-3 py-2 text-sm border border-gray-200 dark:border-gray-700 rounded-lg cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800"
-                >
-                  Subir imagen
-                </label>
-                <p className="text-xs text-gray-400">JPEG, PNG o WebP · máx. 2 MB</p>
-                {(displayPreview || config.image) && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setPreview(null);
-                      patch({ image: null, enabled: false });
-                    }}
-                    className="block text-xs text-red-600 hover:underline"
+              {config.source === "custom" ? (
+                <div className="space-y-2">
+                  <input
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp"
+                    id="workspace-watermark-upload"
+                    className="hidden"
+                    onChange={(e) => void handleFile(e.target.files?.[0] ?? null)}
+                  />
+                  <label
+                    htmlFor="workspace-watermark-upload"
+                    className="inline-block px-3 py-2 text-sm border border-brand-border rounded-lg cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800"
                   >
-                    Quitar imagen
-                  </button>
-                )}
-              </div>
+                    Subir imagen
+                  </label>
+                  <p className="text-xs text-gray-400">JPEG, PNG o WebP · máx. 2 MB</p>
+                  {(displayPreview || config.image) && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setPreview(null);
+                        patch({ image: null, enabled: false });
+                      }}
+                      className="block text-xs text-red-600 hover:underline"
+                    >
+                      Quitar imagen
+                    </button>
+                  )}
+                </div>
+              ) : (
+                <p className="text-xs text-gray-400 max-w-xs">
+                  Se usará el logo {scope === "clinic" ? "de la clínica" : "profesional"} configurado en esta
+                  pantalla. Si no ves vista previa, sube el logo primero en la sección correspondiente.
+                </p>
+              )}
             </div>
           )}
 
@@ -169,14 +201,14 @@ export function WorkspaceWatermarkSettingsSection() {
               </label>
               <input
                 type="range"
-                min={4}
-                max={22}
+                min={1}
+                max={100}
                 step={1}
                 value={Math.round(config.opacity * 100)}
                 onChange={(e) => patch({ opacity: Number(e.target.value) / 100 })}
                 className="w-full"
               />
-              <p className="text-xs text-gray-400 mt-1">6–10% suele verse bien como marca de agua.</p>
+              <p className="text-xs text-gray-400 mt-1">6–10% suele verse bien como marca de agua sutil.</p>
             </div>
 
             <div>
@@ -186,12 +218,30 @@ export function WorkspaceWatermarkSettingsSection() {
               <input
                 type="range"
                 min={20}
-                max={100}
+                max={200}
                 step={1}
                 value={config.size}
                 onChange={(e) => patch({ size: Number(e.target.value) })}
                 className="w-full"
               />
+            </div>
+
+            <div>
+              <label className="block text-xs font-medium text-gray-500 mb-2">
+                Zoom ({config.zoom}%)
+              </label>
+              <input
+                type="range"
+                min={50}
+                max={400}
+                step={5}
+                value={config.zoom}
+                onChange={(e) => patch({ zoom: Number(e.target.value) })}
+                className="w-full"
+              />
+              <p className="text-xs text-gray-400 mt-1">
+                Sube el zoom (200% o más) para cubrir toda el área visible. Combina con posición centrada.
+              </p>
             </div>
 
             <div>
@@ -239,7 +289,7 @@ export function WorkspaceWatermarkSettingsSection() {
             type="button"
             onClick={() => void handleSave()}
             disabled={saving}
-            className="px-4 py-2 text-sm bg-[#1a1a1a] dark:bg-white dark:text-[#1a1a1a] text-white rounded-lg disabled:opacity-50"
+            className="px-4 py-2 text-sm bg-brand-ink text-brand-ink-fg rounded-lg disabled:opacity-50"
           >
             {saving ? "Guardando…" : "Guardar marca de agua"}
         </button>

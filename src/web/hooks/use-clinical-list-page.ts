@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { api } from '../lib/api-client';
-import { registerClinicalListInvalidator } from './use-clinical-list-data';
+import { registerClinicalListInvalidator } from '../lib/clinical-list-cache';
 
 type PaginationMeta = { hasMore?: boolean; limit?: number; offset?: number };
 

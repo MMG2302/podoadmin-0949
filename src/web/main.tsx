@@ -64,14 +64,16 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { Router } from "wouter";
 import { getThemeSettings } from "@/lib/ui-preferences";
+import { applyPaletteStyles } from "@/lib/palette-preferences";
 import { initSentry } from "@/lib/sentry";
 import "./styles.css";
 import App from "./app.tsx";
 import { LanguageProvider } from "./contexts/language-context";
 
-// Aplicar tema guardado antes del primer render (evita flash)
+// Aplicar tema y paleta guardados antes del primer render (evita flash)
 const { mode } = getThemeSettings();
 document.documentElement.classList.toggle("dark", mode === "dark");
+applyPaletteStyles();
 
 /** Elimina service workers y cachés PWA heredados (sin modo offline). */
 async function removeLegacyOfflineSupport() {

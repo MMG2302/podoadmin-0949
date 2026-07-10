@@ -112,47 +112,47 @@ const CreateUserModal = ({
     <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 overflow-y-auto">
       <div className="bg-white rounded-2xl w-full max-w-md shadow-xl my-8">
         <div className="p-6 border-b border-gray-100">
-          <h3 className="text-lg font-semibold text-[#1a1a1a] dark:text-white">Crear nuevo usuario</h3>
+          <h3 className="text-lg font-semibold text-brand-ink">Crear nuevo usuario</h3>
         </div>
         <form onSubmit={handleSubmit} className="p-6 space-y-4 max-h-[70vh] overflow-y-auto">
           <div>
-            <label className="block text-sm font-medium text-[#1a1a1a] dark:text-gray-100 mb-1">Nombre</label>
+            <label className="block text-sm font-medium text-brand-ink mb-1">Nombre</label>
             <input
               type="text"
               value={formData.name}
               onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-              className="w-full px-4 py-2.5 rounded-lg border border-gray-200 focus:border-[#1a1a1a] focus:ring-1 focus:ring-[#1a1a1a] outline-none transition-colors"
+              className="w-full px-4 py-2.5 rounded-lg border border-gray-200 focus:border-brand-ink focus:ring-1 focus:ring-brand-ink outline-none transition-colors"
               required
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-[#1a1a1a] dark:text-gray-100 mb-1">Email</label>
+            <label className="block text-sm font-medium text-brand-ink mb-1">Email</label>
             <input
               type="email"
               value={formData.email}
               onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-              className="w-full px-4 py-2.5 rounded-lg border border-gray-200 focus:border-[#1a1a1a] focus:ring-1 focus:ring-[#1a1a1a] outline-none transition-colors"
+              className="w-full px-4 py-2.5 rounded-lg border border-gray-200 focus:border-brand-ink focus:ring-1 focus:ring-brand-ink outline-none transition-colors"
               pattern="[a-zA-Z0-9._%+\\-]+@[a-zA-Z0-9.\\-]+\\.[a-zA-Z]{2,}"
               title={t.errors.invalidEmail}
               required
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-[#1a1a1a] dark:text-gray-100 mb-1">Contraseña</label>
+            <label className="block text-sm font-medium text-brand-ink mb-1">Contraseña</label>
             <input
               type="password"
               value={formData.password}
               onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-              className="w-full px-4 py-2.5 rounded-lg border border-gray-200 focus:border-[#1a1a1a] focus:ring-1 focus:ring-[#1a1a1a] outline-none transition-colors"
+              className="w-full px-4 py-2.5 rounded-lg border border-gray-200 focus:border-brand-ink focus:ring-1 focus:ring-brand-ink outline-none transition-colors"
               required
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-[#1a1a1a] dark:text-gray-100 mb-1">Rol</label>
+            <label className="block text-sm font-medium text-brand-ink mb-1">Rol</label>
             <select
               value={formData.role}
               onChange={(e) => setFormData({ ...formData, role: e.target.value as UserRole, clinicId: "", clinicMode: "existing" })}
-              className="w-full px-4 py-2.5 rounded-lg border border-gray-200 focus:border-[#1a1a1a] focus:ring-1 focus:ring-[#1a1a1a] outline-none transition-colors"
+              className="w-full px-4 py-2.5 rounded-lg border border-gray-200 focus:border-brand-ink focus:ring-1 focus:ring-brand-ink outline-none transition-colors"
             >
               <option value="podiatrist">Podólogo</option>
               <option value="clinic_admin">Administrador de Clínica</option>
@@ -164,13 +164,13 @@ const CreateUserModal = ({
           {needsClinic && (
             <>
               <div>
-                <label className="block text-sm font-medium text-[#1a1a1a] dark:text-gray-100 mb-1">
+                <label className="block text-sm font-medium text-brand-ink mb-1">
                   {formData.role === "clinic_admin" ? "Clínica" : "Clínica (opcional)"}
                 </label>
                 <select
                   value={formData.clinicMode}
                   onChange={(e) => setFormData({ ...formData, clinicMode: e.target.value as "existing" | "new" | "none", clinicId: "" })}
-                  className="w-full px-4 py-2.5 rounded-lg border border-gray-200 focus:border-[#1a1a1a] focus:ring-1 focus:ring-[#1a1a1a] outline-none transition-colors"
+                  className="w-full px-4 py-2.5 rounded-lg border border-gray-200 focus:border-brand-ink focus:ring-1 focus:ring-brand-ink outline-none transition-colors"
                 >
                   <option value="existing">Seleccionar clínica existente</option>
                   <option value="new">{formData.role === "clinic_admin" ? "Crear nueva clínica" : "Crear nueva clínica"}</option>
@@ -180,11 +180,11 @@ const CreateUserModal = ({
 
               {showClinicSelector && (
                 <div>
-                  <label className="block text-sm font-medium text-[#1a1a1a] dark:text-gray-100 mb-1">Clínica</label>
+                  <label className="block text-sm font-medium text-brand-ink mb-1">Clínica</label>
                   <select
                     value={formData.clinicId}
                     onChange={(e) => setFormData({ ...formData, clinicId: e.target.value })}
-                    className="w-full px-4 py-2.5 rounded-lg border border-gray-200 focus:border-[#1a1a1a] focus:ring-1 focus:ring-[#1a1a1a] outline-none transition-colors"
+                    className="w-full px-4 py-2.5 rounded-lg border border-gray-200 focus:border-brand-ink focus:ring-1 focus:ring-brand-ink outline-none transition-colors"
                     required={formData.role === "clinic_admin"}
                   >
                     <option value="">— Seleccionar —</option>
@@ -204,7 +204,7 @@ const CreateUserModal = ({
                   </p>
                   {formData.role === "clinic_admin" && (
                     <div>
-                      <label className="block text-sm font-medium text-[#1a1a1a] dark:text-gray-100 mb-1">Límite de podólogos (opcional)</label>
+                      <label className="block text-sm font-medium text-brand-ink mb-1">Límite de podólogos (opcional)</label>
                       <input
                         type="number"
                         min="1"
@@ -219,7 +219,7 @@ const CreateUserModal = ({
                             newClinic: { ...(formData.newClinic || {}), podiatristLimit: v === "" || Number.isNaN(n) ? null : n },
                           });
                         }}
-                        className="w-full px-4 py-2.5 rounded-lg border border-gray-200 focus:border-[#1a1a1a] focus:ring-1 focus:ring-[#1a1a1a] outline-none transition-colors"
+                        className="w-full px-4 py-2.5 rounded-lg border border-gray-200 focus:border-brand-ink focus:ring-1 focus:ring-brand-ink outline-none transition-colors"
                       />
                       <p className="text-xs text-gray-500 mt-1">Los podólogos de la clínica estarán limitados a este número. Recepcionistas no cuentan.</p>
                     </div>
@@ -233,13 +233,13 @@ const CreateUserModal = ({
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 px-4 py-2.5 border border-gray-200 dark:border-gray-700 rounded-lg text-[#1a1a1a] dark:text-gray-100 font-medium hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+              className="flex-1 px-4 py-2.5 border border-brand-border rounded-lg text-brand-ink font-medium hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
             >
               {t.common.cancel}
             </button>
             <button
               type="submit"
-              className="flex-1 px-4 py-2.5 bg-[#1a1a1a] text-white rounded-lg font-medium hover:bg-[#2a2a2a] transition-colors"
+              className="flex-1 px-4 py-2.5 bg-brand-ink text-brand-ink-fg rounded-lg font-medium hover:bg-brand-ink-hover transition-colors"
             >
               {t.common.create}
             </button>
@@ -463,7 +463,7 @@ const BulkImportModal = ({
     <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 overflow-y-auto">
       <div className="bg-white rounded-2xl w-full max-w-2xl shadow-xl my-8 max-h-[90vh] flex flex-col">
         <div className="p-6 border-b border-gray-100 flex-shrink-0">
-          <h3 className="text-lg font-semibold text-[#1a1a1a] dark:text-white flex items-center gap-2">
+          <h3 className="text-lg font-semibold text-brand-ink flex items-center gap-2">
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
             </svg>
@@ -479,14 +479,14 @@ const BulkImportModal = ({
             <button
               type="button"
               onClick={downloadTemplate}
-              className="px-4 py-2 border border-gray-200 rounded-lg text-sm font-medium text-[#1a1a1a] dark:text-white hover:bg-gray-50 transition-colors flex items-center gap-2"
+              className="px-4 py-2 border border-gray-200 rounded-lg text-sm font-medium text-brand-ink hover:bg-gray-50 transition-colors flex items-center gap-2"
             >
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
               </svg>
               Descargar plantilla
             </button>
-            <label className="px-4 py-2 bg-[#1a1a1a] text-white rounded-lg text-sm font-medium hover:bg-[#2a2a2a] transition-colors cursor-pointer flex items-center gap-2">
+            <label className="px-4 py-2 bg-brand-ink text-brand-ink-fg rounded-lg text-sm font-medium hover:bg-brand-ink-hover transition-colors cursor-pointer flex items-center gap-2">
               <input type="file" accept=".csv,.txt" className="hidden" onChange={handleFileChange} />
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
@@ -495,19 +495,19 @@ const BulkImportModal = ({
             </label>
           </div>
           <div>
-            <label className="block text-sm font-medium text-[#1a1a1a] dark:text-gray-100 mb-1">Contraseña por defecto (si falta en CSV)</label>
+            <label className="block text-sm font-medium text-brand-ink mb-1">Contraseña por defecto (si falta en CSV)</label>
             <input
               type="password"
               value={defaultPassword}
               onChange={(e) => setDefaultPassword(e.target.value)}
               placeholder="Opcional"
-              className="w-full px-4 py-2.5 rounded-lg border border-gray-200 focus:border-[#1a1a1a] focus:ring-1 focus:ring-[#1a1a1a] outline-none transition-colors"
+              className="w-full px-4 py-2.5 rounded-lg border border-gray-200 focus:border-brand-ink focus:ring-1 focus:ring-brand-ink outline-none transition-colors"
             />
           </div>
           {parseError && <div className="p-3 bg-red-50 border border-red-100 rounded-lg text-sm text-red-700">{parseError}</div>}
           {parsedRows.length > 0 && !importDone && (
             <div className="border border-gray-200 rounded-lg overflow-hidden">
-              <p className="p-3 bg-gray-50 dark:bg-gray-800 text-sm font-medium text-[#1a1a1a] dark:text-gray-100 dark:text-white">
+              <p className="p-3 bg-brand-canvas text-sm font-medium text-brand-ink">
                 {parsedRows.length} usuario(s) listo(s) para importar
               </p>
               <div className="max-h-40 overflow-y-auto">
@@ -535,7 +535,7 @@ const BulkImportModal = ({
           )}
           {importDone && importResults.length > 0 && (
             <div className="border border-gray-200 rounded-lg overflow-hidden">
-              <p className="p-3 bg-gray-50 dark:bg-gray-800 text-sm font-medium text-[#1a1a1a] dark:text-gray-100 dark:text-white">
+              <p className="p-3 bg-brand-canvas text-sm font-medium text-brand-ink">
                 Resultados: {importResults.filter((r) => r.success).length} creados, {importResults.filter((r) => !r.success).length} con error
               </p>
               <div className="max-h-48 overflow-y-auto">
@@ -553,7 +553,7 @@ const BulkImportModal = ({
           <button
             type="button"
             onClick={handleClose}
-            className="flex-1 px-4 py-2.5 border border-gray-200 dark:border-gray-700 rounded-lg text-[#1a1a1a] dark:text-gray-100 font-medium hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+            className="flex-1 px-4 py-2.5 border border-brand-border rounded-lg text-brand-ink font-medium hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
           >
             {importDone ? "Cerrar" : "Cancelar"}
           </button>
@@ -562,7 +562,7 @@ const BulkImportModal = ({
               type="button"
               onClick={runImport}
               disabled={isImporting}
-              className="flex-1 px-4 py-2.5 bg-[#1a1a1a] text-white rounded-lg font-medium hover:bg-[#2a2a2a] transition-colors disabled:opacity-50"
+              className="flex-1 px-4 py-2.5 bg-brand-ink text-brand-ink-fg rounded-lg font-medium hover:bg-brand-ink-hover transition-colors disabled:opacity-50"
             >
               {isImporting ? `Importando... (${importResults.length}/${parsedRows.length})` : "Importar"}
             </button>
@@ -643,16 +643,16 @@ const EditUserModal = ({
 
   const needsClinic = formData.role === "podiatrist" || formData.role === "clinic_admin";
 
-  const labelCls = "block text-sm font-medium text-[#1a1a1a] dark:text-gray-100 mb-1";
+  const labelCls = "block text-sm font-medium text-brand-ink mb-1";
   const fieldCls =
-    "w-full px-4 py-2.5 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 text-[#1a1a1a] dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:border-[#1a1a1a] dark:focus:border-gray-400 focus:ring-1 focus:ring-[#1a1a1a] dark:focus:ring-gray-400 outline-none transition-colors";
-  const selectCls = `${fieldCls} [&_option]:bg-white [&_option]:text-[#1a1a1a] dark:[&_option]:bg-gray-800 dark:[&_option]:text-white`;
+    "w-full px-4 py-2.5 rounded-lg border border-brand-border bg-brand-surface text-brand-ink placeholder-gray-400 dark:placeholder-gray-500 focus:border-brand-ink focus:ring-1 focus:ring-brand-ink outline-none transition-colors";
+  const selectCls = `${fieldCls} [&_option]:bg-white [&_option]:text-brand-ink dark:[&_option]:bg-gray-800 dark:[&_option]:text-white`;
 
   return (
     <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-      <div className="bg-white dark:bg-gray-900 rounded-2xl w-full max-w-md shadow-xl dark:shadow-black/40">
+      <div className="bg-brand-surface rounded-2xl w-full max-w-md shadow-xl dark:shadow-black/40">
         <div className="p-6 border-b border-gray-100 dark:border-gray-700">
-          <h3 className="text-lg font-semibold text-[#1a1a1a] dark:text-white">Editar usuario</h3>
+          <h3 className="text-lg font-semibold text-brand-ink">Editar usuario</h3>
         </div>
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
           <div>
@@ -748,14 +748,14 @@ const EditUserModal = ({
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 px-4 py-2.5 border border-gray-200 dark:border-gray-600 rounded-lg text-[#1a1a1a] dark:text-gray-100 font-medium hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+              className="flex-1 px-4 py-2.5 border border-brand-border rounded-lg text-brand-ink font-medium hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
             >
               {t.common.cancel}
             </button>
             <button
               type="submit"
               disabled={needsSuperAdminConfirmation}
-              className="flex-1 px-4 py-2.5 bg-[#1a1a1a] dark:bg-white text-white dark:text-[#1a1a1a] rounded-lg font-medium hover:bg-[#2a2a2a] dark:hover:bg-gray-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex-1 px-4 py-2.5 bg-brand-ink text-brand-ink-fg rounded-lg font-medium hover:bg-brand-ink-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {t.common.save}
             </button>
@@ -824,7 +824,7 @@ const TransferHistoryModal = ({
     <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
       <div className="bg-white rounded-2xl w-full max-w-lg shadow-xl">
         <div className="p-6 border-b border-gray-100">
-          <h3 className="text-lg font-semibold text-[#1a1a1a] dark:text-white">Transferir historial clínico</h3>
+          <h3 className="text-lg font-semibold text-brand-ink">Transferir historial clínico</h3>
           <p className="text-sm text-gray-500 mt-1">Copiar todos los pacientes y sesiones de un usuario a otro</p>
         </div>
         <div className="p-6 space-y-4">
@@ -836,11 +836,11 @@ const TransferHistoryModal = ({
           ) : (
             <>
               <div>
-                <label className="block text-sm font-medium text-[#1a1a1a] dark:text-gray-100 mb-1">Usuario origen</label>
+                <label className="block text-sm font-medium text-brand-ink mb-1">Usuario origen</label>
                 <select
                   value={sourceUserId}
                   onChange={(e) => setSourceUserId(e.target.value)}
-                  className="w-full px-4 py-2.5 rounded-lg border border-gray-200 focus:border-[#1a1a1a] focus:ring-1 focus:ring-[#1a1a1a] outline-none transition-colors"
+                  className="w-full px-4 py-2.5 rounded-lg border border-gray-200 focus:border-brand-ink focus:ring-1 focus:ring-brand-ink outline-none transition-colors"
                 >
                   <option value="">Seleccionar usuario...</option>
                   {allUsers.filter(u => u.role === "podiatrist").map(u => (
@@ -852,7 +852,7 @@ const TransferHistoryModal = ({
               {sourceUserId && (
                 <div className="bg-gray-50 rounded-lg p-3">
                   <p className="text-sm text-gray-500">
-                    <span className="font-medium text-[#1a1a1a] dark:text-white">{sourcePatientCount}</span> pacientes para transferir
+                    <span className="font-medium text-brand-ink">{sourcePatientCount}</span> pacientes para transferir
                   </p>
                 </div>
               )}
@@ -864,11 +864,11 @@ const TransferHistoryModal = ({
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-[#1a1a1a] dark:text-gray-100 mb-1">Usuario destino</label>
+                <label className="block text-sm font-medium text-brand-ink mb-1">Usuario destino</label>
                 <select
                   value={targetUserId}
                   onChange={(e) => setTargetUserId(e.target.value)}
-                  className="w-full px-4 py-2.5 rounded-lg border border-gray-200 focus:border-[#1a1a1a] focus:ring-1 focus:ring-[#1a1a1a] outline-none transition-colors"
+                  className="w-full px-4 py-2.5 rounded-lg border border-gray-200 focus:border-brand-ink focus:ring-1 focus:ring-brand-ink outline-none transition-colors"
                 >
                   <option value="">Seleccionar usuario...</option>
                   {allUsers.filter(u => u.role === "podiatrist" && u.id !== sourceUserId).map(u => (
@@ -894,7 +894,7 @@ const TransferHistoryModal = ({
                 setTargetUserId("");
                 onClose();
               }}
-              className="flex-1 px-4 py-2.5 border border-gray-200 dark:border-gray-700 rounded-lg text-[#1a1a1a] dark:text-gray-100 font-medium hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+              className="flex-1 px-4 py-2.5 border border-brand-border rounded-lg text-brand-ink font-medium hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
             >
               {result ? "Cerrar" : t.common.cancel}
             </button>
@@ -902,7 +902,7 @@ const TransferHistoryModal = ({
               <button
                 onClick={handleTransfer}
                 disabled={!sourceUserId || !targetUserId || sourceUserId === targetUserId || isTransferring}
-                className="flex-1 px-4 py-2.5 bg-[#1a1a1a] text-white rounded-lg font-medium hover:bg-[#2a2a2a] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex-1 px-4 py-2.5 bg-brand-ink text-brand-ink-fg rounded-lg font-medium hover:bg-brand-ink-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isTransferring ? "Transfiriendo..." : "Transferir"}
               </button>
@@ -958,16 +958,16 @@ const UserProfileModal = ({
       <div className="bg-white rounded-2xl w-full max-w-2xl shadow-xl my-8">
         <div className="p-6 border-b border-gray-100 flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <div className="w-14 h-14 bg-[#1a1a1a] rounded-full flex items-center justify-center">
+            <div className="w-14 h-14 bg-brand-ink rounded-full flex items-center justify-center">
               <span className="text-white text-xl font-medium">{user.name.charAt(0)}</span>
             </div>
             <div>
-              <h3 className="text-lg font-semibold text-[#1a1a1a] dark:text-white">{user.name}</h3>
+              <h3 className="text-lg font-semibold text-brand-ink">{user.name}</h3>
               <p className="text-sm text-gray-500">{user.email}</p>
             </div>
           </div>
           <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-            user.role === "super_admin" ? "bg-[#1a1a1a] text-white" :
+            user.role === "super_admin" ? "bg-brand-ink text-brand-ink-fg" :
             user.role === "clinic_admin" ? "bg-blue-100 text-blue-700" :
             user.role === "admin" ? "bg-orange-100 text-orange-700" :
             user.role === "receptionist" ? "bg-teal-100 text-teal-700" :
@@ -986,22 +986,22 @@ const UserProfileModal = ({
           <div className="grid grid-cols-2 gap-4">
             <div className="bg-gray-50 rounded-lg p-4">
               <p className="text-sm text-gray-500">Pacientes</p>
-              <p className="text-2xl font-semibold text-[#1a1a1a] dark:text-white">{patientCount}</p>
+              <p className="text-2xl font-semibold text-brand-ink">{patientCount}</p>
             </div>
             <div className="bg-gray-50 rounded-lg p-4">
               <p className="text-sm text-gray-500">Sesiones</p>
-              <p className="text-2xl font-semibold text-[#1a1a1a] dark:text-white">{sessionCount}</p>
+              <p className="text-2xl font-semibold text-brand-ink">{sessionCount}</p>
             </div>
           </div>
 
           {/* Patients list */}
           {patients.length > 0 && (
             <div>
-              <h4 className="text-sm font-semibold text-[#1a1a1a] dark:text-gray-100 mb-3">Pacientes ({patientCount})</h4>
+              <h4 className="text-sm font-semibold text-brand-ink mb-3">Pacientes ({patientCount})</h4>
               <div className="bg-gray-50 rounded-lg divide-y divide-gray-100 max-h-48 overflow-y-auto form-modal-scroll">
                 {patients.slice(0, 10).map((patient) => (
                   <div key={patient.id} className="p-3 flex items-center justify-between">
-                    <span className="text-sm text-[#1a1a1a] dark:text-gray-100">{patient.firstName} {patient.lastName}</span>
+                    <span className="text-sm text-brand-ink">{patient.firstName} {patient.lastName}</span>
                     <span className="text-xs text-gray-500">{patient.email}</span>
                   </div>
                 ))}
@@ -1021,7 +1021,7 @@ const UserProfileModal = ({
         <div className="p-6 border-t border-gray-100">
           <button
             onClick={onClose}
-            className="w-full px-4 py-2.5 bg-[#1a1a1a] text-white rounded-lg font-medium hover:bg-[#2a2a2a] transition-colors"
+            className="w-full px-4 py-2.5 bg-brand-ink text-brand-ink-fg rounded-lg font-medium hover:bg-brand-ink-hover transition-colors"
           >
             {t.common.close}
           </button>
@@ -1034,10 +1034,8 @@ const UserProfileModal = ({
 // Main Users Page
 const UsersPage = () => {
   const { t } = useLanguage();
-  const { user: currentUser } = useAuth();
+  const { user: currentUser, users: allUsers, usersLoading, fetchUsers } = useAuth();
   const { isSuperAdmin } = usePermissions();
-  const [allUsers, setAllUsers] = useState<User[]>([]);
-  const [usersLoading, setUsersLoading] = useState(false);
   const [passwordResetRequests, setPasswordResetRequests] = useState<Array<{
     id: string;
     email: string;
@@ -1078,27 +1076,10 @@ const UsersPage = () => {
     createdAt: string;
   }>>([]);
 
-  const loadUsers = useCallback(async () => {
-    if (!currentUser || !["super_admin", "admin", "clinic_admin"].includes(currentUser.role)) return;
-    setUsersLoading(true);
-    try {
-      // Usamos /users/visible para respetar la visibilidad por rol (super_admin ve todos)
-      const response = await api.get<{ success?: boolean; users?: User[] }>("/users/visible");
-      if (response.success && Array.isArray(response.data?.users)) {
-        setAllUsers(response.data.users);
-      } else {
-        console.error("Error cargando usuarios:", response.error || response.data?.message);
-      }
-    } catch (error) {
-      console.error("Error cargando usuarios:", error);
-    } finally {
-      setUsersLoading(false);
-    }
-  }, [currentUser]);
-
   useEffect(() => {
-    loadUsers();
-  }, [loadUsers]);
+    if (!currentUser || !["super_admin", "admin", "clinic_admin"].includes(currentUser.role)) return;
+    void fetchUsers();
+  }, [currentUser, fetchUsers]);
 
   const loadClinicalStats = useCallback(async () => {
     if (!currentUser || !["super_admin", "admin", "clinic_admin"].includes(currentUser.role)) return;
@@ -1113,34 +1094,42 @@ const UsersPage = () => {
   const loadClinics = useCallback(async () => {
     if (!isSuperAdmin && currentUser?.role !== "admin") return;
     try {
-      const r = await api.get<{ success?: boolean; clinics?: ClinicOption[] }>("/clinics");
+      const r = await api.get<{
+        success?: boolean;
+        clinics?: Array<{
+          clinicId: string;
+          clinicName: string;
+          clinicCode: string;
+          podiatristLimit?: number | null;
+          podiatristCount?: number;
+        }>;
+      }>("/clinics");
       if (r.success && Array.isArray(r.data?.clinics)) {
-        setClinics(r.data.clinics);
-      }
-    } catch {
-      setClinics([]);
-    }
-  }, [isSuperAdmin, currentUser?.role]);
-
-  useEffect(() => {
-    loadClinics();
-  }, [loadClinics]);
-
-  // Cargar clínicas con límites (super_admin y admin, para mostrar en tabla)
-  useEffect(() => {
-    if (!isSuperAdmin && currentUser?.role !== "admin") return;
-    api.get<{ success?: boolean; clinics?: Array<{ clinicId: string; clinicName: string; clinicCode: string; podiatristLimit?: number | null; podiatristCount?: number }> }>("/clinics").then((res) => {
-      if (res.success && Array.isArray(res.data?.clinics)) {
-        setClinicsForLimits(res.data.clinics.map((c) => ({
+        const mapped = r.data.clinics.map((c) => ({
           clinicId: c.clinicId,
           clinicName: c.clinicName,
           clinicCode: c.clinicCode,
           podiatristLimit: c.podiatristLimit ?? null,
           podiatristCount: c.podiatristCount ?? 0,
-        })));
+        }));
+        setClinics(
+          mapped.map((c) => ({
+            clinicId: c.clinicId,
+            clinicName: c.clinicName,
+            clinicCode: c.clinicCode,
+          }))
+        );
+        setClinicsForLimits(mapped);
       }
-    });
+    } catch {
+      setClinics([]);
+      setClinicsForLimits([]);
+    }
   }, [isSuperAdmin, currentUser?.role]);
+
+  useEffect(() => {
+    void loadClinics();
+  }, [loadClinics]);
 
   // Cargar solicitudes de recuperación de contraseña (solo super_admin, admin)
   useEffect(() => {
@@ -1184,7 +1173,7 @@ const UsersPage = () => {
     const r = await api.post<{ success?: boolean; created?: number; skipped?: string[]; errors?: Array<{ email: string; error: string }>; message?: string }>(`/registration-lists/${listId}/approve`);
     if (r.success) {
       await loadPendingLists();
-      await loadUsers();
+      await fetchUsers();
       await loadClinics();
       const msg = r.data?.message ?? (r.data?.created ? `Se crearon ${r.data.created} usuario(s).` : "Lista aprobada.");
       if (r.data?.errors?.length) {
@@ -1317,7 +1306,7 @@ const UsersPage = () => {
 
   const SortableTh = ({ sortKey, label, align = "left" }: { sortKey: SortKey; label: string; align?: "left" | "right" }) => (
     <th
-      className={`${align === "right" ? "text-right" : "text-left"} px-4 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider truncate cursor-pointer select-none hover:bg-gray-100 dark:hover:bg-gray-700 active:bg-gray-200 dark:active:bg-gray-600 transition-colors`}
+      className={`${align === "right" ? "text-right" : "text-left"} px-4 py-3 text-xs font-semibold text-brand-muted uppercase tracking-wider truncate cursor-pointer select-none hover:bg-gray-100 dark:hover:bg-gray-700 active:bg-gray-200 dark:active:bg-gray-600 transition-colors`}
       onClick={() => handleSort(sortKey)}
       title={`Ordenar por ${label}`}
     >
@@ -1667,7 +1656,7 @@ const UsersPage = () => {
       const response = await api.post<{ success: boolean; message?: string }>(`/users/${user.id}/enable`);
       
       if (response.success && response.data?.success) {
-        await loadUsers();
+        await fetchUsers();
 
         void postAuditLog({
           action: "ENABLE_USER",
@@ -1698,7 +1687,7 @@ const UsersPage = () => {
       const response = await api.post<{ success: boolean; message?: string }>(`/users/${user.id}/disable`);
 
       if (response.success && response.data?.success) {
-        await loadUsers();
+        await fetchUsers();
 
         void postAuditLog({
           action: "DISABLE_USER",
@@ -1874,7 +1863,7 @@ const UsersPage = () => {
             {(isSuperAdmin || currentUser?.role === "clinic_admin") && (
               <button
                 onClick={() => setShowImportModal(true)}
-                className="px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 border border-gray-200/80 bg-gradient-to-b from-gray-50 to-gray-100 text-[#1a1a1a] hover:from-gray-100 hover:to-gray-200 dark:border-gray-700 dark:from-gray-800 dark:to-gray-900 dark:text-white dark:hover:from-gray-700 dark:hover:to-gray-800 shadow-sm"
+                className="px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 border border-gray-200/80 bg-gradient-to-b from-gray-50 to-gray-100 text-brand-ink hover:from-gray-100 hover:to-gray-200 dark:border-gray-700 dark:from-gray-800 dark:to-gray-900 text-brand-ink dark:hover:from-gray-700 dark:hover:to-gray-800 shadow-sm"
               >
                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
@@ -1886,7 +1875,7 @@ const UsersPage = () => {
               <>
                 <button
                   onClick={() => setShowCreateModal(true)}
-                  className="px-4 py-2 bg-[#1a1a1a] text-white rounded-lg text-sm font-medium hover:bg-[#2a2a2a] transition-colors flex items-center gap-2"
+                  className="px-4 py-2 bg-brand-ink text-brand-ink-fg rounded-lg text-sm font-medium hover:bg-brand-ink-hover transition-colors flex items-center gap-2"
                 >
                   <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -1895,7 +1884,7 @@ const UsersPage = () => {
                 </button>
                 <button
                   onClick={() => setShowTransferModal(true)}
-                  className="px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 border border-gray-200/80 bg-gradient-to-b from-gray-50 to-gray-100 text-[#1a1a1a] hover:from-gray-100 hover:to-gray-200 dark:border-gray-700 dark:from-gray-800 dark:to-gray-900 dark:text-white dark:hover:from-gray-700 dark:hover:to-gray-800 shadow-sm"
+                  className="px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 border border-gray-200/80 bg-gradient-to-b from-gray-50 to-gray-100 text-brand-ink hover:from-gray-100 hover:to-gray-200 dark:border-gray-700 dark:from-gray-800 dark:to-gray-900 text-brand-ink dark:hover:from-gray-700 dark:hover:to-gray-800 shadow-sm"
                 >
                   <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
@@ -1913,12 +1902,12 @@ const UsersPage = () => {
               placeholder="Buscar usuarios..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="flex-1 sm:w-64 px-4 py-2 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 text-[#1a1a1a] dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:border-[#1a1a1a] dark:focus:border-gray-400 focus:ring-1 focus:ring-[#1a1a1a] dark:focus:ring-gray-400 outline-none transition-colors text-sm"
+              className="flex-1 sm:w-64 px-4 py-2 rounded-lg border border-brand-border bg-brand-surface text-brand-ink placeholder-gray-400 dark:placeholder-gray-500 focus:border-brand-ink focus:ring-1 focus:ring-brand-ink outline-none transition-colors text-sm"
             />
             <select
               value={roleFilter}
               onChange={(e) => setRoleFilter(e.target.value as UserRole | "all")}
-              className="px-4 py-2 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 text-[#1a1a1a] dark:text-white focus:border-[#1a1a1a] dark:focus:border-gray-400 focus:ring-1 focus:ring-[#1a1a1a] dark:focus:ring-gray-400 outline-none transition-colors text-sm [&_option]:bg-white [&_option]:text-[#1a1a1a] dark:[&_option]:bg-gray-800 dark:[&_option]:text-white"
+              className="px-4 py-2 rounded-lg border border-brand-border bg-brand-surface text-brand-ink focus:border-brand-ink focus:ring-1 focus:ring-brand-ink outline-none transition-colors text-sm [&_option]:bg-white [&_option]:text-brand-ink dark:[&_option]:bg-gray-800 dark:[&_option]:text-white"
             >
               <option value="all">Todos los roles</option>
               <option value="super_admin">{t.roles.superAdmin}</option>
@@ -1943,7 +1932,7 @@ const UsersPage = () => {
               {pendingPasswordResets.map((req) => (
                 <div key={req.id} className="flex flex-wrap items-center justify-between gap-2 bg-white rounded-lg p-3 border border-amber-100">
                   <div>
-                    <span className="font-medium text-[#1a1a1a] dark:text-white">{req.userName || "—"}</span>
+                    <span className="font-medium text-brand-ink">{req.userName || "—"}</span>
                     <span className="text-gray-500 text-sm ml-2">({req.email})</span>
                     <span className="text-xs text-gray-400 ml-2">
                       {new Date(req.requestedAt).toLocaleString()}
@@ -1985,7 +1974,7 @@ const UsersPage = () => {
               {pendingRegistrationLists.map((list) => (
                 <div key={list.id} className="flex flex-wrap items-center justify-between gap-2 bg-white rounded-lg p-3 border border-blue-100">
                   <div>
-                    <span className="font-medium text-[#1a1a1a] dark:text-white">{list.name}</span>
+                    <span className="font-medium text-brand-ink">{list.name}</span>
                     {list.creatorName && (
                       <span className="text-gray-500 text-sm ml-2">por {list.creatorName}</span>
                     )}
@@ -1996,7 +1985,7 @@ const UsersPage = () => {
                   <div className="flex gap-2">
                     <button
                       onClick={() => handleDownloadRegistrationListCsv(list.id)}
-                      className="px-3 py-1.5 border border-gray-200 dark:border-gray-700 text-[#1a1a1a] dark:text-gray-100 text-sm font-medium rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800"
+                      className="px-3 py-1.5 border border-brand-border text-brand-ink text-sm font-medium rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800"
                     >
                       Descargar CSV
                     </button>
@@ -2024,7 +2013,7 @@ const UsersPage = () => {
           <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
             <div className="bg-white rounded-2xl w-full max-w-lg shadow-xl">
               <div className="p-6 border-b border-gray-100">
-                <h3 className="text-lg font-semibold text-[#1a1a1a] dark:text-white flex items-center gap-2">
+                <h3 className="text-lg font-semibold text-brand-ink flex items-center gap-2">
                   <svg className="w-5 h-5 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
@@ -2040,7 +2029,7 @@ const UsersPage = () => {
                     type="text"
                     readOnly
                     value={approvedResetLink}
-                    className="flex-1 px-4 py-2.5 rounded-lg border border-gray-200 bg-gray-50 dark:bg-gray-900 text-sm font-mono text-[#1a1a1a] dark:text-gray-100 dark:text-gray-100"
+                    className="flex-1 px-4 py-2.5 rounded-lg border border-gray-200 bg-gray-50 dark:bg-gray-900 text-sm font-mono text-brand-ink dark:text-gray-100"
                   />
                   <button
                     type="button"
@@ -2052,7 +2041,7 @@ const UsersPage = () => {
                         alert("No se pudo copiar. Selecciona y copia el enlace manualmente.");
                       }
                     }}
-                    className="px-4 py-2.5 bg-[#1a1a1a] text-white rounded-lg font-medium hover:bg-gray-800 transition-colors whitespace-nowrap"
+                    className="px-4 py-2.5 bg-brand-ink text-brand-ink-fg rounded-lg font-medium hover:bg-gray-800 transition-colors whitespace-nowrap"
                   >
                     Copiar enlace
                   </button>
@@ -2062,7 +2051,7 @@ const UsersPage = () => {
                 <button
                   type="button"
                   onClick={() => setApprovedResetLink(null)}
-                  className="px-4 py-2.5 bg-gray-100 dark:bg-gray-800 text-[#1a1a1a] dark:text-gray-100 rounded-lg font-medium hover:bg-gray-200 transition-colors"
+                  className="px-4 py-2.5 bg-brand-canvas text-brand-ink rounded-lg font-medium hover:bg-gray-200 transition-colors"
                 >
                   Cerrar
                 </button>
@@ -2080,10 +2069,10 @@ const UsersPage = () => {
               <div className="mobile-card-header">
                 <div className="flex items-center gap-3 flex-1 min-w-0">
                   <div className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center flex-shrink-0">
-                    <span className="font-medium text-[#1a1a1a] dark:text-white">{u.name.charAt(0)}</span>
+                    <span className="font-medium text-brand-ink">{u.name.charAt(0)}</span>
                   </div>
                   <div className="min-w-0">
-                    <p className="font-medium text-[#1a1a1a] dark:text-white truncate">{u.name}</p>
+                    <p className="font-medium text-brand-ink truncate">{u.name}</p>
                     <p className="text-xs text-gray-500 truncate">{u.email}</p>
                     <div className="mt-1">
                       {getUserStatusBadge(u)}
@@ -2091,7 +2080,7 @@ const UsersPage = () => {
                   </div>
                 </div>
                 <span className={`flex-shrink-0 inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${
-                  u.role === "super_admin" ? "bg-[#1a1a1a] text-white" :
+                  u.role === "super_admin" ? "bg-brand-ink text-brand-ink-fg" :
                   u.role === "clinic_admin" ? "bg-blue-100 text-blue-700" :
                   u.role === "admin" ? "bg-orange-100 text-orange-700" :
                   u.role === "receptionist" ? "bg-teal-100 text-teal-700" :
@@ -2120,13 +2109,13 @@ const UsersPage = () => {
                               value={clinicLimitEdits[u.clinicId] ?? (clinicMap.get(u.clinicId)!.podiatristLimit === null ? "" : String(clinicMap.get(u.clinicId)!.podiatristLimit))}
                               onChange={(e) => setClinicLimitEdits((prev) => ({ ...prev, [u.clinicId!]: e.target.value }))}
                               placeholder="∞"
-                              className="w-20 px-3 py-2.5 text-base rounded-lg border border-gray-200 focus:ring-2 focus:ring-[#1a1a1a] focus:border-[#1a1a1a] outline-none min-h-[44px] touch-manipulation"
+                              className="w-20 px-3 py-2.5 text-base rounded-lg border border-gray-200 focus:ring-2 focus:ring-brand-ink focus:border-brand-ink outline-none min-h-[44px] touch-manipulation"
                             />
                             <button
                               type="button"
                               onClick={() => handleSavePodiatristLimit(u.clinicId!)}
                               disabled={clinicLimitSaving === u.clinicId}
-                              className="px-3 py-2 text-sm font-medium bg-[#1a1a1a] text-white rounded-lg hover:bg-[#2a2a2a] disabled:opacity-50 min-h-[44px]"
+                              className="px-3 py-2 text-sm font-medium bg-brand-ink text-brand-ink-fg rounded-lg hover:bg-brand-ink-hover disabled:opacity-50 min-h-[44px]"
                             >
                               {clinicLimitSaving === u.clinicId ? "..." : "Guardar"}
                             </button>
@@ -2150,14 +2139,14 @@ const UsersPage = () => {
               <div className="mobile-card-actions">
                 <button
                   onClick={() => { setSelectedUser(u); setShowProfileModal(true); }}
-                  className="flex-1 py-2.5 bg-gray-100 dark:bg-gray-800 text-[#1a1a1a] dark:text-gray-100 rounded-lg hover:bg-gray-200 active:bg-gray-300 transition-colors text-sm font-medium min-h-[44px]"
+                  className="flex-1 py-2.5 bg-brand-canvas text-brand-ink rounded-lg hover:bg-gray-200 active:bg-gray-300 transition-colors text-sm font-medium min-h-[44px]"
                 >
                   Ver
                 </button>
                 {isSuperAdmin && (
                   <button
                     onClick={() => { setSelectedUser(u); setShowEditModal(true); }}
-                    className="flex-1 py-2.5 bg-gray-100 dark:bg-gray-800 text-[#1a1a1a] dark:text-gray-100 rounded-lg hover:bg-gray-200 active:bg-gray-300 transition-colors text-sm font-medium min-h-[44px]"
+                    className="flex-1 py-2.5 bg-brand-canvas text-brand-ink rounded-lg hover:bg-gray-200 active:bg-gray-300 transition-colors text-sm font-medium min-h-[44px]"
                   >
                     Editar
                   </button>
@@ -2224,7 +2213,7 @@ const UsersPage = () => {
         </div>
         
         {/* Desktop Table Layout */}
-        <div className="hidden md:block w-full max-w-full min-w-0 bg-white dark:bg-gray-900 rounded-xl border border-gray-100 dark:border-gray-800 overflow-hidden">
+        <div className="hidden md:block w-full max-w-full min-w-0 bg-brand-surface rounded-xl border border-brand-border overflow-hidden">
           <div className="overflow-x-auto w-full max-w-full min-w-0">
             <table className="w-full min-w-[720px] table-fixed">
               <colgroup>
@@ -2238,15 +2227,15 @@ const UsersPage = () => {
                 <col className="w-[12%]" />
               </colgroup>
               <thead>
-                <tr className="border-b border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-800">
+                <tr className="border-b border-brand-border bg-brand-canvas">
                   <SortableTh sortKey="name" label="Usuario" />
                   <SortableTh sortKey="email" label="Email" />
                   <SortableTh sortKey="role" label="Rol" />
                   <SortableTh sortKey="status" label="Estado" />
                   <SortableTh sortKey="clinic" label="Clínica" />
-                  <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider truncate">Límite</th>
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-brand-muted uppercase tracking-wider truncate">Límite</th>
                   <SortableTh sortKey="data" label="Datos" />
-                  <th className="text-right px-4 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider truncate">Acciones</th>
+                  <th className="text-right px-4 py-3 text-xs font-semibold text-brand-muted uppercase tracking-wider truncate">Acciones</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50 dark:divide-gray-800">
@@ -2255,17 +2244,17 @@ const UsersPage = () => {
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-2 min-w-0">
                         <div className="w-8 h-8 bg-gray-100 dark:bg-gray-700 rounded-full flex items-center justify-center flex-shrink-0">
-                          <span className="font-medium text-[#1a1a1a] dark:text-white text-sm">
+                          <span className="font-medium text-brand-ink text-sm">
                             {u.name.charAt(0)}
                           </span>
                         </div>
-                        <span className="font-medium text-[#1a1a1a] dark:text-white truncate text-sm">{u.name}</span>
+                        <span className="font-medium text-brand-ink truncate text-sm">{u.name}</span>
                       </div>
                     </td>
-                    <td className="px-4 py-3 text-sm text-gray-600 dark:text-gray-300 truncate" title={u.email}>{u.email}</td>
+                    <td className="px-4 py-3 text-sm text-brand-muted truncate" title={u.email}>{u.email}</td>
                     <td className="px-4 py-3">
                       <span className={`inline-flex px-2.5 py-1 rounded-full text-xs font-medium ${
-                        u.role === "super_admin" ? "bg-[#1a1a1a] text-white" :
+                        u.role === "super_admin" ? "bg-brand-ink text-brand-ink-fg" :
                         u.role === "clinic_admin" ? "bg-blue-100 text-blue-700" :
                         u.role === "admin" ? "bg-orange-100 text-orange-700" :
                         u.role === "receptionist" ? "bg-teal-100 text-teal-700" :
@@ -2277,7 +2266,7 @@ const UsersPage = () => {
                     <td className="px-4 py-3">
                       {getUserStatusBadge(u)}
                     </td>
-                    <td className="px-4 py-3 text-sm text-gray-600 dark:text-gray-300 truncate" title={u.clinicId || undefined}>
+                    <td className="px-4 py-3 text-sm text-brand-muted truncate" title={u.clinicId || undefined}>
                       {u.clinicId ? (clinicMap.get(u.clinicId)?.clinicName ?? u.clinicId) : "-"}
                     </td>
                     <td className="px-4 py-3">
@@ -2298,14 +2287,14 @@ const UsersPage = () => {
                                   value={editVal}
                                   onChange={(e) => setClinicLimitEdits((prev) => ({ ...prev, [u.clinicId!]: e.target.value }))}
                                   placeholder="∞"
-                                  className="w-16 min-w-[44px] min-h-[44px] px-2 py-2 text-sm rounded-lg border border-gray-200 focus:ring-2 focus:ring-[#1a1a1a] focus:border-[#1a1a1a] outline-none touch-manipulation"
+                                  className="w-16 min-w-[44px] min-h-[44px] px-2 py-2 text-sm rounded-lg border border-gray-200 focus:ring-2 focus:ring-brand-ink focus:border-brand-ink outline-none touch-manipulation"
                                   title={`Actual: ${info.podiatristCount} podólogos`}
                                 />
                                 <button
                                   type="button"
                                   onClick={() => handleSavePodiatristLimit(u.clinicId!)}
                                   disabled={!hasChange || clinicLimitSaving === u.clinicId}
-                                  className="px-3 py-2 min-h-[44px] text-sm font-medium bg-[#1a1a1a] text-white rounded-lg hover:bg-[#2a2a2a] disabled:opacity-50 disabled:cursor-not-allowed touch-manipulation"
+                                  className="px-3 py-2 min-h-[44px] text-sm font-medium bg-brand-ink text-brand-ink-fg rounded-lg hover:bg-brand-ink-hover disabled:opacity-50 disabled:cursor-not-allowed touch-manipulation"
                                   title="Guardar límite"
                                 >
                                   {clinicLimitSaving === u.clinicId ? "..." : "✓"}
@@ -2334,7 +2323,7 @@ const UsersPage = () => {
                             setSelectedUser(u);
                             setShowProfileModal(true);
                           }}
-                          className="p-2 text-gray-400 hover:text-[#1a1a1a] dark:hover:text-white hover:bg-gray-100 rounded-lg transition-colors"
+                          className="p-2 text-gray-400 hover:text-brand-ink dark:hover:text-white hover:bg-gray-100 rounded-lg transition-colors"
                           title="Ver perfil"
                         >
                           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -2350,7 +2339,7 @@ const UsersPage = () => {
                               setSelectedUser(u);
                               setShowEditModal(true);
                             }}
-                            className="p-2 text-gray-400 hover:text-[#1a1a1a] dark:hover:text-white hover:bg-gray-100 rounded-lg transition-colors"
+                            className="p-2 text-gray-400 hover:text-brand-ink dark:hover:text-white hover:bg-gray-100 rounded-lg transition-colors"
                             title="Editar"
                           >
                             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -2364,7 +2353,7 @@ const UsersPage = () => {
                         {isSuperAdmin && u.role === "podiatrist" && u.patientCount > 0 && (
                           <button
                             onClick={() => handleExportUserData(u)}
-                            className="p-2 text-gray-400 hover:text-[#1a1a1a] dark:hover:text-white hover:bg-gray-100 rounded-lg transition-colors"
+                            className="p-2 text-gray-400 hover:text-brand-ink dark:hover:text-white hover:bg-gray-100 rounded-lg transition-colors"
                             title="Descargar JSON"
                           >
                             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -2377,7 +2366,7 @@ const UsersPage = () => {
                         {(isSuperAdmin || currentUser?.role === "clinic_admin") && canManageUser(u) && (
                           <div className="inline-block">
                             <button
-                              className="p-2 text-gray-400 hover:text-[#1a1a1a] dark:hover:text-white hover:bg-gray-100 rounded-lg transition-colors"
+                              className="p-2 text-gray-400 hover:text-brand-ink dark:hover:text-white hover:bg-gray-100 rounded-lg transition-colors"
                               title="Gestionar cuenta"
                               onClick={(e) => {
                                 e.stopPropagation();
@@ -2439,7 +2428,7 @@ const UsersPage = () => {
       <BulkImportModal
         isOpen={showImportModal}
         onClose={() => setShowImportModal(false)}
-        onImportComplete={loadUsers}
+        onImportComplete={fetchUsers}
         clinics={clinics}
         isSuperAdmin={!!isSuperAdmin}
         currentUserClinicId={currentUser?.clinicId}

@@ -32,10 +32,10 @@ export function SessionCustomSectionsFields({
       {customs.map((section) => (
         <div
           key={section.id}
-          className="rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50/80 dark:bg-gray-900/50 p-4 space-y-2"
+          className="rounded-lg border border-brand-border bg-gray-50/80 dark:bg-gray-900/50 p-4 space-y-2"
         >
           <div>
-            <p className="text-sm font-medium text-[#1a1a1a] dark:text-white">{section.label}</p>
+            <p className="text-sm font-medium text-brand-ink">{section.label}</p>
             {section.hint && <p className="text-xs text-gray-500">{section.hint}</p>}
           </div>
           <CustomSectionField

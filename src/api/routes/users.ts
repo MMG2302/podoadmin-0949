@@ -26,9 +26,35 @@ import {
   canPodiatristManageReceptionist,
   getClinicPodiatristUserIds,
 } from '../utils/receptionist-limits';
+import { validateLogoPayload } from '../utils/logo-upload';
+import { checkLogoUploadRateLimit } from '../utils/action-rate-limit';
+import {
+  getR2Bucket,
+  persistAvatarPayload,
+  resolveAvatarForClient,
+} from '../utils/r2-media';
+import { parsePaginationQuery, buildPaginationMeta } from '../utils/pagination';
 
 const usersRoutes = new Hono();
 usersRoutes.use('*', requireAuth);
+
+function filterUserRowsByQ(
+  rows: (typeof createdUsers.$inferSelect)[],
+  q?: string
+): typeof rows {
+  if (!q?.trim()) return rows;
+  const needle = q.trim().toLowerCase();
+  return rows.filter(
+    (r) => r.name.toLowerCase().includes(needle) || r.email.toLowerCase().includes(needle)
+  );
+}
+
+function paginateMappedUsers<T>(users: T[], limit?: string, offset?: string) {
+  if (!limit) return { users, pagination: undefined as ReturnType<typeof buildPaginationMeta> | undefined };
+  const pagination = parsePaginationQuery({ limit, offset });
+  const slice = users.slice(pagination.offset, pagination.offset + pagination.limit);
+  return { users: slice, pagination: buildPaginationMeta(pagination, slice.length) };
+}
 
 function safeJsonParseArray(value: string | null): string[] {
   if (!value) return [];
@@ -120,20 +146,28 @@ usersRoutes.get('/visible', async (c) => {
       return c.json({ error: 'Parámetros inválidos', message: roleResult.error, issues: roleResult.issues }, 400);
     }
     const roleFilter = roleResult.data.role;
+    const searchQ = roleResult.data.q;
+    const listLimit = roleResult.data.limit;
+    const listOffset = roleResult.data.offset;
 
     if (requester.role === 'super_admin' || requester.role === 'admin') {
       let rows = await database.select().from(createdUsers);
       if (roleFilter) rows = rows.filter((u) => u.role === roleFilter);
+      rows = filterUserRowsByQ(rows, searchQ);
       const mapped = rows.map(mapDbUser);
-      const users = await mapUsersWithAccessBadge(mapped, rows);
-      return c.json({ success: true, users });
+      const usersWithBadges = await mapUsersWithAccessBadge(mapped, rows);
+      const { users, pagination } = paginateMappedUsers(usersWithBadges, listLimit, listOffset);
+      return c.json({ success: true, users, ...(pagination ? { pagination } : {}) });
     }
 
     if (requester.role === 'clinic_admin') {
       if (!requester.clinicId) return c.json({ success: true, users: [] });
       let rows = await database.select().from(createdUsers).where(eq(createdUsers.clinicId, requester.clinicId));
       if (roleFilter) rows = rows.filter((u) => u.role === roleFilter);
-      return c.json({ success: true, users: rows.map(mapDbUser) });
+      rows = filterUserRowsByQ(rows, searchQ);
+      const mapped = rows.map(mapDbUser);
+      const { users, pagination } = paginateMappedUsers(mapped, listLimit, listOffset);
+      return c.json({ success: true, users, ...(pagination ? { pagination } : {}) });
     }
 
     if (requester.role === 'receptionist') {
@@ -245,6 +279,109 @@ usersRoutes.get('/me/clinical-histories-export', async (c) => {
     console.error('Error exportando historiales clínicos:', error);
     return c.json({ error: 'Error interno', message: 'Error al exportar historiales clínicos' }, 500);
   }
+});
+
+/** GET /api/users/me/avatar — foto de perfil del usuario autenticado */
+usersRoutes.get('/me/avatar', async (c) => {
+  const user = c.get('user')!;
+  const rows = await database
+    .select({ avatarUrl: createdUsers.avatarUrl, updatedAt: createdUsers.updatedAt })
+    .from(createdUsers)
+    .where(eq(createdUsers.userId, user.userId))
+    .limit(1);
+  const avatar = resolveAvatarForClient(
+    rows[0]?.avatarUrl ?? null,
+    user.userId,
+    rows[0]?.updatedAt
+  );
+  return c.json({ success: true, avatar });
+});
+
+/** PUT /api/users/me/avatar — subir o reemplazar foto de perfil */
+usersRoutes.put('/me/avatar', async (c) => {
+  const user = c.get('user')!;
+  const body = (await c.req.json().catch(() => ({}))) as { avatar?: string };
+  if (!body.avatar?.trim()) {
+    return c.json({ error: 'Campo avatar requerido' }, 400);
+  }
+
+  const rateLimit = await checkLogoUploadRateLimit(user.userId);
+  if (!rateLimit.allowed) {
+    c.header('Retry-After', String(rateLimit.retryAfterSeconds ?? 60));
+    return c.json(
+      { error: 'rate_limit', message: 'Demasiadas subidas. Espera un momento.' },
+      429
+    );
+  }
+
+  const validation = validateLogoPayload(body.avatar);
+  if (!validation.valid) {
+    return c.json({ error: validation.error, message: validation.message }, 400);
+  }
+
+  const existingRows = await database
+    .select({ avatarUrl: createdUsers.avatarUrl })
+    .from(createdUsers)
+    .where(eq(createdUsers.userId, user.userId))
+    .limit(1);
+
+  const storedAvatar = await persistAvatarPayload(
+    validation.sanitized,
+    user.userId,
+    getR2Bucket(c.env as { BUCKET?: R2Bucket }),
+    existingRows[0]?.avatarUrl ?? null
+  );
+
+  const now = new Date().toISOString();
+
+  await database
+    .update(createdUsers)
+    .set({ avatarUrl: storedAvatar, updatedAt: now })
+    .where(eq(createdUsers.userId, user.userId));
+
+  await logAuditEvent({
+    userId: user.userId,
+    action: 'UPDATE',
+    resourceType: 'user_avatar',
+    resourceId: user.userId,
+    details: { action: 'avatar_upload' },
+    ipAddress: getClientIP(c.req.raw.headers),
+    userAgent: getSafeUserAgent(c),
+    clinicId: user.clinicId ?? undefined,
+  }).catch((err) => console.error('avatar audit log:', err));
+
+  const avatar = resolveAvatarForClient(storedAvatar, user.userId, now);
+  return c.json({ success: true, avatar });
+});
+
+/** DELETE /api/users/me/avatar — quitar foto personalizada */
+usersRoutes.delete('/me/avatar', async (c) => {
+  const user = c.get('user')!;
+  const existingRows = await database
+    .select({ avatarUrl: createdUsers.avatarUrl })
+    .from(createdUsers)
+    .where(eq(createdUsers.userId, user.userId))
+    .limit(1);
+
+  await purgeLogoR2(existingRows[0]?.avatarUrl, getR2Bucket(c.env as { BUCKET?: R2Bucket }));
+
+  await database
+    .update(createdUsers)
+    .set({ avatarUrl: null, updatedAt: new Date().toISOString() })
+    .where(eq(createdUsers.userId, user.userId));
+
+  await logAuditEvent({
+    userId: user.userId,
+    action: 'DELETE',
+    resourceType: 'user_avatar',
+    resourceId: user.userId,
+    details: { action: 'avatar_remove' },
+    ipAddress: getClientIP(c.req.raw.headers),
+    userAgent: getSafeUserAgent(c),
+    clinicId: user.clinicId ?? undefined,
+  });
+
+  return c.json({ success: true, avatar: null });
 });
 
 function canManageClinicalData(

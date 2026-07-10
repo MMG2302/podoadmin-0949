@@ -1,7 +1,7 @@
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { MainLayout } from "../components/layout/main-layout";
 import { useLanguage } from "../contexts/language-context";
-import { useAuth } from "../contexts/auth-context";
+import { useNotifications } from "../contexts/notifications-context";
 import { useRefreshOnFocus } from "../hooks/use-refresh-on-focus";
 import { api } from "../lib/api-client";
 import { Notification, NotificationType } from "../types/notification";
@@ -75,27 +75,17 @@ const formatFullDate = (dateStr: string): string => {
 
 const NotificationsPage = () => {
   const { t } = useLanguage();
-  const { user } = useAuth();
-  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const { notifications, refresh, setNotificationsLocal } = useNotifications();
   const [filterTab, setFilterTab] = useState<FilterTab>("all");
   const [typeFilter, setTypeFilter] = useState<TypeFilter>("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedNotifications, setSelectedNotifications] = useState<Set<string>>(new Set());
 
-  const loadNotifications = useCallback(async () => {
-    if (!user?.id) return;
-    const r = await api.get<{ success?: boolean; notifications?: Notification[] }>("/notifications");
-    if (r.success && Array.isArray(r.data?.notifications)) setNotifications(r.data.notifications);
-  }, [user?.id]);
-
   useEffect(() => {
-    loadNotifications();
-    // Polling cada 5 segundos para actualizaciones casi instantáneas
-    const interval = setInterval(loadNotifications, 5000);
-    return () => clearInterval(interval);
-  }, [loadNotifications]);
+    void refresh({ force: true, limit: 500 });
+  }, [refresh]);
 
-  useRefreshOnFocus(loadNotifications);
+  useRefreshOnFocus(() => refresh({ force: true, limit: 500 }), { enabled: true });
 
   // Filter notifications
   const filteredNotifications = useMemo(() => {
@@ -124,13 +114,18 @@ const NotificationsPage = () => {
 
   const handleMarkAsRead = async (id: string) => {
     const r = await api.patch<{ success?: boolean }>(`/notifications/${id}/read`);
-    if (r.success) loadNotifications();
+    if (r.success) {
+      setNotificationsLocal((prev) => prev.map((n) => (n.id === id ? { ...n, read: true } : n)));
+      void refresh({ force: true, limit: 500 });
+    }
   };
 
   const handleMarkAllAsRead = async () => {
-    if (!user?.id) return;
     const r = await api.post<{ success?: boolean }>("/notifications/read-all");
-    if (r.success) loadNotifications();
+    if (r.success) {
+      setNotificationsLocal((prev) => prev.map((n) => ({ ...n, read: true })));
+      void refresh({ force: true, limit: 500 });
+    }
   };
 
   const handleDelete = async (id: string) => {
@@ -141,20 +136,21 @@ const NotificationsPage = () => {
         next.delete(id);
         return next;
       });
-      loadNotifications();
+      setNotificationsLocal((prev) => prev.filter((n) => n.id !== id));
+      void refresh({ force: true, limit: 500 });
     }
   };
 
   const handleBulkDelete = async () => {
     await Promise.all(Array.from(selectedNotifications).map((id) => api.delete<{ success?: boolean }>(`/notifications/${id}`)));
     setSelectedNotifications(new Set());
-    loadNotifications();
+    void refresh({ force: true, limit: 500 });
   };
 
   const handleBulkMarkAsRead = async () => {
     await Promise.all(Array.from(selectedNotifications).map((id) => api.patch<{ success?: boolean }>(`/notifications/${id}/read`)));
     setSelectedNotifications(new Set());
-    loadNotifications();
+    void refresh({ force: true, limit: 500 });
   };
 
   const toggleSelectAll = () => {
@@ -194,7 +190,7 @@ const NotificationsPage = () => {
         {/* Header with actions */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            <h2 className="text-xl font-semibold text-[#1a1a1a] dark:text-white">{t.notifications.title}</h2>
+            <h2 className="text-xl font-semibold text-brand-ink">{t.notifications.title}</h2>
             {unreadCount > 0 && (
               <p className="text-sm text-gray-500 mt-1">
                 {unreadCount} {t.notifications.unread.toLowerCase()}
@@ -205,7 +201,7 @@ const NotificationsPage = () => {
           {unreadCount > 0 && (
             <button
               onClick={handleMarkAllAsRead}
-              className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-[#1a1a1a] dark:text-white bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+              className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-brand-ink bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
             >
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
@@ -216,7 +212,7 @@ const NotificationsPage = () => {
         </div>
 
         {/* Filters */}
-        <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-100 dark:border-gray-800 p-4">
+        <div className="bg-brand-surface rounded-xl border border-brand-border p-4">
           <div className="flex flex-col lg:flex-row lg:items-center gap-4">
             {/* Tab Filter */}
             <div className="flex gap-1 bg-gray-100 p-1 rounded-lg">
@@ -226,8 +222,8 @@ const NotificationsPage = () => {
                   onClick={() => setFilterTab(tab)}
                   className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
                     filterTab === tab
-                      ? "bg-white dark:bg-gray-800 text-[#1a1a1a] dark:text-white shadow-sm"
-                      : "text-gray-600 hover:text-[#1a1a1a] dark:hover:text-white"
+                      ? "bg-brand-surface text-brand-ink shadow-sm"
+                      : "text-gray-600 hover:text-brand-ink dark:hover:text-white"
                   }`}
                 >
                   {tab === "all" ? t.notifications.all : 
@@ -241,7 +237,7 @@ const NotificationsPage = () => {
             <select
               value={typeFilter}
               onChange={(e) => setTypeFilter(e.target.value as TypeFilter)}
-              className="px-4 py-2 bg-white dark:bg-gray-900 text-[#1a1a1a] dark:text-white border border-gray-200 dark:border-gray-700 rounded-lg text-sm focus:border-[#1a1a1a] dark:focus:border-gray-400 focus:ring-1 focus:ring-[#1a1a1a] dark:focus:ring-gray-500 outline-none"
+              className="px-4 py-2 bg-brand-surface text-brand-ink border border-brand-border rounded-lg text-sm focus:border-brand-ink focus:ring-1 focus:ring-brand-ink outline-none"
             >
               <option value="all">{t.notifications.all}</option>
               <option value="reassignment">{t.notifications.reassignment}</option>
@@ -262,7 +258,7 @@ const NotificationsPage = () => {
                   placeholder={t.common.search + "..."}
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg text-sm focus:border-[#1a1a1a] focus:ring-1 focus:ring-[#1a1a1a] outline-none"
+                  className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg text-sm focus:border-brand-ink focus:ring-1 focus:ring-brand-ink outline-none"
                 />
               </div>
             </div>
@@ -291,7 +287,7 @@ const NotificationsPage = () => {
         </div>
 
         {/* Notifications List */}
-        <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-100 dark:border-gray-800 overflow-hidden">
+        <div className="bg-brand-surface rounded-xl border border-brand-border overflow-hidden">
           {filteredNotifications.length === 0 ? (
             <div className="p-12 text-center">
               <svg className="w-16 h-16 mx-auto text-gray-200 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -307,7 +303,7 @@ const NotificationsPage = () => {
                   type="checkbox"
                   checked={selectedNotifications.size === filteredNotifications.length && filteredNotifications.length > 0}
                   onChange={toggleSelectAll}
-                  className="w-4 h-4 rounded border-gray-300 text-[#1a1a1a] focus:ring-[#1a1a1a]"
+                  className="w-4 h-4 rounded border-gray-300 text-brand-ink focus:ring-brand-ink"
                 />
                 <span className="text-xs font-medium text-gray-500 uppercase tracking-wider flex-1">
                   {t.notifications.title}
@@ -339,7 +335,7 @@ const NotificationsPage = () => {
                       type="checkbox"
                       checked={selectedNotifications.has(notification.id)}
                       onChange={() => toggleSelect(notification.id)}
-                      className="w-4 h-4 mt-1 rounded border-gray-300 text-[#1a1a1a] focus:ring-[#1a1a1a] flex-shrink-0"
+                      className="w-4 h-4 mt-1 rounded border-gray-300 text-brand-ink focus:ring-brand-ink flex-shrink-0"
                     />
                     <div className={`flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center ${
                       notification.type === "reassignment" ? "bg-blue-100 text-blue-600" :
@@ -354,7 +350,7 @@ const NotificationsPage = () => {
                     {/* Content: título y mensaje con espacio para no verse amontonado */}
                     <div className="flex-1 min-w-0">
                       <div className="flex items-start gap-2">
-                        <p className={`text-sm ${!notification.read ? "font-semibold" : "font-medium"} text-[#1a1a1a] dark:text-white`}>
+                        <p className={`text-sm ${!notification.read ? "font-semibold" : "font-medium"} text-brand-ink`}>
                           {notification.title}
                         </p>
                         {!notification.read && (

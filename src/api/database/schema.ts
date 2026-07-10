@@ -144,6 +144,7 @@ export const clinics = sqliteTable('clinics', {
   cofeprisRegistration: text('cofepris_registration'),
   clinicalLayoutJson: text('clinical_layout_json'),
   workspaceWatermarkJson: text('workspace_watermark_json'),
+  checkoutTariffsJson: text('checkout_tariffs_json'),
   createdAt: text('created_at').notNull(),
 });
 
@@ -312,6 +313,7 @@ export const professionalInfo = sqliteTable('professional_info', {
   consentTextVersion: integer('consent_text_version').notNull().default(0),
   clinicalLayoutJson: text('clinical_layout_json'),
   workspaceWatermarkJson: text('workspace_watermark_json'),
+  checkoutTariffsJson: text('checkout_tariffs_json'),
 });
 
 // Licencia profesional (todos los podólogos)
@@ -453,6 +455,7 @@ export const userWhatsappIntegrations = sqliteTable('user_whatsapp_integrations'
   templateName: text('template_name'),
   templateLanguage: text('template_language').notNull().default('es'),
   defaultExtraNote: text('default_extra_note'),
+  receptionistApiEnabled: integer('receptionist_api_enabled', { mode: 'boolean' }).notNull().default(false),
   status: text('status').notNull().default('pending'), // pending | connected | error
   lastError: text('last_error'),
   createdAt: text('created_at').notNull(),
@@ -496,6 +499,10 @@ export const prescriptions = sqliteTable('prescriptions', {
   nextVisitDate: text('next_visit_date'),
   notes: text('notes').notNull().default(''),
   folio: text('folio').notNull(),
+  patientAgeYears: integer('patient_age_years'),
+  patientWeightKg: text('patient_weight_kg'),
+  patientHeightCm: text('patient_height_cm'),
+  podiatristCedula: text('podiatrist_cedula'),
   createdAt: text('created_at').notNull(),
   createdBy: text('created_by').notNull(),
   clinicId: text('clinic_id'),
@@ -581,6 +588,25 @@ export const appointmentWaitlist = sqliteTable('appointment_waitlist', {
   status: text('status').notNull().default('waiting'),
   clinicId: text('clinic_id'),
   createdBy: text('created_by').notNull(),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+});
+
+/** Handoff podólogo → recepción: importe a cobrar al paciente al salir de consulta. */
+export const checkoutHandoffs = sqliteTable('checkout_handoffs', {
+  id: text('id').primaryKey(),
+  clinicId: text('clinic_id'),
+  podiatristId: text('podiatrist_id').notNull(),
+  patientId: text('patient_id').notNull(),
+  sessionId: text('session_id'),
+  appointmentId: text('appointment_id'),
+  amountCents: integer('amount_cents'),
+  currency: text('currency').notNull().default('MXN'),
+  notes: text('notes'),
+  status: text('status').notNull().default('awaiting_amount'),
+  createdBy: text('created_by').notNull(),
+  paidAt: text('paid_at'),
+  paidBy: text('paid_by'),
   createdAt: text('created_at').notNull(),
   updatedAt: text('updated_at').notNull(),
 });

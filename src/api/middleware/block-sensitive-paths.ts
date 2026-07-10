@@ -35,6 +35,7 @@ const ALLOWED_API_FIRST_SEGMENTS: ReadonlySet<string> = new Set([
   'prescriptions',
   'clinical',
   'clinical-dashboard',
+  'checkout-handoffs',
   'lab-attachments',
   'session-images',
   'media',

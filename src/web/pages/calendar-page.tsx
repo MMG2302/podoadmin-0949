@@ -5,7 +5,6 @@ import { useLanguage } from "../contexts/language-context";
 import { useAuth } from "../contexts/auth-context";
 import { usePermissions } from "../hooks/use-permissions";
 import { useRefreshOnFocus } from "../hooks/use-refresh-on-focus";
-import { fetchAllClinicalPages } from "../lib/clinical-list-fetch";
 import { api } from "../lib/api-client";
 import {
   buildAgendaWhatsAppMessage,
@@ -60,10 +59,14 @@ const CALENDAR_LOCALE: Record<string, string> = { es: "es-ES", en: "en-US", pt: 
 const CalendarPage = () => {
   const { t, language } = useLanguage();
   const locale = CALENDAR_LOCALE[language] ?? "es-ES";
-  const { user, getAllUsers, updateUser } = useAuth();
+  const { user, getAllUsers, updateUser, ensureVisibleUsers } = useAuth();
   const { isClinicAdmin, isPodiatrist, isReceptionist } = usePermissions();
   const tenantCountry = useTenantCountry(user);
   
+  useEffect(() => {
+    void ensureVisibleUsers();
+  }, [ensureVisibleUsers]);
+
   const allUsers = getAllUsers();
   const clinicPodiatrists = isReceptionist && user?.assignedPodiatristIds?.length
     ? allUsers.filter((u) => user.assignedPodiatristIds!.includes(u.id))
@@ -107,19 +110,59 @@ const CalendarPage = () => {
 
   const loadCalendarData = useCallback(async () => {
     if (!user?.id) return;
-    const [sess, pat, apt, metricsRes, waitRes] = await Promise.all([
-      fetchAllClinicalPages<ClinicalSession>("/sessions", "sessions", () => "Error sesiones"),
-      fetchAllClinicalPages<Patient>("/patients", "patients", () => "Error pacientes"),
-      fetchAllClinicalPages<Appointment>("/appointments", "appointments", () => "Error citas"),
+
+    const rangeStart = new Date(currentDate);
+    const rangeEnd = new Date(currentDate);
+    if (viewMode === "day") {
+      // same day
+    } else if (viewMode === "week") {
+      rangeStart.setDate(currentDate.getDate() - currentDate.getDay());
+      rangeEnd.setDate(rangeStart.getDate() + 6);
+    } else {
+      rangeStart.setDate(1);
+      rangeEnd.setMonth(currentDate.getMonth() + 1, 0);
+    }
+    const from = formatLocalDateString(rangeStart);
+    const to = formatLocalDateString(rangeEnd);
+
+    const [sessRes, aptRes, metricsRes, waitRes] = await Promise.all([
+      api.get<{ success?: boolean; sessions?: ClinicalSession[] }>(
+        `/sessions?from=${from}&to=${to}&limit=500`
+      ),
+      api.get<{ success?: boolean; appointments?: Appointment[] }>(
+        `/appointments?from=${from}&to=${to}&limit=500`
+      ),
       api.get<{ success?: boolean; metrics?: typeof agendaMetrics }>("/clinical/appointments/metrics"),
       api.get<{ success?: boolean; waitlist?: typeof waitlist }>("/clinical/waitlist"),
     ]);
+
+    const sess = sessRes.success && Array.isArray(sessRes.data?.sessions) ? sessRes.data.sessions : [];
+    const apt = aptRes.success && Array.isArray(aptRes.data?.appointments) ? aptRes.data.appointments : [];
     setAllSessions(sess);
-    setAllPatients(pat);
     setAllAppointments(apt);
+
+    const patientIds = [
+      ...new Set([
+        ...sess.map((s) => s.patientId),
+        ...apt.filter((a) => a.patientId).map((a) => a.patientId as string),
+      ]),
+    ];
+    if (patientIds.length > 0) {
+      const patRes = await api.get<{ success?: boolean; patients?: Patient[] }>(
+        `/patients?ids=${patientIds.slice(0, 100).join(",")}&limit=100`
+      );
+      if (patRes.success && Array.isArray(patRes.data?.patients)) {
+        setAllPatients(patRes.data.patients);
+      } else {
+        setAllPatients([]);
+      }
+    } else {
+      setAllPatients([]);
+    }
+
     if (metricsRes.success && metricsRes.data?.metrics) setAgendaMetrics(metricsRes.data.metrics);
     if (waitRes.success && waitRes.data?.waitlist) setWaitlist(waitRes.data.waitlist);
-  }, [user?.id]);
+  }, [user?.id, currentDate, viewMode]);
 
   const updateCheckIn = async (
     apptId: string,
@@ -621,30 +664,30 @@ const isSelected = (date: Date) => {
         {/* Main Calendar Area */}
         <div className="flex-1">
           {/* Calendar Header */}
-          <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-100 dark:border-gray-800 p-4 mb-4">
+          <div className="bg-brand-surface rounded-xl border border-brand-border p-4 mb-4">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               {/* Navigation */}
               <div className="flex items-center gap-4">
                 <div className="flex items-center gap-1">
                   <button
                     onClick={navigatePrev}
-                    className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
+                    className="p-2 hover:bg-brand-canvas rounded-lg transition-colors"
                   >
-                    <svg className="w-5 h-5 text-[#1a1a1a] dark:text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <svg className="w-5 h-5 text-brand-ink" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
                     </svg>
                   </button>
                   <button
                     onClick={navigateNext}
-                    className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
+                    className="p-2 hover:bg-brand-canvas rounded-lg transition-colors"
                   >
-                    <svg className="w-5 h-5 text-[#1a1a1a] dark:text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <svg className="w-5 h-5 text-brand-ink" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                     </svg>
                   </button>
                 </div>
                 
-                <h2 className="text-lg font-semibold text-[#1a1a1a] dark:text-white capitalize">
+                <h2 className="text-lg font-semibold text-brand-ink capitalize">
                   {viewMode === "month" && formatMonthYear()}
                   {viewMode === "week" && formatWeekRange()}
                   {viewMode === "day" && formatDayDate()}
@@ -652,7 +695,7 @@ const isSelected = (date: Date) => {
 
                 <button
                   onClick={goToToday}
-                  className="px-3 py-1.5 text-sm font-medium text-[#1a1a1a] dark:text-white bg-gray-100 dark:bg-gray-800 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+                  className="px-3 py-1.5 text-sm font-medium text-brand-ink bg-brand-canvas rounded-lg hover:bg-brand-border/40 transition-colors"
                 >
                   {t.calendar.today}
                 </button>
@@ -664,7 +707,7 @@ const isSelected = (date: Date) => {
                 {(isClinicAdmin || isPodiatrist || isReceptionist) && (
                   <button
                     onClick={() => openNewAppointmentForm(selectedDate || undefined)}
-                    className="px-4 py-2 bg-[#1a1a1a] text-white rounded-lg hover:bg-[#2a2a2a] transition-colors font-medium flex items-center gap-2 text-sm"
+                    className="px-4 py-2 bg-brand-ink text-brand-ink-fg rounded-lg hover:bg-brand-ink-hover transition-colors font-medium flex items-center gap-2 text-sm"
                   >
                     <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
@@ -680,7 +723,7 @@ const isSelected = (date: Date) => {
                       onClick={handleDownloadAgendaIcs}
                       disabled={agendaExportBusy}
                       title={t.calendar.exportIcsHint}
-                      className="px-3 py-2 text-sm font-medium border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 text-[#1a1a1a] dark:text-white hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-50 flex items-center gap-1.5"
+                      className="px-3 py-2 text-sm font-medium border border-brand-border rounded-lg bg-brand-surface text-brand-ink hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-50 flex items-center gap-1.5"
                     >
                       <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
@@ -707,7 +750,7 @@ const isSelected = (date: Date) => {
                   <select
                     value={podiatristFilter}
                     onChange={(e) => setPodiatristFilter(e.target.value)}
-                    className="px-3 py-2 text-sm border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 text-[#1a1a1a] dark:text-white focus:border-[#1a1a1a] dark:focus:border-gray-400 focus:ring-1 focus:ring-[#1a1a1a] dark:focus:ring-gray-500 outline-none"
+                    className="px-3 py-2 text-sm border border-brand-border rounded-lg bg-brand-surface text-brand-ink focus:border-brand-ink focus:ring-1 focus:ring-brand-ink outline-none"
                   >
                     <option value="all">{t.calendar.allPodiatrists}</option>
                     {clinicPodiatrists.map(p => (
@@ -717,15 +760,15 @@ const isSelected = (date: Date) => {
                 )}
 
                 {/* View Mode Toggle */}
-                <div className="flex gap-1 bg-gray-100 dark:bg-gray-800 p-1 rounded-lg">
+                <div className="flex gap-1 bg-brand-canvas p-1 rounded-lg">
                   {(["month", "week", "day"] as ViewMode[]).map((mode) => (
                     <button
                       key={mode}
                       onClick={() => setViewMode(mode)}
                       className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
                         viewMode === mode
-                          ? "bg-white dark:bg-gray-900 text-[#1a1a1a] dark:text-white shadow-sm"
-                          : "text-gray-600 dark:text-gray-400 hover:text-[#1a1a1a] dark:hover:text-white"
+                          ? "bg-brand-surface text-brand-ink shadow-sm"
+                          : "text-brand-muted hover:text-brand-ink dark:hover:text-white"
                       }`}
                     >
                       {mode === "month" ? t.calendar.month : mode === "week" ? t.calendar.week : t.calendar.day}
@@ -738,23 +781,23 @@ const isSelected = (date: Date) => {
 
           {agendaMetrics && (
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
-              <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-100 dark:border-gray-800 p-3">
-                <p className="text-xs text-gray-500 dark:text-gray-400">Programadas</p>
-                <p className="text-xl font-semibold text-[#1a1a1a] dark:text-white">{agendaMetrics.scheduled}</p>
+              <div className="bg-brand-surface rounded-xl border border-brand-border p-3">
+                <p className="text-xs text-brand-muted">Programadas</p>
+                <p className="text-xl font-semibold text-brand-ink">{agendaMetrics.scheduled}</p>
               </div>
-              <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-100 dark:border-gray-800 p-3">
-                <p className="text-xs text-gray-500 dark:text-gray-400">Completadas</p>
-                <p className="text-xl font-semibold text-[#1a1a1a] dark:text-white">{agendaMetrics.completed}</p>
+              <div className="bg-brand-surface rounded-xl border border-brand-border p-3">
+                <p className="text-xs text-brand-muted">Completadas</p>
+                <p className="text-xl font-semibold text-brand-ink">{agendaMetrics.completed}</p>
                 <p className="text-[10px] text-gray-400 dark:text-gray-500">{agendaMetrics.completionRate}%</p>
               </div>
-              <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-100 dark:border-gray-800 p-3">
-                <p className="text-xs text-gray-500 dark:text-gray-400">No-show</p>
-                <p className="text-xl font-semibold text-[#1a1a1a] dark:text-white">{agendaMetrics.noShow}</p>
+              <div className="bg-brand-surface rounded-xl border border-brand-border p-3">
+                <p className="text-xs text-brand-muted">No-show</p>
+                <p className="text-xl font-semibold text-brand-ink">{agendaMetrics.noShow}</p>
                 <p className="text-[10px] text-gray-400 dark:text-gray-500">{agendaMetrics.noShowRate}%</p>
               </div>
-              <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-100 dark:border-gray-800 p-3">
-                <p className="text-xs text-gray-500 dark:text-gray-400">Lista de espera</p>
-                <p className="text-xl font-semibold text-[#1a1a1a] dark:text-white">{waitlist.length}</p>
+              <div className="bg-brand-surface rounded-xl border border-brand-border p-3">
+                <p className="text-xs text-brand-muted">Lista de espera</p>
+                <p className="text-xl font-semibold text-brand-ink">{waitlist.length}</p>
               </div>
             </div>
           )}
@@ -774,14 +817,14 @@ const isSelected = (date: Date) => {
           )}
 
           {/* Calendar Grid - overflow-x-auto en móvil para grid de 7 columnas */}
-          <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-100 dark:border-gray-800 overflow-x-auto overscroll-contain">
+          <div className="bg-brand-surface rounded-xl border border-brand-border overflow-x-auto overscroll-contain">
             {/* Month View */}
             {viewMode === "month" && (
               <>
                 {/* Day headers - min-w para scroll horizontal en móvil */}
-                <div className="grid grid-cols-7 min-w-[400px] border-b border-gray-100 dark:border-gray-800">
+                <div className="grid grid-cols-7 min-w-[400px] border-b border-brand-border">
                   {dayNames.map((day) => (
-                    <div key={day} className="py-3 text-center text-sm font-medium text-gray-500 dark:text-gray-400">
+                    <div key={day} className="py-3 text-center text-sm font-medium text-brand-muted">
                       {day}
                     </div>
                   ))}
@@ -809,7 +852,7 @@ const isSelected = (date: Date) => {
                     : selected
                       ? "bg-blue-50 ring-1 ring-blue-200 dark:bg-blue-950/40 dark:ring-blue-800"
                       : pastDay && !isToday(date)
-                        ? "bg-gray-100 dark:bg-gray-800/50"
+                        ? "bg-brand-canvas/50"
                         : weekend
                           ? "bg-slate-50 dark:bg-gray-800/30"
                           : "hover:bg-gray-50 dark:hover:bg-gray-800";
@@ -824,14 +867,14 @@ const isSelected = (date: Date) => {
                         <span
                           className={`inline-flex items-center justify-center w-7 h-7 text-sm rounded-full ${
                             isToday(date)
-                              ? "bg-[#1a1a1a] text-white font-semibold ring-2 ring-blue-300"
+                              ? "bg-brand-ink text-brand-ink-fg font-semibold ring-2 ring-blue-300"
                               : !inCurrentMonth
                                 ? "text-gray-400 dark:text-gray-600"
                                 : pastDay
                                   ? "text-gray-400 dark:text-gray-500"
                                   : weekend
                                     ? "text-emerald-700 dark:text-emerald-400"
-                                    : "text-[#1a1a1a] dark:text-white"
+                                    : "text-brand-ink"
                           }`}
                         >
                           {date.getDate()}
@@ -890,8 +933,8 @@ const isSelected = (date: Date) => {
                       <div className="text-sm text-gray-500">{dayNames[index]}</div>
                       <div className={`text-lg font-semibold mt-1 ${
                         isToday(date) 
-                          ? "text-white bg-[#1a1a1a] rounded-full w-8 h-8 flex items-center justify-center mx-auto" 
-                          : "text-[#1a1a1a] dark:text-white"
+                          ? "text-brand-ink-fg bg-brand-ink rounded-full w-8 h-8 flex items-center justify-center mx-auto" 
+                          : "text-brand-ink"
                       }`}>
                         {date.getDate()}
                       </div>
@@ -961,13 +1004,13 @@ const isSelected = (date: Date) => {
               <div className="p-6">
                 <div className="flex items-center gap-4 mb-6">
                   <div className={`w-16 h-16 rounded-xl flex flex-col items-center justify-center ${
-                    isToday(currentDate) ? "bg-[#1a1a1a] text-white" : "bg-gray-100 dark:bg-gray-800 text-[#1a1a1a] dark:text-gray-100"
+                    isToday(currentDate) ? "bg-brand-ink text-brand-ink-fg" : "bg-brand-canvas text-brand-ink"
                   }`}>
                     <span className="text-2xl font-semibold">{currentDate.getDate()}</span>
                     <span className="text-xs uppercase">{currentDate.toLocaleDateString("es-ES", { weekday: "short" })}</span>
                   </div>
                   <div>
-                    <h3 className="text-xl font-semibold text-[#1a1a1a] dark:text-white">
+                    <h3 className="text-xl font-semibold text-brand-ink">
                       {getSessionsForDate(currentDate).length + getAppointmentsForDate(currentDate).length} {t.calendar.events}
                     </h3>
                     <p className="text-sm text-gray-500">
@@ -977,7 +1020,7 @@ const isSelected = (date: Date) => {
                   {(isClinicAdmin || isPodiatrist || isReceptionist) && (
                     <button
                       onClick={() => openNewAppointmentForm(currentDate)}
-                      className="ml-auto px-4 py-2 bg-[#1a1a1a] text-white rounded-lg hover:bg-[#2a2a2a] transition-colors font-medium flex items-center gap-2 text-sm"
+                      className="ml-auto px-4 py-2 bg-brand-ink text-brand-ink-fg rounded-lg hover:bg-brand-ink-hover transition-colors font-medium flex items-center gap-2 text-sm"
                     >
                       <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
@@ -1012,7 +1055,7 @@ const isSelected = (date: Date) => {
                                 <span className="text-xs text-orange-600 bg-orange-100 px-2 py-0.5 rounded">{t.calendar.pendingPatient}</span>
                               )}
                             </div>
-                            <p className="font-medium text-[#1a1a1a] dark:text-white">
+                            <p className="font-medium text-brand-ink">
                               {getPatientDisplayName(appt)}
                             </p>
                             {!appt.patientId && appt.pendingPatientPhone && (
@@ -1057,7 +1100,7 @@ const isSelected = (date: Date) => {
                           <div className="flex items-center gap-4 p-4 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors cursor-pointer">
                             <div className={`w-1.5 h-12 rounded-full ${getStatusColor(session.status)}`} />
                             <div className="flex-1">
-                              <p className="font-medium text-[#1a1a1a] dark:text-white">
+                              <p className="font-medium text-brand-ink">
                                 {session.patient?.firstName} {session.patient?.lastName}
                               </p>
                               <p className="text-sm text-gray-500">
@@ -1084,9 +1127,9 @@ const isSelected = (date: Date) => {
         <div className="w-full lg:w-80 space-y-4">
           {/* Selected Date Panel */}
           {selectedDate && (
-            <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-100 dark:border-gray-800 p-4">
+            <div className="bg-brand-surface rounded-xl border border-brand-border p-4">
               <div className="flex items-center justify-between mb-4">
-                <h3 className="font-semibold text-[#1a1a1a] dark:text-white">
+                <h3 className="font-semibold text-brand-ink">
                   {selectedDate.toLocaleDateString("es-ES", { weekday: "long", day: "numeric", month: "long" })}
                 </h3>
                 <button
@@ -1102,7 +1145,7 @@ const isSelected = (date: Date) => {
               {(isClinicAdmin || isPodiatrist) && (
                 <button
                   onClick={() => openNewAppointmentForm(selectedDate)}
-                  className="w-full mb-4 px-3 py-2 bg-gray-100 dark:bg-gray-800 text-[#1a1a1a] dark:text-white rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors font-medium flex items-center justify-center gap-2 text-sm"
+                  className="w-full mb-4 px-3 py-2 bg-brand-canvas text-brand-ink rounded-lg hover:bg-brand-border/40 transition-colors font-medium flex items-center justify-center gap-2 text-sm"
                 >
                   <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
@@ -1112,7 +1155,7 @@ const isSelected = (date: Date) => {
               )}
 
               {selectedDateAppointments.length === 0 && selectedDateSessions.length === 0 ? (
-                <p className="text-sm text-gray-500 dark:text-gray-400 text-center py-4">
+                <p className="text-sm text-brand-muted text-center py-4">
                   {t.calendar.noEventsForDay}
                 </p>
               ) : (
@@ -1129,7 +1172,7 @@ const isSelected = (date: Date) => {
                     >
                       <div className="flex items-center gap-2 mb-1">
                         <div className="w-2 h-2 rounded-full bg-blue-500" />
-                        <span className="text-sm font-medium text-[#1a1a1a] dark:text-white">
+                        <span className="text-sm font-medium text-brand-ink">
                           {appt.time} - {getPatientDisplayName(appt)}
                         </span>
                         {!appt.patientId && (
@@ -1174,7 +1217,7 @@ const isSelected = (date: Date) => {
                       <div className="p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors cursor-pointer">
                         <div className="flex items-center gap-2 mb-1">
                           <div className={`w-2 h-2 rounded-full ${getStatusColor(session.status)}`} />
-                          <span className="text-sm font-medium text-[#1a1a1a] dark:text-white">
+                          <span className="text-sm font-medium text-brand-ink">
                             {session.patient?.firstName} {session.patient?.lastName}
                           </span>
                         </div>
@@ -1196,8 +1239,8 @@ const isSelected = (date: Date) => {
 
           {/* Upcoming Appointments */}
           {(isClinicAdmin || isPodiatrist) && upcomingAppointments.length > 0 && (
-            <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-100 dark:border-gray-800 p-4">
-              <h3 className="font-semibold text-[#1a1a1a] dark:text-white mb-4">
+            <div className="bg-brand-surface rounded-xl border border-brand-border p-4">
+              <h3 className="font-semibold text-brand-ink mb-4">
                 Próximas citas
               </h3>
               
@@ -1221,7 +1264,7 @@ const isSelected = (date: Date) => {
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
-                        <p className="text-sm font-medium text-[#1a1a1a] dark:text-white truncate">
+                        <p className="text-sm font-medium text-brand-ink truncate">
                           {getPatientDisplayName(appt)}
                         </p>
                         {!appt.patientId && (
@@ -1241,13 +1284,13 @@ const isSelected = (date: Date) => {
           )}
 
           {/* Upcoming Sessions */}
-          <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-100 dark:border-gray-800 p-4">
-            <h3 className="font-semibold text-[#1a1a1a] dark:text-white mb-4">
+          <div className="bg-brand-surface rounded-xl border border-brand-border p-4">
+            <h3 className="font-semibold text-brand-ink mb-4">
               {t.calendar.upcomingSessions}
             </h3>
             
             {upcomingSessions.length === 0 ? (
-              <p className="text-sm text-gray-500 dark:text-gray-400 text-center py-4">
+              <p className="text-sm text-brand-muted text-center py-4">
                 {t.calendar.noUpcomingSessions}
               </p>
             ) : (
@@ -1262,8 +1305,8 @@ const isSelected = (date: Date) => {
                   return (
                     <Link key={session.id} href={href}>
                       <div className="flex items-center gap-3 p-2 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors cursor-pointer">
-                        <div className="flex-shrink-0 w-10 h-10 bg-gray-100 dark:bg-gray-800 rounded-lg flex flex-col items-center justify-center">
-                          <span className="text-xs font-semibold text-[#1a1a1a] dark:text-white">
+                        <div className="flex-shrink-0 w-10 h-10 bg-brand-canvas rounded-lg flex flex-col items-center justify-center">
+                          <span className="text-xs font-semibold text-brand-ink">
                             {new Date(session.sessionDate).getDate()}
                           </span>
                           <span className="text-[8px] text-gray-500 uppercase">
@@ -1271,7 +1314,7 @@ const isSelected = (date: Date) => {
                           </span>
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium text-[#1a1a1a] dark:text-white truncate">
+                          <p className="text-sm font-medium text-brand-ink truncate">
                             {session.patient?.firstName} {session.patient?.lastName}
                           </p>
                           <p className="text-xs text-gray-500">
@@ -1293,24 +1336,24 @@ const isSelected = (date: Date) => {
           </div>
 
           {/* Legend */}
-          <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-100 dark:border-gray-800 p-4">
-            <h3 className="font-semibold text-[#1a1a1a] dark:text-white mb-3">{t.calendar.legend}</h3>
+          <div className="bg-brand-surface rounded-xl border border-brand-border p-4">
+            <h3 className="font-semibold text-brand-ink mb-3">{t.calendar.legend}</h3>
             <div className="space-y-2">
               <div className="flex items-center gap-2">
                 <div className="w-3 h-3 rounded-full bg-blue-500" />
-                <span className="text-sm text-gray-600 dark:text-gray-300">{t.calendar.legendAppointment}</span>
+                <span className="text-sm text-brand-muted">{t.calendar.legendAppointment}</span>
               </div>
               <div className="flex items-center gap-2">
                 <div className="w-3 h-3 rounded-full bg-green-500" />
-                <span className="text-sm text-gray-600 dark:text-gray-300">{t.calendar.legendSessionCompleted}</span>
+                <span className="text-sm text-brand-muted">{t.calendar.legendSessionCompleted}</span>
               </div>
               <div className="flex items-center gap-2">
                 <div className="w-3 h-3 rounded-full bg-yellow-500" />
-                <span className="text-sm text-gray-600 dark:text-gray-300">{t.calendar.legendSessionDraft}</span>
+                <span className="text-sm text-brand-muted">{t.calendar.legendSessionDraft}</span>
               </div>
               <div className="flex items-center gap-2">
                 <div className="w-3 h-3 rounded-full bg-gray-400" />
-                <span className="text-sm text-gray-600 dark:text-gray-300">{t.calendar.legendCancelled}</span>
+                <span className="text-sm text-brand-muted">{t.calendar.legendCancelled}</span>
               </div>
             </div>
           </div>
@@ -1323,7 +1366,7 @@ const isSelected = (date: Date) => {
           <div className="bg-white rounded-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto form-modal-scroll">
             <div className="sticky top-0 bg-white border-b border-gray-100 p-6 z-10">
               <div className="flex items-center justify-between">
-                <h3 className="text-xl font-semibold text-[#1a1a1a] dark:text-white">
+                <h3 className="text-xl font-semibold text-brand-ink">
                   {editingAppointment ? t.calendar.formTitleEdit : t.calendar.formTitleNew}
                 </h3>
                 <button
@@ -1357,7 +1400,7 @@ const isSelected = (date: Date) => {
                     pendingPatientName: e.target.value ? "" : prev.pendingPatientName,
                     pendingPatientPhone: e.target.value ? "" : prev.pendingPatientPhone,
                   }))}
-                  className="w-full px-3 py-2.5 border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 text-[#1a1a1a] dark:text-white focus:outline-none focus:border-[#1a1a1a] dark:focus:border-gray-400 focus:ring-1 focus:ring-[#1a1a1a] dark:focus:ring-gray-500 placeholder:text-gray-400 dark:placeholder:text-gray-500"
+                  className="w-full px-3 py-2.5 border border-brand-border rounded-lg bg-brand-surface text-brand-ink focus:outline-none focus:border-brand-ink focus:ring-1 focus:ring-brand-ink placeholder:text-gray-400 dark:placeholder:text-gray-500"
                 >
                   <option value="">{t.calendar.patientPendingOption}</option>
                   {clinicPatients.map(patient => (
@@ -1380,7 +1423,7 @@ const isSelected = (date: Date) => {
                         value={appointmentForm.pendingPatientName}
                         onChange={(e) => setAppointmentForm(prev => ({ ...prev, pendingPatientName: e.target.value }))}
                         placeholder={t.calendar.namePlaceholder}
-                        className="w-full px-3 py-2 text-sm border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 text-[#1a1a1a] dark:text-white focus:outline-none focus:border-[#1a1a1a] dark:focus:border-gray-400 focus:ring-1 focus:ring-[#1a1a1a] dark:focus:ring-gray-500 placeholder:text-gray-400 dark:placeholder:text-gray-500"
+                        className="w-full px-3 py-2 text-sm border border-brand-border rounded-lg bg-brand-surface text-brand-ink focus:outline-none focus:border-brand-ink focus:ring-1 focus:ring-brand-ink placeholder:text-gray-400 dark:placeholder:text-gray-500"
                         required={appointmentForm.patientId === "" || appointmentForm.patientId === null}
                       />
                     </div>
@@ -1398,7 +1441,7 @@ const isSelected = (date: Date) => {
                           setAppointmentForm(prev => ({ ...prev, pendingPatientPhone: v }));
                         }}
                         placeholder={t.calendar.phonePlaceholder}
-                        className="w-full px-3 py-2 text-sm border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 text-[#1a1a1a] dark:text-white focus:outline-none focus:border-[#1a1a1a] dark:focus:border-gray-400 focus:ring-1 focus:ring-[#1a1a1a] dark:focus:ring-gray-500 placeholder:text-gray-400 dark:placeholder:text-gray-500"
+                        className="w-full px-3 py-2 text-sm border border-brand-border rounded-lg bg-brand-surface text-brand-ink focus:outline-none focus:border-brand-ink focus:ring-1 focus:ring-brand-ink placeholder:text-gray-400 dark:placeholder:text-gray-500"
                         required={appointmentForm.patientId === "" || appointmentForm.patientId === null}
                         maxLength={20}
                         pattern="[\d+\s\-()]*"
@@ -1425,7 +1468,7 @@ const isSelected = (date: Date) => {
                   <select
                     value={appointmentForm.podiatristId}
                     onChange={(e) => setAppointmentForm(prev => ({ ...prev, podiatristId: e.target.value }))}
-                    className="w-full px-3 py-2.5 border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 text-[#1a1a1a] dark:text-white focus:outline-none focus:border-[#1a1a1a] dark:focus:border-gray-400 focus:ring-1 focus:ring-[#1a1a1a] dark:focus:ring-gray-500 placeholder:text-gray-400 dark:placeholder:text-gray-500"
+                    className="w-full px-3 py-2.5 border border-brand-border rounded-lg bg-brand-surface text-brand-ink focus:outline-none focus:border-brand-ink focus:ring-1 focus:ring-brand-ink placeholder:text-gray-400 dark:placeholder:text-gray-500"
                     required
                   >
                     <option value="">{t.calendar.selectPodiatrist}</option>
@@ -1447,7 +1490,7 @@ const isSelected = (date: Date) => {
                   type="date"
                   value={appointmentForm.date}
                   onChange={(e) => setAppointmentForm(prev => ({ ...prev, date: e.target.value }))}
-                  className="w-full px-3 py-2.5 border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 text-[#1a1a1a] dark:text-white focus:outline-none focus:border-[#1a1a1a] dark:focus:border-gray-400 focus:ring-1 focus:ring-[#1a1a1a] dark:focus:ring-gray-500 placeholder:text-gray-400 dark:placeholder:text-gray-500"
+                  className="w-full px-3 py-2.5 border border-brand-border rounded-lg bg-brand-surface text-brand-ink focus:outline-none focus:border-brand-ink focus:ring-1 focus:ring-brand-ink placeholder:text-gray-400 dark:placeholder:text-gray-500"
                   required
                 />
               </div>
@@ -1461,7 +1504,7 @@ const isSelected = (date: Date) => {
                   type="time"
                   value={appointmentForm.time}
                   onChange={(e) => setAppointmentForm(prev => ({ ...prev, time: e.target.value }))}
-                  className="w-full px-3 py-2.5 border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 text-[#1a1a1a] dark:text-white focus:outline-none focus:border-[#1a1a1a] dark:focus:border-gray-400 focus:ring-1 focus:ring-[#1a1a1a] dark:focus:ring-gray-500 placeholder:text-gray-400 dark:placeholder:text-gray-500"
+                  className="w-full px-3 py-2.5 border border-brand-border rounded-lg bg-brand-surface text-brand-ink focus:outline-none focus:border-brand-ink focus:ring-1 focus:ring-brand-ink placeholder:text-gray-400 dark:placeholder:text-gray-500"
                   required
                 />
               </div>
@@ -1474,7 +1517,7 @@ const isSelected = (date: Date) => {
                 <select
                   value={appointmentForm.duration}
                   onChange={(e) => setAppointmentForm(prev => ({ ...prev, duration: parseInt(e.target.value) }))}
-                  className="w-full px-3 py-2.5 border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 text-[#1a1a1a] dark:text-white focus:outline-none focus:border-[#1a1a1a] dark:focus:border-gray-400 focus:ring-1 focus:ring-[#1a1a1a] dark:focus:ring-gray-500 placeholder:text-gray-400 dark:placeholder:text-gray-500"
+                  className="w-full px-3 py-2.5 border border-brand-border rounded-lg bg-brand-surface text-brand-ink focus:outline-none focus:border-brand-ink focus:ring-1 focus:ring-brand-ink placeholder:text-gray-400 dark:placeholder:text-gray-500"
                 >
                   <option value={15}>{t.calendar.duration15}</option>
                   <option value={30}>{t.calendar.duration30}</option>
@@ -1493,7 +1536,7 @@ const isSelected = (date: Date) => {
                   value={appointmentForm.notes}
                   onChange={(e) => setAppointmentForm(prev => ({ ...prev, notes: e.target.value }))}
                   rows={3}
-                  className="w-full px-3 py-2.5 border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 text-[#1a1a1a] dark:text-white focus:outline-none focus:border-[#1a1a1a] dark:focus:border-gray-400 focus:ring-1 focus:ring-[#1a1a1a] dark:focus:ring-gray-500 placeholder:text-gray-400 dark:placeholder:text-gray-500 resize-none"
+                  className="w-full px-3 py-2.5 border border-brand-border rounded-lg bg-brand-surface text-brand-ink focus:outline-none focus:border-brand-ink focus:ring-1 focus:ring-brand-ink placeholder:text-gray-400 dark:placeholder:text-gray-500 resize-none"
                   placeholder={t.calendar.notesPlaceholder}
                 />
               </div>
@@ -1539,7 +1582,7 @@ const isSelected = (date: Date) => {
                   <button
                     type="submit"
                     disabled={isSubmittingAppointment}
-                    className="flex-1 px-4 py-2.5 bg-[#1a1a1a] text-white rounded-lg hover:bg-[#2a2a2a] transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="flex-1 px-4 py-2.5 bg-brand-ink text-brand-ink-fg rounded-lg hover:bg-brand-ink-hover transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     {isSubmittingAppointment ? (editingAppointment ? t.calendar.saving : t.calendar.creating) : (editingAppointment ? t.calendar.saveChanges : t.calendar.createAppointment)}
                   </button>

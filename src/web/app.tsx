@@ -2,6 +2,9 @@ import { Route, Switch, Redirect, useLocation } from "wouter";
 import { Provider } from "./components/provider";
 import { ErrorBoundary } from "./components/error-boundary";
 import { AuthProvider, useAuth, getPostLoginPath, hasActiveSystemAccess, isAllowedWithoutSystemAccess } from "./contexts/auth-context";
+import { NotificationsProvider } from "./contexts/notifications-context";
+import { ClinicalLayoutProvider } from "./contexts/clinical-layout-context";
+import { WorkspaceWatermarkProvider } from "./contexts/workspace-watermark-context";
 import Login from "./pages/login";
 import Register from "./pages/register";
 import VerifyEmail from "./pages/verify-email";
@@ -21,7 +24,7 @@ const ProtectedRoute = ({ component: Component, path }: { component: React.Compo
     return (
       <div className="min-h-screen bg-white flex items-center justify-center">
         <div className="flex flex-col items-center gap-4">
-          <svg className="animate-spin h-8 w-8 text-[#1a1a1a] dark:text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+          <svg className="animate-spin h-8 w-8 text-brand-ink" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
             <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
             <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
           </svg>
@@ -53,7 +56,7 @@ const PublicRoute = ({ component: Component }: { component: React.ComponentType 
   if (isLoading) {
     return (
       <div className="min-h-screen bg-white flex items-center justify-center">
-        <svg className="animate-spin h-8 w-8 text-[#1a1a1a] dark:text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+        <svg className="animate-spin h-8 w-8 text-brand-ink" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
           <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
           <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
         </svg>
@@ -112,9 +115,15 @@ function App() {
   return (
     <Provider>
       <AuthProvider>
-        <ErrorBoundary>
-          <AppRoutes />
-        </ErrorBoundary>
+        <NotificationsProvider>
+          <ClinicalLayoutProvider>
+            <WorkspaceWatermarkProvider>
+              <ErrorBoundary>
+                <AppRoutes />
+              </ErrorBoundary>
+            </WorkspaceWatermarkProvider>
+          </ClinicalLayoutProvider>
+        </NotificationsProvider>
       </AuthProvider>
     </Provider>
   );

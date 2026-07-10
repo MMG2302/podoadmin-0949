@@ -5,6 +5,8 @@ import { requireAuth } from '../middleware/auth';
 import {
   requireClinicalLayoutEdit,
   requireClinicalLayoutRead,
+  requireClinicalTemplateManage,
+  requireClinicalTemplateRead,
   requirePermission,
 } from '../middleware/authorization';
 import { requireActiveSubscription } from '../middleware/subscription';
@@ -35,18 +37,30 @@ import { validateLogoPayload } from '../utils/logo-upload';
 const clinicalRoutes = new Hono();
 clinicalRoutes.use('*', requireAuth, requireActiveSubscription);
 
-// --- Plantillas ---
-clinicalRoutes.get('/templates', requirePermission('manage_sessions', 'view_sessions'), async (c) => {
-  const user = c.get('user')!;
-  let rows = await database.select().from(sessionTemplates).orderBy(desc(sessionTemplates.updatedAt));
-  if (user.role === 'podiatrist') {
-    rows = rows.filter((r) => r.createdBy === user.userId || r.isShared);
-  } else if (user.clinicId) {
-    rows = rows.filter((r) => !r.clinicId || r.clinicId === user.clinicId);
+function templateVisibleToUser(
+  user: { userId: string; role: string; clinicId?: string | null },
+  template: typeof sessionTemplates.$inferSelect
+): boolean {
+  if (user.role === 'super_admin') return true;
+  const sameClinic =
+    !template.clinicId || !user.clinicId || template.clinicId === user.clinicId;
+  if (!sameClinic) return false;
+  if (template.createdBy === user.userId) return true;
+  if (template.isShared) return true;
+  if (user.role === 'clinic_admin' && template.clinicId && template.clinicId === user.clinicId) {
+    return true;
   }
+  return false;
+}
+
+// --- Plantillas ---
+clinicalRoutes.get('/templates', requireClinicalTemplateRead(), async (c) => {
+  const user = c.get('user')!;
+  const rows = await database.select().from(sessionTemplates).orderBy(desc(sessionTemplates.updatedAt));
+  const visible = rows.filter((r) => templateVisibleToUser(user, r));
   return c.json({
     success: true,
-    templates: rows.map((r) => ({
+    templates: visible.map((r) => ({
       id: r.id,
       name: r.name,
       category: r.category,
@@ -57,7 +71,7 @@ clinicalRoutes.get('/templates', requirePermission('manage_sessions', 'view_sess
   });
 });
 
-clinicalRoutes.post('/templates', requirePermission('manage_sessions'), async (c) => {
+clinicalRoutes.post('/templates', requireClinicalTemplateManage(), async (c) => {
   const user = c.get('user')!;
   const body = await c.req.json().catch(() => ({}));
   const schema = z.object({
@@ -84,7 +98,7 @@ clinicalRoutes.post('/templates', requirePermission('manage_sessions'), async (c
   return c.json({ success: true, id }, 201);
 });
 
-clinicalRoutes.delete('/templates/:id', requirePermission('manage_sessions'), async (c) => {
+clinicalRoutes.delete('/templates/:id', requireClinicalTemplateManage(), async (c) => {
   const user = c.get('user')!;
   const id = sanitizePathParam(c.req.param('id'));
   const rows = await database.select().from(sessionTemplates).where(eq(sessionTemplates.id, id)).limit(1);
@@ -113,14 +127,21 @@ function canModifySessionTemplate(
   );
 }
 
-const templateFieldsSchema = z.object({
-  anamnesis: z.string().max(10000).optional(),
-  physicalExamination: z.string().max(10000).optional(),
-  diagnosis: z.string().max(5000).optional(),
-  treatmentPlan: z.string().max(10000).optional(),
-});
+const templateFieldsSchema = z
+  .object({
+    anamnesis: z.string().max(10000).optional(),
+    physicalExamination: z.string().max(10000).optional(),
+    diagnosis: z.string().max(5000).optional(),
+    treatmentPlan: z.string().max(10000).optional(),
+    clinicalNotes: z.string().max(10000).optional(),
+    appointmentReason: z.string().max(64).optional(),
+    podiatryExam: z.record(z.string(), z.unknown()).optional(),
+    customSections: z.record(z.string(), z.unknown()).optional(),
+    sectionLayout: z.record(z.string(), z.unknown()).optional(),
+  })
+  .passthrough();
 
-clinicalRoutes.patch('/templates/:id', requirePermission('manage_sessions'), async (c) => {
+clinicalRoutes.patch('/templates/:id', requireClinicalTemplateManage(), async (c) => {
   const user = c.get('user')!;
   const id = sanitizePathParam(c.req.param('id'));
   const rows = await database.select().from(sessionTemplates).where(eq(sessionTemplates.id, id)).limit(1);
@@ -570,8 +591,9 @@ const workspaceWatermarkSchema = z.object({
     enabled: z.boolean(),
     source: z.enum(['custom', 'clinic_logo']),
     image: z.string().max(3_000_000).nullable().optional(),
-    opacity: z.number().min(0.03).max(0.3),
-    size: z.number().min(20).max(100),
+    opacity: z.number().min(0.01).max(1),
+    size: z.number().min(20).max(200),
+    zoom: z.number().min(50).max(400),
     positionX: z.number().min(0).max(100),
     positionY: z.number().min(0).max(100),
   }),
@@ -583,7 +605,9 @@ clinicalRoutes.put('/workspace-watermark', requireClinicalLayoutEdit(), async (c
   if (!parsed.success) return c.json({ error: 'Datos inválidos', issues: parsed.error.flatten() }, 400);
 
   const config = parsed.data.config;
-  if (config.source === 'custom' && config.enabled && config.image) {
+  if (config.source === 'clinic_logo') {
+    config.image = null;
+  } else if (config.source === 'custom' && config.enabled && config.image) {
     const validation = validateLogoPayload(config.image);
     if (!validation.valid) {
       return c.json({ error: validation.error, message: validation.message }, 400);
@@ -597,6 +621,7 @@ clinicalRoutes.put('/workspace-watermark', requireClinicalLayoutEdit(), async (c
     image: config.image ?? null,
     opacity: config.opacity,
     size: config.size,
+    zoom: config.zoom,
     positionX: config.positionX,
     positionY: config.positionY,
   });

@@ -73,7 +73,7 @@ export const MainLayout = ({ children, title }: MainLayoutProps) => {
   };
 
   return (
-    <div className="h-dvh h-screen min-h-0 flex overflow-hidden bg-gray-50 dark:bg-gray-950">
+    <div className="h-dvh h-screen min-h-0 flex overflow-hidden bg-brand-canvas">
       <Sidebar
         isOpen={sidebarOpen}
         onClose={() => setSidebarOpen(false)}
@@ -89,7 +89,7 @@ export const MainLayout = ({ children, title }: MainLayoutProps) => {
         }`}
       >
         {/* Top header - responsive */}
-        <header className="flex-shrink-0 sticky top-0 z-30 bg-white dark:bg-gray-900 border-b border-gray-100 dark:border-gray-800 safe-area-top">
+        <header className="flex-shrink-0 sticky top-0 z-30 bg-brand-surface border-b border-brand-border safe-area-top">
           <div className="flex items-center justify-between px-3 sm:px-4 md:px-6 lg:px-8 h-14 sm:h-16">
             {/* Left side - menu button and title. min-w-[7rem] evita que Safari colapse a 0 en el primer pintado (menú no visible al iniciar sesión). */}
             <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-[7rem] overflow-hidden [transform:translateZ(0)]">
@@ -97,7 +97,7 @@ export const MainLayout = ({ children, title }: MainLayoutProps) => {
               <button
                 onClick={handleLockCycle}
                 className={`hidden md:flex p-2 rounded-lg transition-colors min-w-[40px] min-h-[40px] items-center justify-center flex-shrink-0 ${
-                  sidebarLocked ? "bg-gray-200 dark:bg-gray-700 text-[#1a1a1a] dark:text-white" : "hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500 dark:text-gray-400"
+                  sidebarLocked ? "bg-brand-border text-brand-ink" : "hover:bg-brand-canvas text-brand-muted"
                 }`}
                 title={
                   sidebarLocked === "visible"
@@ -121,16 +121,16 @@ export const MainLayout = ({ children, title }: MainLayoutProps) => {
                     setSidebarOpen(true);
                   }
                 }}
-                className="shrink-0 p-2 ml-0 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 active:bg-gray-200 dark:active:bg-gray-700 transition-colors w-11 h-11 min-w-[44px] min-h-[44px] flex items-center justify-center"
+                className="shrink-0 p-2 ml-0 rounded-lg hover:bg-brand-canvas active:bg-gray-200 dark:active:bg-gray-700 transition-colors w-11 h-11 min-w-[44px] min-h-[44px] flex items-center justify-center"
                 aria-label={sidebarVisibleOnDesktop ? "Ocultar menú" : "Mostrar menú"}
               >
-                <svg className="w-6 h-6 text-[#1a1a1a] dark:text-white shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                <svg className="w-6 h-6 text-brand-ink shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
                 </svg>
               </button>
 
               {/* Page title - truncate on small screens */}
-              <h1 className="text-base sm:text-lg md:text-xl font-semibold text-[#1a1a1a] dark:text-white truncate min-w-0">
+              <h1 className="text-base sm:text-lg md:text-xl font-semibold text-brand-ink truncate min-w-0">
                 {title || "PodoAdmin"}
               </h1>
             </div>
@@ -155,7 +155,7 @@ export const MainLayout = ({ children, title }: MainLayoutProps) => {
         </header>
 
         {/* Área principal: marca de agua fija al panel visible; solo el contenido hace scroll */}
-        <div className="relative flex-1 min-h-0 flex flex-col overflow-hidden bg-gray-50 dark:bg-gray-950">
+        <div className="relative flex-1 min-h-0 flex flex-col overflow-hidden bg-brand-canvas">
           {watermark.visible && watermark.image && (
             <div
               className="pointer-events-none absolute inset-0 z-0 overflow-hidden"
@@ -164,16 +164,15 @@ export const MainLayout = ({ children, title }: MainLayoutProps) => {
               <img
                 src={watermark.image}
                 alt=""
-                className="absolute object-contain select-none"
+                className="absolute select-none"
                 style={{
                   left: `${watermark.positionX}%`,
                   top: `${watermark.positionY}%`,
-                  transform: "translate(-50%, -50%)",
+                  transform: `translate(-50%, -50%) scale(${watermark.zoom / 100})`,
                   opacity: watermark.opacity,
                   width: `${watermark.size}%`,
-                  maxWidth: "90vw",
-                  maxHeight: "55vh",
-                  height: "auto",
+                  height: watermark.zoom >= 200 ? "100%" : "auto",
+                  objectFit: watermark.zoom >= 200 ? "cover" : "contain",
                 }}
                 draggable={false}
               />

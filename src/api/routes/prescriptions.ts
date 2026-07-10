@@ -24,8 +24,12 @@ const createSchema = z.object({
   patientName: z.string().min(1).max(200),
   patientDob: z.string().min(1).max(32),
   patientDni: z.string().min(1).max(64),
+  patientAgeYears: z.number().int().min(0).max(130).optional().nullable(),
+  patientWeightKg: z.string().max(16).optional().nullable(),
+  patientHeightCm: z.string().max(16).optional().nullable(),
   podiatristName: z.string().min(1).max(200),
   podiatristLicense: z.string().max(128).optional().nullable(),
+  podiatristCedula: z.string().max(128).optional().nullable(),
 });
 
 function mapPrescription(row: typeof prescriptions.$inferSelect) {
@@ -45,6 +49,10 @@ function mapPrescription(row: typeof prescriptions.$inferSelect) {
     nextVisitDate: row.nextVisitDate,
     notes: row.notes,
     folio: row.folio,
+    patientAgeYears: row.patientAgeYears ?? null,
+    patientWeightKg: row.patientWeightKg ?? null,
+    patientHeightCm: row.patientHeightCm ?? null,
+    podiatristCedula: row.podiatristCedula ?? null,
     createdAt: row.createdAt,
     createdBy: row.createdBy,
   };
@@ -148,6 +156,10 @@ prescriptionsRoutes.post(
       nextVisitDate: data.nextVisitDate ?? null,
       notes: data.notes ?? '',
       folio,
+      patientAgeYears: data.patientAgeYears ?? null,
+      patientWeightKg: data.patientWeightKg?.trim() || null,
+      patientHeightCm: data.patientHeightCm?.trim() || null,
+      podiatristCedula: data.podiatristCedula?.trim() || null,
       createdAt: iso,
       createdBy: user.userId,
       clinicId: session.clinicId ?? null,

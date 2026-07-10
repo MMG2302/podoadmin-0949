@@ -1,5 +1,5 @@
 import { Hono } from 'hono';
-import { eq, desc } from 'drizzle-orm';
+import { eq, desc, and, count } from 'drizzle-orm';
 import { z } from 'zod';
 import { requireAuth } from '../middleware/auth';
 import { database } from '../database';
@@ -121,18 +121,42 @@ notificationsRoutes.get('/', async (c) => {
     const userId = user.userId;
     const unreadOnly = c.req.query('unread') === '1';
     const type = c.req.query('type');
+    const includeUnreadCount = c.req.query('includeUnreadCount') === '1';
+    const limitRaw = parseInt(c.req.query('limit') || '100', 10);
+    const offsetRaw = parseInt(c.req.query('offset') || '0', 10);
+    const limit = Math.min(Math.max(Number.isFinite(limitRaw) ? limitRaw : 100, 1), 500);
+    const offset = Math.max(Number.isFinite(offsetRaw) ? offsetRaw : 0, 0);
 
-    let rows = await database
+    const conditions = [eq(notificationsTable.userId, userId)];
+    if (unreadOnly) conditions.push(eq(notificationsTable.read, false));
+    if (type) conditions.push(eq(notificationsTable.type, type));
+    const where = and(...conditions);
+
+    const rows = await database
       .select()
       .from(notificationsTable)
-      .where(eq(notificationsTable.userId, userId))
-      .orderBy(desc(notificationsTable.createdAt));
-
-    if (unreadOnly) rows = rows.filter((r) => !r.read);
-    if (type) rows = rows.filter((r) => r.type === type);
+      .where(where)
+      .orderBy(desc(notificationsTable.createdAt))
+      .limit(limit)
+      .offset(offset);
 
     const notifications = rows.map(mapRow);
-    return c.json({ success: true, notifications });
+
+    let unreadCount: number | undefined;
+    if (includeUnreadCount) {
+      const [row] = await database
+        .select({ value: count() })
+        .from(notificationsTable)
+        .where(and(eq(notificationsTable.userId, userId), eq(notificationsTable.read, false)));
+      unreadCount = row?.value ?? 0;
+    }
+
+    return c.json({
+      success: true,
+      notifications,
+      pagination: { limit, offset, hasMore: rows.length === limit },
+      ...(includeUnreadCount ? { unreadCount } : {}),
+    });
   } catch (err) {
     console.error('Error listando notificaciones:', err);
     return c.json({ error: 'Error interno' }, 500);
@@ -146,11 +170,11 @@ notificationsRoutes.get('/unread-count', async (c) => {
   try {
     const user = c.get('user');
     const userId = user.userId;
-    const rows = await database
-      .select()
+    const [row] = await database
+      .select({ value: count() })
       .from(notificationsTable)
-      .where(eq(notificationsTable.userId, userId));
-    const unreadCount = rows.filter((r) => !r.read).length;
+      .where(and(eq(notificationsTable.userId, userId), eq(notificationsTable.read, false)));
+    const unreadCount = row?.value ?? 0;
     return c.json({ success: true, unreadCount });
   } catch (err) {
     console.error('Error obteniendo unread-count:', err);

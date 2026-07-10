@@ -6,7 +6,7 @@ import { requirePermission } from '../middleware/authorization';
 import { requireActiveSubscription } from '../middleware/subscription';
 import { database } from '../database';
 import { whatsappCampaigns } from '../database/schema';
-import { canConfigureWhatsApp } from '../utils/whatsapp-integration';
+import { canUseWhatsAppWeb, resolveWhatsAppWorkspaceForUser } from '../utils/whatsapp-integration';
 import { sendWhatsAppTemplateMessage } from '../utils/whatsapp-meta-api';
 import { normalizePhoneE164 } from '../../lib/phone-country';
 import { getCountryForClinic } from '../utils/tenant-country';
@@ -19,7 +19,7 @@ campaignsRoutes.use('*', requireAuth, requireActiveSubscription);
 
 campaignsRoutes.get('/', async (c) => {
   const user = c.get('user')!;
-  if (!canConfigureWhatsApp(user.role)) return c.json({ error: 'Acceso denegado' }, 403);
+  if (!canUseWhatsAppWeb(user.role)) return c.json({ error: 'Acceso denegado' }, 403);
   let rows = await database.select().from(whatsappCampaigns).orderBy(desc(whatsappCampaigns.createdAt));
   if (user.clinicId) rows = rows.filter((r) => !r.clinicId || r.clinicId === user.clinicId);
   return c.json({ success: true, campaigns: rows });
@@ -34,7 +34,7 @@ const createSchema = z.object({
 
 campaignsRoutes.post('/', async (c) => {
   const user = c.get('user')!;
-  if (!canConfigureWhatsApp(user.role)) return c.json({ error: 'Acceso denegado' }, 403);
+  if (!canUseWhatsAppWeb(user.role)) return c.json({ error: 'Acceso denegado' }, 403);
   const parsed = createSchema.safeParse(await c.req.json().catch(() => ({})));
   if (!parsed.success) return c.json({ error: 'Datos inválidos' }, 400);
   const id = crypto.randomUUID();
@@ -57,17 +57,28 @@ campaignsRoutes.post('/', async (c) => {
 
 campaignsRoutes.post('/:id/send', async (c) => {
   const user = c.get('user')!;
-  if (!canConfigureWhatsApp(user.role)) return c.json({ error: 'Acceso denegado' }, 403);
+  if (!canUseWhatsAppWeb(user.role)) return c.json({ error: 'Acceso denegado' }, 403);
+
+  const workspace = await resolveWhatsAppWorkspaceForUser(user);
+  if (!workspace.canUseApi || !workspace.integrationOwnerUserId) {
+    return c.json(
+      { error: 'WhatsApp API no disponible', message: 'No tienes acceso al envío automático por API Meta.' },
+      403
+    );
+  }
 
   const id = c.req.param('id');
   const campaignRows = await database.select().from(whatsappCampaigns).where(eq(whatsappCampaigns.id, id)).limit(1);
   const campaign = campaignRows[0];
   if (!campaign) return c.json({ error: 'Campaña no encontrada' }, 404);
+  if (user.clinicId && campaign.clinicId && campaign.clinicId !== user.clinicId) {
+    return c.json({ error: 'Acceso denegado' }, 403);
+  }
 
   const waRow = await database
     .select()
     .from(userWhatsappIntegrations)
-    .where(eq(userWhatsappIntegrations.userId, user.userId))
+    .where(eq(userWhatsappIntegrations.userId, workspace.integrationOwnerUserId))
     .limit(1)
     .then((r) => r[0]);
   if (!waRow?.enabled) return c.json({ error: 'WhatsApp no configurado' }, 400);

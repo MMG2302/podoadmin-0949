@@ -108,11 +108,11 @@ const SecurityMetricsPage = () => {
       <div className="space-y-6">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
-            <h2 className="text-lg font-semibold text-[#1a1a1a] dark:text-white flex items-center gap-2">
+            <h2 className="text-lg font-semibold text-brand-ink flex items-center gap-2">
               <Shield className="w-5 h-5" />
               {t.nav.securityMetrics}
             </h2>
-            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+            <p className="text-sm text-brand-muted mt-1">
               Métricas de seguridad, alertas activas y eventos recientes
             </p>
           </div>
@@ -120,7 +120,7 @@ const SecurityMetricsPage = () => {
             <select
               value={days}
               onChange={(e) => setDays(Number(e.target.value))}
-              className="px-3 py-2 text-sm border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900"
+              className="px-3 py-2 text-sm border border-brand-border rounded-lg bg-brand-surface"
             >
               <option value={1}>Últimas 24 h</option>
               <option value={7}>Últimos 7 días</option>
@@ -130,7 +130,7 @@ const SecurityMetricsPage = () => {
               type="button"
               onClick={loadData}
               disabled={loading}
-              className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium bg-[#1a1a1a] text-white rounded-lg hover:bg-[#333] disabled:opacity-50"
+              className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium bg-brand-ink text-brand-ink-fg rounded-lg hover:bg-[#333] disabled:opacity-50"
             >
               <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
               Actualizar
@@ -139,7 +139,7 @@ const SecurityMetricsPage = () => {
         </div>
 
         {error && (
-          <div className="p-4 rounded-lg bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300 text-sm">
+          <div className="p-4 rounded-lg bg-red-50 dark:bg-red-900/20 text-semantic-error text-sm">
             {error}
           </div>
         )}
@@ -160,8 +160,8 @@ const SecurityMetricsPage = () => {
               <ul className="space-y-2">
                 {topStats.map(([type, count]) => (
                   <li key={type} className="flex justify-between text-sm">
-                    <span className="text-gray-600 dark:text-gray-300">{METRIC_LABELS[type] || type}</span>
-                    <span className="font-medium text-[#1a1a1a] dark:text-white">{count}</span>
+                    <span className="text-brand-muted">{METRIC_LABELS[type] || type}</span>
+                    <span className="font-medium text-brand-ink">{count}</span>
                   </li>
                 ))}
               </ul>
@@ -175,8 +175,8 @@ const SecurityMetricsPage = () => {
               ) : (
                 alerts.map((alert) => (
                   <div key={alert.id} className={`px-4 py-3 ${!alert.read ? "bg-amber-50/50 dark:bg-amber-900/10" : ""}`}>
-                    <p className="text-sm font-medium text-[#1a1a1a] dark:text-white">{alert.title}</p>
-                    <p className="text-xs text-gray-600 dark:text-gray-400 mt-1 line-clamp-2">{alert.message}</p>
+                    <p className="text-sm font-medium text-brand-ink">{alert.title}</p>
+                    <p className="text-xs text-brand-muted mt-1 line-clamp-2">{alert.message}</p>
                     <p className="text-xs text-gray-400 mt-2">{formatDate(alert.createdAt)}</p>
                   </div>
                 ))
@@ -188,7 +188,7 @@ const SecurityMetricsPage = () => {
         <Panel title="Últimos logins fallidos">
           <div className="overflow-x-auto -mx-4">
             <table className="w-full text-sm">
-              <thead className="bg-gray-50 dark:bg-gray-800/50">
+              <thead className="bg-brand-canvas/50">
                 <tr>
                   <th className="text-left p-3 font-medium text-gray-500">Fecha</th>
                   <th className="text-left p-3 font-medium text-gray-500">IP</th>
@@ -223,12 +223,12 @@ const SecurityMetricsPage = () => {
 
 function StatCard({ icon, iconBg, label, value }: { icon: ReactNode; iconBg: string; label: string; value: number }) {
   return (
-    <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-100 dark:border-gray-800 p-5">
+    <div className="bg-brand-surface rounded-xl border border-brand-border p-5">
       <div className="flex items-center gap-3">
         <div className={`p-2 rounded-lg ${iconBg}`}>{icon}</div>
         <div>
           <p className="text-xs text-gray-500 uppercase tracking-wide">{label}</p>
-          <p className="text-2xl font-semibold text-[#1a1a1a] dark:text-white">{value}</p>
+          <p className="text-2xl font-semibold text-brand-ink">{value}</p>
         </div>
       </div>
     </div>
@@ -237,9 +237,9 @@ function StatCard({ icon, iconBg, label, value }: { icon: ReactNode; iconBg: str
 
 function Panel({ title, children }: { title: string; children: ReactNode }) {
   return (
-    <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-100 dark:border-gray-800 overflow-hidden">
+    <div className="bg-brand-surface rounded-xl border border-brand-border overflow-hidden">
       <div className="p-4 border-b border-gray-50 dark:border-gray-800">
-        <h3 className="font-semibold text-[#1a1a1a] dark:text-white">{title}</h3>
+        <h3 className="font-semibold text-brand-ink">{title}</h3>
       </div>
       <div className="p-4">{children}</div>
     </div>

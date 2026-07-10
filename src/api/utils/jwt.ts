@@ -122,22 +122,6 @@ export async function verifyRefreshToken(token: string): Promise<JWTPayload | nu
 }
 
 /**
- * @deprecated Usar generateAccessToken en su lugar
- * Mantenido para compatibilidad temporal
- */
-export async function generateToken(payload: Omit<JWTPayload, 'iat' | 'exp'>): Promise<string> {
-  return generateAccessToken(payload);
-}
-
-/**
- * @deprecated Usar verifyAccessToken en su lugar
- * Mantenido para compatibilidad temporal
- */
-export async function verifyToken(token: string): Promise<JWTPayload | null> {
-  return verifyAccessToken(token);
-}
-
-/**
  * Extrae el token del header Authorization
  */
 export function extractTokenFromHeader(authHeader: string | null): string | null {

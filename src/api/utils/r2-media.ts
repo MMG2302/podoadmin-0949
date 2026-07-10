@@ -49,6 +49,14 @@ export function professionalLogoObjectKey(userId: string): string {
   return `logos/professional/${userId}.webp`;
 }
 
+export function userAvatarObjectKey(userId: string): string {
+  return `avatars/${userId}.webp`;
+}
+
+export function userAvatarFilePath(userId: string): string {
+  return `/api/media/avatar/${userId}`;
+}
+
 export function getR2PublicBaseUrl(): string | null {
   try {
     const raw = process.env.R2_PUBLIC_BASE_URL;
@@ -130,6 +138,51 @@ export async function persistLogoPayload(
   }
   await putR2Object(b, key, decoded.buffer, decoded.contentType);
   return toR2Reference(key);
+}
+
+/** Sube avatar validado a R2 si hay bucket; si no, devuelve data URI. */
+export async function persistAvatarPayload(
+  sanitizedDataUri: string,
+  userId: string,
+  bucket?: R2Bucket | null,
+  previousStored?: string | null
+): Promise<string> {
+  const b = bucket ?? getR2Bucket();
+  if (!b) return sanitizedDataUri;
+
+  const decoded = decodeDataUri(sanitizedDataUri);
+  if (!decoded) return sanitizedDataUri;
+
+  const key = userAvatarObjectKey(userId);
+  // Misma clave por usuario: put sobrescribe; evitar delete redundante (cuelgues en Miniflare local).
+  if (previousStored && isR2Reference(previousStored)) {
+    const prevKey = r2KeyFromReference(previousStored);
+    if (prevKey !== key) {
+      await deleteR2Object(b, prevKey);
+    }
+  }
+  await putR2Object(b, key, decoded.buffer, decoded.contentType);
+  return toR2Reference(key);
+}
+
+/** Resuelve avatar almacenado (OAuth URL, data URI o r2) a URL usable en `<img src>`. */
+export function resolveAvatarForClient(
+  stored: string | null | undefined,
+  userId: string,
+  cacheVersion?: string | number | null
+): string | null {
+  if (!stored) return null;
+  if (stored.startsWith('data:')) return stored;
+  if (stored.startsWith('http://') || stored.startsWith('https://')) return stored;
+  if (isR2Reference(stored)) {
+    const key = r2KeyFromReference(stored);
+    let url = resolvePublicR2Url(key, userAvatarFilePath(userId));
+    if (cacheVersion != null && String(cacheVersion).length > 0) {
+      url += `${url.includes('?') ? '&' : '?'}v=${encodeURIComponent(String(cacheVersion))}`;
+    }
+    return url;
+  }
+  return stored;
 }
 
 /** Resuelve logo almacenado (data URI o r2) a URL usable en `<img src>`. */

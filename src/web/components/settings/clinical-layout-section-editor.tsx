@@ -68,7 +68,7 @@ function OptionListEditor({
                 </button>
               </>
             ) : (
-              <span className="flex-1 text-sm text-gray-700 dark:text-gray-300 py-2">{item}</span>
+              <span className="flex-1 text-sm text-brand-muted py-2">{item}</span>
             )}
           </li>
         ))}
@@ -79,7 +79,7 @@ function OptionListEditor({
             type="button"
             onClick={onAdd}
             disabled={atMax}
-            className="mt-2 w-full py-2 text-sm border border-dashed border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 text-gray-600 dark:text-gray-300 disabled:opacity-40 disabled:cursor-not-allowed"
+            className="mt-2 w-full py-2 text-sm border border-dashed border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 text-brand-muted disabled:opacity-40 disabled:cursor-not-allowed"
           >
             {addLabel}
           </button>
@@ -110,8 +110,8 @@ export function ClinicalLayoutSectionEditor({
 
   return (
     <div className="space-y-4">
-      <p className="text-xs text-gray-500 bg-gray-50 dark:bg-gray-950/50 rounded-lg p-2 border border-gray-100 dark:border-gray-800">
-        <strong className="text-gray-700 dark:text-gray-300">{meta.label}:</strong> {meta.hint}
+      <p className="text-xs text-gray-500 bg-brand-canvas/50 rounded-lg p-2 border border-brand-border">
+        <strong className="text-brand-muted">{meta.label}:</strong> {meta.hint}
       </p>
 
       {(section.kind === "custom_checklist" ||
@@ -217,7 +217,7 @@ export function ClinicalLayoutSectionEditor({
                 className="w-24 px-3 py-2 text-sm border rounded-lg dark:bg-gray-950"
               />
             ) : (
-              <p className="text-sm text-gray-700 dark:text-gray-300">{section.tableRowCount ?? 3}</p>
+              <p className="text-sm text-brand-muted">{section.tableRowCount ?? 3}</p>
             )}
           </div>
         </>

@@ -1,6 +1,6 @@
 import type { createdUsers } from '../database/schema';
 import { resolveSystemAccess } from './access-control';
-import { getSubscriptionForUser } from './subscription-service';
+import { getSubscriptionForUser, getSubscriptionsBatch, lookupSubscriptionFromBatch } from './subscription-service';
 import { RETENTION } from './user-retention';
 
 export type UserAccessBadgeTone =
@@ -78,7 +78,8 @@ function badgeFromAccessAndSubscription(
  * Trial/suscripción activa tiene prioridad sobre isEnabled=false (billing) o disabledAt mal interpretado.
  */
 export async function buildUserAccessBadge(
-  row: typeof createdUsers.$inferSelect
+  row: typeof createdUsers.$inferSelect,
+  prefetchedSub?: Awaited<ReturnType<typeof getSubscriptionForUser>>
 ): Promise<UserAccessBadge> {
   if (row.isBanned) {
     return { label: 'Baneado', tone: 'red' };
@@ -101,8 +102,11 @@ export async function buildUserAccessBadge(
     row.role === 'clinic_admin' || row.role === 'podiatrist' || row.role === 'receptionist';
 
   if (isBillingRole) {
-    const access = await resolveSystemAccess(row.userId, row.role);
-    const sub = await getSubscriptionForUser(row.userId, row.clinicId);
+    const sub =
+      prefetchedSub !== undefined
+        ? prefetchedSub
+        : await getSubscriptionForUser(row.userId, row.clinicId);
+    const access = await resolveSystemAccess(row.userId, row.role, row, sub);
     const billingBadge = badgeFromAccessAndSubscription(access, sub);
     if (billingBadge) {
       return billingBadge;
@@ -131,11 +135,18 @@ export async function mapUsersWithAccessBadge<T extends { id: string }>(
   rows: typeof createdUsers.$inferSelect[]
 ): Promise<Array<T & { accessBadge: UserAccessBadge }>> {
   const rowByUserId = new Map(rows.map((r) => [r.userId, r]));
+  const clinicIds = rows.map((r) => r.clinicId).filter((id): id is string => Boolean(id));
+  const independentPodiatristIds = rows
+    .filter((r) => r.role === 'podiatrist' && !r.clinicId)
+    .map((r) => r.userId);
+  const subBatch = await getSubscriptionsBatch(clinicIds, independentPodiatristIds);
+
   return Promise.all(
     users.map(async (u) => {
       const row = rowByUserId.get(u.id);
+      const prefetchedSub = row ? lookupSubscriptionFromBatch(subBatch, row.userId, row.clinicId) : null;
       const accessBadge = row
-        ? await buildUserAccessBadge(row)
+        ? await buildUserAccessBadge(row, prefetchedSub)
         : { label: '—', tone: 'gray' as const };
       return { ...u, accessBadge };
     })

@@ -3,8 +3,10 @@ import { MainLayout } from "../components/layout/main-layout";
 import { useLanguage } from "../contexts/language-context";
 import { useAuth, User } from "../contexts/auth-context";
 import { useRefreshOnFocus } from "../hooks/use-refresh-on-focus";
+import { useClinicalListPage } from "../hooks/use-clinical-list-page";
+import { invalidateClinicalListCache } from "../lib/clinical-list-cache";
 import { api } from "../lib/api-client";
-import type { Patient, ClinicalSession } from "../types/clinical";
+import type { Patient } from "../types/clinical";
 
 interface PodiatristStats {
   user: User;
@@ -53,7 +55,7 @@ const ReassignPatientModal = ({
     <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
       <div className="bg-white rounded-2xl w-full max-w-md shadow-xl">
         <div className="p-6 border-b border-gray-100">
-          <h3 className="text-lg font-semibold text-[#1a1a1a] dark:text-white">Reasignar paciente</h3>
+          <h3 className="text-lg font-semibold text-brand-ink">Reasignar paciente</h3>
           <p className="text-sm text-gray-500 mt-1">{patient.firstName} {patient.lastName}</p>
         </div>
         <div className="p-6 space-y-4">
@@ -64,7 +66,7 @@ const ReassignPatientModal = ({
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-[#1a1a1a] dark:text-gray-100 mb-2">
+            <label className="block text-sm font-medium text-brand-ink mb-2">
               Podólogo actual
             </label>
             <div className="px-4 py-2.5 bg-gray-50 rounded-lg text-gray-600 text-sm">
@@ -73,13 +75,13 @@ const ReassignPatientModal = ({
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-[#1a1a1a] dark:text-gray-100 mb-2">
+            <label className="block text-sm font-medium text-brand-ink mb-2">
               Nuevo podólogo asignado
             </label>
             <select
               value={selectedPodiatrist}
               onChange={(e) => setSelectedPodiatrist(e.target.value)}
-              className="w-full px-4 py-2.5 rounded-lg border border-gray-200 focus:border-[#1a1a1a] focus:ring-1 focus:ring-[#1a1a1a] outline-none transition-colors"
+              className="w-full px-4 py-2.5 rounded-lg border border-gray-200 focus:border-brand-ink focus:ring-1 focus:ring-brand-ink outline-none transition-colors"
             >
               <option value="">Seleccionar podólogo...</option>
               {availablePodiatrists.map(pod => (
@@ -92,14 +94,14 @@ const ReassignPatientModal = ({
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 px-4 py-2.5 border border-gray-200 dark:border-gray-700 rounded-lg text-[#1a1a1a] dark:text-gray-100 font-medium hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+              className="flex-1 px-4 py-2.5 border border-brand-border rounded-lg text-brand-ink font-medium hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
             >
               {t.common.cancel}
             </button>
             <button
               onClick={handleReassign}
               disabled={!selectedPodiatrist}
-              className="flex-1 px-4 py-2.5 bg-[#1a1a1a] text-white rounded-lg font-medium hover:bg-[#2a2a2a] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex-1 px-4 py-2.5 bg-brand-ink text-brand-ink-fg rounded-lg font-medium hover:bg-brand-ink-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               Reasignar
             </button>
@@ -126,7 +128,7 @@ const StatCard = ({
     <div className="flex items-start justify-between">
       <div>
         <p className="text-sm text-gray-500 mb-1">{label}</p>
-        <p className="text-3xl font-semibold text-[#1a1a1a] dark:text-white">{value}</p>
+        <p className="text-3xl font-semibold text-brand-ink">{value}</p>
         {trend && (
           <p className={`text-xs mt-2 ${trend.isPositive ? "text-green-600" : "text-red-600"}`}>
             {trend.isPositive ? "↑" : "↓"} {Math.abs(trend.value)}% vs. mes anterior
@@ -140,19 +142,28 @@ const StatCard = ({
   </div>
 );
 
-// Tipos mínimos para respuestas API
-type PatientApi = Patient & { createdBy: string };
-type SessionApi = ClinicalSession & { sessionDate: string; createdBy: string };
-
-// Main Clinic Page - pacientes y sesiones desde API
+// Main Clinic Page
 const ClinicPage = () => {
   const { t } = useLanguage();
-  const { user: currentUser, getAllUsers, fetchUsers, isEmailTaken } = useAuth();
+  const { user: currentUser, getAllUsers, fetchUsers, ensureVisibleUsers, isEmailTaken } = useAuth();
   const allUsers = getAllUsers();
 
-  const [allPatients, setAllPatients] = useState<PatientApi[]>([]);
-  const [allSessions, setAllSessions] = useState<SessionApi[]>([]);
-  
+  useEffect(() => {
+    void ensureVisibleUsers();
+  }, [ensureVisibleUsers]);
+
+  const [clinicStatsData, setClinicStatsData] = useState<{
+    totals: { patients: number; sessionsThisMonth: number; podiatrists: number };
+    podiatristStats: Array<{
+      userId: string;
+      patientCount: number;
+      sessionCount: number;
+      sessionsThisMonth: number;
+      license: string | null;
+    }>;
+    licenses: Record<string, string | null>;
+  } | null>(null);
+  const [debouncedPatientSearch, setDebouncedPatientSearch] = useState("");
   const [activeTab, setActiveTab] = useState<"overview" | "podiatrists" | "patients" | "receptionists">("overview");
   const [podiatristFilter, setPodiatristFilter] = useState<string>("all");
   const [patientSearch, setPatientSearch] = useState("");
@@ -169,7 +180,21 @@ const ClinicPage = () => {
   const [podiatristForm, setPodiatristForm] = useState({ name: "", email: "", password: "" });
   const [podiatristError, setPodiatristError] = useState<string | null>(null);
   const [clinicPodiatristLimit, setClinicPodiatristLimit] = useState<number | null>(null);
-  const [podiatristLicenses, setPodiatristLicenses] = useState<Record<string, string | null>>({});
+
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedPatientSearch(patientSearch), 350);
+    return () => clearTimeout(timer);
+  }, [patientSearch]);
+
+  const {
+    items: clinicPatientsList,
+    isLoading: patientsLoading,
+    reload: reloadPatients,
+  } = useClinicalListPage<Patient>({
+    path: "/patients",
+    listKey: "patients",
+    filters: { q: debouncedPatientSearch },
+  });
 
   // Get podiatrists in this clinic
   const clinicPodiatrists = allUsers.filter(
@@ -177,21 +202,36 @@ const ClinicPage = () => {
   );
   const clinicPodiatristIds = useMemo(() => new Set(clinicPodiatrists.map(p => p.id)), [clinicPodiatrists]);
 
-  // Cargar pacientes y sesiones desde API (clinic_admin ve todos; filtramos por clínica en cliente)
-  const loadClinicData = useCallback(() => {
-    api.get<{ success?: boolean; patients?: PatientApi[] }>("/patients").then((r) => {
-      if (r.success && Array.isArray(r.data?.patients)) setAllPatients(r.data.patients);
-    });
-    api.get<{ success?: boolean; sessions?: SessionApi[] }>("/sessions").then((r) => {
-      if (r.success && Array.isArray(r.data?.sessions)) setAllSessions(r.data.sessions);
-    });
+  const loadClinicStats = useCallback(async () => {
+    const r = await api.get<{
+      success?: boolean;
+      totals?: { patients: number; sessionsThisMonth: number; podiatrists: number };
+      podiatristStats?: Array<{
+        userId: string;
+        patientCount: number;
+        sessionCount: number;
+        sessionsThisMonth: number;
+        license: string | null;
+      }>;
+      licenses?: Record<string, string | null>;
+    }>("/clinical-dashboard/clinic-stats");
+    if (r.success && r.data?.totals && r.data.podiatristStats) {
+      setClinicStatsData({
+        totals: r.data.totals,
+        podiatristStats: r.data.podiatristStats,
+        licenses: r.data.licenses ?? {},
+      });
+    }
   }, []);
 
   useEffect(() => {
-    loadClinicData();
-  }, [loadClinicData]);
+    void loadClinicStats();
+  }, [loadClinicStats]);
 
-  useRefreshOnFocus(loadClinicData);
+  useRefreshOnFocus(() => {
+    void loadClinicStats();
+    void reloadPatients();
+  });
 
   // Cargar límite de podólogos de la clínica
   useEffect(() => {
@@ -201,114 +241,44 @@ const ClinicPage = () => {
     });
   }, [currentUser?.clinicId]);
 
-  // Licencias profesionales de podólogos de la clínica (API)
-  useEffect(() => {
-    if (clinicPodiatrists.length === 0) {
-      setPodiatristLicenses({});
-      return;
-    }
-    let cancelled = false;
-    void (async () => {
-      const entries = await Promise.all(
-        clinicPodiatrists.map(async (pod) => {
-          const res = await api.get<{ success?: boolean; license?: string | null }>(
-            `/professionals/license/${pod.id}`
-          );
-          const license =
-            res.success && typeof res.data?.license === "string" && res.data.license.trim()
-              ? res.data.license.trim()
-              : null;
-          return [pod.id, license] as const;
-        })
-      );
-      if (!cancelled) {
-        setPodiatristLicenses(Object.fromEntries(entries));
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [clinicPodiatrists]);
-
-  // Pacientes y sesiones de la clínica (filtrados por podólogos de la clínica)
-  const clinicPatients = useMemo(
-    () => allPatients.filter((p) => clinicPodiatristIds.has(p.createdBy)),
-    [allPatients, clinicPodiatristIds]
-  );
-  const clinicSessions = useMemo(
-    () => allSessions.filter((s) => clinicPodiatristIds.has(s.createdBy)),
-    [allSessions, clinicPodiatristIds]
-  );
-
-  // Calculate podiatrist stats
   const podiatristStats: PodiatristStats[] = useMemo(() => {
-    const now = new Date();
-    const thisMonth = now.getMonth();
-    const thisYear = now.getFullYear();
-
-    return clinicPodiatrists.map(pod => {
-      const patients = clinicPatients.filter(p => p.createdBy === pod.id);
-      const sessions = clinicSessions.filter(s => s.createdBy === pod.id);
-      const sessionsThisMonth = sessions.filter(s => {
-        const date = new Date(s.sessionDate);
-        return date.getMonth() === thisMonth && date.getFullYear() === thisYear;
-      });
-
+    return clinicPodiatrists.map((pod) => {
+      const stat = clinicStatsData?.podiatristStats.find((s) => s.userId === pod.id);
       return {
         user: pod,
-        patientCount: patients.length,
-        sessionCount: sessions.length,
-        sessionsThisMonth: sessionsThisMonth.length,
-        license: podiatristLicenses[pod.id] ?? null,
+        patientCount: stat?.patientCount ?? 0,
+        sessionCount: stat?.sessionCount ?? 0,
+        sessionsThisMonth: stat?.sessionsThisMonth ?? 0,
+        license: stat?.license ?? clinicStatsData?.licenses?.[pod.id] ?? null,
       };
     });
-  }, [clinicPodiatrists, clinicPatients, clinicSessions, podiatristLicenses]);
+  }, [clinicPodiatrists, clinicStatsData]);
 
-  // Get patients with podiatrist info
   const patientsWithPodiatrist: PatientWithPodiatrist[] = useMemo(() => {
-    const podiatristMap = new Map(clinicPodiatrists.map(p => [p.id, p.name]));
-    
-    return clinicPatients.map(p => {
-      const patientSessions = clinicSessions.filter(s => s.patientId === p.id);
-      const lastSession = patientSessions.sort(
-        (a, b) => new Date(b.sessionDate).getTime() - new Date(a.sessionDate).getTime()
-      )[0];
-
-      return {
+    const podiatristMap = new Map(clinicPodiatrists.map((p) => [p.id, p.name]));
+    return clinicPatientsList
+      .filter((p) => clinicPodiatristIds.has(p.createdBy))
+      .map((p) => ({
         ...p,
         podiatristName: podiatristMap.get(p.createdBy) || "Desconocido",
-        lastSessionDate: lastSession?.sessionDate || null,
-      };
-    });
-  }, [clinicPatients, clinicSessions, clinicPodiatrists]);
+        lastSessionDate: p.lastSessionDate ?? null,
+      }));
+  }, [clinicPatientsList, clinicPodiatrists, clinicPodiatristIds]);
 
-  // Filter patients
-  const filteredPatients = patientsWithPodiatrist.filter(p => {
-    const matchesSearch = 
-      `${p.firstName} ${p.lastName}`.toLowerCase().includes(patientSearch.toLowerCase()) ||
-      p.email.toLowerCase().includes(patientSearch.toLowerCase()) ||
-      p.phone.includes(patientSearch);
+  const filteredPatients = patientsWithPodiatrist.filter((p) => {
     const matchesPodiatrist = podiatristFilter === "all" || p.createdBy === podiatristFilter;
-    return matchesSearch && matchesPodiatrist;
+    return matchesPodiatrist;
   });
 
-  // Calculate totals
-  const totals = useMemo(() => {
-    const now = new Date();
-    const thisMonth = now.getMonth();
-    const thisYear = now.getFullYear();
-    
-    const sessionsThisMonth = clinicSessions.filter(s => {
-      const date = new Date(s.sessionDate);
-      return date.getMonth() === thisMonth && date.getFullYear() === thisYear;
-    });
-
-    return {
-      patients: patientsWithPodiatrist.length,
-      sessionsThisMonth: sessionsThisMonth.length,
-      podiatrists: clinicPodiatrists.length,
-    };
-  }, [patientsWithPodiatrist, clinicSessions, clinicPodiatrists, podiatristStats]);
+  const totals = useMemo(
+    () =>
+      clinicStatsData?.totals ?? {
+        patients: patientsWithPodiatrist.length,
+        sessionsThisMonth: 0,
+        podiatrists: clinicPodiatrists.length,
+      },
+    [clinicStatsData, patientsWithPodiatrist.length, clinicPodiatrists.length]
+  );
 
   // Handle patient reassignment (persiste en DB vía API)
   const handleReassign = async (patientId: string, newPodiatristId: string) => {
@@ -323,13 +293,8 @@ const ClinicPage = () => {
       return;
     }
 
-    // Refrescar datos desde API para mantener consistencia (DB es la fuente de verdad)
-    const [patientsRes, sessionsRes] = await Promise.all([
-      api.get<{ success?: boolean; patients?: PatientApi[] }>("/patients"),
-      api.get<{ success?: boolean; sessions?: SessionApi[] }>("/sessions"),
-    ]);
-    if (patientsRes.success && Array.isArray(patientsRes.data?.patients)) setAllPatients(patientsRes.data.patients);
-    if (sessionsRes.success && Array.isArray(sessionsRes.data?.sessions)) setAllSessions(sessionsRes.data.sessions);
+    invalidateClinicalListCache();
+    await Promise.all([reloadPatients(), loadClinicStats()]);
   };
 
   // Recepcionistas de la clínica (desde API / users)
@@ -488,8 +453,8 @@ const ClinicPage = () => {
             onClick={() => setActiveTab("overview")}
             className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
               activeTab === "overview" 
-                ? "bg-white dark:bg-gray-800 text-[#1a1a1a] dark:text-white shadow-sm" 
-                : "text-gray-600 hover:text-[#1a1a1a] dark:hover:text-white"
+                ? "bg-brand-surface text-brand-ink shadow-sm" 
+                : "text-gray-600 hover:text-brand-ink dark:hover:text-white"
             }`}
           >
             Resumen
@@ -498,8 +463,8 @@ const ClinicPage = () => {
             onClick={() => setActiveTab("podiatrists")}
             className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
               activeTab === "podiatrists" 
-                ? "bg-white dark:bg-gray-800 text-[#1a1a1a] dark:text-white shadow-sm" 
-                : "text-gray-600 hover:text-[#1a1a1a] dark:hover:text-white"
+                ? "bg-brand-surface text-brand-ink shadow-sm" 
+                : "text-gray-600 hover:text-brand-ink dark:hover:text-white"
             }`}
           >
             Podólogos
@@ -508,8 +473,8 @@ const ClinicPage = () => {
             onClick={() => setActiveTab("patients")}
             className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
               activeTab === "patients" 
-                ? "bg-white dark:bg-gray-800 text-[#1a1a1a] dark:text-white shadow-sm" 
-                : "text-gray-600 hover:text-[#1a1a1a] dark:hover:text-white"
+                ? "bg-brand-surface text-brand-ink shadow-sm" 
+                : "text-gray-600 hover:text-brand-ink dark:hover:text-white"
             }`}
           >
             Pacientes
@@ -518,8 +483,8 @@ const ClinicPage = () => {
             onClick={() => setActiveTab("receptionists")}
             className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
               activeTab === "receptionists" 
-                ? "bg-white dark:bg-gray-800 text-[#1a1a1a] dark:text-white shadow-sm" 
-                : "text-gray-600 hover:text-[#1a1a1a] dark:hover:text-white"
+                ? "bg-brand-surface text-brand-ink shadow-sm" 
+                : "text-gray-600 hover:text-brand-ink dark:hover:text-white"
             }`}
           >
             Recepcionistas
@@ -563,7 +528,7 @@ const ClinicPage = () => {
 
             {/* Podiatrist Activity */}
             <div className="bg-white rounded-xl border border-gray-100 p-6">
-              <h3 className="text-lg font-semibold text-[#1a1a1a] dark:text-white mb-4">Actividad por podólogo</h3>
+              <h3 className="text-lg font-semibold text-brand-ink mb-4">Actividad por podólogo</h3>
               <div className="space-y-4">
                 {podiatristStats.map((stat) => {
                   const activityPercentage = Math.min(
@@ -574,16 +539,16 @@ const ClinicPage = () => {
                   return (
                     <div key={stat.user.id} className="flex items-center gap-4">
                       <div className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center flex-shrink-0">
-                        <span className="font-medium text-[#1a1a1a] dark:text-white">{stat.user.name.charAt(0)}</span>
+                        <span className="font-medium text-brand-ink">{stat.user.name.charAt(0)}</span>
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center justify-between mb-1">
-                          <p className="font-medium text-[#1a1a1a] dark:text-white truncate">{stat.user.name}</p>
+                          <p className="font-medium text-brand-ink truncate">{stat.user.name}</p>
                           <span className="text-sm text-gray-500">{stat.sessionsThisMonth} sesiones</span>
                         </div>
                         <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
                           <div 
-                            className="h-full bg-[#1a1a1a] rounded-full transition-all"
+                            className="h-full bg-brand-ink rounded-full transition-all"
                             style={{ width: `${activityPercentage}%` }}
                           />
                         </div>
@@ -612,7 +577,7 @@ const ClinicPage = () => {
                   setShowCreatePodiatristModal(true);
                 }}
                 disabled={!canCreatePodiatrist}
-                className="px-4 py-2 bg-[#1a1a1a] text-white rounded-lg text-sm font-medium hover:bg-[#2a2a2a] transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="px-4 py-2 bg-brand-ink text-brand-ink-fg rounded-lg text-sm font-medium hover:bg-brand-ink-hover transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -637,21 +602,21 @@ const ClinicPage = () => {
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
                         <div className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center">
-                          <span className="font-medium text-[#1a1a1a] dark:text-white">{stat.user.name.charAt(0)}</span>
+                          <span className="font-medium text-brand-ink">{stat.user.name.charAt(0)}</span>
                         </div>
-                        <span className="font-medium text-[#1a1a1a] dark:text-white">{stat.user.name}</span>
+                        <span className="font-medium text-brand-ink">{stat.user.name}</span>
                       </div>
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-600">{stat.user.email}</td>
                     <td className="px-6 py-4 text-sm">
                       {stat.license ? (
-                        <span className="font-mono text-[#1a1a1a] dark:text-gray-100">{stat.license}</span>
+                        <span className="font-mono text-brand-ink">{stat.license}</span>
                       ) : (
                         <span className="text-gray-400 italic text-xs">No registrada</span>
                       )}
                     </td>
-                    <td className="px-6 py-4 text-sm text-[#1a1a1a] dark:text-gray-100 font-medium">{stat.patientCount}</td>
-                    <td className="px-6 py-4 text-sm text-[#1a1a1a] dark:text-gray-100 font-medium">{stat.sessionsThisMonth}</td>
+                    <td className="px-6 py-4 text-sm text-brand-ink font-medium">{stat.patientCount}</td>
+                    <td className="px-6 py-4 text-sm text-brand-ink font-medium">{stat.sessionsThisMonth}</td>
                   </tr>
                 ))}
               </tbody>
@@ -676,12 +641,12 @@ const ClinicPage = () => {
                 placeholder="Buscar paciente (nombre, email, teléfono)..."
                 value={patientSearch}
                 onChange={(e) => setPatientSearch(e.target.value)}
-                className="flex-1 px-4 py-2 rounded-lg border border-gray-200 focus:border-[#1a1a1a] focus:ring-1 focus:ring-[#1a1a1a] outline-none transition-colors text-sm"
+                className="flex-1 px-4 py-2 rounded-lg border border-gray-200 focus:border-brand-ink focus:ring-1 focus:ring-brand-ink outline-none transition-colors text-sm"
               />
               <select
                 value={podiatristFilter}
                 onChange={(e) => setPodiatristFilter(e.target.value)}
-                className="px-4 py-2 rounded-lg border border-gray-200 focus:border-[#1a1a1a] focus:ring-1 focus:ring-[#1a1a1a] outline-none transition-colors text-sm"
+                className="px-4 py-2 rounded-lg border border-gray-200 focus:border-brand-ink focus:ring-1 focus:ring-brand-ink outline-none transition-colors text-sm"
               >
                 <option value="all">Todos los podólogos</option>
                 {clinicPodiatrists.map(pod => (
@@ -708,7 +673,7 @@ const ClinicPage = () => {
                     {filteredPatients.map((patient) => (
                       <tr key={patient.id} className="hover:bg-gray-50 transition-colors">
                         <td className="px-6 py-4">
-                          <span className="font-medium text-[#1a1a1a] dark:text-white">
+                          <span className="font-medium text-brand-ink">
                             {patient.firstName} {patient.lastName}
                           </span>
                         </td>
@@ -731,7 +696,7 @@ const ClinicPage = () => {
                               setSelectedPatient(patient);
                               setShowReassignModal(true);
                             }}
-                            className="px-3 py-1.5 text-xs font-medium text-[#1a1a1a] dark:text-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+                            className="px-3 py-1.5 text-xs font-medium text-brand-ink border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
                           >
                             Reasignar
                           </button>
@@ -774,7 +739,7 @@ const ClinicPage = () => {
                   setShowCreateReceptionistModal(true);
                 }}
                 disabled={!canCreateReceptionist}
-                className="px-4 py-2 bg-[#1a1a1a] text-white rounded-lg text-sm font-medium hover:bg-[#2a2a2a] transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed shrink-0"
+                className="px-4 py-2 bg-brand-ink text-brand-ink-fg rounded-lg text-sm font-medium hover:bg-brand-ink-hover transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed shrink-0"
               >
                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -799,7 +764,7 @@ const ClinicPage = () => {
                       const names = ids.map((id) => clinicPodiatrists.find((p) => p.id === id)?.name ?? id).filter(Boolean);
                       return (
                         <tr key={rec.id} className="hover:bg-gray-50 transition-colors">
-                          <td className="px-6 py-4 font-medium text-[#1a1a1a] dark:text-white">{rec.name}</td>
+                          <td className="px-6 py-4 font-medium text-brand-ink">{rec.name}</td>
                           <td className="px-6 py-4 text-sm text-gray-600">{rec.email}</td>
                           <td className="px-6 py-4">
                             <span className="text-xs text-gray-600">
@@ -863,37 +828,37 @@ const ClinicPage = () => {
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl w-full max-w-md shadow-xl">
             <div className="p-6 border-b border-gray-100">
-              <h3 className="text-lg font-semibold text-[#1a1a1a] dark:text-white">Crear podólogo</h3>
+              <h3 className="text-lg font-semibold text-brand-ink">Crear podólogo</h3>
               <p className="text-sm text-gray-500 mt-1">El nuevo podólogo será asignado a tu clínica.</p>
             </div>
             <form onSubmit={handleCreatePodiatrist} className="p-6 space-y-4">
               <div>
-                <label className="block text-sm font-medium text-[#1a1a1a] dark:text-gray-100 mb-1">Nombre</label>
+                <label className="block text-sm font-medium text-brand-ink mb-1">Nombre</label>
                 <input
                   type="text"
                   value={podiatristForm.name}
                   onChange={(e) => setPodiatristForm((f) => ({ ...f, name: e.target.value }))}
-                  className="w-full px-4 py-2.5 rounded-lg border border-gray-200 focus:border-[#1a1a1a] focus:ring-1 focus:ring-[#1a1a1a] outline-none transition-colors"
+                  className="w-full px-4 py-2.5 rounded-lg border border-gray-200 focus:border-brand-ink focus:ring-1 focus:ring-brand-ink outline-none transition-colors"
                   required
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-[#1a1a1a] dark:text-gray-100 mb-1">Email</label>
+                <label className="block text-sm font-medium text-brand-ink mb-1">Email</label>
                 <input
                   type="email"
                   value={podiatristForm.email}
                   onChange={(e) => setPodiatristForm((f) => ({ ...f, email: e.target.value }))}
-                  className="w-full px-4 py-2.5 rounded-lg border border-gray-200 focus:border-[#1a1a1a] focus:ring-1 focus:ring-[#1a1a1a] outline-none transition-colors"
+                  className="w-full px-4 py-2.5 rounded-lg border border-gray-200 focus:border-brand-ink focus:ring-1 focus:ring-brand-ink outline-none transition-colors"
                   required
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-[#1a1a1a] dark:text-gray-100 mb-1">Contraseña inicial (mín. 8 caracteres)</label>
+                <label className="block text-sm font-medium text-brand-ink mb-1">Contraseña inicial (mín. 8 caracteres)</label>
                 <input
                   type="password"
                   value={podiatristForm.password}
                   onChange={(e) => setPodiatristForm((f) => ({ ...f, password: e.target.value }))}
-                  className="w-full px-4 py-2.5 rounded-lg border border-gray-200 focus:border-[#1a1a1a] focus:ring-1 focus:ring-[#1a1a1a] outline-none transition-colors"
+                  className="w-full px-4 py-2.5 rounded-lg border border-gray-200 focus:border-brand-ink focus:ring-1 focus:ring-brand-ink outline-none transition-colors"
                   required
                   minLength={8}
                 />
@@ -905,13 +870,13 @@ const ClinicPage = () => {
                 <button
                   type="button"
                   onClick={() => setShowCreatePodiatristModal(false)}
-                  className="flex-1 px-4 py-2.5 border border-gray-200 dark:border-gray-700 rounded-lg text-[#1a1a1a] dark:text-gray-100 font-medium hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+                  className="flex-1 px-4 py-2.5 border border-brand-border rounded-lg text-brand-ink font-medium hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 px-4 py-2.5 bg-[#1a1a1a] text-white rounded-lg font-medium hover:bg-[#2a2a2a] transition-colors"
+                  className="flex-1 px-4 py-2.5 bg-brand-ink text-brand-ink-fg rounded-lg font-medium hover:bg-brand-ink-hover transition-colors"
                 >
                   Crear podólogo
                 </button>
@@ -926,37 +891,37 @@ const ClinicPage = () => {
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl w-full max-w-md shadow-xl">
             <div className="p-6 border-b border-gray-100">
-              <h3 className="text-lg font-semibold text-[#1a1a1a] dark:text-white">Crear recepcionista</h3>
+              <h3 className="text-lg font-semibold text-brand-ink">Crear recepcionista</h3>
               <p className="text-sm text-gray-500 mt-1">Se asignarán todos los podólogos de la clínica. Deberá cambiar la contraseña en su primer acceso.</p>
             </div>
             <form onSubmit={handleCreateReceptionist} className="p-6 space-y-4">
               <div>
-                <label className="block text-sm font-medium text-[#1a1a1a] dark:text-gray-100 mb-1">Nombre</label>
+                <label className="block text-sm font-medium text-brand-ink mb-1">Nombre</label>
                 <input
                   type="text"
                   value={receptionistForm.name}
                   onChange={(e) => setReceptionistForm((f) => ({ ...f, name: e.target.value }))}
-                  className="w-full px-4 py-2.5 rounded-lg border border-gray-200 focus:border-[#1a1a1a] focus:ring-1 focus:ring-[#1a1a1a] outline-none transition-colors"
+                  className="w-full px-4 py-2.5 rounded-lg border border-gray-200 focus:border-brand-ink focus:ring-1 focus:ring-brand-ink outline-none transition-colors"
                   required
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-[#1a1a1a] dark:text-gray-100 mb-1">Email</label>
+                <label className="block text-sm font-medium text-brand-ink mb-1">Email</label>
                 <input
                   type="email"
                   value={receptionistForm.email}
                   onChange={(e) => setReceptionistForm((f) => ({ ...f, email: e.target.value }))}
-                  className="w-full px-4 py-2.5 rounded-lg border border-gray-200 focus:border-[#1a1a1a] focus:ring-1 focus:ring-[#1a1a1a] outline-none transition-colors"
+                  className="w-full px-4 py-2.5 rounded-lg border border-gray-200 focus:border-brand-ink focus:ring-1 focus:ring-brand-ink outline-none transition-colors"
                   required
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-[#1a1a1a] dark:text-gray-100 mb-1">Contraseña inicial</label>
+                <label className="block text-sm font-medium text-brand-ink mb-1">Contraseña inicial</label>
                 <input
                   type="password"
                   value={receptionistForm.password}
                   onChange={(e) => setReceptionistForm((f) => ({ ...f, password: e.target.value }))}
-                  className="w-full px-4 py-2.5 rounded-lg border border-gray-200 focus:border-[#1a1a1a] focus:ring-1 focus:ring-[#1a1a1a] outline-none transition-colors"
+                  className="w-full px-4 py-2.5 rounded-lg border border-gray-200 focus:border-brand-ink focus:ring-1 focus:ring-brand-ink outline-none transition-colors"
                   required
                   minLength={6}
                 />
@@ -968,13 +933,13 @@ const ClinicPage = () => {
                 <button
                   type="button"
                   onClick={() => setShowCreateReceptionistModal(false)}
-                  className="flex-1 px-4 py-2.5 border border-gray-200 dark:border-gray-700 rounded-lg text-[#1a1a1a] dark:text-gray-100 font-medium hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+                  className="flex-1 px-4 py-2.5 border border-brand-border rounded-lg text-brand-ink font-medium hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
                 >
                   {t.common.cancel}
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 px-4 py-2.5 bg-[#1a1a1a] text-white rounded-lg font-medium hover:bg-[#2a2a2a] transition-colors"
+                  className="flex-1 px-4 py-2.5 bg-brand-ink text-brand-ink-fg rounded-lg font-medium hover:bg-brand-ink-hover transition-colors"
                 >
                   Crear recepcionista
                 </button>
@@ -989,7 +954,7 @@ const ClinicPage = () => {
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl w-full max-w-md shadow-xl max-h-[90vh] overflow-y-auto">
             <div className="p-6 border-b border-gray-100">
-              <h3 className="text-lg font-semibold text-[#1a1a1a] dark:text-white">Podólogos asignados</h3>
+              <h3 className="text-lg font-semibold text-brand-ink">Podólogos asignados</h3>
               <p className="text-sm text-gray-500 mt-1">{editingReceptionist.name} ({editingReceptionist.email})</p>
             </div>
             <div className="p-6 space-y-3">
@@ -1011,9 +976,9 @@ const ClinicPage = () => {
                             prev.includes(pod.id) ? prev.filter((id) => id !== pod.id) : [...prev, pod.id]
                           );
                         }}
-                        className="rounded border-gray-300 text-[#1a1a1a] focus:ring-[#1a1a1a]"
+                        className="rounded border-gray-300 text-brand-ink focus:ring-brand-ink"
                       />
-                      <span className="font-medium text-[#1a1a1a] dark:text-white">{pod.name}</span>
+                      <span className="font-medium text-brand-ink">{pod.name}</span>
                       <span className="text-sm text-gray-500">{pod.email}</span>
                     </label>
                   );
@@ -1026,7 +991,7 @@ const ClinicPage = () => {
                 <button
                   type="button"
                   onClick={() => setEditingReceptionist(null)}
-                  className="flex-1 px-4 py-2.5 border border-gray-200 dark:border-gray-700 rounded-lg text-[#1a1a1a] dark:text-gray-100 font-medium hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+                  className="flex-1 px-4 py-2.5 border border-brand-border rounded-lg text-brand-ink font-medium hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
                 >
                   Cancelar
                 </button>
@@ -1034,7 +999,7 @@ const ClinicPage = () => {
                   type="button"
                   onClick={handleSaveReceptionistAssignments}
                   disabled={receptionistActionLoadingId === editingReceptionist.id}
-                  className="flex-1 px-4 py-2.5 bg-[#1a1a1a] text-white rounded-lg font-medium hover:bg-[#2a2a2a] transition-colors disabled:opacity-50"
+                  className="flex-1 px-4 py-2.5 bg-brand-ink text-brand-ink-fg rounded-lg font-medium hover:bg-brand-ink-hover transition-colors disabled:opacity-50"
                 >
                   Guardar
                 </button>

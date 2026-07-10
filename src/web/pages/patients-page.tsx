@@ -16,7 +16,7 @@ import { api } from "../lib/api-client";
 import { useClinicalLayout } from "../hooks/use-clinical-layout";
 import { useClinicalListPage } from "../hooks/use-clinical-list-page";
 import { fetchPatientById } from "../hooks/use-patient-picker";
-import { invalidateClinicalListCache } from "../hooks/use-clinical-list-data";
+import { invalidateClinicalListCache } from "../lib/clinical-list-cache";
 import { ClinicalListError, ClinicalListLoading } from "../components/clinical/clinical-list-states";
 import { AppModal, AppModalBody, AppModalFooter, AppModalHeader } from "../components/ui/app-modal";
 import { isPatientFieldEnabled } from "../types/clinical-layout";
@@ -448,12 +448,12 @@ const PatientsPage = () => {
             <AppModalHeader>
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0 flex-1">
-                  <h3 className="text-lg sm:text-xl font-semibold text-[#1a1a1a] dark:text-white">
+                  <h3 className="text-lg sm:text-xl font-semibold text-brand-ink">
                     {t.patients.patientDetails}
                   </h3>
-                  <div className="flex items-center gap-2 bg-gray-50 dark:bg-gray-800 px-3 py-2 rounded-lg mt-2">
-                    <span className="text-sm text-gray-600 dark:text-gray-400 font-medium">FOLIO:</span>
-                    <span className="text-base font-bold text-[#1a1a1a] dark:text-white tracking-wide truncate">
+                  <div className="flex items-center gap-2 bg-brand-canvas px-3 py-2 rounded-lg mt-2">
+                    <span className="text-sm text-brand-muted font-medium">FOLIO:</span>
+                    <span className="text-base font-bold text-brand-ink tracking-wide truncate">
                       {selectedPatient.folio || "—"}
                     </span>
                   </div>
@@ -461,7 +461,7 @@ const PatientsPage = () => {
                 <button
                   type="button"
                   onClick={closePatientDetail}
-                  className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 active:bg-gray-200 rounded-lg transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center flex-shrink-0"
+                  className="p-2 hover:bg-brand-canvas active:bg-gray-200 rounded-lg transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center flex-shrink-0"
                   aria-label={t.common.close}
                 >
                   <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -474,7 +474,7 @@ const PatientsPage = () => {
             <AppModalBody className="space-y-6">
               {/* Demographics */}
               <div>
-                <h4 className="font-medium text-[#1a1a1a] dark:text-white mb-3">Datos personales</h4>
+                <h4 className="font-medium text-brand-ink mb-3">Datos personales</h4>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 text-sm">
                   <div>
                     <span className="text-gray-500">{t.patients.firstName}:</span>
@@ -555,7 +555,7 @@ const PatientsPage = () => {
 
               {/* Consent */}
               <div>
-                <h4 className="font-medium text-[#1a1a1a] dark:text-white mb-3">{t.patients.consent}</h4>
+                <h4 className="font-medium text-brand-ink mb-3">{t.patients.consent}</h4>
                 <div className="flex items-center gap-2 text-sm">
                   {selectedPatient.consent.given ? (
                     <>
@@ -584,7 +584,7 @@ const PatientsPage = () => {
 
               {/* Sessions Summary */}
               <div>
-                <h4 className="font-medium text-[#1a1a1a] dark:text-white mb-3">{t.patients.clinicalHistory}</h4>
+                <h4 className="font-medium text-brand-ink mb-3">{t.patients.clinicalHistory}</h4>
                 <div className="text-sm">
                   <span className="text-gray-500">{t.patients.totalSessions}:</span>
                   <span className="ml-2 font-medium">
@@ -603,14 +603,14 @@ const PatientsPage = () => {
                     closePatientDetail();
                     handleEdit(selectedPatient);
                   }}
-                  className="flex-1 min-w-[100px] py-2.5 bg-gray-100 dark:bg-gray-800 text-[#1a1a1a] dark:text-gray-100 rounded-lg hover:bg-gray-200 transition-colors font-medium text-sm"
+                  className="flex-1 min-w-[100px] py-2.5 bg-brand-canvas text-brand-ink rounded-lg hover:bg-gray-200 transition-colors font-medium text-sm"
                 >
                   {t.common.edit}
                 </button>
                 {!isReceptionist && (
                   <Link
                     href={`/sessions?patient=${selectedPatient.id}`}
-                    className="flex-1 min-w-[100px] py-2.5 bg-[#1a1a1a] text-white rounded-lg hover:bg-[#2a2a2a] transition-colors font-medium text-sm text-center"
+                    className="flex-1 min-w-[100px] py-2.5 bg-brand-ink text-brand-ink-fg rounded-lg hover:bg-brand-ink-hover transition-colors font-medium text-sm text-center"
                   >
                     {t.patients.viewHistory}
                   </Link>
@@ -643,15 +643,15 @@ const PatientsPage = () => {
                 </svg>
               </div>
               <div className="flex-1 min-w-0">
-                <h3 className="text-lg font-semibold text-[#1a1a1a] dark:text-white mb-2">
+                <h3 className="text-lg font-semibold text-brand-ink mb-2">
                   {deleteCascadeMode ? "Eliminar paciente y todo su historial" : "¿Eliminar paciente?"}
                 </h3>
                 {deleteCascadeMode ? (
-                  <p className="text-gray-600 dark:text-gray-400 text-sm">
+                  <p className="text-brand-muted text-sm">
                     Este paciente tiene sesiones clínicas y/o citas asociadas. Si continúa, se eliminará el paciente, todas sus sesiones y citas. Esta acción no se puede deshacer.
                   </p>
                 ) : (
-                  <p className="text-gray-600 dark:text-gray-400 text-sm">
+                  <p className="text-brand-muted text-sm">
                     Se eliminará el paciente <strong>{deleteConfirmPatient.firstName} {deleteConfirmPatient.lastName}</strong> y no se podrá recuperar. Esta acción es permanente.
                   </p>
                 )}
@@ -663,7 +663,7 @@ const PatientsPage = () => {
               <button
                 type="button"
                 onClick={closeDeleteConfirm}
-                className="flex-1 py-2.5 bg-gray-100 dark:bg-gray-800 text-[#1a1a1a] dark:text-gray-100 rounded-lg hover:bg-gray-200 transition-colors font-medium"
+                className="flex-1 py-2.5 bg-brand-canvas text-brand-ink rounded-lg hover:bg-gray-200 transition-colors font-medium"
               >
                 Cancelar
               </button>
@@ -685,13 +685,13 @@ const PatientsPage = () => {
         <AppModal open onClose={closePatientForm} maxWidth="2xl">
             <AppModalHeader>
               <div className="flex items-center justify-between gap-3">
-              <h3 className="text-lg sm:text-xl font-semibold text-[#1a1a1a] dark:text-white min-w-0 truncate">
+              <h3 className="text-lg sm:text-xl font-semibold text-brand-ink min-w-0 truncate">
                 {editingPatient ? t.patients.editPatient : t.patients.addPatient}
               </h3>
               <button
                 type="button"
                 onClick={closePatientForm}
-                className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 active:bg-gray-200 rounded-lg transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center flex-shrink-0"
+                className="p-2 hover:bg-brand-canvas active:bg-gray-200 rounded-lg transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center flex-shrink-0"
                 aria-label={t.common.close}
               >
                 <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -723,11 +723,11 @@ const PatientsPage = () => {
               {/* Podólogo asignado (solo recepcionista al crear) */}
               {isReceptionist && !editingPatient && assignedPodiatrists.length > 0 && (
                 <div>
-                  <label className="block text-sm font-medium text-[#1a1a1a] dark:text-gray-100 mb-1">Podólogo para el paciente *</label>
+                  <label className="block text-sm font-medium text-brand-ink mb-1">Podólogo para el paciente *</label>
                   <select
                     value={receptionistPodiatristId}
                     onChange={(e) => setReceptionistPodiatristId(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 text-[#1a1a1a] dark:text-white focus:outline-none focus:border-[#1a1a1a] dark:focus:border-gray-400 focus:ring-1 focus:ring-[#1a1a1a] dark:focus:ring-gray-500 placeholder:text-gray-400 dark:placeholder:text-gray-500"
+                    className="w-full px-3 py-2 border border-brand-border rounded-lg bg-brand-surface text-brand-ink focus:outline-none focus:border-brand-ink focus:ring-1 focus:ring-brand-ink placeholder:text-gray-400 dark:placeholder:text-gray-500"
                     required
                   >
                     <option value="">Seleccionar podólogo</option>
@@ -742,7 +742,7 @@ const PatientsPage = () => {
               {/* Personal Info - Responsive grid */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-[#1a1a1a] dark:text-gray-100 mb-1 flex items-center gap-1">
+                  <label className="block text-sm font-medium text-brand-ink mb-1 flex items-center gap-1">
                     {t.patients.firstName} *
                     {editingPatient && <span title="Este campo no puede ser modificado">🔒</span>}
                   </label>
@@ -754,10 +754,10 @@ const PatientsPage = () => {
                     disabled={!!editingPatient}
                     className={`w-full px-3 py-2 border rounded-lg focus:outline-none ${
                       editingPatient
-                        ? "bg-gray-100 dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 cursor-not-allowed"
+                        ? "bg-brand-canvas border-brand-border text-brand-muted cursor-not-allowed"
                         : formErrors.firstName
                         ? "border-red-500 focus:border-red-500 focus:ring-1 focus:ring-red-500"
-                        : "border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-[#1a1a1a] dark:text-white focus:border-[#1a1a1a] dark:focus:border-gray-400 focus:ring-1 focus:ring-[#1a1a1a] dark:focus:ring-gray-500 placeholder:text-gray-400 dark:placeholder:text-gray-500"
+                        : "border-brand-border bg-brand-surface text-brand-ink focus:border-brand-ink focus:ring-1 focus:ring-brand-ink placeholder:text-gray-400 dark:placeholder:text-gray-500"
                     }`}
                     title={editingPatient ? "Este campo no puede ser modificado después de la creación del paciente" : ""}
                   />
@@ -766,7 +766,7 @@ const PatientsPage = () => {
                   )}
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-[#1a1a1a] dark:text-gray-100 mb-1 flex items-center gap-1">
+                  <label className="block text-sm font-medium text-brand-ink mb-1 flex items-center gap-1">
                     {t.patients.lastName} *
                     {editingPatient && <span title="Este campo no puede ser modificado">🔒</span>}
                   </label>
@@ -778,10 +778,10 @@ const PatientsPage = () => {
                     disabled={!!editingPatient}
                     className={`w-full px-3 py-2 border rounded-lg focus:outline-none ${
                       editingPatient
-                        ? "bg-gray-100 dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 cursor-not-allowed"
+                        ? "bg-brand-canvas border-brand-border text-brand-muted cursor-not-allowed"
                         : formErrors.lastName
                         ? "border-red-500 focus:border-red-500 focus:ring-1 focus:ring-red-500"
-                        : "border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-[#1a1a1a] dark:text-white focus:border-[#1a1a1a] dark:focus:border-gray-400 focus:ring-1 focus:ring-[#1a1a1a] dark:focus:ring-gray-500 placeholder:text-gray-400 dark:placeholder:text-gray-500"
+                        : "border-brand-border bg-brand-surface text-brand-ink focus:border-brand-ink focus:ring-1 focus:ring-brand-ink placeholder:text-gray-400 dark:placeholder:text-gray-500"
                     }`}
                     title={editingPatient ? "Este campo no puede ser modificado después de la creación del paciente" : ""}
                   />
@@ -790,7 +790,7 @@ const PatientsPage = () => {
                   )}
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-[#1a1a1a] dark:text-gray-100 mb-1 flex items-center gap-1">
+                  <label className="block text-sm font-medium text-brand-ink mb-1 flex items-center gap-1">
                     {t.patients.dateOfBirth} *
                     {editingPatient && <span title="Este campo no puede ser modificado">🔒</span>}
                   </label>
@@ -802,10 +802,10 @@ const PatientsPage = () => {
                     disabled={!!editingPatient}
                     className={`w-full px-3 py-2 border rounded-lg focus:outline-none ${
                       editingPatient
-                        ? "bg-gray-100 dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 cursor-not-allowed"
+                        ? "bg-brand-canvas border-brand-border text-brand-muted cursor-not-allowed"
                         : formErrors.dateOfBirth
                         ? "border-red-500 focus:border-red-500 focus:ring-1 focus:ring-red-500"
-                        : "border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-[#1a1a1a] dark:text-white focus:border-[#1a1a1a] dark:focus:border-gray-400 focus:ring-1 focus:ring-[#1a1a1a] dark:focus:ring-gray-500 placeholder:text-gray-400 dark:placeholder:text-gray-500"
+                        : "border-brand-border bg-brand-surface text-brand-ink focus:border-brand-ink focus:ring-1 focus:ring-brand-ink placeholder:text-gray-400 dark:placeholder:text-gray-500"
                     }`}
                     title={editingPatient ? "Este campo no puede ser modificado después de la creación del paciente" : ""}
                   />
@@ -814,7 +814,7 @@ const PatientsPage = () => {
                   )}
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-[#1a1a1a] dark:text-gray-100 mb-1 flex items-center gap-1">
+                  <label className="block text-sm font-medium text-brand-ink mb-1 flex items-center gap-1">
                     {t.patients.gender} *
                     {editingPatient && <span title="Este campo no puede ser modificado">🔒</span>}
                   </label>
@@ -825,10 +825,10 @@ const PatientsPage = () => {
                     disabled={!!editingPatient}
                     className={`w-full px-3 py-2 border rounded-lg focus:outline-none ${
                       editingPatient
-                        ? "bg-gray-100 dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 cursor-not-allowed"
+                        ? "bg-brand-canvas border-brand-border text-brand-muted cursor-not-allowed"
                         : formErrors.gender
                         ? "border-red-500 focus:border-red-500 focus:ring-1 focus:ring-red-500"
-                        : "border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-[#1a1a1a] dark:text-white focus:border-[#1a1a1a] dark:focus:border-gray-400 focus:ring-1 focus:ring-[#1a1a1a] dark:focus:ring-gray-500 placeholder:text-gray-400 dark:placeholder:text-gray-500"
+                        : "border-brand-border bg-brand-surface text-brand-ink focus:border-brand-ink focus:ring-1 focus:ring-brand-ink placeholder:text-gray-400 dark:placeholder:text-gray-500"
                     }`}
                     title={editingPatient ? "Este campo no puede ser modificado después de la creación del paciente" : ""}
                   >
@@ -838,7 +838,7 @@ const PatientsPage = () => {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-[#1a1a1a] dark:text-gray-100 mb-1 flex items-center gap-1">
+                  <label className="block text-sm font-medium text-brand-ink mb-1 flex items-center gap-1">
                     {t.patients.idNumber} *
                     {editingPatient && editingPatient.idNumber?.trim() && <span title="Este campo no puede ser modificado">🔒</span>}
                   </label>
@@ -854,10 +854,10 @@ const PatientsPage = () => {
                     placeholder="Para menores, DNI del padre o tutor"
                     className={`w-full px-3 py-2 border rounded-lg focus:outline-none ${
                       editingPatient && editingPatient.idNumber?.trim()
-                        ? "bg-gray-100 dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 cursor-not-allowed"
+                        ? "bg-brand-canvas border-brand-border text-brand-muted cursor-not-allowed"
                         : formErrors.idNumber
                         ? "border-red-500 focus:border-red-500 focus:ring-1 focus:ring-red-500"
-                        : "border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-[#1a1a1a] dark:text-white focus:border-[#1a1a1a] dark:focus:border-gray-400 focus:ring-1 focus:ring-[#1a1a1a] dark:focus:ring-gray-500 placeholder:text-gray-400 dark:placeholder:text-gray-500"
+                        : "border-brand-border bg-brand-surface text-brand-ink focus:border-brand-ink focus:ring-1 focus:ring-brand-ink placeholder:text-gray-400 dark:placeholder:text-gray-500"
                     }`}
                     title={editingPatient && editingPatient.idNumber?.trim() ? "Este campo no puede ser modificado" : "Obligatorio. Para menores de edad, indicar el DNI del padre o tutor legal."}
                   />
@@ -870,13 +870,13 @@ const PatientsPage = () => {
                 </div>
                 {showPatientCurp && (
                 <div>
-                  <label className="block text-sm font-medium text-[#1a1a1a] dark:text-gray-100 mb-1 flex items-center gap-1">
+                  <label className="block text-sm font-medium text-brand-ink mb-1 flex items-center gap-1">
                     {t.patients.curp}
                     {editingPatient && editingPatient.curp?.trim() && (
                       <span title="Este campo no puede ser modificado">🔒</span>
                     )}
                   </label>
-                  <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">{t.patients.curpHint}</p>
+                  <p className="text-xs text-brand-muted mb-1">{t.patients.curpHint}</p>
                   <input
                     type="text"
                     value={formData.curp}
@@ -889,8 +889,8 @@ const PatientsPage = () => {
                     placeholder="XXXX000000HXXXXXX00"
                     className={`w-full px-3 py-2 border rounded-lg focus:outline-none ${
                       editingPatient && editingPatient.curp?.trim()
-                        ? "bg-gray-100 dark:bg-gray-900 border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 cursor-not-allowed"
-                        : "border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 text-[#1a1a1a] dark:text-white focus:border-[#1a1a1a] dark:focus:border-gray-400"
+                        ? "bg-gray-100 dark:bg-gray-900 border-brand-border text-brand-muted cursor-not-allowed"
+                        : "border-brand-border bg-brand-surface text-brand-ink focus:border-brand-ink"
                     }`}
                     title={
                       editingPatient && editingPatient.curp?.trim()
@@ -901,7 +901,7 @@ const PatientsPage = () => {
                 </div>
                 )}
                 <div>
-                  <label className="block text-sm font-medium text-[#1a1a1a] dark:text-gray-100 mb-1">
+                  <label className="block text-sm font-medium text-brand-ink mb-1">
                     {t.patients.phone} *
                   </label>
                   <input
@@ -917,7 +917,7 @@ const PatientsPage = () => {
                     className={`w-full px-3 py-2 border rounded-lg focus:outline-none ${
                       formErrors.phone
                         ? "border-red-500 focus:border-red-500 focus:ring-1 focus:ring-red-500"
-                        : "border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-[#1a1a1a] dark:text-white focus:border-[#1a1a1a] dark:focus:border-gray-400 focus:ring-1 focus:ring-[#1a1a1a] dark:focus:ring-gray-500 placeholder:text-gray-400 dark:placeholder:text-gray-500"
+                        : "border-brand-border bg-brand-surface text-brand-ink focus:border-brand-ink focus:ring-1 focus:ring-brand-ink placeholder:text-gray-400 dark:placeholder:text-gray-500"
                     }`}
                   />
                   {formErrors.phone && (
@@ -926,7 +926,7 @@ const PatientsPage = () => {
                 </div>
                 {showPatientEmail && (
                 <div className="sm:col-span-2">
-                  <label className="block text-sm font-medium text-[#1a1a1a] dark:text-gray-100 mb-1">
+                  <label className="block text-sm font-medium text-brand-ink mb-1">
                     {t.patients.email}
                   </label>
                   <input
@@ -941,7 +941,7 @@ const PatientsPage = () => {
                     className={`w-full px-3 py-2 border rounded-lg focus:outline-none ${
                       formErrors.email
                         ? "border-red-500 focus:border-red-500 focus:ring-1 focus:ring-red-500"
-                        : "border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-[#1a1a1a] dark:text-white focus:border-[#1a1a1a] dark:focus:border-gray-400 focus:ring-1 focus:ring-[#1a1a1a] dark:focus:ring-gray-500 placeholder:text-gray-400 dark:placeholder:text-gray-500"
+                        : "border-brand-border bg-brand-surface text-brand-ink focus:border-brand-ink focus:ring-1 focus:ring-brand-ink placeholder:text-gray-400 dark:placeholder:text-gray-500"
                     }`}
                   />
                   {formErrors.email && (
@@ -952,36 +952,36 @@ const PatientsPage = () => {
                 {showPatientAddress && (
                 <>
                 <div className="sm:col-span-2">
-                  <label className="block text-sm font-medium text-[#1a1a1a] dark:text-gray-100 mb-1">
+                  <label className="block text-sm font-medium text-brand-ink mb-1">
                     {t.patients.address}
                   </label>
                   <input
                     type="text"
                     value={formData.address}
                     onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 text-[#1a1a1a] dark:text-white focus:outline-none focus:border-[#1a1a1a] dark:focus:border-gray-400 focus:ring-1 focus:ring-[#1a1a1a] dark:focus:ring-gray-500 placeholder:text-gray-400 dark:placeholder:text-gray-500"
+                    className="w-full px-3 py-2 border border-brand-border rounded-lg bg-brand-surface text-brand-ink focus:outline-none focus:border-brand-ink focus:ring-1 focus:ring-brand-ink placeholder:text-gray-400 dark:placeholder:text-gray-500"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-[#1a1a1a] dark:text-gray-100 mb-1">
+                  <label className="block text-sm font-medium text-brand-ink mb-1">
                     {t.patients.city}
                   </label>
                   <input
                     type="text"
                     value={formData.city}
                     onChange={(e) => setFormData({ ...formData, city: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 text-[#1a1a1a] dark:text-white focus:outline-none focus:border-[#1a1a1a] dark:focus:border-gray-400 focus:ring-1 focus:ring-[#1a1a1a] dark:focus:ring-gray-500 placeholder:text-gray-400 dark:placeholder:text-gray-500"
+                    className="w-full px-3 py-2 border border-brand-border rounded-lg bg-brand-surface text-brand-ink focus:outline-none focus:border-brand-ink focus:ring-1 focus:ring-brand-ink placeholder:text-gray-400 dark:placeholder:text-gray-500"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-[#1a1a1a] dark:text-gray-100 mb-1">
+                  <label className="block text-sm font-medium text-brand-ink mb-1">
                     {t.patients.postalCode}
                   </label>
                   <input
                     type="text"
                     value={formData.postalCode}
                     onChange={(e) => setFormData({ ...formData, postalCode: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 text-[#1a1a1a] dark:text-white focus:outline-none focus:border-[#1a1a1a] dark:focus:border-gray-400 focus:ring-1 focus:ring-[#1a1a1a] dark:focus:ring-gray-500 placeholder:text-gray-400 dark:placeholder:text-gray-500"
+                    className="w-full px-3 py-2 border border-brand-border rounded-lg bg-brand-surface text-brand-ink focus:outline-none focus:border-brand-ink focus:ring-1 focus:ring-brand-ink placeholder:text-gray-400 dark:placeholder:text-gray-500"
                   />
                 </div>
                 </>
@@ -1033,7 +1033,7 @@ const PatientsPage = () => {
                   <>
                     {consentText ? (
                       <div className="rounded-lg border border-gray-200 bg-gray-50 p-4 max-h-40 overflow-y-auto">
-                        <p className="text-sm text-[#1a1a1a] dark:text-gray-100 whitespace-pre-wrap">{consentText}</p>
+                        <p className="text-sm text-brand-ink whitespace-pre-wrap">{consentText}</p>
                       </div>
                     ) : (
                       <div className="rounded-lg border border-amber-200 bg-amber-50 p-3">
@@ -1059,7 +1059,7 @@ const PatientsPage = () => {
                       <div
                         className={`w-5 h-5 rounded border-2 flex items-center justify-center flex-shrink-0 transition-colors ${
                           formData.consentGiven
-                            ? "bg-[#1a1a1a] border-[#1a1a1a]"
+                            ? "bg-brand-ink border-brand-ink"
                             : "border-gray-300 bg-white"
                         }`}
                       >
@@ -1069,7 +1069,7 @@ const PatientsPage = () => {
                           </svg>
                         )}
                       </div>
-                      <span className={`text-sm font-medium text-[#1a1a1a] dark:text-gray-100`}>
+                      <span className={`text-sm font-medium text-brand-ink`}>
                         {t.patients.consentGiven}
                         {consentLocked && " 🔒"}
                         {needsReconsent && " (modificado – acepte de nuevo)"}
@@ -1122,14 +1122,14 @@ const PatientsPage = () => {
                 <button
                   type="button"
                   onClick={closePatientForm}
-                  className="flex-1 py-3 bg-gray-100 dark:bg-gray-800 text-[#1a1a1a] dark:text-gray-100 rounded-lg hover:bg-gray-200 transition-colors font-medium"
+                  className="flex-1 py-3 bg-brand-canvas text-brand-ink rounded-lg hover:bg-gray-200 transition-colors font-medium"
                 >
                   {t.common.cancel}
                 </button>
                 <button
                   type="submit"
                   form="patient-form"
-                  className="flex-1 py-3 bg-[#1a1a1a] text-white rounded-lg hover:bg-[#2a2a2a] transition-colors font-medium"
+                  className="flex-1 py-3 bg-brand-ink text-brand-ink-fg rounded-lg hover:bg-brand-ink-hover transition-colors font-medium"
                 >
                   {t.common.save}
                 </button>
@@ -1156,7 +1156,7 @@ const PatientsPage = () => {
               placeholder={t.patients.searchPatients}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-4 py-2.5 border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 text-[#1a1a1a] dark:text-white focus:outline-none focus:border-[#1a1a1a] dark:focus:border-gray-400 focus:ring-1 focus:ring-[#1a1a1a] dark:focus:ring-gray-500 placeholder:text-gray-400 dark:placeholder:text-gray-500"
+              className="w-full pl-10 pr-4 py-2.5 border border-brand-border rounded-lg bg-brand-surface text-brand-ink focus:outline-none focus:border-brand-ink focus:ring-1 focus:ring-brand-ink placeholder:text-gray-400 dark:placeholder:text-gray-500"
             />
           </div>
           {canCreatePatient ? (
@@ -1166,7 +1166,7 @@ const PatientsPage = () => {
                 setFormData(emptyForm);
                 setShowForm(true);
               }}
-              className="px-4 py-2.5 bg-[#1a1a1a] text-white rounded-lg hover:bg-[#2a2a2a] transition-colors font-medium flex items-center gap-2"
+              className="px-4 py-2.5 bg-brand-ink text-brand-ink-fg rounded-lg hover:bg-brand-ink-hover transition-colors font-medium flex items-center gap-2"
             >
               <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
@@ -1198,14 +1198,14 @@ const PatientsPage = () => {
         {clinicalListLoading && patients.length === 0 ? (
           <ClinicalListLoading label="Cargando pacientes…" />
         ) : patients.length === 0 ? (
-          <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-100 dark:border-gray-800 p-12 text-center">
-            <div className="w-16 h-16 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center mx-auto mb-4">
+          <div className="bg-brand-surface rounded-xl border border-brand-border p-12 text-center">
+            <div className="w-16 h-16 bg-brand-canvas rounded-full flex items-center justify-center mx-auto mb-4">
               <svg className="w-8 h-8 text-gray-400 dark:text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
               </svg>
             </div>
-            <h3 className="text-lg font-semibold text-[#1a1a1a] dark:text-white mb-2">{t.patients.noPatients}</h3>
-            <p className="text-gray-500 dark:text-gray-400 mb-6">
+            <h3 className="text-lg font-semibold text-brand-ink mb-2">{t.patients.noPatients}</h3>
+            <p className="text-brand-muted mb-6">
               {canCreatePatient 
                 ? "Añade tu primer paciente para comenzar" 
                 : "Solo los podólogos pueden crear pacientes"}
@@ -1217,7 +1217,7 @@ const PatientsPage = () => {
                   setFormData(emptyForm);
                   setShowForm(true);
                 }}
-                className="px-6 py-2.5 bg-[#1a1a1a] text-white rounded-lg hover:bg-[#2a2a2a] transition-colors font-medium"
+                className="px-6 py-2.5 bg-brand-ink text-brand-ink-fg rounded-lg hover:bg-brand-ink-hover transition-colors font-medium"
               >
                 {t.patients.addPatient}
               </button>
@@ -1235,12 +1235,12 @@ const PatientsPage = () => {
                       className="flex items-center gap-3 min-h-[44px]"
                     >
                       <div className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center flex-shrink-0">
-                        <span className="font-medium text-[#1a1a1a] dark:text-white">
+                        <span className="font-medium text-brand-ink">
                           {patient.firstName.charAt(0)}{patient.lastName.charAt(0)}
                         </span>
                       </div>
                       <div className="text-left">
-                        <p className="font-medium text-[#1a1a1a] dark:text-white">
+                        <p className="font-medium text-brand-ink">
                           {patient.firstName} {patient.lastName}
                         </p>
                         <p className="text-xs text-gray-500">{patient.email || "Sin email"}</p>
@@ -1262,13 +1262,13 @@ const PatientsPage = () => {
                   <div className="mobile-card-actions">
                     <button
                       onClick={() => setSelectedPatient(patient)}
-                      className="flex-1 py-2.5 bg-gray-100 dark:bg-gray-800 text-[#1a1a1a] dark:text-gray-100 rounded-lg hover:bg-gray-200 active:bg-gray-300 transition-colors text-sm font-medium min-h-[44px]"
+                      className="flex-1 py-2.5 bg-brand-canvas text-brand-ink rounded-lg hover:bg-gray-200 active:bg-gray-300 transition-colors text-sm font-medium min-h-[44px]"
                     >
                       Ver
                     </button>
                     <button
                       onClick={() => handleEdit(patient)}
-                      className="flex-1 py-2.5 bg-gray-100 dark:bg-gray-800 text-[#1a1a1a] dark:text-gray-100 rounded-lg hover:bg-gray-200 active:bg-gray-300 transition-colors text-sm font-medium min-h-[44px]"
+                      className="flex-1 py-2.5 bg-brand-canvas text-brand-ink rounded-lg hover:bg-gray-200 active:bg-gray-300 transition-colors text-sm font-medium min-h-[44px]"
                     >
                       {t.common.edit}
                     </button>
@@ -1288,16 +1288,16 @@ const PatientsPage = () => {
             </div>
 
             {/* Desktop: Table Layout */}
-            <div className="hidden md:block bg-white dark:bg-gray-900 rounded-xl border border-gray-100 dark:border-gray-800 overflow-hidden">
+            <div className="hidden md:block bg-brand-surface rounded-xl border border-brand-border overflow-hidden">
               <div className="overflow-x-auto">
                 <table className="w-full">
                   <thead>
                     <tr className="border-b border-gray-50 dark:border-gray-800">
-                      <th className="text-left px-6 py-4 text-sm font-semibold text-[#1a1a1a] dark:text-white">Paciente</th>
-                      <th className="text-left px-6 py-4 text-sm font-semibold text-[#1a1a1a] dark:text-white">{t.patients.email}</th>
-                      <th className="text-left px-6 py-4 text-sm font-semibold text-[#1a1a1a] dark:text-white">{t.patients.phone}</th>
-                      <th className="text-left px-6 py-4 text-sm font-semibold text-[#1a1a1a] dark:text-white">{t.patients.totalSessions}</th>
-                      <th className="text-right px-6 py-4 text-sm font-semibold text-[#1a1a1a] dark:text-white">{t.common.actions}</th>
+                      <th className="text-left px-6 py-4 text-sm font-semibold text-brand-ink">Paciente</th>
+                      <th className="text-left px-6 py-4 text-sm font-semibold text-brand-ink">{t.patients.email}</th>
+                      <th className="text-left px-6 py-4 text-sm font-semibold text-brand-ink">{t.patients.phone}</th>
+                      <th className="text-left px-6 py-4 text-sm font-semibold text-brand-ink">{t.patients.totalSessions}</th>
+                      <th className="text-right px-6 py-4 text-sm font-semibold text-brand-ink">{t.common.actions}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -1306,33 +1306,33 @@ const PatientsPage = () => {
                         <td className="px-6 py-4">
                           <button
                             onClick={() => setSelectedPatient(patient)}
-                            className="flex items-center gap-3 hover:text-[#1a1a1a] dark:hover:text-white"
+                            className="flex items-center gap-3 hover:text-brand-ink dark:hover:text-white"
                           >
-                            <div className="w-10 h-10 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center">
-                              <span className="font-medium text-[#1a1a1a] dark:text-white">
+                            <div className="w-10 h-10 bg-brand-canvas rounded-full flex items-center justify-center">
+                              <span className="font-medium text-brand-ink">
                                 {patient.firstName.charAt(0)}{patient.lastName.charAt(0)}
                               </span>
                             </div>
                             <div className="text-left">
-                              <p className="font-medium text-[#1a1a1a] dark:text-white">
+                              <p className="font-medium text-brand-ink">
                                 {patient.firstName} {patient.lastName}
                               </p>
                             </div>
                           </button>
                         </td>
-                        <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-300">{patient.email}</td>
-                        <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-300">{formatPhoneDisplay(patient.phone, tenantCountry)}</td>
-                        <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-300">
+                        <td className="px-6 py-4 text-sm text-brand-muted">{patient.email}</td>
+                        <td className="px-6 py-4 text-sm text-brand-muted">{formatPhoneDisplay(patient.phone, tenantCountry)}</td>
+                        <td className="px-6 py-4 text-sm text-brand-muted">
                           {sessionCountByPatient[patient.id] ?? 0}
                         </td>
                         <td className="px-6 py-4">
                           <div className="flex items-center justify-end gap-2">
                             <button
                               onClick={() => handleEdit(patient)}
-                              className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
+                              className="p-2 hover:bg-brand-canvas rounded-lg transition-colors"
                               title={t.common.edit}
                             >
-                              <svg className="w-4 h-4 text-gray-600 dark:text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <svg className="w-4 h-4 text-brand-muted" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                               </svg>
                             </button>
@@ -1361,7 +1361,7 @@ const PatientsPage = () => {
                   type="button"
                   onClick={() => loadMore()}
                   disabled={isLoadingMore}
-                  className="px-6 py-2.5 border border-gray-200 dark:border-gray-700 rounded-lg text-sm font-medium text-[#1a1a1a] dark:text-white hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-50"
+                  className="px-6 py-2.5 border border-brand-border rounded-lg text-sm font-medium text-brand-ink hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-50"
                 >
                   {isLoadingMore ? "Cargando…" : "Cargar más pacientes"}
                 </button>

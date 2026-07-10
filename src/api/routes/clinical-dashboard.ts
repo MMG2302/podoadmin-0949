@@ -3,7 +3,7 @@ import { and, desc, eq, gte, inArray, sql } from 'drizzle-orm';
 import { requireAuth } from '../middleware/auth';
 import { requireActiveSubscription } from '../middleware/subscription';
 import { database } from '../database';
-import { clinicalSessions, patients } from '../database/schema';
+import { clinicalSessions, patients, createdUsers, professionalLicenses } from '../database/schema';
 import { mergeScopeWhere, resolveClinicalListScope } from '../utils/clinical-list-scope';
 
 const clinicalDashboardRoutes = new Hono();
@@ -95,6 +95,70 @@ clinicalDashboardRoutes.get('/overview', async (c) => {
       createdAt: row.createdAt,
     })),
   });
+});
+
+clinicalDashboardRoutes.get('/clinic-stats', async (c) => {
+  const user = c.get('user')!;
+  if (user.role !== 'clinic_admin' || !user.clinicId) {
+    return c.json({ error: 'Acceso denegado' }, 403);
+  }
+
+  const podiatristRows = await database
+    .select()
+    .from(createdUsers)
+    .where(and(eq(createdUsers.clinicId, user.clinicId), eq(createdUsers.role, 'podiatrist')));
+  const podiatristIds = podiatristRows.map((r) => r.userId);
+
+  const now = new Date();
+  const monthStart = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
+
+  const licenses: Record<string, string | null> = {};
+  if (podiatristIds.length > 0) {
+    const licenseRows = await database
+      .select()
+      .from(professionalLicenses)
+      .where(inArray(professionalLicenses.userId, podiatristIds));
+    for (const id of podiatristIds) licenses[id] = null;
+    for (const row of licenseRows) {
+      licenses[row.userId] = row.license?.trim() ? row.license.trim() : null;
+    }
+  }
+
+  const podiatristStats = await Promise.all(
+    podiatristRows.map(async (pod) => {
+      const patientCountRows = await database
+        .select({ count: sql<number>`count(*)` })
+        .from(patients)
+        .where(eq(patients.createdBy, pod.userId));
+      const sessionCountRows = await database
+        .select({ count: sql<number>`count(*)` })
+        .from(clinicalSessions)
+        .where(eq(clinicalSessions.createdBy, pod.userId));
+      const sessionsThisMonthRows = await database
+        .select({ count: sql<number>`count(*)` })
+        .from(clinicalSessions)
+        .where(and(eq(clinicalSessions.createdBy, pod.userId), gte(clinicalSessions.sessionDate, monthStart)));
+
+      return {
+        userId: pod.userId,
+        patientCount: Number(patientCountRows[0]?.count ?? 0),
+        sessionCount: Number(sessionCountRows[0]?.count ?? 0),
+        sessionsThisMonth: Number(sessionsThisMonthRows[0]?.count ?? 0),
+        license: licenses[pod.userId] ?? null,
+      };
+    })
+  );
+
+  const totals = podiatristStats.reduce(
+    (acc, s) => ({
+      patients: acc.patients + s.patientCount,
+      sessionsThisMonth: acc.sessionsThisMonth + s.sessionsThisMonth,
+      podiatrists: acc.podiatrists + 1,
+    }),
+    { patients: 0, sessionsThisMonth: 0, podiatrists: 0 }
+  );
+
+  return c.json({ success: true, totals, podiatristStats, licenses });
 });
 
 export default clinicalDashboardRoutes;

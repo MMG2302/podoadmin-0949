@@ -16,7 +16,10 @@ type Permission =
   | "view_clinic_stats"
   | "reassign_patients"
   | "view_calendar"
-  | "view_whatsapp_messages";
+  | "view_whatsapp_messages"
+  | "view_whatsapp_web"
+  | "view_checkout_handoffs"
+  | "manage_checkout_handoffs";
 
 const rolePermissions: Record<UserRole, Permission[]> = {
   super_admin: [
@@ -38,6 +41,9 @@ const rolePermissions: Record<UserRole, Permission[]> = {
     "print_documents",
     "view_settings",
     "view_whatsapp_messages",
+    "view_whatsapp_web",
+    "view_checkout_handoffs",
+    "manage_checkout_handoffs",
   ],
   admin: [
     "view_dashboard",
@@ -54,6 +60,9 @@ const rolePermissions: Record<UserRole, Permission[]> = {
     "print_documents",
     "view_settings",
     "view_whatsapp_messages",
+    "view_whatsapp_web",
+    "view_checkout_handoffs",
+    "manage_checkout_handoffs",
   ],
   receptionist: [
     "view_dashboard",
@@ -61,6 +70,9 @@ const rolePermissions: Record<UserRole, Permission[]> = {
     "manage_patients",
     "view_calendar",
     "view_settings",
+    "view_whatsapp_web",
+    "view_checkout_handoffs",
+    "manage_checkout_handoffs",
   ],
 };
 
@@ -86,7 +98,9 @@ export const usePermissions = () => {
   const isAdmin = user?.role === "admin";
   const isPodiatrist = user?.role === "podiatrist";
   const isReceptionist = user?.role === "receptionist";
-  const canViewWhatsAppMessages = isPodiatrist || isClinicAdmin;
+  const canViewWhatsAppWeb = hasPermission("view_whatsapp_web");
+  const canViewWhatsAppMessages = canViewWhatsAppWeb;
+  const canConfigureWhatsApp = isPodiatrist || isClinicAdmin;
 
   return {
     hasPermission,
@@ -97,7 +111,9 @@ export const usePermissions = () => {
     isAdmin,
     isPodiatrist,
     isReceptionist,
+    canViewWhatsAppWeb,
     canViewWhatsAppMessages,
+    canConfigureWhatsApp,
     permissions: user ? (rolePermissions[user.role as UserRole] ?? []) : [],
   };
 };

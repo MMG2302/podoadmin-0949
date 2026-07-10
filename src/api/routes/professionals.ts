@@ -1,5 +1,5 @@
 import { Hono } from 'hono';
-import { eq } from 'drizzle-orm';
+import { eq, inArray } from 'drizzle-orm';
 import { requireAuth } from '../middleware/auth';
 import { database } from '../database';
 import {
@@ -159,6 +159,38 @@ professionalsRoutes.put('/info/:userId', async (c) => {
     userAgent: getSafeUserAgent(c),
   });
   return c.json({ success: true });
+});
+
+/**
+ * GET /api/professionals/licenses?ids=id1,id2
+ */
+professionalsRoutes.get('/licenses', async (c) => {
+  const user = c.get('user');
+  if (!user) return c.json({ error: 'No autenticado' }, 401);
+  const raw = c.req.query('ids')?.trim() ?? '';
+  const ids = raw
+    .split(',')
+    .map((id) => sanitizePathParam(id.trim(), 128))
+    .filter((id): id is string => Boolean(id));
+  if (ids.length === 0) return c.json({ success: true, licenses: {} });
+  if (ids.length > 100) return c.json({ error: 'Demasiados IDs' }, 400);
+
+  for (const id of ids) {
+    if (!(await canAccessProfessional(user, id))) {
+      return c.json({ error: 'Acceso denegado' }, 403);
+    }
+  }
+
+  const rows = await database
+    .select()
+    .from(professionalLicensesTable)
+    .where(inArray(professionalLicensesTable.userId, ids));
+  const licenses: Record<string, string | null> = {};
+  for (const id of ids) licenses[id] = null;
+  for (const row of rows) {
+    licenses[row.userId] = row.license?.trim() ? row.license.trim() : null;
+  }
+  return c.json({ success: true, licenses });
 });
 
 /**

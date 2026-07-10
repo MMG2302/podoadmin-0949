@@ -36,6 +36,8 @@ export async function getUserByEmailFromDB(email: string): Promise<{
   oauthProvider?: string | null;
   assignedPodiatristIds?: string[] | null;
   mustChangePassword?: boolean;
+  avatarUrl?: string | null;
+  updatedAt?: string;
 } | null> {
   try {
     const emailLower = email.toLowerCase().trim();
@@ -68,6 +70,8 @@ export async function getUserByEmailFromDB(email: string): Promise<{
       oauthProvider: user.oauthProvider || null,
       assignedPodiatristIds: user.assignedPodiatristIds ? safeJsonParseArray(user.assignedPodiatristIds) : undefined,
       mustChangePassword: user.mustChangePassword || false,
+      avatarUrl: user.avatarUrl ?? null,
+      updatedAt: user.updatedAt,
     };
   } catch (error) {
     console.error('Error obteniendo usuario por email:', error);
@@ -94,6 +98,8 @@ export async function getUserByIdFromDB(userId: string): Promise<{
   registrationSource?: string | null;
   assignedPodiatristIds?: string[] | null;
   mustChangePassword?: boolean;
+  avatarUrl?: string | null;
+  updatedAt?: string;
 } | null> {
   try {
     const result = await database
@@ -123,6 +129,8 @@ export async function getUserByIdFromDB(userId: string): Promise<{
       registrationSource: user.registrationSource || null,
       assignedPodiatristIds: user.assignedPodiatristIds ? safeJsonParseArray(user.assignedPodiatristIds) : undefined,
       mustChangePassword: user.mustChangePassword || false,
+      avatarUrl: user.avatarUrl ?? null,
+      updatedAt: user.updatedAt,
     };
   } catch (error) {
     console.error('Error obteniendo usuario por ID:', error);

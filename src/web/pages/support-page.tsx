@@ -275,18 +275,18 @@ const SupportPage = () => {
     <MainLayout title={t.support.title}>
       <div className="space-y-6">
         <div>
-          <h2 className="text-xl font-semibold text-[#1a1a1a] dark:text-white">{t.support.contactPodoAdmin}</h2>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+          <h2 className="text-xl font-semibold text-brand-ink">{t.support.contactPodoAdmin}</h2>
+          <p className="text-sm text-brand-muted mt-1">
             Mensajes de usuarios y listas de registro para aprobación.
           </p>
         </div>
 
         {canCreateLists && (
-          <div className="flex gap-1 bg-gray-100 dark:bg-gray-800 p-1 rounded-lg w-fit">
+          <div className="flex gap-1 bg-brand-canvas p-1 rounded-lg w-fit">
             <button
               onClick={() => setActiveTab("messages")}
               className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-                activeTab === "messages" ? "bg-white dark:bg-gray-700 text-[#1a1a1a] dark:text-white shadow-sm" : "text-gray-600 dark:text-gray-300 hover:text-[#1a1a1a] dark:hover:text-white"
+                activeTab === "messages" ? "bg-white dark:bg-gray-700 text-brand-ink shadow-sm" : "text-brand-muted hover:text-brand-ink dark:hover:text-white"
               }`}
             >
               Mensajes
@@ -294,7 +294,7 @@ const SupportPage = () => {
             <button
               onClick={() => setActiveTab("lists")}
               className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-                activeTab === "lists" ? "bg-white dark:bg-gray-700 text-[#1a1a1a] dark:text-white shadow-sm" : "text-gray-600 dark:text-gray-300 hover:text-[#1a1a1a] dark:hover:text-white"
+                activeTab === "lists" ? "bg-white dark:bg-gray-700 text-brand-ink shadow-sm" : "text-brand-muted hover:text-brand-ink dark:hover:text-white"
               }`}
             >
               Crear listas
@@ -304,13 +304,13 @@ const SupportPage = () => {
 
         {activeTab === "messages" && (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-100 dark:border-gray-800 overflow-hidden">
-              <div className="p-4 border-b border-gray-100 dark:border-gray-800">
-                <h3 className="font-medium text-[#1a1a1a] dark:text-white">Conversaciones</h3>
+            <div className="bg-brand-surface rounded-xl border border-brand-border overflow-hidden">
+              <div className="p-4 border-b border-brand-border">
+                <h3 className="font-medium text-brand-ink">Conversaciones</h3>
               </div>
               <div className="max-h-[400px] overflow-y-auto">
                 {conversations.length === 0 ? (
-                  <div className="p-8 text-center text-gray-500 dark:text-gray-400">No hay conversaciones</div>
+                  <div className="p-8 text-center text-brand-muted">No hay conversaciones</div>
                 ) : (
                   <div className="divide-y divide-gray-50 dark:divide-gray-800">
                     {conversations.map((c) => (
@@ -322,16 +322,16 @@ const SupportPage = () => {
                         }`}
                       >
                         <div className="flex justify-between items-start gap-2">
-                          <span className="font-medium text-[#1a1a1a] dark:text-white truncate">{c.subject}</span>
+                          <span className="font-medium text-brand-ink truncate">{c.subject}</span>
                           <span
                             className={`flex-shrink-0 text-xs px-2 py-0.5 rounded-full ${
-                              c.status === "open" ? "bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-400" : "bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400"
+                              c.status === "open" ? "bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-400" : "bg-brand-canvas text-brand-muted"
                             }`}
                           >
                             {c.status === "open" ? t.support.open : t.support.closed}
                           </span>
                         </div>
-                        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1 truncate">
+                        <p className="text-sm text-brand-muted mt-1 truncate">
                           {c.userName || c.userEmail || c.userId}
                         </p>
                         <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">
@@ -344,13 +344,13 @@ const SupportPage = () => {
               </div>
             </div>
 
-            <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-100 dark:border-gray-800 overflow-hidden">
+            <div className="bg-brand-surface rounded-xl border border-brand-border overflow-hidden">
               {selected ? (
                 <>
-                  <div className="p-4 border-b border-gray-100 dark:border-gray-800 flex justify-between items-start">
+                  <div className="p-4 border-b border-brand-border flex justify-between items-start">
                     <div>
-                      <h3 className="font-medium text-[#1a1a1a] dark:text-white">{selected.subject}</h3>
-                      <p className="text-sm text-gray-500 dark:text-gray-400">
+                      <h3 className="font-medium text-brand-ink">{selected.subject}</h3>
+                      <p className="text-sm text-brand-muted">
                         {selected.userName} {selected.userEmail && `(${selected.userEmail})`}
                       </p>
                     </div>
@@ -358,7 +358,7 @@ const SupportPage = () => {
                       {selected.status === "open" ? (
                         <button
                           onClick={closeConversation}
-                          className="text-xs px-2 py-1 bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 rounded hover:bg-gray-200 dark:hover:bg-gray-700"
+                          className="text-xs px-2 py-1 bg-brand-canvas text-brand-muted rounded hover:bg-brand-border/40"
                         >
                           {t.support.closeConversation}
                         </button>
@@ -377,30 +377,30 @@ const SupportPage = () => {
                       <div
                         key={m.id}
                         className={`p-3 rounded-lg ${
-                          m.isFromSupport ? "bg-blue-50 dark:bg-blue-900/30 ml-4" : "bg-gray-50 dark:bg-gray-800 mr-4"
+                          m.isFromSupport ? "bg-blue-50 dark:bg-blue-900/30 ml-4" : "bg-brand-canvas mr-4"
                         }`}
                       >
-                        <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">
+                        <p className="text-xs text-brand-muted mb-1">
                           {m.isFromSupport ? (user?.name || "Soporte") : (selected.userName || selected.userEmail)} ·{" "}
                           {new Date(m.createdAt).toLocaleString()}
                         </p>
-                        <p className="text-sm text-[#1a1a1a] dark:text-white whitespace-pre-wrap">{m.body}</p>
+                        <p className="text-sm text-brand-ink whitespace-pre-wrap">{m.body}</p>
                       </div>
                     ))}
                   </div>
                   {selected.status === "open" && (
-                    <div className="p-4 border-t border-gray-100 dark:border-gray-800 flex gap-2">
+                    <div className="p-4 border-t border-brand-border flex gap-2">
                       <textarea
                         value={reply}
                         onChange={(e) => setReply(e.target.value)}
                         placeholder={t.support.replyPlaceholder}
                         rows={3}
-                        className="flex-1 px-4 py-2.5 border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-[#1a1a1a] dark:text-white focus:ring-2 focus:ring-[#1a1a1a] dark:focus:ring-gray-500 resize-none"
+                        className="flex-1 px-4 py-2.5 border border-brand-border rounded-lg bg-brand-surface text-brand-ink focus:ring-2 focus:ring-brand-ink resize-none"
                       />
                       <button
                         onClick={sendReply}
                         disabled={sending || !reply.trim()}
-                        className="px-4 py-2.5 bg-[#1a1a1a] text-white rounded-lg font-medium hover:bg-[#2a2a2a] disabled:opacity-50 self-end"
+                        className="px-4 py-2.5 bg-brand-ink text-brand-ink-fg rounded-lg font-medium hover:bg-brand-ink-hover disabled:opacity-50 self-end"
                       >
                         {sending ? "..." : t.support.reply}
                       </button>
@@ -408,7 +408,7 @@ const SupportPage = () => {
                   )}
                 </>
               ) : (
-                <div className="p-12 text-center text-gray-500 dark:text-gray-400">
+                <div className="p-12 text-center text-brand-muted">
                   Selecciona una conversación para ver los mensajes y responder.
                 </div>
               )}
@@ -418,14 +418,14 @@ const SupportPage = () => {
 
         {activeTab === "lists" && canCreateLists && (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-100 dark:border-gray-800 overflow-hidden">
-              <div className="p-4 border-b border-gray-100 dark:border-gray-800 flex justify-between items-center">
-                <h3 className="font-medium text-[#1a1a1a] dark:text-white">Listas de registro</h3>
+            <div className="bg-brand-surface rounded-xl border border-brand-border overflow-hidden">
+              <div className="p-4 border-b border-brand-border flex justify-between items-center">
+                <h3 className="font-medium text-brand-ink">Listas de registro</h3>
                 <button
                   type="button"
                   onClick={() => void createList()}
                   disabled={listLoading}
-                  className="px-3 py-1.5 bg-[#1a1a1a] text-white rounded-lg text-sm font-medium hover:bg-[#2a2a2a] disabled:opacity-50"
+                  className="px-3 py-1.5 bg-brand-ink text-brand-ink-fg rounded-lg text-sm font-medium hover:bg-brand-ink-hover disabled:opacity-50"
                 >
                   {listLoading ? "..." : "Nueva lista"}
                 </button>
@@ -436,13 +436,13 @@ const SupportPage = () => {
                   value={listName}
                   onChange={(e) => setListName(e.target.value)}
                   placeholder="Nombre de la nueva lista..."
-                  className="w-full px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-[#1a1a1a] dark:text-white text-sm"
+                  className="w-full px-3 py-2 border border-brand-border rounded-lg bg-brand-surface text-brand-ink text-sm"
                   onKeyDown={(e) => e.key === "Enter" && createList()}
                 />
               </div>
               <div className="max-h-[350px] overflow-y-auto">
                 {lists.length === 0 ? (
-                  <div className="p-8 text-center text-gray-500 dark:text-gray-400 text-sm">
+                  <div className="p-8 text-center text-brand-muted text-sm">
                     Crea listas de registros (cursos, eventos) y envíalas para que el administrador las apruebe e importe.
                   </div>
                 ) : (
@@ -459,11 +459,11 @@ const SupportPage = () => {
                           onClick={() => openList(l.id)}
                           className="text-left flex-1"
                         >
-                          <span className="font-medium text-[#1a1a1a] dark:text-white truncate block">{l.name}</span>
+                          <span className="font-medium text-brand-ink truncate block">{l.name}</span>
                           <span
                             className={`inline-block mt-1 text-xs px-2 py-0.5 rounded-full ${
                               l.status === "draft"
-                                ? "bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400"
+                                ? "bg-brand-canvas text-brand-muted"
                                 : l.status === "pending"
                                 ? "bg-yellow-100 text-yellow-700"
                                 : l.status === "approved"
@@ -497,10 +497,10 @@ const SupportPage = () => {
               </div>
             </div>
 
-            <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-100 dark:border-gray-800 overflow-hidden">
+            <div className="bg-brand-surface rounded-xl border border-brand-border overflow-hidden">
               {selectedList ? (
                 <div className="flex flex-col h-full">
-                  <div className="p-4 border-b border-gray-100 dark:border-gray-800 flex justify-between items-start gap-2">
+                  <div className="p-4 border-b border-brand-border flex justify-between items-start gap-2">
                     <div className="flex-1 min-w-0">
                       {selectedList.list.status === "draft" ? (
                         <input
@@ -508,10 +508,10 @@ const SupportPage = () => {
                           value={listName}
                           onChange={(e) => setListName(e.target.value)}
                           onBlur={updateListName}
-                          className="w-full font-medium text-[#1a1a1a] dark:text-white border-b border-transparent hover:border-gray-200 dark:hover:border-gray-600 focus:border-[#1a1a1a] dark:focus:border-gray-400 focus:outline-none px-1 py-0.5 bg-transparent"
+                          className="w-full font-medium text-brand-ink border-b border-transparent hover:border-gray-200 dark:hover:border-gray-600 focus:border-brand-ink focus:outline-none px-1 py-0.5 bg-transparent"
                         />
                       ) : (
-                        <h3 className="font-medium text-[#1a1a1a] dark:text-white">{selectedList.list.name}</h3>
+                        <h3 className="font-medium text-brand-ink">{selectedList.list.name}</h3>
                       )}
                       <span
                         className={`inline-block mt-1 text-xs px-2 py-0.5 rounded-full ${
@@ -554,8 +554,8 @@ const SupportPage = () => {
                   </div>
 
                   {selectedList.list.status === "draft" && (
-                    <div className="p-4 border-b border-gray-100 dark:border-gray-800 space-y-2">
-                      <p className="text-xs font-medium text-gray-500 dark:text-gray-400">Añadir registro</p>
+                    <div className="p-4 border-b border-brand-border space-y-2">
+                      <p className="text-xs font-medium text-brand-muted">Añadir registro</p>
                       <div className="flex flex-col gap-2">
                         <div className="flex gap-2 flex-wrap">
                           <input
@@ -563,7 +563,7 @@ const SupportPage = () => {
                             placeholder="Nombre"
                             value={newEntry.name}
                             onChange={(e) => setNewEntry((p) => ({ ...p, name: e.target.value }))}
-                            className="flex-1 min-w-[100px] px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-[#1a1a1a] dark:text-white text-sm"
+                            className="flex-1 min-w-[100px] px-3 py-2 border border-brand-border rounded-lg bg-brand-surface text-brand-ink text-sm"
                           />
                           <input
                             type="email"
@@ -571,19 +571,19 @@ const SupportPage = () => {
                             placeholder="Email"
                             value={newEntry.email}
                             onChange={(e) => setNewEntry((p) => ({ ...p, email: e.target.value }))}
-                            className="flex-1 min-w-[120px] px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-[#1a1a1a] dark:text-white text-sm"
+                            className="flex-1 min-w-[120px] px-3 py-2 border border-brand-border rounded-lg bg-brand-surface text-brand-ink text-sm"
                           />
                           <select
                             value={newEntry.role}
                             onChange={(e) => setNewEntry((p) => ({ ...p, role: e.target.value }))}
-                            className="px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-[#1a1a1a] dark:text-white text-sm"
+                            className="px-3 py-2 border border-brand-border rounded-lg bg-brand-surface text-brand-ink text-sm"
                           >
                             <option value="podiatrist">Podólogo independiente</option>
                             <option value="clinic_admin">Admin de clínica</option>
                           </select>
                           {newEntry.role === "clinic_admin" && (
                             <div className="flex items-center gap-2">
-                              <label className="text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">Límite podólogos:</label>
+                              <label className="text-xs text-brand-muted whitespace-nowrap">Límite podólogos:</label>
                               <input
                                 type="number"
                                 min="1"
@@ -591,20 +591,20 @@ const SupportPage = () => {
                                 placeholder="Ej: 5"
                                 value={newEntry.podiatristLimit}
                                 onChange={(e) => setNewEntry((p) => ({ ...p, podiatristLimit: e.target.value }))}
-                                className="w-20 px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-[#1a1a1a] dark:text-white text-sm"
+                                className="w-20 px-3 py-2 border border-brand-border rounded-lg bg-brand-surface text-brand-ink text-sm"
                               />
                             </div>
                           )}
                           <button
                             onClick={addEntry}
                             disabled={!newEntry.name.trim() || !newEntry.email.trim()}
-                            className="px-3 py-2 bg-[#1a1a1a] text-white rounded-lg text-sm font-medium hover:bg-[#2a2a2a] disabled:opacity-50"
+                            className="px-3 py-2 bg-brand-ink text-brand-ink-fg rounded-lg text-sm font-medium hover:bg-brand-ink-hover disabled:opacity-50"
                           >
                             Añadir
                           </button>
                         </div>
                         {newEntry.role === "clinic_admin" && (
-                          <p className="text-xs text-gray-500 dark:text-gray-400">
+                          <p className="text-xs text-brand-muted">
                             Los podólogos de la clínica estarán limitados a este número. Recepcionistas no cuentan en el límite.
                           </p>
                         )}
@@ -614,7 +614,7 @@ const SupportPage = () => {
 
                   <div className="flex-1 overflow-y-auto p-4 max-h-[300px]">
                     {selectedList.entries.length === 0 ? (
-                      <p className="text-sm text-gray-500 dark:text-gray-400">No hay registros en esta lista.</p>
+                      <p className="text-sm text-brand-muted">No hay registros en esta lista.</p>
                     ) : (
                       (() => {
                         const isDraft = selectedList.list.status === "draft";
@@ -624,7 +624,7 @@ const SupportPage = () => {
                         const renderRow = (e: RegistrationEntry) => (
                           <div
                             key={e.id}
-                            className="flex justify-between items-center gap-2 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg"
+                            className="flex justify-between items-center gap-2 p-3 bg-brand-canvas rounded-lg"
                           >
                             <div className="flex items-center gap-3">
                               <button
@@ -653,8 +653,8 @@ const SupportPage = () => {
                                 {e.paid ? "Pagado" : "No pagado"}
                               </button>
                               <div>
-                                <p className="font-medium text-sm text-[#1a1a1a] dark:text-white">{e.name}</p>
-                                <p className="text-xs text-gray-500 dark:text-gray-400">
+                                <p className="font-medium text-sm text-brand-ink">{e.name}</p>
+                                <p className="text-xs text-brand-muted">
                                   {e.email} · {e.role === "clinic_admin" ? "Admin de clínica" : "Podólogo independiente"}
                                   {e.role === "clinic_admin" && e.podiatristLimit != null && (
                                     <> · Límite: {e.podiatristLimit} podólogos</>
@@ -698,7 +698,7 @@ const SupportPage = () => {
                   </div>
                 </div>
               ) : (
-                <div className="p-12 text-center text-gray-500 dark:text-gray-400">
+                <div className="p-12 text-center text-brand-muted">
                   Selecciona una lista o crea una nueva.
                 </div>
               )}

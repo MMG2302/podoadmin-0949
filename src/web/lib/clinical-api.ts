@@ -1,5 +1,5 @@
 import { api } from "./api-client";
-import type { ClinicalSession, ClinicalStatsMap, Patient } from "../types/clinical";
+import type { ClinicalStatsMap, Patient } from "../types/clinical";
 
 export async function fetchClinicalStats(): Promise<ClinicalStatsMap> {
   const res = await api.get<{ success?: boolean; stats?: ClinicalStatsMap }>("/users/clinical-stats");
@@ -71,11 +71,4 @@ export async function downloadUserClinicalExport(userId: string, fileName?: stri
   } catch {
     return false;
   }
-}
-
-export async function fetchSessions(patientId?: string): Promise<ClinicalSession[]> {
-  const path = patientId ? `/sessions?patient=${encodeURIComponent(patientId)}` : "/sessions";
-  const res = await api.get<{ success?: boolean; sessions?: ClinicalSession[] }>(path);
-  if (res.success && Array.isArray(res.data?.sessions)) return res.data.sessions;
-  return [];
 }

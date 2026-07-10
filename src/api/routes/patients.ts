@@ -232,13 +232,23 @@ patientsRoutes.get(
         offset: queryResult.data.offset,
       });
       const searchQ = queryResult.data.q;
+      const idsRaw = queryResult.data.ids;
 
       const scope = await resolveClinicalListScope(user);
       const scopeWhere = mergeScopeWhere(scope, {
         createdBy: patientsTable.createdBy,
         clinicId: patientsTable.clinicId,
       });
-      const where = mergeAnd(scopeWhere, buildPatientSearchCondition(searchQ ?? ''));
+      let idsWhere;
+      if (idsRaw) {
+        const ids = idsRaw
+          .split(',')
+          .map((id) => sanitizePathParam(id.trim(), 64))
+          .filter((id): id is string => Boolean(id))
+          .slice(0, 100);
+        if (ids.length > 0) idsWhere = inArray(patientsTable.id, ids);
+      }
+      const where = mergeAnd(scopeWhere, buildPatientSearchCondition(searchQ ?? ''), idsWhere);
 
       let query = database.select().from(patientsTable).$dynamic();
       if (where) query = query.where(where);
@@ -249,6 +259,7 @@ patientsRoutes.get(
 
       const patientIds = rows.map((r) => r.id);
       const sessionCountByPatient = new Map<string, number>();
+      const lastSessionByPatient = new Map<string, string>();
       if (patientIds.length > 0) {
         const countRows = await database
           .select({
@@ -261,11 +272,23 @@ patientsRoutes.get(
         for (const row of countRows) {
           sessionCountByPatient.set(row.patientId, Number(row.count));
         }
+        const lastRows = await database
+          .select({
+            patientId: sessionsTable.patientId,
+            lastSession: sql<string>`max(${sessionsTable.sessionDate})`,
+          })
+          .from(sessionsTable)
+          .where(inArray(sessionsTable.patientId, patientIds))
+          .groupBy(sessionsTable.patientId);
+        for (const row of lastRows) {
+          if (row.lastSession) lastSessionByPatient.set(row.patientId, row.lastSession);
+        }
       }
 
       const patients = rows.map((row) => ({
         ...mapDbPatient(row),
         sessionCount: sessionCountByPatient.get(row.id) ?? 0,
+        lastSessionDate: lastSessionByPatient.get(row.id) ?? null,
       }));
       return c.json({
         success: true,

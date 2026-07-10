@@ -6,6 +6,7 @@ import {
   canConfigureWhatsApp,
   deleteWhatsAppConfig,
   getWhatsAppConfigPublic,
+  resolveWhatsAppWorkspaceForUser,
   saveWhatsAppConfig,
   testStoredWhatsAppConfig,
 } from '../utils/whatsapp-integration';
@@ -17,6 +18,24 @@ import { getUserByIdFromDB } from '../utils/user-db';
 const whatsappRoutes = new Hono();
 
 whatsappRoutes.use('*', requireAuth);
+
+/**
+ * GET /api/integrations/whatsapp/workspace
+ * Acceso de mensajería (Web + API delegada para recepción).
+ */
+whatsappRoutes.get('/workspace', async (c) => {
+  try {
+    const user = c.get('user');
+    const workspace = await resolveWhatsAppWorkspaceForUser(user);
+    return c.json({
+      success: true,
+      ...workspace,
+    });
+  } catch (error) {
+    console.error('Error GET whatsapp workspace:', error);
+    return c.json({ error: 'Error interno' }, 500);
+  }
+});
 
 const requireWhatsAppConfigRole = createMiddleware(async (c, next) => {
   const user = c.get('user');
@@ -52,6 +71,7 @@ const saveSchema = z.object({
   templateName: z.string().min(1).max(128).optional().nullable(),
   templateLanguage: z.string().min(2).max(10).optional(),
   defaultExtraNote: z.string().max(500).optional().nullable(),
+  receptionistApiEnabled: z.boolean().optional(),
 });
 
 /**

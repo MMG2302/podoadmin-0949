@@ -79,8 +79,8 @@ export const AnimatedThemeToggler = ({
       onClick={toggleTheme}
       className={cn(
         "flex h-9 w-9 items-center justify-center rounded-lg transition-colors",
-        "bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700",
-        "text-[#1a1a1a] dark:text-white",
+        "bg-brand-canvas hover:bg-brand-border/40",
+        "text-brand-ink",
         className
       )}
       aria-label={isDark ? "Activar modo claro" : "Activar modo oscuro"}

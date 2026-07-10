@@ -6,7 +6,7 @@ export function ClinicalLayoutSettingsSection() {
 
   if (loading) {
     return (
-      <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 p-8 text-center text-sm text-gray-500">
+      <div className="bg-brand-surface rounded-xl border border-brand-border p-8 text-center text-sm text-gray-500">
         Cargando diseñador…
       </div>
     );

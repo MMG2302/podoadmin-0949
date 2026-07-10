@@ -26,77 +26,73 @@ export function compressImageForLogo(file: File): Promise<string> {
   return compressImage(file, { maxSidePx: 800, targetBinaryBytes: 400_000 });
 }
 
-function compressImage(
+/** Foto de perfil: recorte cuadrado pequeño. */
+export function compressImageForAvatar(file: File): Promise<string> {
+  return compressImage(file, { maxSidePx: 512, targetBinaryBytes: 180_000 });
+}
+
+async function compressImage(
   file: File,
   opts: { maxSidePx: number; targetBinaryBytes: number }
 ): Promise<string> {
   const { maxSidePx, targetBinaryBytes } = opts;
-  return new Promise((resolve, reject) => {
-    const url = URL.createObjectURL(file);
-    const img = new Image();
+  let bitmap: ImageBitmap | null = null;
 
-    img.onload = () => {
-      URL.revokeObjectURL(url);
-      try {
-        const w = img.naturalWidth;
-        const h = img.naturalHeight;
-        let width = w;
-        let height = h;
-        if (w > maxSidePx || h > maxSidePx) {
-          if (w >= h) {
-            width = maxSidePx;
-            height = Math.round((h * maxSidePx) / w);
-          } else {
-            height = maxSidePx;
-            width = Math.round((w * maxSidePx) / h);
-          }
-        }
-
-        const canvas = document.createElement("canvas");
-        canvas.width = width;
-        canvas.height = height;
-        const ctx = canvas.getContext("2d");
-        if (!ctx) {
-          reject(new Error("No se pudo crear el contexto del canvas"));
-          return;
-        }
-        ctx.drawImage(img, 0, 0, width, height);
-
-        let quality = INITIAL_WEBP_QUALITY;
-        let dataUrl = canvas.toDataURL("image/webp", quality);
-        if (!dataUrl || !dataUrl.startsWith("data:image/webp")) {
-          dataUrl = canvas.toDataURL("image/jpeg", 0.82);
-        }
-
-        while (
-          dataUrl.startsWith("data:image/webp") &&
-          binaryLengthFromDataUrl(dataUrl) > targetBinaryBytes &&
-          quality > MIN_WEBP_QUALITY
-        ) {
-          quality = Math.max(MIN_WEBP_QUALITY, quality - 0.08);
-          dataUrl = canvas.toDataURL("image/webp", quality);
-        }
-
-        if (binaryLengthFromDataUrl(dataUrl) > targetBinaryBytes * 1.15) {
-          reject(
-            new Error(
-              "La imagen sigue siendo demasiado pesada tras comprimir. Pruebe con otra foto o recorte la imagen."
-            )
-          );
-          return;
-        }
-
-        resolve(dataUrl);
-      } catch (err) {
-        reject(err instanceof Error ? err : new Error("Error al procesar la imagen"));
+  try {
+    try {
+      bitmap = await createImageBitmap(file);
+    } catch {
+      throw new Error("No se pudo cargar la imagen. Use JPEG, PNG o WebP.");
+    }
+    const w = bitmap.width;
+    const h = bitmap.height;
+    let width = w;
+    let height = h;
+    if (w > maxSidePx || h > maxSidePx) {
+      if (w >= h) {
+        width = maxSidePx;
+        height = Math.round((h * maxSidePx) / w);
+      } else {
+        height = maxSidePx;
+        width = Math.round((w * maxSidePx) / h);
       }
-    };
+    }
 
-    img.onerror = () => {
-      URL.revokeObjectURL(url);
-      reject(new Error("No se pudo cargar la imagen"));
-    };
+    const canvas = document.createElement("canvas");
+    canvas.width = width;
+    canvas.height = height;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) {
+      throw new Error("No se pudo crear el contexto del canvas");
+    }
+    ctx.drawImage(bitmap, 0, 0, width, height);
 
-    img.src = url;
-  });
+    let quality = INITIAL_WEBP_QUALITY;
+    let dataUrl = canvas.toDataURL("image/webp", quality);
+    if (!dataUrl || !dataUrl.startsWith("data:image/webp")) {
+      dataUrl = canvas.toDataURL("image/jpeg", 0.82);
+    }
+
+    while (
+      dataUrl.startsWith("data:image/webp") &&
+      binaryLengthFromDataUrl(dataUrl) > targetBinaryBytes &&
+      quality > MIN_WEBP_QUALITY
+    ) {
+      quality = Math.max(MIN_WEBP_QUALITY, quality - 0.08);
+      dataUrl = canvas.toDataURL("image/webp", quality);
+    }
+
+    if (binaryLengthFromDataUrl(dataUrl) > targetBinaryBytes * 1.15) {
+      throw new Error(
+        "La imagen sigue siendo demasiado pesada tras comprimir. Pruebe con otra foto o recorte la imagen."
+      );
+    }
+
+    return dataUrl;
+  } catch (err) {
+    if (err instanceof Error) throw err;
+    throw new Error("No se pudo cargar la imagen. Use JPEG, PNG o WebP.");
+  } finally {
+    bitmap?.close();
+  }
 }

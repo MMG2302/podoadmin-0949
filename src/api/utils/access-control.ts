@@ -3,7 +3,7 @@ import { eq } from 'drizzle-orm';
 import { database } from '../database';
 import { createdUsers } from '../database/schema';
 
-import { getSubscriptionForUser, type SubscriptionPublic } from './subscription-service';
+import { getSubscriptionForUser, getSubscriptionsBatch, lookupSubscriptionFromBatch, type SubscriptionPublic } from './subscription-service';
 import { canUserAccess } from './user-retention';
 
 export type AccessGrantReason = 'platform_admin' | 'admin_enabled' | 'stripe_paid' | 'ip_trial' | 'dev_trial' | null;
@@ -88,19 +88,26 @@ async function getReceptionistPayerSubscription(
  * - receptionist: habilitación de clinic_admin/podólogo o suscripción activa del pagador
  * - clinic_admin / podiatrist: Stripe activo o habilitación excepcional de super_admin
  */
-export async function resolveSystemAccess(userId: string, role: string): Promise<SystemAccessResult> {
+export async function resolveSystemAccess(
+  userId: string,
+  role: string,
+  userRow?: typeof createdUsers.$inferSelect,
+  prefetchedSub?: SubscriptionPublic | null
+): Promise<SystemAccessResult> {
   if (role === 'super_admin') {
     return { granted: true, reason: 'platform_admin' };
   }
 
-  const userRow = await database
-    .select()
-    .from(createdUsers)
-    .where(eq(createdUsers.userId, userId))
-    .limit(1)
-    .then((r) => r[0]);
+  const userRowResolved =
+    userRow ??
+    (await database
+      .select()
+      .from(createdUsers)
+      .where(eq(createdUsers.userId, userId))
+      .limit(1)
+      .then((r) => r[0]));
 
-  if (!userRow) {
+  if (!userRowResolved) {
     return {
       granted: false,
       reason: null,
@@ -109,7 +116,7 @@ export async function resolveSystemAccess(userId: string, role: string): Promise
   }
 
   if (role === 'admin') {
-    if (userRow.isEnabled === true) {
+    if (userRowResolved.isEnabled === true) {
       return { granted: true, reason: 'admin_enabled' };
     }
     return {
@@ -120,10 +127,10 @@ export async function resolveSystemAccess(userId: string, role: string): Promise
   }
 
   if (role === 'receptionist') {
-    if (userRow.isEnabled === true) {
+    if (userRowResolved.isEnabled === true) {
       return { granted: true, reason: 'admin_enabled' };
     }
-    const payerSub = await getReceptionistPayerSubscription(userRow);
+    const payerSub = prefetchedSub ?? (await getReceptionistPayerSubscription(userRowResolved));
     if (isStripeSubscriptionGranted(payerSub)) {
       return { granted: true, reason: 'stripe_paid' };
     }
@@ -143,9 +150,12 @@ export async function resolveSystemAccess(userId: string, role: string): Promise
   }
 
   if (role === 'clinic_admin' || role === 'podiatrist') {
-    const sub = await getSubscriptionForUser(userId, userRow.clinicId);
-    const subjectType = userRow.clinicId ? ('clinic' as const) : ('user' as const);
-    const subjectId = userRow.clinicId ?? userId;
+    const sub =
+      prefetchedSub !== undefined
+        ? prefetchedSub
+        : await getSubscriptionForUser(userId, userRowResolved.clinicId);
+    const subjectType = userRowResolved.clinicId ? ('clinic' as const) : ('user' as const);
+    const subjectId = userRowResolved.clinicId ?? userId;
     if (isStripeSubscriptionGranted(sub)) {
       return { granted: true, reason: 'stripe_paid' };
     }
@@ -153,7 +163,7 @@ export async function resolveSystemAccess(userId: string, role: string): Promise
       const reason = isDevTrialGranted(sub) ? 'dev_trial' : 'ip_trial';
       return { granted: true, reason };
     }
-    if (userRow.isEnabled === true) {
+    if (userRowResolved.isEnabled === true) {
       return { granted: true, reason: 'admin_enabled' };
     }
     return {

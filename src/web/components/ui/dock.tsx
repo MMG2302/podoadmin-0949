@@ -52,7 +52,7 @@ export const Dock = ({
         onMouseLeave={handleMouseLeave}
         className={cn(
           "flex items-center justify-center gap-1 p-1.5 rounded-xl",
-          "bg-black/5 dark:bg-white/5 backdrop-blur-sm",
+          "bg-black/5 bg-brand-ink/5 backdrop-blur-sm",
           "transition-[height,width] duration-300 ease-out",
           className
         )}
@@ -107,7 +107,7 @@ export const DockIcon = ({ children, className }: DockIconProps) => {
       ref={iconRef}
       className={cn(
         "flex items-center justify-center rounded-full shrink-0 overflow-visible",
-        "bg-black/10 dark:bg-white/10",
+        "bg-black/10 bg-brand-ink/10",
         "transition-transform duration-150 ease-out",
         "hover:bg-black/15 dark:hover:bg-white/15",
         className

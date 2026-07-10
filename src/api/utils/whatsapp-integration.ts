@@ -1,14 +1,20 @@
-import { eq } from 'drizzle-orm';
+import { and, eq, inArray } from 'drizzle-orm';
 import { database } from '../database';
-import { userWhatsappIntegrations } from '../database/schema';
+import { createdUsers, userWhatsappIntegrations } from '../database/schema';
 import { encryptSecret, decryptSecret } from './field-encryption';
 import { testWhatsAppConnection } from './whatsapp-meta-api';
+import { getAssignedPodiatristUserIds } from './tenant-isolation';
 
 export const WHATSAPP_CONFIG_ROLES = ['podiatrist', 'clinic_admin'] as const;
+export const WHATSAPP_WEB_ROLES = ['podiatrist', 'clinic_admin', 'receptionist'] as const;
 export type WhatsAppConfigRole = (typeof WHATSAPP_CONFIG_ROLES)[number];
 
 export function canConfigureWhatsApp(role: string): boolean {
   return (WHATSAPP_CONFIG_ROLES as readonly string[]).includes(role);
+}
+
+export function canUseWhatsAppWeb(role: string): boolean {
+  return (WHATSAPP_WEB_ROLES as readonly string[]).includes(role);
 }
 
 export interface ReminderSchedule {
@@ -28,6 +34,7 @@ export interface WhatsAppConfigPublic {
   templateName: string | null;
   templateLanguage: string;
   defaultExtraNote: string | null;
+  receptionistApiEnabled: boolean;
   status: string;
   lastError: string | null;
   hasAccessToken: boolean;
@@ -84,6 +91,7 @@ function mapRowToPublic(row: typeof userWhatsappIntegrations.$inferSelect): What
     templateName: row.templateName ?? null,
     templateLanguage: row.templateLanguage || 'es',
     defaultExtraNote: row.defaultExtraNote ?? null,
+    receptionistApiEnabled: row.receptionistApiEnabled === true,
     status: row.status,
     lastError: row.lastError ?? null,
     hasAccessToken: Boolean(row.accessTokenEnc),
@@ -112,6 +120,7 @@ export async function getWhatsAppConfigPublic(userId: string): Promise<WhatsAppC
       templateName: null,
       templateLanguage: 'es',
       defaultExtraNote: null,
+      receptionistApiEnabled: false,
       status: 'pending',
       lastError: null,
       hasAccessToken: false,
@@ -133,6 +142,7 @@ export interface SaveWhatsAppConfigInput {
   templateName?: string | null;
   templateLanguage?: string;
   defaultExtraNote?: string | null;
+  receptionistApiEnabled?: boolean;
 }
 
 export async function saveWhatsAppConfig(
@@ -189,6 +199,7 @@ export async function saveWhatsAppConfig(
     templateName: input.templateName?.trim() || null,
     templateLanguage: (input.templateLanguage || 'es').trim().slice(0, 10) || 'es',
     defaultExtraNote: input.defaultExtraNote?.trim().slice(0, 500) || null,
+    receptionistApiEnabled: input.receptionistApiEnabled ?? existing?.receptionistApiEnabled ?? false,
     status,
     lastError,
     updatedAt: now,
@@ -279,4 +290,134 @@ export async function getWhatsAppCredentialsForUser(userId: string): Promise<{
     remindersEnabled: row.remindersEnabled,
     enabled: row.enabled,
   };
+}
+
+function emptyWhatsAppConfig(): WhatsAppConfigPublic {
+  return {
+    configured: false,
+    enabled: false,
+    remindersEnabled: true,
+    reminderHoursBefore: [24, 48],
+    reminderSchedule: DEFAULT_SCHEDULE,
+    phoneNumberId: null,
+    wabaId: null,
+    businessPhoneE164: null,
+    templateName: null,
+    templateLanguage: 'es',
+    defaultExtraNote: null,
+    receptionistApiEnabled: false,
+    status: 'pending',
+    lastError: null,
+    hasAccessToken: false,
+    updatedAt: null,
+  };
+}
+
+function isApiIntegrationReady(config: WhatsAppConfigPublic): boolean {
+  return Boolean(config.configured && config.enabled && config.templateName);
+}
+
+async function getIntegrationRowForOwner(userId: string) {
+  return database
+    .select()
+    .from(userWhatsappIntegrations)
+    .where(eq(userWhatsappIntegrations.userId, userId))
+    .limit(1)
+    .then((r) => r[0] ?? null);
+}
+
+/** Podólogos/admin de clínica que delegaron API a recepción y tienen integración lista. */
+export async function getReceptionistWhatsAppApiOwnerIds(
+  receptionistUserId: string,
+  clinicId?: string | null
+): Promise<string[]> {
+  const assignedPodiatristIds = await getAssignedPodiatristUserIds(receptionistUserId);
+  const candidateIds = [...assignedPodiatristIds];
+
+  if (clinicId) {
+    const admins = await database
+      .select({ userId: createdUsers.userId })
+      .from(createdUsers)
+      .where(and(eq(createdUsers.clinicId, clinicId), eq(createdUsers.role, 'clinic_admin')));
+    for (const admin of admins) {
+      if (!candidateIds.includes(admin.userId)) candidateIds.push(admin.userId);
+    }
+  }
+
+  if (candidateIds.length === 0) return [];
+
+  const rows = await database
+    .select()
+    .from(userWhatsappIntegrations)
+    .where(inArray(userWhatsappIntegrations.userId, candidateIds));
+
+  return rows
+    .filter(
+      (row) =>
+        row.receptionistApiEnabled === true &&
+        row.enabled === true &&
+        Boolean(row.templateName?.trim())
+    )
+    .map((row) => row.userId);
+}
+
+export type WhatsAppWorkspaceAccess = {
+  canUseWeb: boolean;
+  canUseApi: boolean;
+  apiConnected: boolean;
+  receptionistApiEnabled: boolean;
+  config: WhatsAppConfigPublic;
+  integrationOwnerUserId: string | null;
+};
+
+export async function resolveWhatsAppWorkspaceForUser(user: {
+  userId: string;
+  role: string;
+  clinicId?: string | null;
+}): Promise<WhatsAppWorkspaceAccess> {
+  if (!canUseWhatsAppWeb(user.role)) {
+    return {
+      canUseWeb: false,
+      canUseApi: false,
+      apiConnected: false,
+      receptionistApiEnabled: false,
+      config: emptyWhatsAppConfig(),
+      integrationOwnerUserId: null,
+    };
+  }
+
+  if (user.role === 'receptionist') {
+    const ownerIds = await getReceptionistWhatsAppApiOwnerIds(user.userId, user.clinicId);
+    const ownerUserId = ownerIds[0] ?? null;
+    const config = ownerUserId ? await getWhatsAppConfigPublic(ownerUserId) : emptyWhatsAppConfig();
+    const apiConnected = ownerUserId ? isApiIntegrationReady(config) : false;
+    return {
+      canUseWeb: true,
+      canUseApi: apiConnected,
+      apiConnected,
+      receptionistApiEnabled: apiConnected,
+      config,
+      integrationOwnerUserId: ownerUserId,
+    };
+  }
+
+  const config = await getWhatsAppConfigPublic(user.userId);
+  const row = await getIntegrationRowForOwner(user.userId);
+  const apiConnected = isApiIntegrationReady(config);
+  return {
+    canUseWeb: true,
+    canUseApi: canConfigureWhatsApp(user.role),
+    apiConnected,
+    receptionistApiEnabled: row?.receptionistApiEnabled === true,
+    config,
+    integrationOwnerUserId: apiConnected ? user.userId : null,
+  };
+}
+
+export async function assertReceptionistAppointmentAccess(
+  receptionistUserId: string,
+  appointmentCreatedBy: string
+): Promise<boolean> {
+  const assigned = await getAssignedPodiatristUserIds(receptionistUserId);
+  return assigned.includes(appointmentCreatedBy);
 }

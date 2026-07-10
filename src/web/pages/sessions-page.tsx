@@ -5,10 +5,12 @@ import { useLanguage } from "../contexts/language-context";
 import { useAuth } from "../contexts/auth-context";
 import { usePermissions } from "../hooks/use-permissions";
 import { useClinicalListPage } from "../hooks/use-clinical-list-page";
-import { usePatientPicker, fetchPatientById } from "../hooks/use-patient-picker";
-import { invalidateClinicalListCache } from "../hooks/use-clinical-list-data";
+import { usePatientPicker, fetchPatientById, fetchPatientPickerSample, invalidatePatientDetailCache, PATIENT_SEARCH_SELECT_THRESHOLD } from "../hooks/use-patient-picker";
+import { invalidateClinicalListCache } from "../lib/clinical-list-cache";
 import { ClinicalListError, ClinicalListLoading } from "../components/clinical/clinical-list-states";
 import { AppModal, AppModalBody, AppModalFooter, AppModalHeader } from "../components/ui/app-modal";
+import { CheckoutHandoffModal } from "../components/checkout/checkout-handoff-modal";
+import { PatientSearchSelect } from "../components/patients/patient-search-select";
 import {
   formFieldClassSm,
   formFieldResizeClass,
@@ -33,9 +35,16 @@ import {
   normalizeSweatDisorders,
 } from "../types/podiatry";
 import type { Prescription } from "../types/prescription";
-import { postAuditLog } from "../lib/audit-client";
+import { getBrandCssVar } from "../lib/palette-preferences";
 import { api } from "../lib/api-client";
+import { postAuditLog } from "../lib/audit-client";
 import { compressImageForSession } from "../lib/image-compress";
+import {
+  computeAgeYears,
+  EMPTY_PRESCRIPTION_FORM,
+  formatPrescriptionAge,
+  type PrescriptionFormData,
+} from "../lib/prescription-utils";
 import {
   openPodiatryHistoryPrint,
   type ClinicPrintInfo,
@@ -53,6 +62,9 @@ import {
 } from "../components/sessions/podiatry-examination-fields";
 import {
   applySessionTemplateFields,
+  countIncludedTemplateSections,
+  normalizeTemplateFields,
+  resolveSessionFormLayout,
   sessionFormHasClinicalContent,
   type SessionTemplate,
 } from "../lib/session-templates";
@@ -63,6 +75,7 @@ import {
   getPodiatryVisibleBlocks,
   getSectionLabel,
   isSectionActive,
+  type ClinicalLayoutConfig,
   type CustomSectionsData,
 } from "../types/clinical-layout";
 
@@ -158,6 +171,11 @@ const SessionsPage = () => {
   const [sessionTemplates, setSessionTemplates] = useState<SessionTemplate[]>([]);
   const [sessionPrescriptions, setSessionPrescriptions] = useState<Prescription[]>([]);
   const [patientCache, setPatientCache] = useState<Record<string, Patient>>({});
+  const [checkoutPrompt, setCheckoutPrompt] = useState<{
+    patientId: string;
+    patientName: string;
+    sessionId: string;
+  } | null>(null);
 
   useEffect(() => {
     const timer = setTimeout(() => setDebouncedQ(searchQuery.trim()), 350);
@@ -187,7 +205,37 @@ const SessionsPage = () => {
     filters: sessionFilters,
   });
 
-  const { patients: pickerPatients, reload: reloadPickerPatients } = usePatientPicker(showForm);
+  const [patientPickerUseFullList, setPatientPickerUseFullList] = useState(false);
+  const [patientPickerMode, setPatientPickerMode] = useState<"loading" | "select" | "search">("loading");
+  const [compactPatients, setCompactPatients] = useState<Patient[]>([]);
+  const [formSelectedPatient, setFormSelectedPatient] = useState<Patient | null>(null);
+  const { patients: pickerPatients, reload: reloadPickerPatients } = usePatientPicker(
+    false
+  );
+  useEffect(() => {
+    if (!showForm) {
+      setPatientPickerMode("loading");
+      setCompactPatients([]);
+      setPatientPickerUseFullList(false);
+      setFormSelectedPatient(null);
+      return;
+    }
+    let cancelled = false;
+    void fetchPatientPickerSample().then(({ patients, hasMore }) => {
+      if (cancelled) return;
+      const useSearch =
+        hasMore || patients.length > PATIENT_SEARCH_SELECT_THRESHOLD;
+      setCompactPatients(patients);
+      setPatientPickerUseFullList(false);
+      setPatientPickerMode(useSearch ? "search" : "select");
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [showForm]);
+
+  const sessionFormPatients =
+    patientPickerMode === "select" ? compactPatients : compactPatients;
 
   const loadSessionTemplates = useCallback(async () => {
     try {
@@ -195,7 +243,12 @@ const SessionsPage = () => {
         "/clinical/templates"
       );
       if (response.success && response.data?.templates) {
-        setSessionTemplates(response.data.templates);
+        setSessionTemplates(
+          response.data.templates.map((t) => ({
+            ...t,
+            fields: normalizeTemplateFields(t.fields),
+          }))
+        );
       } else {
         setSessionTemplates([]);
       }
@@ -215,32 +268,16 @@ const SessionsPage = () => {
     }
   }, []);
 
-  const openSessionDetail = useCallback(
-    async (session: ClinicalSession) => {
-      const res = await api.get<{ success: boolean; session: ClinicalSession }>(
-        `/sessions/${session.id}`
-      );
-      const full =
-        res.success && res.data?.session ? res.data.session : session;
-      setSelectedSession(full);
-      void loadSessionPrescriptions(full);
-    },
-    [loadSessionPrescriptions]
-  );
-
-  useEffect(() => {
-    if (showForm) {
-      loadSessionTemplates();
-    }
-  }, [showForm, loadSessionTemplates]);
-
   const getPatientById = useCallback(
     (id: string): Patient | undefined => {
+      if (formSelectedPatient?.id === id) return formSelectedPatient;
+      const fromFormList = sessionFormPatients.find((p) => p.id === id);
+      if (fromFormList) return fromFormList;
       const fromPicker = pickerPatients.find((p) => p.id === id);
       if (fromPicker) return fromPicker;
       return patientCache[id];
     },
-    [pickerPatients, patientCache]
+    [formSelectedPatient, sessionFormPatients, pickerPatients, patientCache]
   );
 
   const ensurePatientLoaded = useCallback(
@@ -251,6 +288,36 @@ const SessionsPage = () => {
     },
     [getPatientById]
   );
+
+  const getPatientName = useCallback(
+    (patientId: string) => {
+      const fromSession = sessions.find((s) => s.patientId === patientId)?.patientName;
+      if (fromSession) return fromSession;
+      const patient = getPatientById(patientId);
+      return patient ? `${patient.firstName} ${patient.lastName}` : "Paciente desconocido";
+    },
+    [sessions, getPatientById]
+  );
+
+  const openSessionDetail = useCallback(
+    async (session: ClinicalSession) => {
+      const res = await api.get<{ success: boolean; session: ClinicalSession }>(
+        `/sessions/${session.id}`
+      );
+      const full =
+        res.success && res.data?.session ? res.data.session : session;
+      setSelectedSession(full);
+      void loadSessionPrescriptions(full);
+      void ensurePatientLoaded(full.patientId);
+    },
+    [loadSessionPrescriptions, ensurePatientLoaded]
+  );
+
+  useEffect(() => {
+    if (showForm) {
+      loadSessionTemplates();
+    }
+  }, [showForm, loadSessionTemplates]);
 
   const isPatientCompleteForSessions = (p: Patient | undefined) => {
     if (!p) return false;
@@ -267,45 +334,102 @@ const SessionsPage = () => {
     filterPatientId ? { ...emptyForm, patientId: filterPatientId } : emptyForm
   );
   const [selectedTemplateId, setSelectedTemplateId] = useState("");
+  const [appliedTemplateLayout, setAppliedTemplateLayout] = useState<ClinicalLayoutConfig | null>(null);
   const [selectedSession, setSelectedSession] = useState<ClinicalSession | null>(null);
   const [graceError, setGraceError] = useState<string | null>(null);
+
+  const sessionFormLayout = useMemo(
+    () =>
+      appliedTemplateLayout
+        ? resolveSessionFormLayout(clinicalLayout, appliedTemplateLayout)
+        : clinicalLayout,
+    [clinicalLayout, appliedTemplateLayout]
+  );
+  const sessionFormPodiatryBlocks = useMemo(
+    () => getPodiatryVisibleBlocks(sessionFormLayout, "session"),
+    [sessionFormLayout]
+  );
+  const showSessionFormSection = (id: Parameters<typeof isSectionActive>[1]) =>
+    isSectionActive(sessionFormLayout, id, "session");
 
   const closeSessionForm = () => {
     setShowForm(false);
     setEditingSession(null);
     setFormData(emptyForm);
     setSelectedTemplateId("");
+    setAppliedTemplateLayout(null);
+    setFormSelectedPatient(null);
   };
 
-  const applySelectedTemplate = () => {
-    if (!selectedTemplateId) return;
-    const template = sessionTemplates.find((t) => t.id === selectedTemplateId);
-    if (!template) return;
+  const applyTemplateById = useCallback(
+    (templateId: string): boolean => {
+      if (!templateId) {
+        setAppliedTemplateLayout(null);
+        return true;
+      }
 
-    const currentClinical = {
-      anamnesis: formData.anamnesis,
-      physicalExamination: formData.physicalExamination,
-      diagnosis: formData.diagnosis,
-      treatmentPlan: formData.treatmentPlan,
-    };
+      const template = sessionTemplates.find((t) => t.id === templateId);
+      if (!template) return false;
 
-    if (
-      sessionFormHasClinicalContent(currentClinical) &&
-      !window.confirm(
-        "¿Cargar esta plantilla? Se reemplazarán anamnesis, exploración, diagnóstico y plan de tratamiento."
-      )
-    ) {
+      const currentClinical = {
+        anamnesis: formData.anamnesis,
+        physicalExamination: formData.physicalExamination,
+        diagnosis: formData.diagnosis,
+        treatmentPlan: formData.treatmentPlan,
+        clinicalNotes: formData.clinicalNotes,
+        appointmentReason: formData.appointmentReason,
+        podiatryExam: formData.podiatryExam,
+        customSections: formData.customSections,
+      };
+
+      if (
+        sessionFormHasClinicalContent(currentClinical) &&
+        !window.confirm(
+          "¿Aplicar esta plantilla? Se reemplazarán los campos clínicos actuales (texto, exploración podológica y secciones personalizadas)."
+        )
+      ) {
+        return false;
+      }
+
+      const normalizedTemplate = normalizeTemplateFields(template.fields);
+      const applied = applySessionTemplateFields(normalizedTemplate, currentClinical);
+      if (normalizedTemplate.sectionLayout?.sections?.length) {
+        setAppliedTemplateLayout(normalizedTemplate.sectionLayout);
+      } else {
+        setAppliedTemplateLayout(null);
+      }
+      setFormData((prev) => ({
+        ...prev,
+        anamnesis: applied.anamnesis ?? prev.anamnesis,
+        physicalExamination: applied.physicalExamination ?? prev.physicalExamination,
+        diagnosis: applied.diagnosis ?? prev.diagnosis,
+        treatmentPlan: applied.treatmentPlan ?? prev.treatmentPlan,
+        clinicalNotes: applied.clinicalNotes ?? prev.clinicalNotes,
+        appointmentReason: (applied.appointmentReason || prev.appointmentReason) as AppointmentReason | "",
+        podiatryExam: applied.podiatryExam ?? prev.podiatryExam,
+        customSections: applied.customSections ?? prev.customSections,
+      }));
+      return true;
+    },
+    [sessionTemplates, formData]
+  );
+
+  const handleTemplateSelect = (templateId: string) => {
+    if (!templateId) {
+      setSelectedTemplateId("");
+      setAppliedTemplateLayout(null);
       return;
     }
-
-    const applied = applySessionTemplateFields(template.fields, currentClinical);
-    setFormData((prev) => ({ ...prev, ...applied }));
+    if (applyTemplateById(templateId)) {
+      setSelectedTemplateId(templateId);
+    }
   };
 
   const handleRescheduleNextAppointment = (session: ClinicalSession) => {
     // Open the session edit form so user can edit the next appointment date
     setEditingSession(session);
     setSelectedTemplateId("");
+    setAppliedTemplateLayout(null);
     setFormData({
       patientId: session.patientId,
       sessionDate: session.sessionDate,
@@ -371,6 +495,7 @@ const SessionsPage = () => {
       const printWindow = window.open("", "_blank");
       if (!printWindow) return;
       
+      const brandInk = getBrandCssVar("--brand-ink", "#1a1a1a");
       printWindow.document.write(`
         <!DOCTYPE html>
         <html>
@@ -390,7 +515,7 @@ const SessionsPage = () => {
             .podiatrist-name {
               font-size: 72px;
               font-weight: bold;
-              color: #1a1a1a;
+              color: ${brandInk};
               text-align: center;
               letter-spacing: 2px;
             }
@@ -432,14 +557,76 @@ const SessionsPage = () => {
   
   // Prescription state
   const [showPrescriptionForm, setShowPrescriptionForm] = useState(false);
-  const [prescriptionData, setPrescriptionData] = useState({
-    prescriptionText: "",
-    medications: "",
-    nextVisitDate: "",
-    notes: "",
-  });
+  const [prescriptionSaving, setPrescriptionSaving] = useState(false);
+  const [prescriptionFormError, setPrescriptionFormError] = useState<string | null>(null);
+  const [prescriptionFormContext, setPrescriptionFormContext] = useState<{
+    patientName: string;
+    patientDni: string;
+    patientAgeYears: number | null;
+    podiatristName: string;
+  } | null>(null);
+  const [prescriptionData, setPrescriptionData] = useState<PrescriptionFormData>(EMPTY_PRESCRIPTION_FORM);
 
-  const filteredSessions = sessions;
+  useEffect(() => {
+    if (!showPrescriptionForm || !selectedSession || !user) return;
+    setPrescriptionFormError(null);
+
+    void (async () => {
+      await ensurePatientLoaded(selectedSession.patientId);
+      let patient = getPatientById(selectedSession.patientId);
+      if (!patient) {
+        const fetched = await fetchPatientById(selectedSession.patientId);
+        if (fetched) {
+          setPatientCache((prev) => ({ ...prev, [fetched.id]: fetched }));
+          patient = fetched;
+        }
+      }
+
+      let cedula = "";
+      const licenseRes = await api.get<{ success?: boolean; license?: string }>(
+        `/professionals/license/${user.id}`
+      );
+      if (licenseRes.success && licenseRes.data?.license) {
+        cedula = licenseRes.data.license;
+      }
+
+      const infoRes = await api.get<{
+        success?: boolean;
+        info?: { professionalLicense?: string };
+      }>(`/professionals/info/${user.id}`);
+      if (infoRes.success && infoRes.data?.info?.professionalLicense) {
+        cedula = infoRes.data.info.professionalLicense;
+      }
+
+      if (user.clinicId) {
+        const credRes = await api.get<{
+          success?: boolean;
+          credentials?: { cedula?: string };
+        }>(`/professionals/credentials/${user.id}`);
+        if (credRes.success && credRes.data?.credentials?.cedula) {
+          cedula = credRes.data.credentials.cedula;
+        }
+      }
+
+      const patientName = patient
+        ? `${patient.firstName} ${patient.lastName}`.trim()
+        : getPatientName(selectedSession.patientId);
+      const patientDni = patient?.idNumber?.trim() || patient?.curp?.trim() || "—";
+      const patientAgeYears = computeAgeYears(patient?.dateOfBirth);
+
+      setPrescriptionFormContext({
+        patientName,
+        patientDni,
+        patientAgeYears,
+        podiatristName: user.name || "",
+      });
+
+      setPrescriptionData((prev) => ({
+        ...prev,
+        podiatristCedula: prev.podiatristCedula.trim() || cedula,
+      }));
+    })();
+  }, [showPrescriptionForm, selectedSession, user, ensurePatientLoaded, getPatientById, getPatientName]);
 
   const [imageUploadError, setImageUploadError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -508,7 +695,7 @@ const SessionsPage = () => {
     }
 
     const finalizedExam = finalizePodiatryExamination(formData.podiatryExam);
-    const finalizedCustomSections = finalizeCustomSections(formData.customSections, clinicalLayout);
+    const finalizedCustomSections = finalizeCustomSections(formData.customSections, sessionFormLayout);
 
     const sessionData = {
       patientId: formData.patientId,
@@ -530,6 +717,9 @@ const SessionsPage = () => {
     };
 
     try {
+      let completedSessionId: string | null = null;
+      let auditPayload: Parameters<typeof postAuditLog>[0] | null = null;
+
       if (editingSession) {
         const response = await api.put<{ success: boolean; session: ClinicalSession }>(
           `/sessions/${editingSession.id}`,
@@ -540,12 +730,12 @@ const SessionsPage = () => {
         );
 
         if (response.success && response.data?.success) {
-          const updated = response.data.session;
+          completedSessionId = editingSession.id;
           invalidateClinicalListCache();
           void reloadClinicalLists();
 
           const patient = getPatientById(editingSession.patientId);
-          void postAuditLog({
+          auditPayload = {
             action: asDraft ? "UPDATE_DRAFT" : "COMPLETE",
             resourceType: "session",
             resourceId: editingSession.id,
@@ -555,7 +745,7 @@ const SessionsPage = () => {
               patientName: patient ? `${patient.firstName} ${patient.lastName}` : "",
               status: asDraft ? "draft" : "completed",
             },
-          });
+          };
         } else {
           alert(sessionSaveErrorMessage(response));
           return;
@@ -568,11 +758,12 @@ const SessionsPage = () => {
 
         if (response.success && response.data?.success) {
           const newSession = response.data.session;
+          completedSessionId = newSession.id;
           invalidateClinicalListCache();
           void reloadClinicalLists();
 
           const patient = getPatientById(newSession.patientId);
-          void postAuditLog({
+          auditPayload = {
             action: "CREATE",
             resourceType: "session",
             resourceId: newSession.id,
@@ -582,7 +773,7 @@ const SessionsPage = () => {
               patientName: patient ? `${patient.firstName} ${patient.lastName}` : "",
               status: asDraft ? "draft" : "completed",
             },
-          });
+          };
         } else {
           const errData = response.data as any;
           const errorCode = response.error || errData?.error;
@@ -600,7 +791,23 @@ const SessionsPage = () => {
         }
       }
 
+      const savedPatientId = formData.patientId;
       closeSessionForm();
+
+      if (!asDraft && isPodiatrist && completedSessionId && savedPatientId) {
+        const patient = getPatientById(savedPatientId);
+        setCheckoutPrompt({
+          patientId: savedPatientId,
+          patientName: patient
+            ? `${patient.firstName} ${patient.lastName}`.trim()
+            : getPatientName(savedPatientId),
+          sessionId: completedSessionId,
+        });
+      }
+
+      if (auditPayload) {
+        void postAuditLog(auditPayload);
+      }
     } catch (error) {
       console.error("Error guardando sesión:", error);
       alert("Ha ocurrido un error al guardar la sesión.");
@@ -617,6 +824,7 @@ const SessionsPage = () => {
 
     setEditingSession(s);
     setSelectedTemplateId("");
+    setAppliedTemplateLayout(null);
     setFormData({
       patientId: s.patientId,
       sessionDate: s.sessionDate,
@@ -632,6 +840,7 @@ const SessionsPage = () => {
       podiatryExam: sessionToPodiatryExam(s),
       customSections: s.customSections ?? {},
     });
+    void fetchPatientById(s.patientId).then((p) => setFormSelectedPatient(p));
     setShowForm(true);
   };
 
@@ -795,48 +1004,95 @@ const SessionsPage = () => {
     });
   };
 
-  const getPatientName = (patientId: string) => {
-    const fromSession = sessions.find((s) => s.patientId === patientId)?.patientName;
-    if (fromSession) return fromSession;
-    const patient = getPatientById(patientId);
-    return patient ? `${patient.firstName} ${patient.lastName}` : "Paciente desconocido";
-  };
-
   const handleCreatePrescription = async () => {
     if (!selectedSession || !user) return;
     if (!canCreatePrescriptions(user.role)) return;
 
-    const patient = getPatientById(selectedSession.patientId);
-    if (!patient) return;
-
-    let license: string | null = null;
-    const profRes = await api.get<{ license?: string; professionalLicense?: string }>(
-      `/professionals/${user.id}`
-    );
-    if (profRes.success && profRes.data) {
-      license = profRes.data.license || profRes.data.professionalLicense || null;
+    const prescriptionText =
+      prescriptionData.prescriptionText.trim() || prescriptionData.medications.trim();
+    if (!prescriptionText) {
+      setPrescriptionFormError(
+        "Escribe las indicaciones en «Prescripción / Indicaciones» o en «Medicamentos / Tratamientos»."
+      );
+      return;
     }
 
-    const res = await api.post<{ success?: boolean; prescription?: Prescription }>("/prescriptions", {
-      sessionId: selectedSession.id,
-      patientName: `${patient.firstName} ${patient.lastName}`,
-      patientDob: patient.dateOfBirth,
-      patientDni: patient.idNumber,
-      podiatristName: user.name,
-      podiatristLicense: license,
-      prescriptionText: prescriptionData.prescriptionText,
-      medications: prescriptionData.medications,
-      nextVisitDate: prescriptionData.nextVisitDate || null,
-      notes: prescriptionData.notes,
-    });
+    const medications = prescriptionData.prescriptionText.trim()
+      ? prescriptionData.medications.trim()
+      : "";
+
+    setPrescriptionFormError(null);
+    setPrescriptionSaving(true);
+
+    await ensurePatientLoaded(selectedSession.patientId);
+    let patient = getPatientById(selectedSession.patientId);
+    if (!patient) {
+      const fetched = await fetchPatientById(selectedSession.patientId);
+      if (fetched) {
+        setPatientCache((prev) => ({ ...prev, [fetched.id]: fetched }));
+        patient = fetched;
+      }
+    }
+    if (!patient) {
+      setPrescriptionSaving(false);
+      setPrescriptionFormError(
+        "No se pudieron cargar los datos del paciente. Cierra el formulario, abre la sesión de nuevo e inténtalo otra vez."
+      );
+      return;
+    }
+
+    let license: string | null = null;
+    const licenseRes = await api.get<{ success?: boolean; license?: string }>(
+      `/professionals/license/${user.id}`
+    );
+    if (licenseRes.success && licenseRes.data?.license) {
+      license = licenseRes.data.license;
+    }
+    const infoRes = await api.get<{
+      success?: boolean;
+      info?: { professionalLicense?: string };
+    }>(`/professionals/info/${user.id}`);
+    if (infoRes.success && infoRes.data?.info?.professionalLicense) {
+      license = infoRes.data.info.professionalLicense;
+    }
+
+    const patientAgeYears =
+      computeAgeYears(patient.dateOfBirth) ?? prescriptionFormContext?.patientAgeYears ?? null;
+    const patientWeightKg = prescriptionData.patientWeightKg.trim() || null;
+    const patientHeightCm = prescriptionData.patientHeightCm.trim() || null;
+    const podiatristCedula = prescriptionData.podiatristCedula.trim() || license;
+
+    const res = await api.post<{ success?: boolean; prescription?: Prescription; message?: string }>(
+      "/prescriptions",
+      {
+        sessionId: selectedSession.id,
+        patientName: `${patient.firstName} ${patient.lastName}`,
+        patientDob: patient.dateOfBirth,
+        patientDni: patient.idNumber,
+        patientAgeYears,
+        patientWeightKg,
+        patientHeightCm,
+        podiatristName: user.name,
+        podiatristLicense: license,
+        podiatristCedula,
+        prescriptionText,
+        medications,
+        nextVisitDate: prescriptionData.nextVisitDate || null,
+        notes: prescriptionData.notes,
+      }
+    );
+
+    setPrescriptionSaving(false);
 
     if (!res.success || !res.data?.prescription) {
-      alert(res.error || "No se pudo crear la receta");
+      setPrescriptionFormError(res.message || res.error || "No se pudo crear la receta.");
       return;
     }
 
     setSessionPrescriptions((prev) => [...prev, res.data!.prescription!]);
-    setPrescriptionData({ prescriptionText: "", medications: "", nextVisitDate: "", notes: "" });
+    setPrescriptionData(EMPTY_PRESCRIPTION_FORM);
+    setPrescriptionFormContext(null);
+    setPrescriptionFormError(null);
     setShowPrescriptionForm(false);
 
     void postAuditLog({
@@ -876,13 +1132,13 @@ const SessionsPage = () => {
     }
     let profInfo: ProfRow | null = null;
     if (user?.id && !clinic) {
-      const pr = await api.get<{ success?: boolean; professional?: ProfRow }>(`/professionals/${user.id}`);
-      if (pr.success && pr.data?.professional) profInfo = pr.data.professional;
+      const pr = await api.get<{ success?: boolean; info?: ProfRow }>(`/professionals/info/${user.id}`);
+      if (pr.success && pr.data?.info) profInfo = pr.data.info;
     }
     let credentials: { cedula?: string; registro?: string } | null = null;
     if (user?.id && user?.clinicId) {
       const cred = await api.get<{ success?: boolean; credentials?: { cedula?: string; registro?: string } }>(
-        `/professionals/${user.id}/credentials`
+        `/professionals/credentials/${user.id}`
       );
       if (cred.success && cred.data?.credentials) credentials = cred.data.credentials;
     }
@@ -898,11 +1154,29 @@ const SessionsPage = () => {
     
     // Get individual professional credentials
     // For clinic podiatrists: use cedula from credentials, for independent: use from profInfo
-    const podiatristCedula = credentials?.cedula || profInfo?.professionalLicense || prescription.podiatristLicense || "";
+    const podiatristCedula =
+      prescription.podiatristCedula ||
+      credentials?.cedula ||
+      profInfo?.professionalLicense ||
+      prescription.podiatristLicense ||
+      "";
     const podiatristRegistro = credentials?.registro || "";
+    const patientAgeDisplay = formatPrescriptionAge(
+      prescription.patientAgeYears ?? computeAgeYears(prescription.patientDob)
+    );
+    const patientWeightDisplay = prescription.patientWeightKg?.trim()
+      ? `${prescription.patientWeightKg.trim()} kg`
+      : "";
+    const patientHeightDisplay = prescription.patientHeightCm?.trim()
+      ? `${prescription.patientHeightCm.trim()} cm`
+      : "";
     
     const printWindow = window.open("", "_blank");
     if (!printWindow) return;
+
+    const brandInk = getBrandCssVar("--brand-ink", "#1a1a1a");
+    const brandCanvas = getBrandCssVar("--brand-canvas", "#f9fafb");
+    const brandMuted = getBrandCssVar("--brand-muted", "#6b7280");
     
     printWindow.document.write(`
       <!DOCTYPE html>
@@ -910,16 +1184,16 @@ const SessionsPage = () => {
       <head>
         <title>Receta - ${prescription.patientName}</title>
         <style>
-          body { font-family: Arial, sans-serif; padding: 40px; max-width: 800px; margin: 0 auto; color: #1a1a1a; }
-          .header { border-bottom: 2px solid #1a1a1a; padding-bottom: 16px; margin-bottom: 20px; }
+          body { font-family: Arial, sans-serif; padding: 40px; max-width: 800px; margin: 0 auto; color: ${brandInk}; }
+          .header { border-bottom: 2px solid ${brandInk}; padding-bottom: 16px; margin-bottom: 20px; }
           .header-content { display: flex; align-items: flex-start; gap: 20px; }
           .header-logo { max-height: 60px; max-width: 160px; object-fit: contain; }
           .header-text h1 { margin: 0 0 4px; font-size: 22px; }
           .clinic-contact { font-size: 12px; color: #666; margin-top: 4px; line-height: 1.4; }
           .license { font-size: 13px; color: #333; font-weight: 500; margin: 4px 0; }
-          .folio-bar { background: #f5f5f5; padding: 10px 16px; margin: 12px 0 20px; border-radius: 4px; text-align: center; }
-          .folio-bar span.label { font-size: 12px; color: #666; margin-right: 8px; }
-          .folio-bar span.value { font-size: 16px; font-weight: bold; color: #1a1a1a; letter-spacing: 1px; }
+          .folio-bar { background: ${brandCanvas}; padding: 10px 16px; margin: 12px 0 20px; border-radius: 4px; text-align: center; }
+          .folio-bar span.label { font-size: 12px; color: ${brandMuted}; margin-right: 8px; }
+          .folio-bar span.value { font-size: 16px; font-weight: bold; color: ${brandInk}; letter-spacing: 1px; }
           .patient-section { background: #f9f9f9; padding: 16px; border-radius: 8px; margin-bottom: 20px; }
           .patient-section h3 { margin: 0 0 12px; font-size: 14px; color: #666; }
           .patient-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 14px; }
@@ -964,8 +1238,11 @@ const SessionsPage = () => {
           <h3>DATOS DEL PACIENTE</h3>
           <div class="patient-grid">
             <p><span class="label">Nombre:</span> ${prescription.patientName}</p>
-            <p><span class="label">DNI/NIE:</span> ${prescription.patientDni}</p>
-            <p><span class="label">Fecha de nacimiento:</span> ${new Date(prescription.patientDob).toLocaleDateString("es-ES")}</p>
+            <p><span class="label">DNI/NIE:</span> ${prescription.patientDni || "—"}</p>
+            <p><span class="label">Edad:</span> ${patientAgeDisplay}</p>
+            ${patientWeightDisplay ? `<p><span class="label">Peso:</span> ${patientWeightDisplay}</p>` : ""}
+            ${patientHeightDisplay ? `<p><span class="label">Estatura:</span> ${patientHeightDisplay}</p>` : ""}
+            <p><span class="label">Fecha de nacimiento:</span> ${prescription.patientDob ? new Date(prescription.patientDob).toLocaleDateString("es-ES") : "—"}</p>
             <p><span class="label">Fecha de la receta:</span> ${new Date(prescription.prescriptionDate).toLocaleDateString("es-ES")}</p>
           </div>
         </div>
@@ -1040,7 +1317,7 @@ const SessionsPage = () => {
             <AppModalHeader>
               <div className="flex items-start justify-between gap-3">
               <div className="min-w-0 flex-1">
-                <h3 className="text-lg sm:text-xl font-semibold text-[#1a1a1a] dark:text-white truncate">
+                <h3 className="text-lg sm:text-xl font-semibold text-brand-ink truncate">
                   {t.sessions.sessionDetails}
                 </h3>
                 <p className="text-sm text-gray-500 truncate">{getPatientName(selectedSession.patientId)}</p>
@@ -1056,7 +1333,7 @@ const SessionsPage = () => {
                 <button
                   type="button"
                   onClick={() => setSelectedSession(null)}
-                  className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
+                  className="p-2 hover:bg-brand-canvas rounded-lg transition-colors"
                   aria-label="Cerrar"
                 >
                   <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -1075,7 +1352,7 @@ const SessionsPage = () => {
               
               {showClinicalSection("anamnesis") && selectedSession.anamnesis && (
                 <div>
-                  <h4 className="font-medium text-[#1a1a1a] dark:text-white mb-2">
+                  <h4 className="font-medium text-brand-ink mb-2">
                     {getSectionLabel(clinicalLayout, "anamnesis")}
                   </h4>
                   <p className="text-gray-600 whitespace-pre-wrap">{selectedSession.anamnesis}</p>
@@ -1084,7 +1361,7 @@ const SessionsPage = () => {
 
               {Object.values(podiatryVisibleBlocks).some(Boolean) && (
               <div>
-                <h4 className="font-medium text-[#1a1a1a] dark:text-white mb-3">Exploración podológica</h4>
+                <h4 className="font-medium text-brand-ink mb-3">Exploración podológica</h4>
                 <PodiatryExaminationFields
                   value={sessionToPodiatryExam(selectedSession)}
                   onChange={() => {}}
@@ -1096,7 +1373,7 @@ const SessionsPage = () => {
 
               {showClinicalSection("physical_examination") && selectedSession.physicalExamination && (
                 <div>
-                  <h4 className="font-medium text-[#1a1a1a] dark:text-white mb-2">
+                  <h4 className="font-medium text-brand-ink mb-2">
                     {getSectionLabel(clinicalLayout, "physical_examination")}
                   </h4>
                   <p className="text-gray-600 whitespace-pre-wrap">{selectedSession.physicalExamination}</p>
@@ -1105,7 +1382,7 @@ const SessionsPage = () => {
               
               {showClinicalSection("diagnosis") && selectedSession.diagnosis && (
                 <div>
-                  <h4 className="font-medium text-[#1a1a1a] dark:text-white mb-2">
+                  <h4 className="font-medium text-brand-ink mb-2">
                     {getSectionLabel(clinicalLayout, "diagnosis")}
                   </h4>
                   <p className="text-gray-600 whitespace-pre-wrap">{selectedSession.diagnosis}</p>
@@ -1114,7 +1391,7 @@ const SessionsPage = () => {
               
               {showClinicalSection("treatment_plan") && selectedSession.treatmentPlan && (
                 <div>
-                  <h4 className="font-medium text-[#1a1a1a] dark:text-white mb-2">
+                  <h4 className="font-medium text-brand-ink mb-2">
                     {getSectionLabel(clinicalLayout, "treatment_plan")}
                   </h4>
                   <p className="text-gray-600 whitespace-pre-wrap">{selectedSession.treatmentPlan}</p>
@@ -1123,7 +1400,7 @@ const SessionsPage = () => {
               
               {showClinicalSection("clinical_notes") && selectedSession.clinicalNotes && (
                 <div>
-                  <h4 className="font-medium text-[#1a1a1a] dark:text-white mb-2">
+                  <h4 className="font-medium text-brand-ink mb-2">
                     {getSectionLabel(clinicalLayout, "clinical_notes")}
                   </h4>
                   <p className="text-gray-600 whitespace-pre-wrap">{selectedSession.clinicalNotes}</p>
@@ -1139,7 +1416,7 @@ const SessionsPage = () => {
               
               {showClinicalSection("session_images") && (
               <div>
-                <h4 className="font-medium text-[#1a1a1a] dark:text-white mb-2">{t.sessions.images}</h4>
+                <h4 className="font-medium text-brand-ink mb-2">{t.sessions.images}</h4>
                 {(selectedSession.images ?? []).length === 0 ? (
                   <p className="text-sm text-gray-400">
                     No hay fotos en esta sesión. Súbelas al crear o editar el borrador.
@@ -1174,10 +1451,15 @@ const SessionsPage = () => {
               {canCreatePrescriptions(user?.role) && (
                 <div className="pt-4 border-t border-gray-100">
                   <div className="flex items-center justify-between mb-3">
-                    <h4 className="font-medium text-[#1a1a1a] dark:text-white">Recetas / Prescripciones</h4>
+                    <h4 className="font-medium text-brand-ink">Recetas / Prescripciones</h4>
                     <button
-                      onClick={() => setShowPrescriptionForm(true)}
-                      className="flex items-center gap-1 text-sm text-[#1a1a1a] dark:text-gray-100 hover:underline font-medium"
+                      onClick={() => {
+                        setPrescriptionData(EMPTY_PRESCRIPTION_FORM);
+                        setPrescriptionFormContext(null);
+                        setPrescriptionFormError(null);
+                        setShowPrescriptionForm(true);
+                      }}
+                      className="flex items-center gap-1 text-sm text-brand-ink hover:underline font-medium"
                     >
                       <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -1191,7 +1473,7 @@ const SessionsPage = () => {
                       {sessionPrescriptions.map((rx) => (
                         <div key={rx.id} className="flex items-center justify-between bg-gray-50 rounded-lg p-3">
                           <div className="flex-1 min-w-0 pr-3">
-                            <p className="font-medium text-sm text-[#1a1a1a] dark:text-gray-100">Folio: {rx.folio}</p>
+                            <p className="font-medium text-sm text-brand-ink">Folio: {rx.folio}</p>
                             <p className={`text-xs ${formHintClass}`}>
                               {new Date(rx.prescriptionDate).toLocaleDateString("es-ES")}
                             </p>
@@ -1203,7 +1485,7 @@ const SessionsPage = () => {
                           </div>
                           <button
                             onClick={() => handlePrintPrescription(rx)}
-                            className="px-3 py-1.5 bg-[#1a1a1a] text-white text-xs rounded-lg hover:bg-[#2a2a2a] transition-colors shrink-0"
+                            className="px-3 py-1.5 bg-brand-ink text-brand-ink-fg text-xs rounded-lg hover:bg-brand-ink-hover transition-colors shrink-0"
                           >
                             Imprimir
                           </button>
@@ -1227,7 +1509,7 @@ const SessionsPage = () => {
                       setSelectedSession(null);
                       handleEdit(selectedSession);
                     }}
-                    className="flex-1 py-2.5 bg-gray-100 dark:bg-gray-800 text-[#1a1a1a] dark:text-gray-100 rounded-lg hover:bg-gray-200 transition-colors font-medium text-sm"
+                    className="flex-1 py-2.5 bg-brand-canvas text-brand-ink rounded-lg hover:bg-gray-200 transition-colors font-medium text-sm"
                   >
                     {t.common.edit}
                   </button>
@@ -1236,7 +1518,7 @@ const SessionsPage = () => {
                   <button
                     type="button"
                     onClick={() => handleExport(selectedSession)}
-                    className="flex-1 py-2.5 bg-gray-100 dark:bg-gray-800 text-[#1a1a1a] dark:text-gray-100 rounded-lg hover:bg-gray-200 transition-colors font-medium text-sm"
+                    className="flex-1 py-2.5 bg-brand-canvas text-brand-ink rounded-lg hover:bg-gray-200 transition-colors font-medium text-sm"
                   >
                     {t.common.export} JSON
                   </button>
@@ -1244,7 +1526,7 @@ const SessionsPage = () => {
                 <button
                   type="button"
                   onClick={() => handlePrint(selectedSession)}
-                  className="flex-1 py-2.5 bg-[#1a1a1a] text-white rounded-lg hover:bg-[#2a2a2a] transition-colors font-medium text-sm"
+                  className="flex-1 py-2.5 bg-brand-ink text-brand-ink-fg rounded-lg hover:bg-brand-ink-hover transition-colors font-medium text-sm"
                 >
                   {t.common.print}
                 </button>
@@ -1259,7 +1541,9 @@ const SessionsPage = () => {
           open
           onClose={() => {
             setShowPrescriptionForm(false);
-            setPrescriptionData({ prescriptionText: "", medications: "", nextVisitDate: "", notes: "" });
+            setPrescriptionFormError(null);
+            setPrescriptionFormContext(null);
+            setPrescriptionData(EMPTY_PRESCRIPTION_FORM);
           }}
           maxWidth="xl"
           zIndex={60}
@@ -1267,7 +1551,7 @@ const SessionsPage = () => {
             <AppModalHeader>
               <div className="flex items-center justify-between gap-3">
                 <div className="min-w-0">
-                  <h3 className="text-lg font-semibold text-[#1a1a1a] dark:text-white">Nueva Receta</h3>
+                  <h3 className="text-lg font-semibold text-brand-ink">Nueva Receta</h3>
                   <p className="text-sm text-gray-500 truncate mt-1">
                     Paciente: {getPatientName(selectedSession.patientId)}
                   </p>
@@ -1276,9 +1560,11 @@ const SessionsPage = () => {
                   type="button"
                   onClick={() => {
                     setShowPrescriptionForm(false);
-                    setPrescriptionData({ prescriptionText: "", medications: "", nextVisitDate: "", notes: "" });
+                    setPrescriptionFormError(null);
+                    setPrescriptionFormContext(null);
+                    setPrescriptionData(EMPTY_PRESCRIPTION_FORM);
                   }}
-                  className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors flex-shrink-0"
+                  className="p-2 hover:bg-brand-canvas rounded-lg transition-colors flex-shrink-0"
                   aria-label="Cerrar"
                 >
                   <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -1288,7 +1574,89 @@ const SessionsPage = () => {
               </div>
             </AppModalHeader>
             
-            <AppModalBody className="space-y-4">
+            <AppModalBody className="space-y-5">
+              <section className="rounded-lg border border-brand-border bg-gray-50 dark:bg-gray-900/50 p-4 space-y-3">
+                <h4 className="text-sm font-semibold text-brand-ink">Datos del paciente</h4>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+                  <div>
+                    <span className="block text-xs font-medium text-gray-500 mb-0.5">Nombre</span>
+                    <p className="text-brand-ink">
+                      {prescriptionFormContext?.patientName ?? getPatientName(selectedSession.patientId)}
+                    </p>
+                  </div>
+                  <div>
+                    <span className="block text-xs font-medium text-gray-500 mb-0.5">DNI / CURP</span>
+                    <p className="text-brand-ink">
+                      {prescriptionFormContext?.patientDni ?? "—"}
+                    </p>
+                  </div>
+                  <div>
+                    <span className="block text-xs font-medium text-gray-500 mb-0.5">Edad</span>
+                    <p className="text-brand-ink">
+                      {formatPrescriptionAge(prescriptionFormContext?.patientAgeYears)}
+                    </p>
+                  </div>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-sm font-medium text-brand-muted mb-1">
+                      Peso (kg)
+                    </label>
+                    <input
+                      type="text"
+                      inputMode="decimal"
+                      value={prescriptionData.patientWeightKg}
+                      onChange={(e) =>
+                        setPrescriptionData((prev) => ({ ...prev, patientWeightKg: e.target.value }))
+                      }
+                      placeholder="Ej. 72.5"
+                      className="w-full px-4 py-2.5 bg-brand-surface text-brand-ink border border-brand-border rounded-lg focus:ring-2 focus:ring-brand-ink focus:border-transparent"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-brand-muted mb-1">
+                      Estatura (cm)
+                    </label>
+                    <input
+                      type="text"
+                      inputMode="decimal"
+                      value={prescriptionData.patientHeightCm}
+                      onChange={(e) =>
+                        setPrescriptionData((prev) => ({ ...prev, patientHeightCm: e.target.value }))
+                      }
+                      placeholder="Ej. 165"
+                      className="w-full px-4 py-2.5 bg-brand-surface text-brand-ink border border-brand-border rounded-lg focus:ring-2 focus:ring-brand-ink focus:border-transparent"
+                    />
+                  </div>
+                </div>
+              </section>
+
+              <section className="rounded-lg border border-brand-border bg-gray-50 dark:bg-gray-900/50 p-4 space-y-3">
+                <h4 className="text-sm font-semibold text-brand-ink">Datos del profesional</h4>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+                  <div>
+                    <span className="block text-xs font-medium text-gray-500 mb-0.5">Profesional</span>
+                    <p className="text-brand-ink">
+                      {prescriptionFormContext?.podiatristName || user?.name || "—"}
+                    </p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-brand-muted mb-1">
+                      Cédula profesional
+                    </label>
+                    <input
+                      type="text"
+                      value={prescriptionData.podiatristCedula}
+                      onChange={(e) =>
+                        setPrescriptionData((prev) => ({ ...prev, podiatristCedula: e.target.value }))
+                      }
+                      placeholder="Número de cédula"
+                      className="w-full px-4 py-2.5 bg-brand-surface text-brand-ink border border-brand-border rounded-lg focus:ring-2 focus:ring-brand-ink focus:border-transparent"
+                    />
+                  </div>
+                </div>
+              </section>
+
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Prescripción / Indicaciones *
@@ -1298,7 +1666,7 @@ const SessionsPage = () => {
                   onChange={(e) => setPrescriptionData(prev => ({ ...prev, prescriptionText: e.target.value }))}
                   rows={4}
                   placeholder="Describa las indicaciones y recomendaciones para el paciente..."
-                  className="w-full px-4 py-2.5 bg-white dark:bg-gray-900 text-[#1a1a1a] dark:text-white border border-gray-200 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-[#1a1a1a] dark:focus:ring-gray-500 focus:border-transparent resize-none"
+                  className="w-full px-4 py-2.5 bg-brand-surface text-brand-ink border border-brand-border rounded-lg focus:ring-2 focus:ring-brand-ink focus:border-transparent resize-none"
                 />
               </div>
               
@@ -1311,7 +1679,7 @@ const SessionsPage = () => {
                   onChange={(e) => setPrescriptionData(prev => ({ ...prev, medications: e.target.value }))}
                   rows={3}
                   placeholder="Liste los medicamentos o tratamientos recomendados..."
-                  className="w-full px-4 py-2.5 bg-white dark:bg-gray-900 text-[#1a1a1a] dark:text-white border border-gray-200 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-[#1a1a1a] dark:focus:ring-gray-500 focus:border-transparent resize-none"
+                  className="w-full px-4 py-2.5 bg-brand-surface text-brand-ink border border-brand-border rounded-lg focus:ring-2 focus:ring-brand-ink focus:border-transparent resize-none"
                 />
               </div>
               
@@ -1323,7 +1691,7 @@ const SessionsPage = () => {
                   type="date"
                   value={prescriptionData.nextVisitDate}
                   onChange={(e) => setPrescriptionData(prev => ({ ...prev, nextVisitDate: e.target.value }))}
-                  className="w-full px-4 py-2.5 bg-white dark:bg-gray-900 text-[#1a1a1a] dark:text-white border border-gray-200 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-[#1a1a1a] dark:focus:ring-gray-500 focus:border-transparent"
+                  className="w-full px-4 py-2.5 bg-brand-surface text-brand-ink border border-brand-border rounded-lg focus:ring-2 focus:ring-brand-ink focus:border-transparent"
                 />
               </div>
               
@@ -1336,9 +1704,15 @@ const SessionsPage = () => {
                   onChange={(e) => setPrescriptionData(prev => ({ ...prev, notes: e.target.value }))}
                   rows={2}
                   placeholder="Notas adicionales..."
-                  className="w-full px-4 py-2.5 bg-white dark:bg-gray-900 text-[#1a1a1a] dark:text-white border border-gray-200 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-[#1a1a1a] dark:focus:ring-gray-500 focus:border-transparent resize-none"
+                  className="w-full px-4 py-2.5 bg-brand-surface text-brand-ink border border-brand-border rounded-lg focus:ring-2 focus:ring-brand-ink focus:border-transparent resize-none"
                 />
               </div>
+
+              {prescriptionFormError && (
+                <p className="text-sm text-red-600" role="alert">
+                  {prescriptionFormError}
+                </p>
+              )}
             </AppModalBody>
             
             <AppModalFooter>
@@ -1347,21 +1721,31 @@ const SessionsPage = () => {
                 type="button"
                 onClick={() => {
                   setShowPrescriptionForm(false);
-                  setPrescriptionData({ prescriptionText: "", medications: "", nextVisitDate: "", notes: "" });
+                  setPrescriptionFormError(null);
+                  setPrescriptionFormContext(null);
+                  setPrescriptionData(EMPTY_PRESCRIPTION_FORM);
                 }}
-                className="flex-1 py-2.5 bg-gray-100 dark:bg-gray-800 text-[#1a1a1a] dark:text-gray-100 rounded-lg hover:bg-gray-200 transition-colors font-medium"
+                className="flex-1 py-2.5 bg-brand-canvas text-brand-ink rounded-lg hover:bg-gray-200 transition-colors font-medium"
               >
                 Cancelar
               </button>
               <button
                 type="button"
-                onClick={handleCreatePrescription}
-                disabled={!prescriptionData.prescriptionText.trim()}
-                className="flex-1 py-2.5 bg-[#1a1a1a] text-white rounded-lg hover:bg-[#2a2a2a] transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                onClick={() => void handleCreatePrescription()}
+                disabled={
+                  prescriptionSaving ||
+                  (!prescriptionData.prescriptionText.trim() && !prescriptionData.medications.trim())
+                }
+                className="flex-1 py-2.5 bg-brand-ink text-brand-ink-fg rounded-lg hover:bg-brand-ink-hover transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                Crear Receta
+                {prescriptionSaving ? "Creando…" : "Crear Receta"}
               </button>
               </div>
+              {!prescriptionData.prescriptionText.trim() && !prescriptionData.medications.trim() && (
+                <p className="text-xs text-gray-500 mt-2">
+                  Completa al menos «Prescripción / Indicaciones» o «Medicamentos / Tratamientos».
+                </p>
+              )}
             </AppModalFooter>
         </AppModal>
       )}
@@ -1371,13 +1755,13 @@ const SessionsPage = () => {
         <AppModal open onClose={closeSessionForm} maxWidth="3xl" panelId="session-form-panel">
             <AppModalHeader>
               <div className="flex items-center justify-between gap-3">
-              <h3 className="text-lg sm:text-xl font-semibold text-[#1a1a1a] dark:text-white min-w-0 truncate">
+              <h3 className="text-lg sm:text-xl font-semibold text-brand-ink min-w-0 truncate">
                 {editingSession ? t.sessions.editSession : t.sessions.newSession}
               </h3>
               <button
                 type="button"
                 onClick={closeSessionForm}
-                className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors flex-shrink-0"
+                className="p-2 hover:bg-brand-canvas rounded-lg transition-colors flex-shrink-0"
                 aria-label={t.common.close}
               >
                 <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -1394,24 +1778,50 @@ const SessionsPage = () => {
                   <label className={`${formLabelClass} mb-1`}>
                     {t.sessions.selectPatient} *
                   </label>
-                  <select
-                    required
-                    value={formData.patientId}
-                    onChange={(e) => setFormData({ ...formData, patientId: e.target.value })}
-                    className={formFieldClassSm}
-                    disabled={!!editingSession}
-                  >
-                    <option value="">Seleccionar...</option>
-                    {pickerPatients
-                      .filter((p) => isPatientCompleteForSessions(p) || (editingSession && p.id === editingSession.patientId))
-                      .map((p) => (
-                        <option key={p.id} value={p.id}>
-                          {p.firstName} {p.lastName}{!isPatientCompleteForSessions(p) ? " (datos incompletos)" : ""}
-                        </option>
-                      ))}
-                  </select>
+                  {patientPickerMode === "loading" ? (
+                    <p className={`text-sm ${formHintClass} py-2`}>Cargando pacientes…</p>
+                  ) : patientPickerMode === "search" ? (
+                    <PatientSearchSelect
+                      value={formData.patientId}
+                      onChange={(patientId) => setFormData({ ...formData, patientId })}
+                      onPatientChange={setFormSelectedPatient}
+                      disabled={!!editingSession}
+                      required
+                      placeholder={t.patients.searchPatients}
+                      isPatientEligible={isPatientCompleteForSessions}
+                    />
+                  ) : (
+                    <select
+                      required
+                      value={formData.patientId}
+                      onChange={(e) => {
+                        const patientId = e.target.value;
+                        setFormData({ ...formData, patientId });
+                        const p = sessionFormPatients.find((x) => x.id === patientId) ?? null;
+                        setFormSelectedPatient(p);
+                      }}
+                      className={formFieldClassSm}
+                      disabled={!!editingSession}
+                    >
+                      <option value="">Seleccionar...</option>
+                      {sessionFormPatients
+                        .filter(
+                          (p) =>
+                            isPatientCompleteForSessions(p) ||
+                            (editingSession && p.id === editingSession.patientId)
+                        )
+                        .map((p) => (
+                          <option key={p.id} value={p.id}>
+                            {p.firstName} {p.lastName}
+                            {!isPatientCompleteForSessions(p) ? " (datos incompletos)" : ""}
+                          </option>
+                        ))}
+                    </select>
+                  )}
                   {formData.patientId && (() => {
-                    const p = pickerPatients.find((x) => x.id === formData.patientId);
+                    const p =
+                      formSelectedPatient ??
+                      sessionFormPatients.find((x) => x.id === formData.patientId);
                     return p && !isPatientCompleteForSessions(p);
                   })() && (
                     <div className="mt-2 p-3 bg-amber-50 border border-amber-200 rounded-lg space-y-2">
@@ -1428,7 +1838,11 @@ const SessionsPage = () => {
                         </button>
                         <button
                           type="button"
-                          onClick={() => void reloadPickerPatients()}
+                          onClick={() => {
+                            if (formData.patientId) invalidatePatientDetailCache(formData.patientId);
+                            void reloadPickerPatients();
+                            void fetchPatientById(formData.patientId).then((p) => setFormSelectedPatient(p));
+                          }}
                           className="px-4 py-2 bg-white border border-amber-300 text-amber-800 text-sm font-medium rounded-lg hover:bg-amber-50 transition-colors"
                         >
                           Actualizar datos (si ya editó el paciente)
@@ -1452,61 +1866,63 @@ const SessionsPage = () => {
               </div>
 
               <div className={`${formPanelMutedClass} space-y-3`}>
-                <div className="flex flex-wrap items-end gap-2">
-                  <div className="flex-1 min-w-[200px]">
-                    <label className={`${formLabelClass} mb-1`}>
-                      Plantilla de sesión
-                    </label>
-                    <select
-                      value={selectedTemplateId}
-                      onChange={(e) => setSelectedTemplateId(e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 text-[#1a1a1a] dark:text-white focus:outline-none focus:border-[#1a1a1a] dark:focus:border-gray-400 focus:ring-1 focus:ring-[#1a1a1a] dark:focus:ring-gray-500 placeholder:text-gray-400 dark:placeholder:text-gray-500 bg-white"
-                    >
-                      <option value="">Sin plantilla</option>
-                      {sessionTemplates.map((tpl) => (
-                        <option key={tpl.id} value={tpl.id}>
-                          {tpl.name}
-                          {tpl.isShared ? " (compartida)" : ""}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={applySelectedTemplate}
-                    disabled={!selectedTemplateId}
-                    className="px-4 py-2 bg-[#1a1a1a] text-white rounded-lg text-sm disabled:opacity-40"
+                <div>
+                  <label className={`${formLabelClass} mb-1`}>
+                    Plantilla de sesión
+                  </label>
+                  <select
+                    value={selectedTemplateId}
+                    onChange={(e) => handleTemplateSelect(e.target.value)}
+                    className="w-full px-3 py-2 border border-brand-border rounded-lg bg-brand-surface text-brand-ink focus:outline-none focus:border-brand-ink focus:ring-1 focus:ring-brand-ink placeholder:text-gray-400 dark:placeholder:text-gray-500 bg-white"
                   >
-                    Cargar plantilla
-                  </button>
+                    <option value="">Sin plantilla</option>
+                    {sessionTemplates.map((tpl) => (
+                      <option key={tpl.id} value={tpl.id}>
+                        {tpl.name}
+                        {tpl.isShared ? " (consultorio)" : " (personal)"}
+                      </option>
+                    ))}
+                  </select>
                 </div>
                 {sessionTemplates.length === 0 ? (
                   <p className={`text-xs ${formHintClass}`}>
                     No hay plantillas. Créalas en{" "}
-                    <a href="/clinical-tools" className="underline text-[#1a1a1a] dark:text-gray-200">
+                    <a href="/clinical-tools" className="underline text-brand-ink">
                       Herramientas clínicas
                     </a>
                     .
                   </p>
                 ) : (
                   <p className={`text-xs ${formHintClass}`}>
-                    Rellena anamnesis, exploración, diagnóstico y plan con el contenido guardado en la plantilla.
+                    Al elegir una plantilla se aplican automáticamente el contenido y las secciones visibles
+                    (p. ej. sin helomas en procedimientos quirúrgicos).
                   </p>
                 )}
+                {appliedTemplateLayout ? (
+                  <p className={`text-xs ${formHintClass}`}>
+                    Vista filtrada por plantilla: {countIncludedTemplateSections(appliedTemplateLayout)}{" "}
+                    secciones visibles. Elige «Sin plantilla» para ver el formulario completo.
+                  </p>
+                ) : selectedTemplateId ? (
+                  <p className="text-xs text-amber-700 dark:text-amber-300">
+                    Esta plantilla no tiene secciones definidas. Edítala en Herramientas clínicas, marca qué
+                    incluir y guarda de nuevo.
+                  </p>
+                ) : null}
               </div>
 
-              {Object.values(podiatryVisibleBlocks).some(Boolean) && (
+              {Object.values(sessionFormPodiatryBlocks).some(Boolean) && (
               <PodiatryExaminationFields
                 value={formData.podiatryExam}
                 onChange={(podiatryExam) => setFormData((prev) => ({ ...prev, podiatryExam }))}
-                visibleBlocks={podiatryVisibleBlocks}
+                visibleBlocks={sessionFormPodiatryBlocks}
               />
               )}
 
-              {showClinicalSection("anamnesis") && (
+              {showSessionFormSection("anamnesis") && (
               <div>
                 <label className={`${formLabelClass} mb-1`}>
-                  {getSectionLabel(clinicalLayout, "anamnesis")}
+                  {getSectionLabel(sessionFormLayout, "anamnesis")}
                 </label>
                 <textarea
                   rows={3}
@@ -1518,10 +1934,10 @@ const SessionsPage = () => {
               </div>
               )}
 
-              {showClinicalSection("physical_examination") && (
+              {showSessionFormSection("physical_examination") && (
               <div>
                 <label className={`${formLabelClass} mb-1`}>
-                  {getSectionLabel(clinicalLayout, "physical_examination")}
+                  {getSectionLabel(sessionFormLayout, "physical_examination")}
                 </label>
                 <textarea
                   rows={3}
@@ -1533,10 +1949,10 @@ const SessionsPage = () => {
               </div>
               )}
 
-              {showClinicalSection("diagnosis") && (
+              {showSessionFormSection("diagnosis") && (
               <div>
                 <label className={`${formLabelClass} mb-1`}>
-                  {getSectionLabel(clinicalLayout, "diagnosis")}
+                  {getSectionLabel(sessionFormLayout, "diagnosis")}
                 </label>
                 <textarea
                   rows={2}
@@ -1548,10 +1964,10 @@ const SessionsPage = () => {
               </div>
               )}
 
-              {showClinicalSection("treatment_plan") && (
+              {showSessionFormSection("treatment_plan") && (
               <div>
                 <label className={`${formLabelClass} mb-1`}>
-                  {getSectionLabel(clinicalLayout, "treatment_plan")}
+                  {getSectionLabel(sessionFormLayout, "treatment_plan")}
                 </label>
                 <textarea
                   rows={3}
@@ -1563,10 +1979,10 @@ const SessionsPage = () => {
               </div>
               )}
 
-              {showClinicalSection("clinical_notes") && (
+              {showSessionFormSection("clinical_notes") && (
               <div>
                 <label className={`${formLabelClass} mb-1`}>
-                  {getSectionLabel(clinicalLayout, "clinical_notes")}
+                  {getSectionLabel(sessionFormLayout, "clinical_notes")}
                 </label>
                 <textarea
                   rows={2}
@@ -1579,12 +1995,12 @@ const SessionsPage = () => {
               )}
 
               <SessionCustomSectionsFields
-                layoutSections={clinicalLayout.sections}
+                layoutSections={sessionFormLayout.sections}
                 value={formData.customSections}
                 onChange={(customSections) => setFormData((prev) => ({ ...prev, customSections }))}
               />
 
-              {showClinicalSection("session_images") && (
+              {showSessionFormSection("session_images") && (
               <div>
                 <label className={`${formLabelClass} mb-2`}>
                   {t.sessions.images} ({formData.images.length}/2)
@@ -1640,8 +2056,8 @@ const SessionsPage = () => {
               )}
 
               {/* Follow-up Section */}
-              <div className="border-t border-gray-100 dark:border-gray-800 pt-6">
-                <h4 className="text-sm font-semibold text-[#1a1a1a] dark:text-gray-100 mb-4">Seguimiento</h4>
+              <div className="border-t border-brand-border pt-6">
+                <h4 className="text-sm font-semibold text-brand-ink mb-4">Seguimiento</h4>
                 
                 <div className="grid grid-cols-2 gap-4 mb-4">
                   <div>
@@ -1690,7 +2106,9 @@ const SessionsPage = () => {
 
               {/* Actions */}
               {(() => {
-                const selectedPatient = pickerPatients.find((x) => x.id === formData.patientId);
+                const selectedPatient =
+                  formSelectedPatient ??
+                  sessionFormPatients.find((x) => x.id === formData.patientId);
                 const patientComplete = selectedPatient ? isPatientCompleteForSessions(selectedPatient) : false;
                 const canSave = !!formData.patientId && patientComplete;
                 const disableReason = !formData.patientId
@@ -1731,11 +2149,16 @@ const SessionsPage = () => {
                         </div>
                       </div>
                     )}
+                    {isPodiatrist && canSave && (
+                      <p className="text-xs text-brand-muted text-center leading-snug px-1">
+                        {t.sessions.checkoutCompleteHint}
+                      </p>
+                    )}
                     <div className="flex gap-3">
                       <button
                         type="button"
                         onClick={closeSessionForm}
-                        className="flex-1 py-3 bg-gray-100 dark:bg-gray-800 text-[#1a1a1a] dark:text-gray-100 rounded-lg hover:bg-gray-200 transition-colors font-medium"
+                        className="flex-1 py-3 bg-brand-canvas text-brand-ink rounded-lg hover:bg-gray-200 transition-colors font-medium"
                       >
                         {t.common.cancel}
                       </button>
@@ -1744,7 +2167,7 @@ const SessionsPage = () => {
                         onClick={(e) => handleSubmit(e, true)}
                         disabled={!canSave}
                         title={disableReason}
-                        className="flex-1 py-3 bg-gray-100 dark:bg-gray-800 text-[#1a1a1a] dark:text-gray-100 rounded-lg hover:bg-gray-200 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="flex-1 py-3 bg-brand-canvas text-brand-ink rounded-lg hover:bg-gray-200 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         {t.sessions.saveDraft}
                       </button>
@@ -1753,7 +2176,7 @@ const SessionsPage = () => {
                         onClick={(e) => handleSubmit(e, false)}
                         disabled={!canSave}
                         title={disableReason}
-                        className="flex-1 py-3 bg-[#1a1a1a] text-white rounded-lg hover:bg-[#2a2a2a] transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="flex-1 py-3 bg-brand-ink text-brand-ink-fg rounded-lg hover:bg-brand-ink-hover transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         {t.sessions.complete}
                       </button>
@@ -1764,6 +2187,17 @@ const SessionsPage = () => {
             </form>
             </AppModalBody>
         </AppModal>
+      )}
+
+      {checkoutPrompt && (
+        <CheckoutHandoffModal
+          open
+          zIndex={60}
+          patientId={checkoutPrompt.patientId}
+          patientName={checkoutPrompt.patientName}
+          sessionId={checkoutPrompt.sessionId}
+          onClose={() => setCheckoutPrompt(null)}
+        />
       )}
 
       {/* Main Content */}
@@ -1785,13 +2219,13 @@ const SessionsPage = () => {
                 placeholder={t.common.search}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-10 pr-4 py-2.5 border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 text-[#1a1a1a] dark:text-white focus:outline-none focus:border-[#1a1a1a] dark:focus:border-gray-400 focus:ring-1 focus:ring-[#1a1a1a] dark:focus:ring-gray-500 placeholder:text-gray-400 dark:placeholder:text-gray-500"
+                className="w-full pl-10 pr-4 py-2.5 border border-brand-border rounded-lg bg-brand-surface text-brand-ink focus:outline-none focus:border-brand-ink focus:ring-1 focus:ring-brand-ink placeholder:text-gray-400 dark:placeholder:text-gray-500"
               />
             </div>
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value as "all" | "draft" | "completed")}
-              className="px-4 py-2.5 border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 text-[#1a1a1a] dark:text-white focus:outline-none focus:border-[#1a1a1a] dark:focus:border-gray-400 focus:ring-1 focus:ring-[#1a1a1a] dark:focus:ring-gray-500"
+              className="px-4 py-2.5 border border-brand-border rounded-lg bg-brand-surface text-brand-ink focus:outline-none focus:border-brand-ink focus:ring-1 focus:ring-brand-ink"
             >
               <option value="all">Todas</option>
               <option value="draft">{t.sessions.draft}</option>
@@ -1800,7 +2234,7 @@ const SessionsPage = () => {
           </div>
           <button
             onClick={() => setShowForm(true)}
-            className="px-4 py-2.5 bg-[#1a1a1a] text-white rounded-lg hover:bg-[#2a2a2a] transition-colors font-medium flex items-center gap-2"
+            className="px-4 py-2.5 bg-brand-ink text-brand-ink-fg rounded-lg hover:bg-brand-ink-hover transition-colors font-medium flex items-center gap-2"
           >
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
@@ -1921,35 +2355,35 @@ const SessionsPage = () => {
         {clinicalListError && (
           <ClinicalListError message={clinicalListError} onRetry={() => void reloadClinicalLists()} />
         )}
-        {clinicalListLoading && filteredSessions.length === 0 ? (
+        {clinicalListLoading && sessions.length === 0 ? (
           <ClinicalListLoading label="Cargando sesiones…" />
-        ) : filteredSessions.length === 0 ? (
-          <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-100 dark:border-gray-800 p-12 text-center">
-            <div className="w-16 h-16 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center mx-auto mb-4">
+        ) : sessions.length === 0 ? (
+          <div className="bg-brand-surface rounded-xl border border-brand-border p-12 text-center">
+            <div className="w-16 h-16 bg-brand-canvas rounded-full flex items-center justify-center mx-auto mb-4">
               <svg className="w-8 h-8 text-gray-400 dark:text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
               </svg>
             </div>
-            <h3 className="text-lg font-semibold text-[#1a1a1a] dark:text-white mb-2">{t.sessions.noSessions}</h3>
-            <p className="text-gray-500 dark:text-gray-400 mb-6">Crea tu primera sesión clínica</p>
+            <h3 className="text-lg font-semibold text-brand-ink mb-2">{t.sessions.noSessions}</h3>
+            <p className="text-brand-muted mb-6">Crea tu primera sesión clínica</p>
             <button
               onClick={() => setShowForm(true)}
-              className="px-6 py-2.5 bg-[#1a1a1a] text-white rounded-lg hover:bg-[#2a2a2a] transition-colors font-medium"
+              className="px-6 py-2.5 bg-brand-ink text-brand-ink-fg rounded-lg hover:bg-brand-ink-hover transition-colors font-medium"
             >
               {t.sessions.newSession}
             </button>
           </div>
         ) : (
           <div className="grid gap-4">
-            {filteredSessions.map((session) => (
+            {sessions.map((session) => (
               <div
                 key={session.id}
-                className="bg-white dark:bg-gray-900 rounded-xl border border-gray-100 dark:border-gray-800 p-5 hover:border-gray-200 dark:hover:border-gray-700 transition-colors"
+                className="bg-brand-surface rounded-xl border border-brand-border p-5 hover:border-gray-200 dark:hover:border-gray-700 transition-colors"
               >
                 <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3 sm:gap-4">
                   <div className="flex-1 min-w-0 cursor-pointer" onClick={() => void openSessionDetail(session)}>
                     <div className="flex flex-wrap items-center gap-2 mb-2">
-                      <h4 className="font-medium text-[#1a1a1a] dark:text-white truncate max-w-full">
+                      <h4 className="font-medium text-brand-ink truncate max-w-full">
                         {getPatientName(session.patientId)}
                       </h4>
                       <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
@@ -1985,9 +2419,9 @@ const SessionsPage = () => {
                         return null;
                       })()}
                     </div>
-                    <p className="text-sm text-gray-500 dark:text-gray-400 mb-2">{formatDate(session.sessionDate)}</p>
+                    <p className="text-sm text-brand-muted mb-2">{formatDate(session.sessionDate)}</p>
                     {session.diagnosis && (
-                      <p className="text-sm text-gray-600 dark:text-gray-300 line-clamp-2">{session.diagnosis}</p>
+                      <p className="text-sm text-brand-muted line-clamp-2">{session.diagnosis}</p>
                     )}
                     {session.nextAppointmentDate && (
                       <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
@@ -2049,7 +2483,7 @@ const SessionsPage = () => {
                   type="button"
                   onClick={() => loadMoreSessions()}
                   disabled={sessionsLoadingMore}
-                  className="px-6 py-2.5 border border-gray-200 dark:border-gray-700 rounded-lg text-sm font-medium text-[#1a1a1a] dark:text-white hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-50"
+                  className="px-6 py-2.5 border border-brand-border rounded-lg text-sm font-medium text-brand-ink hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-50"
                 >
                   {sessionsLoadingMore ? "Cargando…" : "Cargar más sesiones"}
                 </button>

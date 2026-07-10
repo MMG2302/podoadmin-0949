@@ -68,7 +68,7 @@ function PhaseBlock({
             <p
               className={`mt-3 text-xs rounded-md px-3 py-2 border ${
                 phase.callout.variant === "warning"
-                  ? "bg-amber-50 dark:bg-amber-950/30 border-amber-200 dark:border-amber-900/50 text-amber-900 dark:text-amber-200"
+                  ? "bg-amber-50 dark:bg-amber-950/30 border-amber-200 dark:border-amber-900/50 text-semantic-warning"
                   : "bg-blue-50/80 dark:bg-blue-950/20 border-blue-100 dark:border-blue-900/40 text-blue-900 dark:text-blue-200"
               }`}
             >
@@ -127,7 +127,7 @@ export function WhatsAppSetupGuide() {
           <ul className="space-y-1">
             {content.checklistItems.map((item) => (
               <li key={item} className="flex gap-2 text-xs text-blue-900/90 dark:text-blue-100/90">
-                <span className="text-blue-600 dark:text-blue-400 shrink-0" aria-hidden>
+                <span className="text-semantic-info shrink-0" aria-hidden>
                   ✓
                 </span>
                 <span>{item}</span>

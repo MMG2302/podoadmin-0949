@@ -1,60 +1,62 @@
 /** Clases compartidas para inputs, textareas y selects legibles en claro y oscuro. */
 
 export const formLabelClass =
-  "block text-sm font-medium text-[#1a1a1a] dark:text-gray-100";
+  "block text-sm font-medium text-brand-ink";
 
 export const formLabelClassXs =
-  "block text-xs font-medium text-gray-600 dark:text-gray-400";
+  "block text-xs font-medium text-brand-muted";
 
-export const formHintClass = "text-xs text-gray-500 dark:text-gray-400";
+export const formHintClass = "text-xs text-brand-muted";
 
 export const formFieldClass =
-  "w-full px-4 py-2.5 bg-white dark:bg-gray-900 text-[#1a1a1a] dark:text-white border border-gray-200 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-[#1a1a1a] dark:focus:ring-gray-500 focus:border-transparent transition-all placeholder:text-gray-400 dark:placeholder:text-gray-500";
+  "w-full px-4 py-2.5 bg-brand-surface text-brand-ink border border-brand-border rounded-lg focus:ring-2 focus:ring-brand-ink focus:border-transparent transition-all placeholder:text-brand-muted/70";
 
 export const formFieldClassSm =
-  "w-full px-3 py-2 bg-white dark:bg-gray-900 text-[#1a1a1a] dark:text-white border border-gray-200 dark:border-gray-700 rounded-lg focus:outline-none focus:border-[#1a1a1a] dark:focus:border-gray-400 focus:ring-1 focus:ring-[#1a1a1a] dark:focus:ring-gray-500 placeholder:text-gray-400 dark:placeholder:text-gray-500";
+  "w-full px-3 py-2 bg-brand-surface text-brand-ink border border-brand-border rounded-lg focus:outline-none focus:border-brand-ink focus:ring-1 focus:ring-brand-ink placeholder:text-brand-muted/70";
 
 export const formFieldClassXs =
-  "w-full px-2 py-1 bg-white dark:bg-gray-900 text-[#1a1a1a] dark:text-white border border-gray-200 dark:border-gray-600 rounded text-xs focus:outline-none focus:border-[#1a1a1a] dark:focus:border-gray-400 focus:ring-1 focus:ring-[#1a1a1a] dark:focus:ring-gray-500 placeholder:text-gray-400 dark:placeholder:text-gray-500";
+  "w-full px-2 py-1 bg-brand-surface text-brand-ink border border-brand-border rounded text-xs focus:outline-none focus:border-brand-ink focus:ring-1 focus:ring-brand-ink placeholder:text-brand-muted/70";
 
 export const formFieldDisabledClass =
-  "w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-800 text-gray-500 dark:text-gray-400 border border-gray-200 dark:border-gray-700 rounded-lg cursor-not-allowed";
+  "w-full px-4 py-2.5 bg-brand-canvas text-brand-muted border border-brand-border rounded-lg cursor-not-allowed";
 
 export const formFieldDisabledClassSm =
-  "w-full px-3 py-2 bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 border border-gray-200 dark:border-gray-700 rounded-lg cursor-not-allowed";
+  "w-full px-3 py-2 bg-brand-canvas text-brand-muted border border-brand-border rounded-lg cursor-not-allowed";
 
 export const formPanelMutedClass =
-  "rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/90 p-4 text-[#1a1a1a] dark:text-gray-200";
+  "rounded-lg border border-brand-border bg-brand-canvas p-4 text-brand-ink";
 
-export const formPanelTitleClass = "text-sm font-medium text-[#1a1a1a] dark:text-gray-100";
+export const formPanelTitleClass = "text-sm font-medium text-brand-ink";
 
 export const formTableClass =
-  "w-full min-w-[280px] text-xs border border-gray-200 dark:border-gray-600 rounded-lg overflow-hidden bg-white dark:bg-gray-900 text-[#1a1a1a] dark:text-gray-200";
+  "w-full min-w-[280px] text-xs border border-brand-border rounded-lg overflow-hidden bg-brand-surface text-brand-ink";
 
-export const formTableHeadClass = "bg-gray-50 dark:bg-gray-800 text-gray-700 dark:text-gray-300";
+export const formTableHeadClass = "bg-brand-canvas text-brand-muted";
 
-export const formTableRowBorderClass = "border-t border-gray-100 dark:border-gray-700";
+export const formTableRowBorderClass = "border-t border-brand-border";
 
 export const formFieldResizeClass = `${formFieldClass} resize-y`;
 export const formFieldResizeNoneClass = `${formFieldClass} resize-none`;
 
 /** Títulos y texto principal legible en claro y oscuro */
-export const textPrimaryClass = "text-[#1a1a1a] dark:text-white";
+export const textPrimaryClass = "text-brand-ink";
 
-export const textPrimarySmClass = "text-[#1a1a1a] dark:text-gray-100";
+export const textPrimarySmClass = "text-brand-ink";
 
-export const formHeadingClass = "text-lg font-semibold text-[#1a1a1a] dark:text-white";
+export const formHeadingClass = "text-lg font-semibold text-brand-ink";
 
-export const formHeadingSmClass = "text-sm font-semibold text-[#1a1a1a] dark:text-gray-100";
+export const formHeadingSmClass = "text-sm font-semibold text-brand-ink";
 
-export const formSubheadingClass = "font-medium text-[#1a1a1a] dark:text-white";
+export const formSubheadingClass = "font-medium text-brand-ink";
 
-export const formSubheadingSmClass = "font-medium text-[#1a1a1a] dark:text-gray-100";
+export const formLinkClass =
+  "text-brand-ink underline hover:text-brand-ink-hover";
 
-export const formIconClass = "w-5 h-5 text-[#1a1a1a] dark:text-white";
+export const formCheckboxClass =
+  "rounded border-brand-border text-brand-ink focus:ring-brand-ink";
 
-export const formSecondaryBtnClass =
-  "bg-gray-100 dark:bg-gray-800 text-[#1a1a1a] dark:text-gray-100 hover:bg-gray-200 dark:hover:bg-gray-700";
+export const formErrorClass = "text-sm text-semantic-error";
 
-export const formCancelBtnClass =
-  "flex-1 py-2.5 bg-gray-100 dark:bg-gray-800 text-[#1a1a1a] dark:text-gray-100 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors font-medium text-sm";
+export const formSuccessClass = "text-sm text-semantic-success";
+
+export const formWarningClass = "text-sm text-semantic-warning";

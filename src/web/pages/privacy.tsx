@@ -25,7 +25,7 @@ const Privacy = () => {
 
   return (
     <div className={`${ap.shell} min-h-screen`}>
-      <div className="hidden lg:flex lg:w-1/2 bg-[#1a1a1a] relative overflow-hidden">
+      <div className="hidden lg:flex lg:w-1/2 bg-brand-ink relative overflow-hidden">
         <div className="relative z-10 flex flex-col justify-center items-center w-full p-12">
           <img src="/favicon.svg" alt="Logo" className="w-40 h-40 mb-8" />
           <h1 className="text-white text-5xl font-light tracking-tight mb-4">
@@ -54,12 +54,12 @@ const Privacy = () => {
             <div className={`space-y-8 ${ap.bodyText}`}>
               {[p.section1, p.section2, p.section3, p.section4, p.section6, p.section7, p.section8].map((s) => (
                 <section key={s.title}>
-                  <h2 className="text-lg font-semibold text-[#1a1a1a] dark:text-white mb-2">{s.title}</h2>
+                  <h2 className="text-lg font-semibold text-brand-ink mb-2">{s.title}</h2>
                   <p className="leading-relaxed">{s.content}</p>
                 </section>
               ))}
               <section>
-                <h2 className="text-lg font-semibold text-[#1a1a1a] dark:text-white mb-2">{p.section5.title}</h2>
+                <h2 className="text-lg font-semibold text-brand-ink mb-2">{p.section5.title}</h2>
                 <p className="mb-2">{p.section5.intro}</p>
                 <ul className="list-disc pl-5 space-y-1">
                   <li>{p.section5.item1}</li>

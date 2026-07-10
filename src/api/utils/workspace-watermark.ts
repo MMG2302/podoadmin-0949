@@ -1,6 +1,7 @@
 import { eq } from 'drizzle-orm';
 import { database } from '../database';
 import { clinics, professionalInfo, professionalLogos } from '../database/schema';
+import { resolveLogoForClient } from './r2-media';
 import {
   DEFAULT_WORKSPACE_WATERMARK,
   normalizeWorkspaceWatermark,
@@ -30,7 +31,7 @@ async function resolveLogoImage(user: WatermarkUser): Promise<string | null> {
       .from(clinics)
       .where(eq(clinics.clinicId, user.clinicId))
       .limit(1);
-    return rows[0]?.logo ?? null;
+    return resolveLogoForClient(rows[0]?.logo ?? null, 'clinic', user.clinicId);
   }
   if (user.role === 'podiatrist') {
     const rows = await database
@@ -38,7 +39,7 @@ async function resolveLogoImage(user: WatermarkUser): Promise<string | null> {
       .from(professionalLogos)
       .where(eq(professionalLogos.userId, user.userId))
       .limit(1);
-    return rows[0]?.logo ?? null;
+    return resolveLogoForClient(rows[0]?.logo ?? null, 'professional', user.userId);
   }
   return null;
 }
@@ -115,23 +116,17 @@ export async function saveWorkspaceWatermarkForUser(
   }
 
   if (user.role === 'podiatrist') {
-    const existing = await database
-      .select({ userId: professionalInfo.userId })
-      .from(professionalInfo)
-      .where(eq(professionalInfo.userId, user.userId))
-      .limit(1);
-    if (existing[0]) {
-      await database
-        .update(professionalInfo)
-        .set({ workspaceWatermarkJson: json })
-        .where(eq(professionalInfo.userId, user.userId));
-    } else {
-      await database.insert(professionalInfo).values({
+    await database
+      .insert(professionalInfo)
+      .values({
         userId: user.userId,
         name: '',
         workspaceWatermarkJson: json,
+      })
+      .onConflictDoUpdate({
+        target: professionalInfo.userId,
+        set: { workspaceWatermarkJson: json },
       });
-    }
     return { ok: true };
   }
 

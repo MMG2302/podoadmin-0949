@@ -204,8 +204,8 @@ export function ClinicalLayoutDesigner({ initialLayout, canEdit, scope, onSaved 
     <div className="space-y-4">
       <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
         <div>
-          <h3 className="text-lg font-semibold text-[#1a1a1a] dark:text-white">Diseñador de historia clínica</h3>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1 max-w-2xl">
+          <h3 className="text-lg font-semibold text-brand-ink">Diseñador de historia clínica</h3>
+          <p className="text-sm text-brand-muted mt-1 max-w-2xl">
             Activa o desactiva bloques para sesiones e impresión. Añade secciones personalizadas (texto, SI/NO,
             opciones, escala, tabla…) para pedicura, podología o tu flujo.{" "}
             {scope === "clinic"
@@ -218,7 +218,7 @@ export function ClinicalLayoutDesigner({ initialLayout, canEdit, scope, onSaved 
             <button
               type="button"
               onClick={resetDefaults}
-              className="px-3 py-2 text-sm border border-gray-200 dark:border-gray-700 rounded-lg"
+              className="px-3 py-2 text-sm border border-brand-border rounded-lg"
             >
               Restaurar predeterminado
             </button>
@@ -226,7 +226,7 @@ export function ClinicalLayoutDesigner({ initialLayout, canEdit, scope, onSaved 
               type="button"
               onClick={handleSave}
               disabled={saving}
-              className="px-4 py-2 text-sm bg-[#1a1a1a] dark:bg-white dark:text-[#1a1a1a] text-white rounded-lg disabled:opacity-50"
+              className="px-4 py-2 text-sm bg-brand-ink text-brand-ink-fg rounded-lg disabled:opacity-50"
             >
               {saving ? "Guardando…" : "Guardar diseño"}
             </button>
@@ -241,15 +241,15 @@ export function ClinicalLayoutDesigner({ initialLayout, canEdit, scope, onSaved 
       )}
 
       {message && (
-        <p className="text-sm text-blue-800 dark:text-blue-200 bg-blue-50 dark:bg-blue-950/30 rounded-lg p-3">
+        <p className="text-sm text-blue-800 dark:text-blue-200 bg-semantic-info-bg rounded-lg p-3">
           {message}
         </p>
       )}
 
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
-        <div className="lg:col-span-2 bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 overflow-hidden">
-          <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-950">
-            <p className="text-sm font-medium text-[#1a1a1a] dark:text-white">Secciones ({sorted.length})</p>
+        <div className="lg:col-span-2 bg-brand-surface rounded-xl border border-brand-border overflow-hidden">
+          <div className="px-4 py-3 border-b border-brand-border bg-brand-canvas">
+            <p className="text-sm font-medium text-brand-ink">Secciones ({sorted.length})</p>
           </div>
           <ul className="max-h-[420px] overflow-y-auto divide-y divide-gray-100 dark:divide-gray-800">
             {sorted.map((section, index) => (
@@ -264,7 +264,7 @@ export function ClinicalLayoutDesigner({ initialLayout, canEdit, scope, onSaved 
                 >
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0">
-                      <p className="text-sm font-medium text-[#1a1a1a] dark:text-white truncate">
+                      <p className="text-sm font-medium text-brand-ink truncate">
                         {section.label}
                       </p>
                       <p className="text-xs text-gray-400 capitalize">{sectionTypeLabel(section)}</p>
@@ -301,8 +301,8 @@ export function ClinicalLayoutDesigner({ initialLayout, canEdit, scope, onSaved 
           </ul>
 
           {canEdit && (
-            <div className="p-3 border-t border-gray-100 dark:border-gray-800 space-y-2">
-              <p className="text-xs font-medium text-gray-600 dark:text-gray-400">Añadir sección</p>
+            <div className="p-3 border-t border-brand-border space-y-2">
+              <p className="text-xs font-medium text-brand-muted">Añadir sección</p>
               <select
                 value={newSectionKind}
                 onChange={(e) => setNewSectionKind(e.target.value as CustomSectionKind)}
@@ -334,8 +334,8 @@ export function ClinicalLayoutDesigner({ initialLayout, canEdit, scope, onSaved 
 
         <div className="lg:col-span-3 space-y-4">
           {selected ? (
-            <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 p-4 space-y-4">
-              <h4 className="font-medium text-[#1a1a1a] dark:text-white">Editar sección</h4>
+            <div className="bg-brand-surface rounded-xl border border-brand-border p-4 space-y-4">
+              <h4 className="font-medium text-brand-ink">Editar sección</h4>
               <div>
                 <label className="block text-xs font-medium text-gray-500 mb-1">Título</label>
                 <input
@@ -377,30 +377,30 @@ export function ClinicalLayoutDesigner({ initialLayout, canEdit, scope, onSaved 
                       onChange={(showInPrint) => patchSection(selected.id, { showInPrint })}
                     />
                   </div>
-                  <div className="text-xs text-gray-500 dark:text-gray-400 space-y-1 bg-gray-50 dark:bg-gray-950/50 rounded-lg p-3 border border-gray-100 dark:border-gray-800">
+                  <div className="text-xs text-brand-muted space-y-1 bg-brand-canvas/50 rounded-lg p-3 border border-brand-border">
                     {selected.kind === "builtin" && selected.builtinKey?.startsWith("patient_") ? (
                       <>
                         <p>
-                          <strong className="text-gray-700 dark:text-gray-300">En ficha paciente:</strong> muestra u
+                          <strong className="text-brand-muted">En ficha paciente:</strong> muestra u
                           oculta el campo al crear, editar o ver un paciente.
                         </p>
                         <p>
-                          <strong className="text-gray-700 dark:text-gray-300">En impresión:</strong> incluye los
+                          <strong className="text-brand-muted">En impresión:</strong> incluye los
                           antecedentes en la historia clínica podológica impresa.
                         </p>
                       </>
                     ) : (
                       <>
                     <p>
-                      <strong className="text-gray-700 dark:text-gray-300">Activa:</strong> incluye o excluye la
+                      <strong className="text-brand-muted">Activa:</strong> incluye o excluye la
                       sección del flujo clínico.
                     </p>
                     <p>
-                      <strong className="text-gray-700 dark:text-gray-300">En sesión:</strong> visible al crear o
+                      <strong className="text-brand-muted">En sesión:</strong> visible al crear o
                       editar una sesión.
                     </p>
                     <p>
-                      <strong className="text-gray-700 dark:text-gray-300">En impresión:</strong> incluida en el
+                      <strong className="text-brand-muted">En impresión:</strong> incluida en el
                       historial imprimible (solo contenido con datos).
                     </p>
                       </>
@@ -434,12 +434,12 @@ export function ClinicalLayoutDesigner({ initialLayout, canEdit, scope, onSaved 
               )}
             </div>
           ) : (
-            <div className="bg-gray-50 dark:bg-gray-950 rounded-xl border border-dashed border-gray-200 dark:border-gray-700 p-8 text-center text-sm text-gray-500">
+            <div className="bg-brand-canvas rounded-xl border border-dashed border-brand-border p-8 text-center text-sm text-gray-500">
               Selecciona una sección de la lista
             </div>
           )}
 
-          <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 p-4">
+          <div className="bg-brand-surface rounded-xl border border-brand-border p-4">
             <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-3">
               Vista previa — formulario de sesión
             </p>
@@ -449,9 +449,9 @@ export function ClinicalLayoutDesigner({ initialLayout, canEdit, scope, onSaved 
                 .map((s) => (
                   <div
                     key={s.id}
-                    className="rounded-lg border border-gray-100 dark:border-gray-800 bg-gray-50/80 dark:bg-gray-950/50 px-3 py-2"
+                    className="rounded-lg border border-brand-border bg-gray-50/80 dark:bg-gray-950/50 px-3 py-2"
                   >
-                    <p className="text-sm font-medium text-[#1a1a1a] dark:text-white">{s.label}</p>
+                    <p className="text-sm font-medium text-brand-ink">{s.label}</p>
                     {s.kind === "builtin" ? (
                       <p className="text-xs text-gray-400 mt-0.5">Campo del sistema</p>
                     ) : (

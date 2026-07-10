@@ -13,6 +13,9 @@ import { ClinicalHistoriesDownloadSection } from "../components/settings/clinica
 import { SettingsTabBar, type SettingsTabId } from "../components/settings/settings-tab-bar";
 import { ClinicalLayoutSettingsSection } from "../components/settings/clinical-layout-settings-section";
 import { WorkspaceWatermarkSettingsSection } from "../components/settings/workspace-watermark-settings-section";
+import { ColorPaletteSettingsSection } from "../components/settings/color-palette-settings-section";
+import { SidebarNavSettingsSection } from "../components/settings/sidebar-nav-settings-section";
+import { ProfileAvatarSettingsSection } from "../components/settings/profile-avatar-settings-section";
 import { CountrySelect } from "../components/settings/country-select";
 import { phonePlaceholderForCountry } from "../lib/whatsapp-web-link";
 import { DEFAULT_TENANT_COUNTRY, resolveTenantCountryCode } from "../../lib/phone-country";
@@ -554,12 +557,14 @@ const SettingsPage = () => {
     try {
       const res = await api.put<{ success?: boolean; logoBlockedUntil?: string }>(`/clinics/${user.clinicId}/logo`, { logo: logoPreview });
       if (res.success) {
-        setCurrentLogo(logoPreview);
+        const logoRes = await api.get<{ success?: boolean; logo?: string | null }>(`/clinics/${user.clinicId}/logo`);
+        setCurrentLogo(logoRes.success && logoRes.data?.logo ? logoRes.data.logo : logoPreview);
         setLogoPreview(null);
         if (fileInputRef.current) fileInputRef.current.value = "";
         setLogoBlockedUntil(res.data?.logoBlockedUntil ?? null);
         setSaved(true);
         setTimeout(() => setSaved(false), 2000);
+        window.dispatchEvent(new CustomEvent("clinic-logo:updated"));
       } else if (res.error === "cooldown" && res.data?.logoBlockedUntil) {
         setLogoBlockedUntil(res.data.logoBlockedUntil);
         setLogoError(res.message ?? "El logo solo puede modificarse cada 15 días.");
@@ -577,6 +582,7 @@ const SettingsPage = () => {
       setLogoPreview(null);
       if (fileInputRef.current) fileInputRef.current.value = "";
       setLogoBlockedUntil(res.data?.logoBlockedUntil ?? null);
+      window.dispatchEvent(new CustomEvent("clinic-logo:updated"));
     } else if (res.error === "cooldown" && res.data?.logoBlockedUntil) {
       setLogoBlockedUntil(res.data.logoBlockedUntil);
       setLogoError(res.message ?? "El logo solo puede modificarse cada 15 días.");
@@ -612,20 +618,27 @@ const SettingsPage = () => {
 
   const handleSaveProfessionalLogo = async () => {
     if (!isPodiatristIndependent || !logoPreview || !user?.id) return;
-    await api.put(`/professionals/logo/${user.id}`, { logo: logoPreview });
-    setCurrentLogo(logoPreview);
-    setLogoPreview(null);
-    if (fileInputRef.current) fileInputRef.current.value = "";
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2000);
+    const res = await api.put(`/professionals/logo/${user.id}`, { logo: logoPreview });
+    if (res.success) {
+      const logoRes = await api.get<{ success?: boolean; logo?: string | null }>(`/professionals/logo/${user.id}`);
+      setCurrentLogo(logoRes.success && logoRes.data?.logo ? logoRes.data.logo : logoPreview);
+      setLogoPreview(null);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2000);
+      window.dispatchEvent(new CustomEvent("clinic-logo:updated"));
+    }
   };
 
   const handleRemoveProfessionalLogo = async () => {
     if (!isPodiatristIndependent || !user?.id) return;
-    await api.delete(`/professionals/logo/${user.id}`);
-    setCurrentLogo(null);
-    setLogoPreview(null);
-    if (fileInputRef.current) fileInputRef.current.value = "";
+    const res = await api.delete(`/professionals/logo/${user.id}`);
+    if (res.success) {
+      setCurrentLogo(null);
+      setLogoPreview(null);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+      window.dispatchEvent(new CustomEvent("clinic-logo:updated"));
+    }
   };
 
   // Cargar conversaciones de soporte (usuarios que no son admin/super_admin)
@@ -717,21 +730,25 @@ const SettingsPage = () => {
         {activeTab === "general" && (
         <>
         {/* Theme - todos los usuarios */}
-        <div className="bg-white dark:bg-[#1a1a1a] rounded-xl border border-gray-100 dark:border-white/10 p-6">
-          <h3 className="text-lg font-semibold text-[#1a1a1a] dark:text-white mb-4">{t.settings.theme}</h3>
+        <div className="bg-brand-surface rounded-xl border border-brand-border p-6">
+          <h3 className="text-lg font-semibold text-brand-ink mb-4">{t.settings.theme}</h3>
           <div className="flex items-center gap-4">
             <AnimatedThemeToggler />
-            <span className="text-sm text-gray-500 dark:text-gray-400">
+            <span className="text-sm text-brand-muted">
               {isDarkMode ? t.settings.lightMode : t.settings.darkMode}
             </span>
           </div>
         </div>
 
+        <ColorPaletteSettingsSection />
+
+        <SidebarNavSettingsSection />
+
         <WorkspaceWatermarkSettingsSection />
 
         {/* Language Settings */}
-        <div className="bg-white dark:bg-[#1a1a1a] rounded-xl border border-gray-100 dark:border-white/10 p-6">
-          <h3 className="text-lg font-semibold text-[#1a1a1a] dark:text-white mb-4">{t.settings.language}</h3>
+        <div className="bg-brand-surface rounded-xl border border-brand-border p-6">
+          <h3 className="text-lg font-semibold text-brand-ink mb-4">{t.settings.language}</h3>
           
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             {availableLanguages.map((lang) => (
@@ -740,8 +757,8 @@ const SettingsPage = () => {
                 onClick={() => setLanguage(lang)}
                 className={`px-4 py-3 rounded-xl text-sm font-medium transition-all ${
                   language === lang
-                    ? "bg-[#1a1a1a] dark:bg-white text-white dark:text-gray-900"
-                    : "bg-gray-50 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+                    ? "bg-brand-ink text-brand-ink-fg"
+                    : "bg-brand-canvas text-brand-muted hover:bg-gray-100 dark:hover:bg-gray-700"
                 }`}
               >
                 {languageNames[lang]}
@@ -751,23 +768,13 @@ const SettingsPage = () => {
         </div>
 
         {/* Profile Settings */}
-        <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-100 dark:border-gray-800 p-6">
-          <h3 className="text-lg font-semibold text-[#1a1a1a] dark:text-white mb-4">Perfil de usuario</h3>
+        <div className="bg-brand-surface rounded-xl border border-brand-border p-6">
+          <h3 className="text-lg font-semibold text-brand-ink mb-4">Perfil de usuario</h3>
           
           <div className="space-y-4">
-            <div className="flex items-center gap-4">
-              <div className="w-16 h-16 bg-[#1a1a1a] dark:bg-white rounded-full flex items-center justify-center">
-                <span className="text-white dark:text-gray-900 text-2xl font-semibold">
-                  {(user?.name ?? "").charAt(0).toUpperCase() || "?"}
-                </span>
-              </div>
-              <div>
-                <p className="font-medium text-[#1a1a1a] dark:text-white">{user?.name}</p>
-                <p className="text-sm text-gray-500 dark:text-gray-400">{user?.email}</p>
-              </div>
-            </div>
+            <ProfileAvatarSettingsSection />
 
-            <div className="pt-4 border-t border-gray-100 dark:border-gray-800">
+            <div className="pt-4 border-t border-brand-border">
               <div className="grid gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-500 mb-1">Nombre</label>
@@ -775,7 +782,7 @@ const SettingsPage = () => {
                     type="text"
                     value={user?.name || ""}
                     disabled
-                    className="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-gray-500 dark:text-gray-400 cursor-not-allowed"
+                    className="w-full px-4 py-2.5 bg-brand-canvas border border-brand-border rounded-lg text-brand-muted cursor-not-allowed"
                   />
                 </div>
                 <div>
@@ -784,7 +791,7 @@ const SettingsPage = () => {
                     type="email"
                     value={user?.email || ""}
                     disabled
-                    className="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-gray-500 dark:text-gray-400 cursor-not-allowed"
+                    className="w-full px-4 py-2.5 bg-brand-canvas border border-brand-border rounded-lg text-brand-muted cursor-not-allowed"
                   />
                 </div>
               </div>
@@ -797,9 +804,9 @@ const SettingsPage = () => {
 
         {/* Contactar PodoAdmin - mensajería bidireccional con soporte (no admin/super_admin) */}
         {!isAdminRole && (
-          <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-100 dark:border-gray-800 p-6">
-            <h3 className="text-lg font-semibold text-[#1a1a1a] dark:text-white mb-2 flex items-center gap-2">
-              <svg className="w-5 h-5 text-[#1a1a1a] dark:text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <div className="bg-brand-surface rounded-xl border border-brand-border p-6">
+            <h3 className="text-lg font-semibold text-brand-ink mb-2 flex items-center gap-2">
+              <svg className="w-5 h-5 text-brand-ink" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
               </svg>
               {t.support.contactPodoAdmin}
@@ -816,7 +823,7 @@ const SettingsPage = () => {
                       value={supportSubject}
                       onChange={(e) => setSupportSubject(e.target.value)}
                       placeholder={t.support.subjectPlaceholder}
-                      className="w-full px-4 py-2.5 border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 text-[#1a1a1a] dark:text-white focus:ring-2 focus:ring-[#1a1a1a] dark:focus:ring-gray-500 focus:border-transparent"
+                      className="w-full px-4 py-2.5 border border-brand-border rounded-lg bg-brand-surface text-brand-ink focus:ring-2 focus:ring-brand-ink focus:border-transparent"
                       required
                     />
                   </div>
@@ -827,21 +834,21 @@ const SettingsPage = () => {
                       onChange={(e) => setSupportMessage(e.target.value)}
                       placeholder={t.support.messagePlaceholder}
                       rows={4}
-                      className="w-full px-4 py-2.5 border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 text-[#1a1a1a] dark:text-white focus:ring-2 focus:ring-[#1a1a1a] dark:focus:ring-gray-500 focus:border-transparent resize-none"
+                      className="w-full px-4 py-2.5 border border-brand-border rounded-lg bg-brand-surface text-brand-ink focus:ring-2 focus:ring-brand-ink focus:border-transparent resize-none"
                       required
                     />
                   </div>
                   <button
                     type="submit"
                     disabled={supportSending}
-                    className="px-4 py-2.5 bg-[#1a1a1a] text-white rounded-lg font-medium hover:bg-[#2a2a2a] disabled:opacity-50"
+                    className="px-4 py-2.5 bg-brand-ink text-brand-ink-fg rounded-lg font-medium hover:bg-brand-ink-hover disabled:opacity-50"
                   >
                     {supportSending ? "..." : t.support.send}
                   </button>
                 </form>
 
                 <div className="border-t border-gray-100 pt-4">
-                  <h4 className="text-sm font-medium text-[#1a1a1a] dark:text-white mb-3">{t.support.myConversations}</h4>
+                  <h4 className="text-sm font-medium text-brand-ink mb-3">{t.support.myConversations}</h4>
                   {supportConversations.length === 0 ? (
                     <p className="text-sm text-gray-500">{t.support.noConversations}</p>
                   ) : (
@@ -853,7 +860,7 @@ const SettingsPage = () => {
                           className="w-full text-left p-3 rounded-lg border border-gray-100 hover:bg-gray-50 transition-colors"
                         >
                           <div className="flex justify-between items-start">
-                            <span className="font-medium text-[#1a1a1a] dark:text-white">{c.subject}</span>
+                            <span className="font-medium text-brand-ink">{c.subject}</span>
                             <span className={`text-xs px-2 py-0.5 rounded-full ${c.status === "open" ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-600"}`}>
                               {c.status === "open" ? t.support.open : t.support.closed}
                             </span>
@@ -869,11 +876,11 @@ const SettingsPage = () => {
               <div>
                 <button
                   onClick={() => setSelectedSupportConv(null)}
-                  className="text-sm text-gray-500 hover:text-[#1a1a1a] dark:hover:text-white mb-4 flex items-center gap-1"
+                  className="text-sm text-gray-500 hover:text-brand-ink dark:hover:text-white mb-4 flex items-center gap-1"
                 >
                   ← {t.common.back}
                 </button>
-                <h4 className="font-medium text-[#1a1a1a] dark:text-white mb-4">{selectedSupportConv.subject}</h4>
+                <h4 className="font-medium text-brand-ink mb-4">{selectedSupportConv.subject}</h4>
                 <div className="space-y-3 mb-4 max-h-64 overflow-y-auto form-modal-scroll">
                   {selectedSupportConv.messages.map((m) => (
                     <div
@@ -881,7 +888,7 @@ const SettingsPage = () => {
                       className={`p-3 rounded-lg ${m.isFromSupport ? "bg-blue-50 ml-4" : "bg-gray-50 mr-4"}`}
                     >
                       <p className="text-xs text-gray-500 mb-1">{m.isFromSupport ? "PodoAdmin" : user?.name} · {new Date(m.createdAt).toLocaleString()}</p>
-                      <p className="text-sm text-[#1a1a1a] dark:text-white whitespace-pre-wrap">{m.body}</p>
+                      <p className="text-sm text-brand-ink whitespace-pre-wrap">{m.body}</p>
                     </div>
                   ))}
                 </div>
@@ -892,12 +899,12 @@ const SettingsPage = () => {
                       onChange={(e) => setSupportReply(e.target.value)}
                       placeholder={t.support.replyPlaceholder}
                       rows={2}
-                      className="flex-1 px-4 py-2.5 border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 text-[#1a1a1a] dark:text-white focus:ring-2 focus:ring-[#1a1a1a] dark:focus:ring-gray-500 resize-none"
+                      className="flex-1 px-4 py-2.5 border border-brand-border rounded-lg bg-brand-surface text-brand-ink focus:ring-2 focus:ring-brand-ink resize-none"
                     />
                     <button
                       onClick={handleSendSupportReply}
                       disabled={supportSending || !supportReply.trim()}
-                      className="px-4 py-2.5 bg-[#1a1a1a] text-white rounded-lg font-medium hover:bg-[#2a2a2a] disabled:opacity-50 self-end"
+                      className="px-4 py-2.5 bg-brand-ink text-brand-ink-fg rounded-lg font-medium hover:bg-brand-ink-hover disabled:opacity-50 self-end"
                     >
                       {supportSending ? "..." : t.support.reply}
                     </button>
@@ -917,8 +924,8 @@ const SettingsPage = () => {
             : allUsersList.filter((u) => ids.includes(u.id));
           const isFromClinic = !!user.clinicId;
           return (
-            <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-100 dark:border-gray-800 p-6">
-              <h3 className="text-lg font-semibold text-[#1a1a1a] dark:text-white mb-2">Podólogos asignados</h3>
+            <div className="bg-brand-surface rounded-xl border border-brand-border p-6">
+              <h3 className="text-lg font-semibold text-brand-ink mb-2">Podólogos asignados</h3>
               <p className="text-sm text-gray-500 mb-4">
                 {isFromClinic
                   ? "Podólogos de tu clínica a los que puedes dar servicio. Marca o desmarca para gestionar citas y pacientes de cada uno."
@@ -944,9 +951,9 @@ const SettingsPage = () => {
                                   : [...prev, pod.id]
                               );
                             }}
-                            className="rounded border-gray-300 text-[#1a1a1a] focus:ring-[#1a1a1a]"
+                            className="rounded border-gray-300 text-brand-ink focus:ring-brand-ink"
                           />
-                          <span className="font-medium text-[#1a1a1a] dark:text-white">{pod.name}</span>
+                          <span className="font-medium text-brand-ink">{pod.name}</span>
                           <span className="text-sm text-gray-500">{pod.email}</span>
                         </label>
                       );
@@ -958,7 +965,7 @@ const SettingsPage = () => {
                     <div className="flex items-center gap-4 pt-2">
                       <button
                         onClick={handleSaveAssignedPodiatrists}
-                        className="px-4 py-2.5 bg-[#1a1a1a] text-white rounded-lg text-sm font-medium hover:bg-[#2a2a2a] transition-colors"
+                        className="px-4 py-2.5 bg-brand-ink text-brand-ink-fg rounded-lg text-sm font-medium hover:bg-brand-ink-hover transition-colors"
                       >
                         Guardar asignación
                       </button>
@@ -974,7 +981,7 @@ const SettingsPage = () => {
                     allUsersList
                       .filter((u) => ids.includes(u.id))
                       .map((u) => (
-                        <p key={u.id} className="font-medium text-[#1a1a1a] dark:text-white">
+                        <p key={u.id} className="font-medium text-brand-ink">
                           {u.name} <span className="text-gray-500 font-normal">({u.email})</span>
                         </p>
                       ))
@@ -1020,8 +1027,8 @@ const SettingsPage = () => {
         <>
         {/* Clinic Logo Upload - Only for Clinic Admin and Podiatrist with clinic */}
         {(canUploadLogo || isPodiatristWithClinic) && (
-          <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-100 dark:border-gray-800 p-6">
-            <h3 className="text-lg font-semibold text-[#1a1a1a] dark:text-white mb-2">Logo de la clínica</h3>
+          <div className="bg-brand-surface rounded-xl border border-brand-border p-6">
+            <h3 className="text-lg font-semibold text-brand-ink mb-2">Logo de la clínica</h3>
 
             {isPodiatristWithClinic ? (
               <div className="space-y-4">
@@ -1115,7 +1122,7 @@ const SettingsPage = () => {
                       />
                       <label
                         htmlFor={isLogoBlocked ? undefined : "logo-upload"}
-                        className={`inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors ${isLogoBlocked ? "bg-gray-200 text-gray-500 cursor-not-allowed" : "bg-gray-100 dark:bg-gray-800 text-[#1a1a1a] dark:text-gray-100 hover:bg-gray-200 cursor-pointer"}`}
+                        className={`inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors ${isLogoBlocked ? "bg-gray-200 text-gray-500 cursor-not-allowed" : "bg-brand-canvas text-brand-ink hover:bg-gray-200 cursor-pointer"}`}
                       >
                         <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
@@ -1140,7 +1147,7 @@ const SettingsPage = () => {
                         <button
                           onClick={handleSaveLogo}
                           disabled={isLogoBlocked}
-                          className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${isLogoBlocked ? "bg-gray-300 text-gray-500 cursor-not-allowed" : "bg-[#1a1a1a] text-white hover:bg-[#2a2a2a]"}`}
+                          className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${isLogoBlocked ? "bg-gray-300 text-gray-500 cursor-not-allowed" : "bg-brand-ink text-brand-ink-fg hover:bg-brand-ink-hover"}`}
                         >
                           Guardar logo
                         </button>
@@ -1151,7 +1158,7 @@ const SettingsPage = () => {
                             setLogoPreview(null);
                             if (fileInputRef.current) fileInputRef.current.value = "";
                           }}
-                          className="px-4 py-2 bg-gray-100 dark:bg-gray-800 text-[#1a1a1a] dark:text-gray-100 rounded-lg text-sm font-medium hover:bg-gray-200 transition-colors"
+                          className="px-4 py-2 bg-brand-canvas text-brand-ink rounded-lg text-sm font-medium hover:bg-gray-200 transition-colors"
                         >
                           Cancelar
                         </button>
@@ -1175,8 +1182,8 @@ const SettingsPage = () => {
 
         {/* Professional Logo Upload - Only for Independent Podiatrists (no clinic) */}
         {isPodiatristIndependent && (
-          <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-100 dark:border-gray-800 p-6">
-            <h3 className="text-lg font-semibold text-[#1a1a1a] dark:text-white mb-2">Logo Profesional</h3>
+          <div className="bg-brand-surface rounded-xl border border-brand-border p-6">
+            <h3 className="text-lg font-semibold text-brand-ink mb-2">Logo Profesional</h3>
             <p className="text-sm text-gray-500 mb-4">
               Sube tu logo profesional personal. Este logo se mostrará en los documentos PDF que generes. Dimensiones recomendadas: 200x80px
             </p>
@@ -1218,7 +1225,7 @@ const SettingsPage = () => {
                   />
                   <label
                     htmlFor="professional-logo-upload"
-                    className="inline-flex items-center gap-2 px-4 py-2.5 bg-gray-100 dark:bg-gray-800 text-[#1a1a1a] dark:text-gray-100 rounded-lg text-sm font-medium hover:bg-gray-200 transition-colors cursor-pointer"
+                    className="inline-flex items-center gap-2 px-4 py-2.5 bg-brand-canvas text-brand-ink rounded-lg text-sm font-medium hover:bg-gray-200 transition-colors cursor-pointer"
                   >
                     <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
@@ -1242,7 +1249,7 @@ const SettingsPage = () => {
                   {logoPreview && (
                     <button
                       onClick={handleSaveProfessionalLogo}
-                      className="px-4 py-2 bg-[#1a1a1a] text-white rounded-lg text-sm font-medium hover:bg-[#2a2a2a] transition-colors"
+                      className="px-4 py-2 bg-brand-ink text-brand-ink-fg rounded-lg text-sm font-medium hover:bg-brand-ink-hover transition-colors"
                     >
                       Guardar logo
                     </button>
@@ -1253,7 +1260,7 @@ const SettingsPage = () => {
                         setLogoPreview(null);
                         if (fileInputRef.current) fileInputRef.current.value = "";
                       }}
-                      className="px-4 py-2 bg-gray-100 dark:bg-gray-800 text-[#1a1a1a] dark:text-gray-100 rounded-lg text-sm font-medium hover:bg-gray-200 transition-colors"
+                      className="px-4 py-2 bg-brand-canvas text-brand-ink rounded-lg text-sm font-medium hover:bg-gray-200 transition-colors"
                     >
                       Cancelar
                     </button>
@@ -1274,8 +1281,8 @@ const SettingsPage = () => {
 
         {/* Consentimiento informado - Misma lógica que Logo: clinic_admin edita, podólogo clínica solo lectura, independiente edita */}
         {(canUploadLogo || isPodiatristWithClinic || isPodiatristIndependent) && (
-          <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-100 dark:border-gray-800 p-6">
-            <h3 className="text-lg font-semibold text-[#1a1a1a] dark:text-white mb-2">Consentimiento informado</h3>
+          <div className="bg-brand-surface rounded-xl border border-brand-border p-6">
+            <h3 className="text-lg font-semibold text-brand-ink mb-2">Consentimiento informado</h3>
 
             {/* Clínica: admin edita, podólogo con clínica solo lectura */}
             {isPodiatristWithClinic && userClinic && (
@@ -1294,8 +1301,8 @@ const SettingsPage = () => {
                 {(userClinic.consentTextVersion ?? 0) > 0 && (
                   <p className="text-xs text-gray-500">Versión actual: {userClinic.consentTextVersion}</p>
                 )}
-                <div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 p-4 text-[#1a1a1a] dark:text-gray-200">
-                  <p className="text-sm text-[#1a1a1a] dark:text-white whitespace-pre-wrap">
+                <div className="rounded-lg border border-brand-border bg-brand-canvas p-4 text-brand-ink">
+                  <p className="text-sm text-brand-ink whitespace-pre-wrap">
                     {userClinic.consentText?.trim() || "Sin texto configurado."}
                   </p>
                 </div>
@@ -1320,7 +1327,7 @@ const SettingsPage = () => {
                   placeholder="Redacta aquí los términos y el consentimiento informado que el paciente debe aceptar."
                   rows={6}
                   disabled={isInfoBlocked}
-                  className={`w-full px-4 py-2.5 border border-gray-200 rounded-lg transition-all resize-y ${isInfoBlocked ? "bg-gray-50 dark:bg-gray-800 text-gray-500 dark:text-gray-400 cursor-not-allowed" : "bg-white dark:bg-gray-900 text-[#1a1a1a] dark:text-white focus:ring-2 focus:ring-[#1a1a1a] dark:focus:ring-gray-500 focus:border-transparent"}`}
+                  className={`w-full px-4 py-2.5 border border-gray-200 rounded-lg transition-all resize-y ${isInfoBlocked ? "bg-brand-canvas text-brand-muted cursor-not-allowed" : "bg-brand-surface text-brand-ink focus:ring-2 focus:ring-brand-ink focus:border-transparent"}`}
                 />
                 {clinicConsentError && (
                   <p className="text-sm text-red-600 mt-2">{clinicConsentError}</p>
@@ -1330,7 +1337,7 @@ const SettingsPage = () => {
                     type="button"
                     onClick={handleSaveClinicConsent}
                     disabled={isInfoBlocked}
-                    className={`px-4 py-2.5 rounded-lg text-sm font-medium transition-colors ${isInfoBlocked ? "bg-gray-300 text-gray-500 cursor-not-allowed" : "bg-[#1a1a1a] text-white hover:bg-[#2a2a2a]"}`}
+                    className={`px-4 py-2.5 rounded-lg text-sm font-medium transition-colors ${isInfoBlocked ? "bg-gray-300 text-gray-500 cursor-not-allowed" : "bg-brand-ink text-brand-ink-fg hover:bg-brand-ink-hover"}`}
                   >
                     Guardar consentimiento
                   </button>
@@ -1360,12 +1367,12 @@ const SettingsPage = () => {
                   onChange={(e) => handleProfessionalInfoChange("consentText", e.target.value)}
                   placeholder="Redacta aquí los términos y el consentimiento informado que el paciente debe aceptar."
                   rows={6}
-                  className="w-full px-4 py-2.5 bg-white dark:bg-gray-900 text-[#1a1a1a] dark:text-white border border-gray-200 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-[#1a1a1a] dark:focus:ring-gray-500 focus:border-transparent transition-all resize-y"
+                  className="w-full px-4 py-2.5 bg-brand-surface text-brand-ink border border-brand-border rounded-lg focus:ring-2 focus:ring-brand-ink focus:border-transparent transition-all resize-y"
                 />
                 <div className="flex items-center gap-3 pt-4 border-t border-gray-100">
                   <button
                     onClick={handleSaveProfessionalInfo}
-                    className="px-4 py-2.5 bg-[#1a1a1a] text-white rounded-lg text-sm font-medium hover:bg-[#2a2a2a] transition-colors"
+                    className="px-4 py-2.5 bg-brand-ink text-brand-ink-fg rounded-lg text-sm font-medium hover:bg-brand-ink-hover transition-colors"
                   >
                     Guardar consentimiento
                   </button>
@@ -1388,15 +1395,15 @@ const SettingsPage = () => {
           const hasReceptionist = myReceptionists.length >= 1;
           const rec = myReceptionists[0];
           return (
-            <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-100 dark:border-gray-800 p-6">
-              <h3 className="text-lg font-semibold text-[#1a1a1a] dark:text-white mb-2">Recepcionista</h3>
+            <div className="bg-brand-surface rounded-xl border border-brand-border p-6">
+              <h3 className="text-lg font-semibold text-brand-ink mb-2">Recepcionista</h3>
               <p className="text-sm text-gray-500 mb-4">
                 Como podólogo independiente puedes crear una recepcionista vinculada a tu cuenta. Tendrá acceso sin créditos a crear pacientes, crear y editar citas en tu calendario. Deberá cambiar la contraseña en su primer acceso.
               </p>
               {hasReceptionist && rec ? (
                 <div className="space-y-4">
                   <div className="bg-gray-50 border border-gray-100 rounded-lg p-4">
-                    <p className="font-medium text-[#1a1a1a] dark:text-white">{rec.name}</p>
+                    <p className="font-medium text-brand-ink">{rec.name}</p>
                     <p className="text-sm text-gray-600">{rec.email}</p>
                     <div className="flex flex-wrap gap-2 mt-3">
                       {rec.isBlocked ? (
@@ -1444,7 +1451,7 @@ const SettingsPage = () => {
                       type="text"
                       value={receptionistForm.name}
                       onChange={(e) => setReceptionistForm((f) => ({ ...f, name: e.target.value }))}
-                      className="w-full px-4 py-2.5 border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 text-[#1a1a1a] dark:text-white focus:ring-2 focus:ring-[#1a1a1a] dark:focus:ring-gray-500 focus:border-transparent"
+                      className="w-full px-4 py-2.5 border border-brand-border rounded-lg bg-brand-surface text-brand-ink focus:ring-2 focus:ring-brand-ink focus:border-transparent"
                       required
                     />
                   </div>
@@ -1454,7 +1461,7 @@ const SettingsPage = () => {
                       type="email"
                       value={receptionistForm.email}
                       onChange={(e) => setReceptionistForm((f) => ({ ...f, email: e.target.value }))}
-                      className="w-full px-4 py-2.5 border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 text-[#1a1a1a] dark:text-white focus:ring-2 focus:ring-[#1a1a1a] dark:focus:ring-gray-500 focus:border-transparent"
+                      className="w-full px-4 py-2.5 border border-brand-border rounded-lg bg-brand-surface text-brand-ink focus:ring-2 focus:ring-brand-ink focus:border-transparent"
                       required
                     />
                   </div>
@@ -1464,7 +1471,7 @@ const SettingsPage = () => {
                       type="password"
                       value={receptionistForm.password}
                       onChange={(e) => setReceptionistForm((f) => ({ ...f, password: e.target.value }))}
-                      className="w-full px-4 py-2.5 border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 text-[#1a1a1a] dark:text-white focus:ring-2 focus:ring-[#1a1a1a] dark:focus:ring-gray-500 focus:border-transparent"
+                      className="w-full px-4 py-2.5 border border-brand-border rounded-lg bg-brand-surface text-brand-ink focus:ring-2 focus:ring-brand-ink focus:border-transparent"
                       required
                       minLength={6}
                     />
@@ -1479,7 +1486,7 @@ const SettingsPage = () => {
                   )}
                   <button
                     type="submit"
-                    className="px-4 py-2.5 bg-[#1a1a1a] text-white rounded-lg text-sm font-medium hover:bg-[#2a2a2a] transition-colors"
+                    className="px-4 py-2.5 bg-brand-ink text-brand-ink-fg rounded-lg text-sm font-medium hover:bg-brand-ink-hover transition-colors"
                   >
                     Crear recepcionista
                   </button>
@@ -1491,8 +1498,8 @@ const SettingsPage = () => {
         
         {/* Clinic Information - Only for Clinic Admin (editable) or Podiatrists with clinic (read-only) */}
         {(canUploadLogo || isPodiatristWithClinic) && userClinic && (
-          <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-100 dark:border-gray-800 p-6">
-            <h3 className="text-lg font-semibold text-[#1a1a1a] dark:text-white mb-2">Información de la Clínica</h3>
+          <div className="bg-brand-surface rounded-xl border border-brand-border p-6">
+            <h3 className="text-lg font-semibold text-brand-ink mb-2">Información de la Clínica</h3>
             
             {canUploadLogo ? (
               // Clinic Admin can edit clinic information
@@ -1520,7 +1527,7 @@ const SettingsPage = () => {
                       onChange={(e) => handleClinicInfoChange("clinicName", e.target.value)}
                       placeholder="Mi Clínica Podológica"
                       disabled={isInfoBlocked}
-                      className={`w-full px-4 py-2.5 border border-gray-200 rounded-lg transition-all ${isInfoBlocked ? "bg-gray-50 dark:bg-gray-800 text-gray-500 dark:text-gray-400 cursor-not-allowed" : "bg-white dark:bg-gray-900 text-[#1a1a1a] dark:text-white focus:ring-2 focus:ring-[#1a1a1a] dark:focus:ring-gray-500 focus:border-transparent"}`}
+                      className={`w-full px-4 py-2.5 border border-gray-200 rounded-lg transition-all ${isInfoBlocked ? "bg-brand-canvas text-brand-muted cursor-not-allowed" : "bg-brand-surface text-brand-ink focus:ring-2 focus:ring-brand-ink focus:border-transparent"}`}
                     />
                   </div>
                   <div>
@@ -1532,7 +1539,7 @@ const SettingsPage = () => {
                       placeholder="MICP"
                       maxLength={8}
                       disabled={isInfoBlocked}
-                      className={`w-full px-4 py-2.5 border border-gray-200 rounded-lg transition-all ${isInfoBlocked ? "bg-gray-50 dark:bg-gray-800 text-gray-500 dark:text-gray-400 cursor-not-allowed" : "bg-white dark:bg-gray-900 text-[#1a1a1a] dark:text-white focus:ring-2 focus:ring-[#1a1a1a] dark:focus:ring-gray-500 focus:border-transparent"}`}
+                      className={`w-full px-4 py-2.5 border border-gray-200 rounded-lg transition-all ${isInfoBlocked ? "bg-brand-canvas text-brand-muted cursor-not-allowed" : "bg-brand-surface text-brand-ink focus:ring-2 focus:ring-brand-ink focus:border-transparent"}`}
                     />
                     <p className="text-xs text-gray-500 mt-1">Máx. 8 caracteres. Se usa en folios (ej: MICP-2025-001)</p>
                   </div>
@@ -1558,7 +1565,7 @@ const SettingsPage = () => {
                         onChange={(e) => handleClinicInfoChange("phone", e.target.value)}
                         placeholder={phonePlaceholderForCountry(resolveTenantCountryCode(clinicInfoForm.countryCode))}
                         disabled={isInfoBlocked}
-                        className={`w-full px-4 py-2.5 border border-gray-200 rounded-lg transition-all ${isInfoBlocked ? "bg-gray-50 dark:bg-gray-800 text-gray-500 dark:text-gray-400 cursor-not-allowed" : "bg-white dark:bg-gray-900 text-[#1a1a1a] dark:text-white focus:ring-2 focus:ring-[#1a1a1a] dark:focus:ring-gray-500 focus:border-transparent"}`}
+                        className={`w-full px-4 py-2.5 border border-gray-200 rounded-lg transition-all ${isInfoBlocked ? "bg-brand-canvas text-brand-muted cursor-not-allowed" : "bg-brand-surface text-brand-ink focus:ring-2 focus:ring-brand-ink focus:border-transparent"}`}
                       />
                     </div>
                     <div>
@@ -1569,7 +1576,7 @@ const SettingsPage = () => {
                         onChange={(e) => handleClinicInfoChange("email", e.target.value)}
                         placeholder="info@clinica.es"
                         disabled={isInfoBlocked}
-                        className={`w-full px-4 py-2.5 border border-gray-200 rounded-lg transition-all ${isInfoBlocked ? "bg-gray-50 dark:bg-gray-800 text-gray-500 dark:text-gray-400 cursor-not-allowed" : "bg-white dark:bg-gray-900 text-[#1a1a1a] dark:text-white focus:ring-2 focus:ring-[#1a1a1a] dark:focus:ring-gray-500 focus:border-transparent"}`}
+                        className={`w-full px-4 py-2.5 border border-gray-200 rounded-lg transition-all ${isInfoBlocked ? "bg-brand-canvas text-brand-muted cursor-not-allowed" : "bg-brand-surface text-brand-ink focus:ring-2 focus:ring-brand-ink focus:border-transparent"}`}
                       />
                     </div>
                   </div>
@@ -1582,7 +1589,7 @@ const SettingsPage = () => {
                       onChange={(e) => handleClinicInfoChange("address", e.target.value)}
                       placeholder="Calle Gran Vía, 45, 2º Izquierda"
                       disabled={isInfoBlocked}
-                      className={`w-full px-4 py-2.5 border border-gray-200 rounded-lg transition-all ${isInfoBlocked ? "bg-gray-50 dark:bg-gray-800 text-gray-500 dark:text-gray-400 cursor-not-allowed" : "bg-white dark:bg-gray-900 text-[#1a1a1a] dark:text-white focus:ring-2 focus:ring-[#1a1a1a] dark:focus:ring-gray-500 focus:border-transparent"}`}
+                      className={`w-full px-4 py-2.5 border border-gray-200 rounded-lg transition-all ${isInfoBlocked ? "bg-brand-canvas text-brand-muted cursor-not-allowed" : "bg-brand-surface text-brand-ink focus:ring-2 focus:ring-brand-ink focus:border-transparent"}`}
                     />
                   </div>
                   
@@ -1595,7 +1602,7 @@ const SettingsPage = () => {
                         onChange={(e) => handleClinicInfoChange("city", e.target.value)}
                         placeholder="Madrid"
                         disabled={isInfoBlocked}
-                        className={`w-full px-4 py-2.5 border border-gray-200 rounded-lg transition-all ${isInfoBlocked ? "bg-gray-50 dark:bg-gray-800 text-gray-500 dark:text-gray-400 cursor-not-allowed" : "bg-white dark:bg-gray-900 text-[#1a1a1a] dark:text-white focus:ring-2 focus:ring-[#1a1a1a] dark:focus:ring-gray-500 focus:border-transparent"}`}
+                        className={`w-full px-4 py-2.5 border border-gray-200 rounded-lg transition-all ${isInfoBlocked ? "bg-brand-canvas text-brand-muted cursor-not-allowed" : "bg-brand-surface text-brand-ink focus:ring-2 focus:ring-brand-ink focus:border-transparent"}`}
                       />
                     </div>
                     <div>
@@ -1606,7 +1613,7 @@ const SettingsPage = () => {
                         onChange={(e) => handleClinicInfoChange("postalCode", e.target.value)}
                         placeholder="28001"
                         disabled={isInfoBlocked}
-                        className={`w-full px-4 py-2.5 border border-gray-200 rounded-lg transition-all ${isInfoBlocked ? "bg-gray-50 dark:bg-gray-800 text-gray-500 dark:text-gray-400 cursor-not-allowed" : "bg-white dark:bg-gray-900 text-[#1a1a1a] dark:text-white focus:ring-2 focus:ring-[#1a1a1a] dark:focus:ring-gray-500 focus:border-transparent"}`}
+                        className={`w-full px-4 py-2.5 border border-gray-200 rounded-lg transition-all ${isInfoBlocked ? "bg-brand-canvas text-brand-muted cursor-not-allowed" : "bg-brand-surface text-brand-ink focus:ring-2 focus:ring-brand-ink focus:border-transparent"}`}
                       />
                     </div>
                   </div>
@@ -1620,7 +1627,7 @@ const SettingsPage = () => {
                         onChange={(e) => handleClinicInfoChange("licenseNumber", e.target.value)}
                         placeholder="CS-28/2024-POD-001"
                         disabled={isInfoBlocked}
-                        className={`w-full px-4 py-2.5 border border-gray-200 rounded-lg transition-all ${isInfoBlocked ? "bg-gray-50 dark:bg-gray-800 text-gray-500 dark:text-gray-400 cursor-not-allowed" : "bg-white dark:bg-gray-900 text-[#1a1a1a] dark:text-white focus:ring-2 focus:ring-[#1a1a1a] dark:focus:ring-gray-500 focus:border-transparent"}`}
+                        className={`w-full px-4 py-2.5 border border-gray-200 rounded-lg transition-all ${isInfoBlocked ? "bg-brand-canvas text-brand-muted cursor-not-allowed" : "bg-brand-surface text-brand-ink focus:ring-2 focus:ring-brand-ink focus:border-transparent"}`}
                       />
                     </div>
                     <div>
@@ -1631,7 +1638,7 @@ const SettingsPage = () => {
                         onChange={(e) => handleClinicInfoChange("website", e.target.value)}
                         placeholder="https://www.clinica.es"
                         disabled={isInfoBlocked}
-                        className={`w-full px-4 py-2.5 border border-gray-200 rounded-lg transition-all ${isInfoBlocked ? "bg-gray-50 dark:bg-gray-800 text-gray-500 dark:text-gray-400 cursor-not-allowed" : "bg-white dark:bg-gray-900 text-[#1a1a1a] dark:text-white focus:ring-2 focus:ring-[#1a1a1a] dark:focus:ring-gray-500 focus:border-transparent"}`}
+                        className={`w-full px-4 py-2.5 border border-gray-200 rounded-lg transition-all ${isInfoBlocked ? "bg-brand-canvas text-brand-muted cursor-not-allowed" : "bg-brand-surface text-brand-ink focus:ring-2 focus:ring-brand-ink focus:border-transparent"}`}
                       />
                     </div>
                   </div>
@@ -1644,7 +1651,7 @@ const SettingsPage = () => {
                         value={clinicInfoForm.legalName}
                         onChange={(e) => handleClinicInfoChange("legalName", e.target.value)}
                         disabled={isInfoBlocked}
-                        className={`w-full px-4 py-2.5 border border-gray-200 rounded-lg ${isInfoBlocked ? "bg-gray-50 dark:bg-gray-800 text-gray-500 dark:text-gray-400 cursor-not-allowed" : "bg-white dark:bg-gray-900 text-[#1a1a1a] dark:text-white"}`}
+                        className={`w-full px-4 py-2.5 border border-gray-200 rounded-lg ${isInfoBlocked ? "bg-brand-canvas text-brand-muted cursor-not-allowed" : "bg-brand-surface text-brand-ink"}`}
                       />
                     </div>
                     <div>
@@ -1654,7 +1661,7 @@ const SettingsPage = () => {
                         value={clinicInfoForm.rfc}
                         onChange={(e) => handleClinicInfoChange("rfc", e.target.value.toUpperCase())}
                         disabled={isInfoBlocked}
-                        className={`w-full px-4 py-2.5 border border-gray-200 rounded-lg ${isInfoBlocked ? "bg-gray-50 dark:bg-gray-800 text-gray-500 dark:text-gray-400 cursor-not-allowed" : "bg-white dark:bg-gray-900 text-[#1a1a1a] dark:text-white"}`}
+                        className={`w-full px-4 py-2.5 border border-gray-200 rounded-lg ${isInfoBlocked ? "bg-brand-canvas text-brand-muted cursor-not-allowed" : "bg-brand-surface text-brand-ink"}`}
                       />
                     </div>
                     <div>
@@ -1664,7 +1671,7 @@ const SettingsPage = () => {
                         value={clinicInfoForm.clues}
                         onChange={(e) => handleClinicInfoChange("clues", e.target.value)}
                         disabled={isInfoBlocked}
-                        className={`w-full px-4 py-2.5 border border-gray-200 rounded-lg ${isInfoBlocked ? "bg-gray-50 dark:bg-gray-800 text-gray-500 dark:text-gray-400 cursor-not-allowed" : "bg-white dark:bg-gray-900 text-[#1a1a1a] dark:text-white"}`}
+                        className={`w-full px-4 py-2.5 border border-gray-200 rounded-lg ${isInfoBlocked ? "bg-brand-canvas text-brand-muted cursor-not-allowed" : "bg-brand-surface text-brand-ink"}`}
                       />
                     </div>
                     <div>
@@ -1674,7 +1681,7 @@ const SettingsPage = () => {
                         value={clinicInfoForm.cofeprisRegistration}
                         onChange={(e) => handleClinicInfoChange("cofeprisRegistration", e.target.value)}
                         disabled={isInfoBlocked}
-                        className={`w-full px-4 py-2.5 border border-gray-200 rounded-lg ${isInfoBlocked ? "bg-gray-50 dark:bg-gray-800 text-gray-500 dark:text-gray-400 cursor-not-allowed" : "bg-white dark:bg-gray-900 text-[#1a1a1a] dark:text-white"}`}
+                        className={`w-full px-4 py-2.5 border border-gray-200 rounded-lg ${isInfoBlocked ? "bg-brand-canvas text-brand-muted cursor-not-allowed" : "bg-brand-surface text-brand-ink"}`}
                       />
                     </div>
                   </div>
@@ -1687,7 +1694,7 @@ const SettingsPage = () => {
                     <button
                       onClick={handleSaveClinicInfo}
                       disabled={isInfoBlocked}
-                      className={`px-6 py-2.5 rounded-lg text-sm font-medium transition-colors ${isInfoBlocked ? "bg-gray-300 text-gray-500 cursor-not-allowed" : "bg-[#1a1a1a] text-white hover:bg-[#2a2a2a]"}`}
+                      className={`px-6 py-2.5 rounded-lg text-sm font-medium transition-colors ${isInfoBlocked ? "bg-gray-300 text-gray-500 cursor-not-allowed" : "bg-brand-ink text-brand-ink-fg hover:bg-brand-ink-hover"}`}
                     >
                       Guardar información
                     </button>
@@ -1721,24 +1728,24 @@ const SettingsPage = () => {
                 <div className="grid gap-3 text-sm">
                   <div className="flex">
                     <span className="w-32 text-gray-500">Nombre:</span>
-                    <span className="font-medium text-[#1a1a1a] dark:text-white">{userClinic.clinicName}</span>
+                    <span className="font-medium text-brand-ink">{userClinic.clinicName}</span>
                   </div>
                   {userClinic.phone && (
                     <div className="flex">
                       <span className="w-32 text-gray-500">Teléfono:</span>
-                      <span className="font-medium text-[#1a1a1a] dark:text-white">{userClinic.phone}</span>
+                      <span className="font-medium text-brand-ink">{userClinic.phone}</span>
                     </div>
                   )}
                   {userClinic.email && (
                     <div className="flex">
                       <span className="w-32 text-gray-500">Email:</span>
-                      <span className="font-medium text-[#1a1a1a] dark:text-white">{userClinic.email}</span>
+                      <span className="font-medium text-brand-ink">{userClinic.email}</span>
                     </div>
                   )}
                   {userClinic.address && (
                     <div className="flex">
                       <span className="w-32 text-gray-500">Dirección:</span>
-                      <span className="font-medium text-[#1a1a1a] dark:text-white">
+                      <span className="font-medium text-brand-ink">
                         {userClinic.address}{userClinic.city && `, ${userClinic.city}`}{userClinic.postalCode && ` ${userClinic.postalCode}`}
                       </span>
                     </div>
@@ -1746,7 +1753,7 @@ const SettingsPage = () => {
                   {userClinic.licenseNumber && (
                     <div className="flex">
                       <span className="w-32 text-gray-500">Licencia:</span>
-                      <span className="font-medium text-[#1a1a1a] dark:text-white">{userClinic.licenseNumber}</span>
+                      <span className="font-medium text-brand-ink">{userClinic.licenseNumber}</span>
                     </div>
                   )}
                   {userClinic.consentDocumentUrl && (
@@ -1800,8 +1807,8 @@ const SettingsPage = () => {
         
         {/* Consultorio Information - Only for Independent Podiatrists (no clinic) */}
         {isPodiatristIndependent && (
-          <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-100 dark:border-gray-800 p-6">
-            <h3 className="text-lg font-semibold text-[#1a1a1a] dark:text-white mb-2">Información del Consultorio</h3>
+          <div className="bg-brand-surface rounded-xl border border-brand-border p-6">
+            <h3 className="text-lg font-semibold text-brand-ink mb-2">Información del Consultorio</h3>
             <p className="text-sm text-gray-500 mb-4">
               Completa la información de tu consultorio profesional. Estos datos aparecerán en los documentos PDF que generes.
             </p>
@@ -1815,7 +1822,7 @@ const SettingsPage = () => {
                     value={professionalInfoForm.name}
                     onChange={(e) => handleProfessionalInfoChange("name", e.target.value)}
                     placeholder="Dr. Juan Pérez García"
-                    className="w-full px-4 py-2.5 bg-white dark:bg-gray-900 text-[#1a1a1a] dark:text-white border border-gray-200 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-[#1a1a1a] dark:focus:ring-gray-500 focus:border-transparent transition-all"
+                    className="w-full px-4 py-2.5 bg-brand-surface text-brand-ink border border-brand-border rounded-lg focus:ring-2 focus:ring-brand-ink focus:border-transparent transition-all"
                   />
                 </div>
 
@@ -1840,7 +1847,7 @@ const SettingsPage = () => {
                       placeholder={phonePlaceholderForCountry(
                         resolveTenantCountryCode(professionalInfoForm.countryCode)
                       )}
-                      className="w-full px-4 py-2.5 bg-white dark:bg-gray-900 text-[#1a1a1a] dark:text-white border border-gray-200 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-[#1a1a1a] dark:focus:ring-gray-500 focus:border-transparent transition-all"
+                      className="w-full px-4 py-2.5 bg-brand-surface text-brand-ink border border-brand-border rounded-lg focus:ring-2 focus:ring-brand-ink focus:border-transparent transition-all"
                     />
                   </div>
                   <div>
@@ -1850,7 +1857,7 @@ const SettingsPage = () => {
                       value={professionalInfoForm.email}
                       onChange={(e) => handleProfessionalInfoChange("email", e.target.value)}
                       placeholder="doctor@consultorio.es"
-                      className="w-full px-4 py-2.5 bg-white dark:bg-gray-900 text-[#1a1a1a] dark:text-white border border-gray-200 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-[#1a1a1a] dark:focus:ring-gray-500 focus:border-transparent transition-all"
+                      className="w-full px-4 py-2.5 bg-brand-surface text-brand-ink border border-brand-border rounded-lg focus:ring-2 focus:ring-brand-ink focus:border-transparent transition-all"
                     />
                   </div>
                 </div>
@@ -1862,7 +1869,7 @@ const SettingsPage = () => {
                     value={professionalInfoForm.address}
                     onChange={(e) => handleProfessionalInfoChange("address", e.target.value)}
                     placeholder="Calle Gran Vía, 45, 2º Izquierda"
-                    className="w-full px-4 py-2.5 bg-white dark:bg-gray-900 text-[#1a1a1a] dark:text-white border border-gray-200 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-[#1a1a1a] dark:focus:ring-gray-500 focus:border-transparent transition-all"
+                    className="w-full px-4 py-2.5 bg-brand-surface text-brand-ink border border-brand-border rounded-lg focus:ring-2 focus:ring-brand-ink focus:border-transparent transition-all"
                   />
                 </div>
                 
@@ -1874,7 +1881,7 @@ const SettingsPage = () => {
                       value={professionalInfoForm.city}
                       onChange={(e) => handleProfessionalInfoChange("city", e.target.value)}
                       placeholder="Madrid"
-                      className="w-full px-4 py-2.5 bg-white dark:bg-gray-900 text-[#1a1a1a] dark:text-white border border-gray-200 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-[#1a1a1a] dark:focus:ring-gray-500 focus:border-transparent transition-all"
+                      className="w-full px-4 py-2.5 bg-brand-surface text-brand-ink border border-brand-border rounded-lg focus:ring-2 focus:ring-brand-ink focus:border-transparent transition-all"
                     />
                   </div>
                   <div>
@@ -1884,7 +1891,7 @@ const SettingsPage = () => {
                       value={professionalInfoForm.postalCode}
                       onChange={(e) => handleProfessionalInfoChange("postalCode", e.target.value)}
                       placeholder="28001"
-                      className="w-full px-4 py-2.5 bg-white dark:bg-gray-900 text-[#1a1a1a] dark:text-white border border-gray-200 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-[#1a1a1a] dark:focus:ring-gray-500 focus:border-transparent transition-all"
+                      className="w-full px-4 py-2.5 bg-brand-surface text-brand-ink border border-brand-border rounded-lg focus:ring-2 focus:ring-brand-ink focus:border-transparent transition-all"
                     />
                   </div>
                 </div>
@@ -1897,7 +1904,7 @@ const SettingsPage = () => {
                       value={professionalInfoForm.licenseNumber}
                       onChange={(e) => handleProfessionalInfoChange("licenseNumber", e.target.value)}
                       placeholder="CS-28/2024-POD-001"
-                      className="w-full px-4 py-2.5 bg-white dark:bg-gray-900 text-[#1a1a1a] dark:text-white border border-gray-200 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-[#1a1a1a] dark:focus:ring-gray-500 focus:border-transparent transition-all"
+                      className="w-full px-4 py-2.5 bg-brand-surface text-brand-ink border border-brand-border rounded-lg focus:ring-2 focus:ring-brand-ink focus:border-transparent transition-all"
                     />
                   </div>
                   <div>
@@ -1907,7 +1914,7 @@ const SettingsPage = () => {
                       value={professionalInfoForm.professionalLicense}
                       onChange={(e) => handleProfessionalInfoChange("professionalLicense", e.target.value)}
                       placeholder="12345678"
-                      className="w-full px-4 py-2.5 bg-white dark:bg-gray-900 text-[#1a1a1a] dark:text-white border border-gray-200 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-[#1a1a1a] dark:focus:ring-gray-500 focus:border-transparent transition-all"
+                      className="w-full px-4 py-2.5 bg-brand-surface text-brand-ink border border-brand-border rounded-lg focus:ring-2 focus:ring-brand-ink focus:border-transparent transition-all"
                     />
                   </div>
                 </div>
@@ -1915,7 +1922,7 @@ const SettingsPage = () => {
                 <div className="flex items-center gap-4 pt-4 border-t border-gray-100">
                   <button
                     onClick={handleSaveProfessionalInfo}
-                    className="px-6 py-2.5 bg-[#1a1a1a] text-white rounded-lg text-sm font-medium hover:bg-[#2a2a2a] transition-colors"
+                    className="px-6 py-2.5 bg-brand-ink text-brand-ink-fg rounded-lg text-sm font-medium hover:bg-brand-ink-hover transition-colors"
                   >
                     Guardar información
                   </button>
@@ -1935,8 +1942,8 @@ const SettingsPage = () => {
         
         {/* Professional Credentials - For Podiatrists with Clinic */}
         {isPodiatristWithClinic && userClinic && (
-          <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-100 dark:border-gray-800 p-6">
-            <h3 className="text-lg font-semibold text-[#1a1a1a] dark:text-white mb-2">Credenciales Profesionales</h3>
+          <div className="bg-brand-surface rounded-xl border border-brand-border p-6">
+            <h3 className="text-lg font-semibold text-brand-ink mb-2">Credenciales Profesionales</h3>
             <p className="text-sm text-gray-500 mb-4">
               Ingresa tus credenciales profesionales individuales. La información de la clínica es gestionada por tu administrador.
             </p>
@@ -1944,8 +1951,8 @@ const SettingsPage = () => {
             <div className="space-y-6">
               <div className="rounded-lg border border-emerald-100 bg-emerald-50/60 p-4 space-y-4">
                 <div>
-                  <h4 className="text-sm font-semibold text-[#1a1a1a] dark:text-white">Teléfono de contacto</h4>
-                  <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">
+                  <h4 className="text-sm font-semibold text-brand-ink">Teléfono de contacto</h4>
+                  <p className="text-xs text-brand-muted mt-1">
                     Aparece en documentos PDF. La recepción puede enviarte la agenda por WhatsApp directamente a este número si está configurado.
                   </p>
                 </div>
@@ -1965,14 +1972,14 @@ const SettingsPage = () => {
                     placeholder={phonePlaceholderForCountry(
                       resolveTenantCountryCode(professionalInfoForm.countryCode)
                     )}
-                    className="w-full px-4 py-2.5 bg-white dark:bg-gray-900 text-[#1a1a1a] dark:text-white border border-gray-200 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-[#1a1a1a] dark:focus:ring-gray-500 focus:border-transparent transition-all"
+                    className="w-full px-4 py-2.5 bg-brand-surface text-brand-ink border border-brand-border rounded-lg focus:ring-2 focus:ring-brand-ink focus:border-transparent transition-all"
                   />
                 </div>
                 <div className="flex items-center gap-4">
                   <button
                     type="button"
                     onClick={handleSaveProfessionalInfo}
-                    className="px-4 py-2 bg-[#1a1a1a] text-white rounded-lg text-sm font-medium hover:bg-[#2a2a2a] transition-colors"
+                    className="px-4 py-2 bg-brand-ink text-brand-ink-fg rounded-lg text-sm font-medium hover:bg-brand-ink-hover transition-colors"
                   >
                     Guardar teléfono
                   </button>
@@ -1991,7 +1998,7 @@ const SettingsPage = () => {
                     value={credentialsCedula}
                     onChange={(e) => setCredentialsCedula(e.target.value)}
                     placeholder="12345678"
-                    className="w-full px-4 py-2.5 bg-white dark:bg-gray-900 text-[#1a1a1a] dark:text-white border border-gray-200 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-[#1a1a1a] dark:focus:ring-gray-500 focus:border-transparent transition-all"
+                    className="w-full px-4 py-2.5 bg-brand-surface text-brand-ink border border-brand-border rounded-lg focus:ring-2 focus:ring-brand-ink focus:border-transparent transition-all"
                   />
                 </div>
                 <div>
@@ -2001,7 +2008,7 @@ const SettingsPage = () => {
                     value={credentialsRegistro}
                     onChange={(e) => setCredentialsRegistro(e.target.value)}
                     placeholder="REG-2024-001"
-                    className="w-full px-4 py-2.5 bg-white dark:bg-gray-900 text-[#1a1a1a] dark:text-white border border-gray-200 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-[#1a1a1a] dark:focus:ring-gray-500 focus:border-transparent transition-all"
+                    className="w-full px-4 py-2.5 bg-brand-surface text-brand-ink border border-brand-border rounded-lg focus:ring-2 focus:ring-brand-ink focus:border-transparent transition-all"
                   />
                 </div>
               </div>
@@ -2009,7 +2016,7 @@ const SettingsPage = () => {
               <div className="flex items-center gap-4 pt-4 border-t border-gray-100">
                 <button
                   onClick={handleSaveCredentials}
-                  className="px-6 py-2.5 bg-[#1a1a1a] text-white rounded-lg text-sm font-medium hover:bg-[#2a2a2a] transition-colors"
+                  className="px-6 py-2.5 bg-brand-ink text-brand-ink-fg rounded-lg text-sm font-medium hover:bg-brand-ink-hover transition-colors"
                 >
                   Guardar credenciales
                 </button>
@@ -2050,7 +2057,7 @@ const SettingsPage = () => {
                       type="text"
                       value={userClinic.clinicName}
                       disabled
-                      className="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-gray-500 dark:text-gray-400 cursor-not-allowed"
+                      className="w-full px-4 py-2.5 bg-brand-canvas border border-brand-border rounded-lg text-brand-muted cursor-not-allowed"
                     />
                   </div>
                   
@@ -2066,7 +2073,7 @@ const SettingsPage = () => {
                         type="text"
                         value={(userClinic as { countryCode?: string }).countryCode || DEFAULT_TENANT_COUNTRY}
                         disabled
-                        className="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-gray-500 dark:text-gray-400 cursor-not-allowed"
+                        className="w-full px-4 py-2.5 bg-brand-canvas border border-brand-border rounded-lg text-brand-muted cursor-not-allowed"
                       />
                     </div>
                     <div>
@@ -2080,7 +2087,7 @@ const SettingsPage = () => {
                         type="text"
                         value={userClinic.phone || "—"}
                         disabled
-                        className="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-gray-500 dark:text-gray-400 cursor-not-allowed"
+                        className="w-full px-4 py-2.5 bg-brand-canvas border border-brand-border rounded-lg text-brand-muted cursor-not-allowed"
                       />
                     </div>
                     <div>
@@ -2094,7 +2101,7 @@ const SettingsPage = () => {
                         type="text"
                         value={userClinic.email || "—"}
                         disabled
-                        className="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-gray-500 dark:text-gray-400 cursor-not-allowed"
+                        className="w-full px-4 py-2.5 bg-brand-canvas border border-brand-border rounded-lg text-brand-muted cursor-not-allowed"
                       />
                     </div>
                   </div>
@@ -2110,7 +2117,7 @@ const SettingsPage = () => {
                       type="text"
                       value={userClinic.address || "—"}
                       disabled
-                      className="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-gray-500 dark:text-gray-400 cursor-not-allowed"
+                      className="w-full px-4 py-2.5 bg-brand-canvas border border-brand-border rounded-lg text-brand-muted cursor-not-allowed"
                     />
                   </div>
                   
@@ -2126,7 +2133,7 @@ const SettingsPage = () => {
                         type="text"
                         value={userClinic.city || "—"}
                         disabled
-                        className="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-gray-500 dark:text-gray-400 cursor-not-allowed"
+                        className="w-full px-4 py-2.5 bg-brand-canvas border border-brand-border rounded-lg text-brand-muted cursor-not-allowed"
                       />
                     </div>
                     <div>
@@ -2140,7 +2147,7 @@ const SettingsPage = () => {
                         type="text"
                         value={userClinic.postalCode || "—"}
                         disabled
-                        className="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-gray-500 dark:text-gray-400 cursor-not-allowed"
+                        className="w-full px-4 py-2.5 bg-brand-canvas border border-brand-border rounded-lg text-brand-muted cursor-not-allowed"
                       />
                     </div>
                   </div>

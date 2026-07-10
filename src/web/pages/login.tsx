@@ -168,7 +168,7 @@ const Login = () => {
   return (
     <div className={`${ap.shell} flex`}>
       {/* Left Panel - Branding */}
-      <div className="hidden lg:flex lg:w-1/2 bg-[#1a1a1a] relative overflow-hidden">
+      <div className="hidden lg:flex lg:w-1/2 bg-brand-ink relative overflow-hidden">
         <div className="absolute inset-0">
           <div className="absolute top-0 left-0 w-full h-full opacity-[0.03]">
             <svg width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
@@ -341,7 +341,7 @@ const Login = () => {
                   <button
                     type="button"
                     onClick={() => setShowPassword((v) => !v)}
-                    className="absolute inset-y-0 right-0 flex items-center px-3 text-gray-500 dark:text-gray-400 hover:text-[#1a1a1a] dark:hover:text-white"
+                    className="absolute inset-y-0 right-0 flex items-center px-3 text-brand-muted hover:text-brand-ink dark:hover:text-white"
                     aria-label={showPassword ? "Ocultar contraseña" : "Mostrar contraseña"}
                   >
                     {showPassword ? (
@@ -443,7 +443,7 @@ const Login = () => {
               </button>
             </form>
 
-            <div className="mt-10 pt-8 border-t border-gray-100 dark:border-gray-800 space-y-3">
+            <div className="mt-10 pt-8 border-t border-brand-border space-y-3">
               <p className={`${ap.muted} text-center`}>
                 {t.auth.dontHaveAccount}{" "}
                 <button

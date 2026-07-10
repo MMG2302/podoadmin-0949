@@ -1,4 +1,4 @@
-import { and, eq } from 'drizzle-orm';
+import { and, eq, inArray } from 'drizzle-orm';
 
 import { database } from '../database';
 
@@ -130,6 +130,49 @@ export async function getSubscriptionForUser(userId: string, clinicId?: string |
   return rows[0] ? mapRow(rows[0]) : null;
 
 }
+
+/** Precarga suscripciones por clínica y usuario en una sola consulta. */
+export async function getSubscriptionsBatch(
+  clinicIds: string[],
+  userIds: string[]
+): Promise<Map<string, SubscriptionPublic>> {
+  const map = new Map<string, SubscriptionPublic>();
+  const uniqueClinics = [...new Set(clinicIds.filter(Boolean))];
+  const uniqueUsers = [...new Set(userIds.filter(Boolean))];
+
+  if (uniqueClinics.length > 0) {
+    const rows = await database
+      .select()
+      .from(subscriptions)
+      .where(and(eq(subscriptions.subjectType, 'clinic'), inArray(subscriptions.subjectId, uniqueClinics)));
+    for (const row of rows) {
+      map.set(`clinic:${row.subjectId}`, mapRow(row));
+    }
+  }
+
+  if (uniqueUsers.length > 0) {
+    const rows = await database
+      .select()
+      .from(subscriptions)
+      .where(and(eq(subscriptions.subjectType, 'user'), inArray(subscriptions.subjectId, uniqueUsers)));
+    for (const row of rows) {
+      map.set(`user:${row.subjectId}`, mapRow(row));
+    }
+  }
+
+  return map;
+}
+
+function lookupSubscriptionFromBatch(
+  batch: Map<string, SubscriptionPublic>,
+  userId: string,
+  clinicId?: string | null
+): SubscriptionPublic | null {
+  if (clinicId) return batch.get(`clinic:${clinicId}`) ?? null;
+  return batch.get(`user:${userId}`) ?? null;
+}
+
+export { lookupSubscriptionFromBatch };
 
 
 

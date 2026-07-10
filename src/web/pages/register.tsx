@@ -146,7 +146,7 @@ const Register = () => {
   };
 
   const brandingPanel = (
-    <div className="hidden lg:flex lg:w-1/2 bg-[#1a1a1a] relative overflow-hidden">
+    <div className="hidden lg:flex lg:w-1/2 bg-brand-ink relative overflow-hidden">
       <div className="absolute inset-0">
         <div className="absolute top-0 left-0 w-full h-full opacity-[0.03]">
           <svg width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
@@ -330,14 +330,14 @@ const Register = () => {
                     <button
                       type="button"
                       onClick={() => setShowPassword((v) => !v)}
-                      className="absolute inset-y-0 right-0 flex items-center px-3 text-gray-500 dark:text-gray-400 hover:text-[#1a1a1a] dark:hover:text-white"
+                      className="absolute inset-y-0 right-0 flex items-center px-3 text-brand-muted hover:text-brand-ink dark:hover:text-white"
                       aria-label={showPassword ? "Ocultar" : "Mostrar"}
                     >
                       {showPassword ? "🙈" : "👁"}
                     </button>
                   </div>
                   {password.length > 0 && (
-                    <ul className="mt-2 text-xs text-gray-600 dark:text-gray-400 space-y-1">
+                    <ul className="mt-2 text-xs text-brand-muted space-y-1">
                       <li className={pwdRules.minLength ? "text-green-700 dark:text-green-400" : ""}>• {t.auth.passwordMinLength}</li>
                       <li className={pwdRules.uppercase ? "text-green-700 dark:text-green-400" : ""}>• {t.auth.passwordUppercase}</li>
                       <li className={pwdRules.lowercase ? "text-green-700 dark:text-green-400" : ""}>• {t.auth.passwordLowercase}</li>
@@ -352,7 +352,7 @@ const Register = () => {
                     type="checkbox"
                     checked={termsAccepted}
                     onChange={(e) => setTermsAccepted(e.target.checked)}
-                    className="mt-0.5 h-5 w-5 min-h-[20px] min-w-[20px] shrink-0 rounded border-2 border-gray-400 dark:border-gray-500 bg-white dark:bg-gray-700 text-[#1a1a1a] accent-[#1a1a1a] cursor-pointer focus:ring-2 focus:ring-[#1a1a1a] focus:ring-offset-1 dark:focus:ring-offset-gray-900"
+                    className="mt-0.5 h-5 w-5 min-h-[20px] min-w-[20px] shrink-0 rounded border-2 border-brand-border bg-brand-surface text-brand-ink accent-brand-ink cursor-pointer focus:ring-2 focus:ring-brand-ink focus:ring-offset-1"
                     required
                     aria-label={t.auth.termsLink}
                   />
@@ -369,7 +369,7 @@ const Register = () => {
                     type="checkbox"
                     checked={privacyPolicyAccepted}
                     onChange={(e) => setPrivacyPolicyAccepted(e.target.checked)}
-                    className="mt-0.5 h-5 w-5 min-h-[20px] min-w-[20px] shrink-0 rounded border-2 border-gray-400 dark:border-gray-500 bg-white dark:bg-gray-700 text-[#1a1a1a] accent-[#1a1a1a] cursor-pointer focus:ring-2 focus:ring-[#1a1a1a] focus:ring-offset-1 dark:focus:ring-offset-gray-900"
+                    className="mt-0.5 h-5 w-5 min-h-[20px] min-w-[20px] shrink-0 rounded border-2 border-brand-border bg-brand-surface text-brand-ink accent-brand-ink cursor-pointer focus:ring-2 focus:ring-brand-ink focus:ring-offset-1"
                     required
                     aria-label={t.auth.privacyLink}
                   />
@@ -403,7 +403,7 @@ const Register = () => {
                   <span className={isLoading ? "opacity-0" : ""}>{t.auth.registerButton}</span>
                   {isLoading && (
                     <span className="absolute inset-0 flex items-center justify-center">
-                      <svg className="animate-spin h-5 w-5 text-white dark:text-[#1a1a1a]" fill="none" viewBox="0 0 24 24">
+                      <svg className="animate-spin h-5 w-5 text-brand-ink-fg" fill="none" viewBox="0 0 24 24">
                         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                         <path
                           className="opacity-75"

@@ -11,7 +11,7 @@ import {
 } from '../utils/validation';
 import { database } from '../database';
 import { clinicalSessions as sessionsTable, patients as patientsTable, createdUsers as createdUsersTable } from '../database/schema';
-import { eq, and, desc } from 'drizzle-orm';
+import { eq, and, desc, gte, lte } from 'drizzle-orm';
 import { validateImageDataUri, MAX_SESSION_IMAGE_BYTES, MAX_D1_STORED_DATA_URI_BYTES } from '../utils/logo-upload';
 import { syncClinicalRetentionForSession } from '../utils/clinical-retention';
 import { isR2Reference, isSessionImageFilePath, getR2Bucket } from '../utils/r2-media';
@@ -174,6 +174,8 @@ sessionsRoutes.get(
       const patientFilter = queryResult.data.patient;
       const searchQ = queryResult.data.q;
       const statusFilter = queryResult.data.status ?? 'all';
+      const fromDate = queryResult.data.from;
+      const toDate = queryResult.data.to;
       const pagination = parsePaginationQuery({
         limit: queryResult.data.limit,
         offset: queryResult.data.offset,
@@ -188,7 +190,9 @@ sessionsRoutes.get(
       const statusCond =
         statusFilter === 'all' ? undefined : buildSessionStatusCondition(statusFilter);
       const searchCond = buildSessionSearchCondition(searchQ ?? '');
-      const where = mergeAnd(scopeWhere, patientEq, statusCond, searchCond);
+      const fromCond = fromDate ? gte(sessionsTable.sessionDate, fromDate) : undefined;
+      const toCond = toDate ? lte(sessionsTable.sessionDate, toDate) : undefined;
+      const where = mergeAnd(scopeWhere, patientEq, statusCond, searchCond, fromCond, toCond);
 
       let query = database
         .select({
@@ -224,6 +228,66 @@ sessionsRoutes.get(
     }
   }
 );
+
+/**
+ * GET /api/sessions/upcoming-followups
+ * Sesiones con seguimiento próximo o vencido (banner en lista de sesiones).
+ */
+sessionsRoutes.get('/upcoming-followups', requirePermission('view_sessions'), async (c) => {
+  try {
+    const user = c.get('user')!;
+    if (isClinicAdminWithoutClinic(user)) {
+      return c.json({ success: true, items: [] });
+    }
+    const limitRaw = parseInt(c.req.query('limit') || '10', 10);
+    const limit = Math.min(Math.max(Number.isFinite(limitRaw) ? limitRaw : 10, 1), 50);
+
+    const scope = await resolveClinicalListScope(user);
+    const scopeWhere = mergeScopeWhere(scope, {
+      createdBy: sessionsTable.createdBy,
+      clinicId: sessionsTable.clinicId,
+    });
+
+    let query = database
+      .select({
+        session: sessionsTable,
+        patientFirstName: patientsTable.firstName,
+        patientLastName: patientsTable.lastName,
+      })
+      .from(sessionsTable)
+      .innerJoin(patientsTable, eq(sessionsTable.patientId, patientsTable.id))
+      .$dynamic();
+    if (scopeWhere) query = query.where(scopeWhere);
+    const rows = await query.orderBy(desc(sessionsTable.sessionDate)).limit(200);
+
+    const now = new Date();
+    const items = rows
+      .map(({ session, patientFirstName, patientLastName }) => {
+        const followUpDate = session.nextAppointmentDate;
+        if (!followUpDate) return null;
+        const fu = new Date(followUpDate);
+        const diffDays = Math.ceil((fu.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+        if (diffDays > 14) return null;
+        return {
+          id: session.id,
+          patientId: session.patientId,
+          patientName: `${patientFirstName} ${patientLastName}`.trim(),
+          sessionDate: session.sessionDate,
+          nextAppointmentDate: followUpDate,
+          daysUntil: diffDays,
+          isOverdue: diffDays < 0,
+        };
+      })
+      .filter((x): x is NonNullable<typeof x> => x !== null)
+      .sort((a, b) => a.daysUntil - b.daysUntil)
+      .slice(0, limit);
+
+    return c.json({ success: true, items });
+  } catch (error) {
+    console.error('Error upcoming-followups:', error);
+    return c.json({ error: 'Error interno' }, 500);
+  }
+});
 
 /**
  * GET /api/sessions/:sessionId

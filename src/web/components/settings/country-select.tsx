@@ -21,7 +21,7 @@ export function CountrySelect({ value, onChange, className, id }: CountrySelectP
       onChange={(e) => onChange(resolveTenantCountryCode(e.target.value))}
       className={
         className ??
-        'w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#1a1a1a] focus:border-transparent bg-white'
+        'w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-brand-ink focus:border-transparent bg-white'
       }
     >
       {TENANT_COUNTRY_CODES.map((code) => (

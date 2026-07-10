@@ -29,13 +29,13 @@ export function PatientPersonalAntecedentsFields({
   labels,
 }: PersonalFieldsProps) {
   const inputClass =
-    "w-full px-3 py-2 border border-gray-200 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-[#1a1a1a] dark:text-white focus:outline-none focus:border-[#1a1a1a] dark:focus:border-gray-400";
+    "w-full px-3 py-2 border border-brand-border rounded-lg bg-brand-surface text-brand-ink focus:outline-none focus:border-brand-ink";
 
   return (
     <div className="space-y-4">
-      <h4 className="font-medium text-[#1a1a1a] dark:text-white">{labels.title}</h4>
+      <h4 className="font-medium text-brand-ink">{labels.title}</h4>
       <div>
-        <label className="block text-sm font-medium text-[#1a1a1a] dark:text-gray-100 mb-1">
+        <label className="block text-sm font-medium text-brand-ink mb-1">
           {labels.allergies}
         </label>
         <input
@@ -47,7 +47,7 @@ export function PatientPersonalAntecedentsFields({
         />
       </div>
       <div>
-        <label className="block text-sm font-medium text-[#1a1a1a] dark:text-gray-100 mb-1">
+        <label className="block text-sm font-medium text-brand-ink mb-1">
           {labels.medications}
         </label>
         <input
@@ -59,7 +59,7 @@ export function PatientPersonalAntecedentsFields({
         />
       </div>
       <div>
-        <label className="block text-sm font-medium text-[#1a1a1a] dark:text-gray-100 mb-1">
+        <label className="block text-sm font-medium text-brand-ink mb-1">
           {labels.conditions}
         </label>
         <input
@@ -94,13 +94,13 @@ function FamilyAntecedentRow({
   onChange: (patch: Partial<AntecedentEntry>) => void;
 }) {
   const inputClass =
-    "w-full px-3 py-2 border border-gray-200 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-sm focus:outline-none focus:border-[#1a1a1a] dark:focus:border-gray-400 disabled:bg-gray-100 dark:disabled:bg-gray-900";
+    "w-full px-3 py-2 border border-brand-border rounded-lg bg-brand-surface text-sm focus:outline-none focus:border-brand-ink disabled:bg-gray-100 dark:disabled:bg-gray-900";
 
   return (
-    <div className="rounded-lg border border-gray-200 dark:border-gray-700 p-3 space-y-2">
-      <p className="text-sm font-medium text-[#1a1a1a] dark:text-white">{label}</p>
+    <div className="rounded-lg border border-brand-border p-3 space-y-2">
+      <p className="text-sm font-medium text-brand-ink">{label}</p>
       {variant === "other" && (
-        <p className="text-xs text-gray-500 dark:text-gray-400">
+        <p className="text-xs text-brand-muted">
           Indique si algún familiar tuvo otra enfermedad que considere relevante.
         </p>
       )}
@@ -153,8 +153,8 @@ function FamilyAntecedentRow({
 export function PatientFamilyAntecedentsFields({ family, onChange, readOnly }: FamilyFieldsProps) {
   return (
     <div className="space-y-3">
-      <h4 className="font-medium text-[#1a1a1a] dark:text-white">Antecedentes familiares</h4>
-      <p className="text-xs text-gray-500 dark:text-gray-400">
+      <h4 className="font-medium text-brand-ink">Antecedentes familiares</h4>
+      <p className="text-xs text-brand-muted">
         Indique si algún familiar directo padece estas enfermedades.
       </p>
       {FAMILY_ANTECEDENT_IDS.map((id) => (
@@ -188,7 +188,7 @@ export function PatientPersonalAntecedentsSummary({
 
   return (
     <div>
-      <h4 className="font-medium text-[#1a1a1a] dark:text-white mb-3">{labels.title}</h4>
+      <h4 className="font-medium text-brand-ink mb-3">{labels.title}</h4>
       <div className="space-y-2 text-sm">
         <div>
           <span className="text-gray-500">{labels.allergies}:</span>
@@ -214,7 +214,7 @@ export function PatientFamilyAntecedentsSummary({
 }) {
   return (
     <div>
-      <h4 className="font-medium text-[#1a1a1a] dark:text-white mb-3">Antecedentes familiares</h4>
+      <h4 className="font-medium text-brand-ink mb-3">Antecedentes familiares</h4>
       <div className="space-y-2 text-sm">
         {FAMILY_ANTECEDENT_IDS.map((id) => {
           const entry = medicalHistory.family[id];

@@ -23,6 +23,7 @@ export interface WhatsAppConfigDto {
   templateName: string | null;
   templateLanguage: string;
   defaultExtraNote: string | null;
+  receptionistApiEnabled?: boolean;
   status: string;
   lastError: string | null;
   hasAccessToken: boolean;
@@ -47,6 +48,7 @@ type FormState = {
   templateName: string;
   templateLanguage: string;
   defaultExtraNote: string;
+  receptionistApiEnabled: boolean;
 };
 
 const emptyForm: FormState = {
@@ -63,6 +65,7 @@ const emptyForm: FormState = {
   templateName: "",
   templateLanguage: "es",
   defaultExtraNote: "",
+  receptionistApiEnabled: false,
 };
 
 function formatStatusLabel(status: string, t: WhatsAppTranslations): string {
@@ -143,6 +146,7 @@ export function WhatsAppSettingsSection() {
       templateName: c.templateName || "",
       templateLanguage: c.templateLanguage || "es",
       defaultExtraNote: c.defaultExtraNote || "",
+      receptionistApiEnabled: c.receptionistApiEnabled === true,
     });
     setShowTokenField(!c.hasAccessToken);
   }, [w.errorLoad, w.errorApiUnavailable]);
@@ -212,6 +216,7 @@ export function WhatsAppSettingsSection() {
       templateName: form.templateName.trim() || null,
       templateLanguage: form.templateLanguage.trim() || "es",
       defaultExtraNote: form.defaultExtraNote.trim() || null,
+      receptionistApiEnabled: form.receptionistApiEnabled,
     };
     if (form.accessToken.trim()) {
       body.accessToken = form.accessToken.trim();
@@ -291,114 +296,114 @@ export function WhatsAppSettingsSection() {
 
   if (loading) {
     return (
-      <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-100 dark:border-gray-800 p-6">
-        <div className="mb-4 p-4 rounded-lg bg-gray-50 dark:bg-gray-950 border border-gray-100 dark:border-gray-800">
-          <p className="text-sm font-medium text-[#1a1a1a] dark:text-white">{w.purposeTitle}</p>
-          <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">{w.purposeDescription}</p>
+      <div className="bg-brand-surface rounded-xl border border-brand-border p-6">
+        <div className="mb-4 p-4 rounded-lg bg-brand-canvas border border-brand-border">
+          <p className="text-sm font-medium text-brand-ink">{w.purposeTitle}</p>
+          <p className="text-sm text-brand-muted mt-1">{w.purposeDescription}</p>
         </div>
-        <p className="text-sm text-gray-500 dark:text-gray-400">{w.loading}</p>
+        <p className="text-sm text-brand-muted">{w.loading}</p>
       </div>
     );
   }
 
   const statusColor =
     config?.status === "connected"
-      ? "text-green-600 dark:text-green-400"
+      ? "text-semantic-success"
       : config?.status === "error"
-        ? "text-red-600 dark:text-red-400"
+        ? "text-semantic-error"
         : "text-amber-600 dark:text-amber-400";
 
   return (
-    <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-100 dark:border-gray-800 p-6">
+    <div className="bg-brand-surface rounded-xl border border-brand-border p-6">
       <div className="mb-4">
-        <h3 className="text-lg font-semibold text-[#1a1a1a] dark:text-white">{w.title}</h3>
-        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{w.subtitle}</p>
+        <h3 className="text-lg font-semibold text-brand-ink">{w.title}</h3>
+        <p className="text-sm text-brand-muted mt-1">{w.subtitle}</p>
       </div>
 
-      <div className="mb-4 p-4 rounded-lg bg-gray-50 dark:bg-gray-950 border border-gray-100 dark:border-gray-800">
-        <p className="text-sm font-medium text-[#1a1a1a] dark:text-white">{w.purposeTitle}</p>
-        <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">{w.purposeDescription}</p>
+      <div className="mb-4 p-4 rounded-lg bg-brand-canvas border border-brand-border">
+        <p className="text-sm font-medium text-brand-ink">{w.purposeTitle}</p>
+        <p className="text-sm text-brand-muted mt-1">{w.purposeDescription}</p>
       </div>
 
       <WhatsAppSetupGuide />
 
       {config?.configured && (
-        <div className="mb-4 p-3 rounded-lg bg-gray-50 dark:bg-gray-800/50 text-sm">
+        <div className="mb-4 p-3 rounded-lg bg-brand-canvas/50 text-sm">
           <span className="text-gray-500">{w.statusLabel} </span>
           <span className={`font-medium ${statusColor}`}>{formatStatusLabel(config.status, w)}</span>
           {config.businessPhoneE164 && (
-            <span className="ml-2 text-gray-600 dark:text-gray-300">· {config.businessPhoneE164}</span>
+            <span className="ml-2 text-brand-muted">· {config.businessPhoneE164}</span>
           )}
           {config.lastError && config.status === "error" && (
-            <p className="mt-1 text-red-600 dark:text-red-400 text-xs">{config.lastError}</p>
+            <p className="mt-1 text-semantic-error text-xs">{config.lastError}</p>
           )}
         </div>
       )}
 
       {error && (
-        <div className="mb-4 p-3 rounded-lg bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300 text-sm">{error}</div>
+        <div className="mb-4 p-3 rounded-lg bg-red-50 dark:bg-red-900/20 text-semantic-error text-sm">{error}</div>
       )}
       {success && (
-        <div className="mb-4 p-3 rounded-lg bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300 text-sm">{success}</div>
+        <div className="mb-4 p-3 rounded-lg bg-green-50 dark:bg-green-900/20 text-semantic-success text-sm">{success}</div>
       )}
 
       <form onSubmit={handleSave} className="space-y-4">
         <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{w.phoneNumberIdLabel}</label>
+          <label className="block text-sm font-medium text-brand-muted mb-1">{w.phoneNumberIdLabel}</label>
           <input
             type="text"
             value={form.phoneNumberId}
             onChange={(e) => setForm({ ...form, phoneNumberId: e.target.value })}
-            className="w-full px-4 py-2.5 border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-950 text-[#1a1a1a] dark:text-white"
+            className="w-full px-4 py-2.5 border border-brand-border rounded-lg bg-white dark:bg-gray-950 text-brand-ink"
             placeholder={w.phoneNumberIdPlaceholder}
             autoComplete="off"
           />
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{w.wabaIdLabel}</label>
+          <label className="block text-sm font-medium text-brand-muted mb-1">{w.wabaIdLabel}</label>
           <input
             type="text"
             value={form.wabaId}
             onChange={(e) => setForm({ ...form, wabaId: e.target.value })}
-            className="w-full px-4 py-2.5 border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-950"
+            className="w-full px-4 py-2.5 border border-brand-border rounded-lg bg-white dark:bg-gray-950"
             placeholder={w.wabaIdPlaceholder}
             autoComplete="off"
           />
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+          <label className="block text-sm font-medium text-brand-muted mb-1">
             {w.accessTokenLabel} {showTokenField ? w.accessTokenRequired : w.accessTokenKeepCurrent}
           </label>
           <input
             type="password"
             value={form.accessToken}
             onChange={(e) => setForm({ ...form, accessToken: e.target.value })}
-            className="w-full px-4 py-2.5 border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-950"
+            className="w-full px-4 py-2.5 border border-brand-border rounded-lg bg-white dark:bg-gray-950"
             placeholder={config?.hasAccessToken ? w.accessTokenPlaceholderSaved : w.accessTokenPlaceholderNew}
             autoComplete="new-password"
           />
           {config?.hasAccessToken && (
-            <button type="button" className="mt-1 text-xs text-[#1a1a1a] dark:text-gray-300 underline" onClick={() => setShowTokenField((v) => !v)}>
+            <button type="button" className="mt-1 text-xs text-brand-ink dark:text-gray-300 underline" onClick={() => setShowTokenField((v) => !v)}>
               {showTokenField ? w.hideTokenField : w.changeToken}
             </button>
           )}
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{w.publicPhoneLabel}</label>
+          <label className="block text-sm font-medium text-brand-muted mb-1">{w.publicPhoneLabel}</label>
           <input
             type="text"
             value={form.businessPhoneE164}
             onChange={(e) => setForm({ ...form, businessPhoneE164: e.target.value })}
-            className="w-full px-4 py-2.5 border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-950"
+            className="w-full px-4 py-2.5 border border-brand-border rounded-lg bg-white dark:bg-gray-950"
             placeholder={w.publicPhonePlaceholder}
           />
         </div>
 
-        <div className="border-t border-gray-100 dark:border-gray-800 pt-4 space-y-4">
-          <p className="text-sm font-medium text-gray-700 dark:text-gray-300">{w.remindersSection}</p>
+        <div className="border-t border-brand-border pt-4 space-y-4">
+          <p className="text-sm font-medium text-brand-muted">{w.remindersSection}</p>
           <label className="flex items-center gap-2">
             <input
               type="checkbox"
@@ -406,15 +411,15 @@ export function WhatsAppSettingsSection() {
               onChange={(e) => setForm({ ...form, remindersEnabled: e.target.checked })}
               className="rounded"
             />
-            <span className="text-sm text-gray-600 dark:text-gray-400">{w.remindersAuto}</span>
+            <span className="text-sm text-brand-muted">{w.remindersAuto}</span>
           </label>
 
-          <div className={`space-y-4 rounded-lg border border-gray-100 dark:border-gray-800 p-4 ${remindersDisabled ? "opacity-60" : ""}`}>
-            <p className="text-xs text-gray-500 dark:text-gray-400">{w.reminderScheduleHint}</p>
+          <div className={`space-y-4 rounded-lg border border-brand-border p-4 ${remindersDisabled ? "opacity-60" : ""}`}>
+            <p className="text-xs text-brand-muted">{w.reminderScheduleHint}</p>
 
             <div>
-              <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{w.reminderDaysBefore}</p>
-              <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">{w.reminderDaysHelp}</p>
+              <p className="text-sm font-medium text-brand-muted mb-2">{w.reminderDaysBefore}</p>
+              <p className="text-xs text-brand-muted mb-3">{w.reminderDaysHelp}</p>
               <div className="flex flex-wrap gap-2" role="group" aria-label={w.reminderDaysBefore}>
                 {DAY_OPTIONS.map((d) => {
                   const field = d === 5 ? "day5" : d === 2 ? "day2" : "day1";
@@ -430,7 +435,7 @@ export function WhatsAppSettingsSection() {
                       aria-pressed={active}
                       className={`px-4 py-2 rounded-lg text-sm font-medium border transition-colors ${
                         active
-                          ? "bg-[#1a1a1a] text-white border-[#1a1a1a] dark:bg-white dark:text-gray-900 dark:border-white"
+                          ? "bg-brand-ink text-brand-ink-fg border-brand-ink"
                           : "bg-gray-50 text-gray-600 border-gray-200 hover:bg-gray-100 dark:bg-gray-900 dark:text-gray-300 dark:border-gray-600 dark:hover:bg-gray-800"
                       } disabled:cursor-not-allowed disabled:opacity-50`}
                     >
@@ -445,9 +450,9 @@ export function WhatsAppSettingsSection() {
               )}
             </div>
 
-            <div className="border-t border-gray-100 dark:border-gray-800 pt-4">
-              <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{w.reminderHoursBefore}</p>
-              <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">{w.reminderHoursHelp}</p>
+            <div className="border-t border-brand-border pt-4">
+              <p className="text-sm font-medium text-brand-muted mb-2">{w.reminderHoursBefore}</p>
+              <p className="text-xs text-brand-muted mb-3">{w.reminderHoursHelp}</p>
               <div className="space-y-2">
                 {form.hourSlots.map((h, index) => (
                   <div key={`hour-slot-${index}`} className="flex flex-wrap items-center gap-2">
@@ -455,7 +460,7 @@ export function WhatsAppSettingsSection() {
                       value={h}
                       disabled={remindersDisabled}
                       onChange={(e) => updateHourSlot(index, parseInt(e.target.value, 10))}
-                      className="min-w-[200px] flex-1 max-w-xs px-3 py-2 text-sm border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 text-[#1a1a1a] dark:text-white disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="min-w-[200px] flex-1 max-w-xs px-3 py-2 text-sm border border-brand-border rounded-lg bg-brand-surface text-brand-ink disabled:opacity-50 disabled:cursor-not-allowed"
                       aria-label={w.reminderSelectHour}
                     >
                       {HOUR_OPTIONS.map((opt) => (
@@ -469,7 +474,7 @@ export function WhatsAppSettingsSection() {
                         type="button"
                         disabled={remindersDisabled}
                         onClick={() => removeHourSlot(index)}
-                        className="text-sm text-red-600 dark:text-red-400 hover:underline px-2 disabled:opacity-50"
+                        className="text-sm text-semantic-error hover:underline px-2 disabled:opacity-50"
                       >
                         {w.reminderRemoveHour}
                       </button>
@@ -482,7 +487,7 @@ export function WhatsAppSettingsSection() {
                   type="button"
                   disabled={remindersDisabled}
                   onClick={addHourSlot}
-                  className="mt-2 text-sm font-medium text-[#1a1a1a] dark:text-white underline disabled:opacity-50"
+                  className="mt-2 text-sm font-medium text-brand-ink underline disabled:opacity-50"
                 >
                   {w.reminderAddHour}
                 </button>
@@ -493,50 +498,63 @@ export function WhatsAppSettingsSection() {
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{w.templateNameLabel}</label>
+          <label className="block text-sm font-medium text-brand-muted mb-1">{w.templateNameLabel}</label>
           <input
             type="text"
             value={form.templateName}
             onChange={(e) => setForm({ ...form, templateName: e.target.value })}
-            className="w-full px-4 py-2.5 border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-950"
+            className="w-full px-4 py-2.5 border border-brand-border rounded-lg bg-white dark:bg-gray-950"
             placeholder={w.templateNamePlaceholder}
           />
           <p className="text-xs text-gray-500 mt-1">{w.templateHint}</p>
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{w.defaultExtraNoteLabel}</label>
+          <label className="block text-sm font-medium text-brand-muted mb-1">{w.defaultExtraNoteLabel}</label>
           <textarea
             value={form.defaultExtraNote}
             onChange={(e) => setForm({ ...form, defaultExtraNote: e.target.value.slice(0, 500) })}
             rows={3}
-            className="w-full px-4 py-2.5 border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 text-sm"
+            className="w-full px-4 py-2.5 border border-brand-border rounded-lg bg-brand-surface text-sm"
             placeholder={w.defaultExtraNotePlaceholder}
           />
           <p className="text-xs text-gray-500 mt-1">{w.defaultExtraNoteHint}</p>
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{w.templateLanguageLabel}</label>
+          <label className="block text-sm font-medium text-brand-muted mb-1">{w.templateLanguageLabel}</label>
           <input
             type="text"
             value={form.templateLanguage}
             onChange={(e) => setForm({ ...form, templateLanguage: e.target.value })}
-            className="w-full max-w-[120px] px-4 py-2.5 border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900"
+            className="w-full max-w-[120px] px-4 py-2.5 border border-brand-border rounded-lg bg-brand-surface"
             placeholder={w.templateLanguagePlaceholder}
           />
         </div>
 
         <label className="flex items-center gap-2">
           <input type="checkbox" checked={form.enabled} onChange={(e) => setForm({ ...form, enabled: e.target.checked })} />
-          <span className="text-sm font-medium text-gray-700 dark:text-gray-300">{w.integrationActive}</span>
+          <span className="text-sm font-medium text-brand-muted">{w.integrationActive}</span>
+        </label>
+
+        <label className="flex items-start gap-2">
+          <input
+            type="checkbox"
+            checked={form.receptionistApiEnabled}
+            onChange={(e) => setForm({ ...form, receptionistApiEnabled: e.target.checked })}
+            disabled={!form.enabled}
+            className="mt-1"
+          />
+          <span className="text-sm text-brand-muted">
+            Permitir a recepción usar el envío automático por API Meta (recordatorios y historial).
+          </span>
         </label>
 
         <div className="flex flex-wrap gap-3 pt-2">
           <button
             type="submit"
             disabled={saving}
-            className="px-5 py-2.5 bg-[#1a1a1a] dark:bg-white text-white dark:text-gray-900 rounded-lg font-medium disabled:opacity-50"
+            className="px-5 py-2.5 bg-brand-ink text-brand-ink-fg rounded-lg font-medium disabled:opacity-50"
           >
             {saving ? w.saving : w.save}
           </button>
@@ -554,7 +572,7 @@ export function WhatsAppSettingsSection() {
                 type="button"
                 onClick={handleDisconnect}
                 disabled={saving}
-                className="px-5 py-2.5 text-red-600 border border-red-200 dark:border-red-800 rounded-lg font-medium disabled:opacity-50"
+                className="px-5 py-2.5 text-red-600 border border-semantic-error/30 rounded-lg font-medium disabled:opacity-50"
               >
                 {w.disconnect}
               </button>

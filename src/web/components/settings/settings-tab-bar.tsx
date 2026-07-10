@@ -11,7 +11,7 @@ type Props = {
 export function SettingsTabBar({ active, onChange, tabs }: Props) {
   const visible = tabs.filter((t) => t.visible !== false);
   return (
-    <div className="flex flex-wrap gap-2 pb-4 mb-2 border-b border-gray-200 dark:border-gray-800">
+    <div className="flex flex-wrap gap-2 pb-4 mb-2 border-b border-brand-border">
       {visible.map((tab) => (
         <button
           key={tab.id}
@@ -19,8 +19,8 @@ export function SettingsTabBar({ active, onChange, tabs }: Props) {
           onClick={() => onChange(tab.id)}
           className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
             active === tab.id
-              ? "bg-[#1a1a1a] dark:bg-white text-white dark:text-[#1a1a1a]"
-              : "bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700"
+              ? "bg-brand-ink text-brand-ink-fg"
+              : "bg-brand-canvas text-brand-muted hover:bg-brand-border/40"
           }`}
         >
           {tab.label}

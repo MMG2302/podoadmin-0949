@@ -1,10 +1,17 @@
 import { Hono } from 'hono';
-import { and, desc, eq } from 'drizzle-orm';
+import { desc, eq, inArray } from 'drizzle-orm';
 import { z } from 'zod';
 import { requireAuth } from '../middleware/auth';
 import { database } from '../database';
 import { appointments, patients, whatsappMessageEvents } from '../database/schema';
-import { canConfigureWhatsApp, getWhatsAppCredentialsForUser } from '../utils/whatsapp-integration';
+import {
+  assertReceptionistAppointmentAccess,
+  canConfigureWhatsApp,
+  canUseWhatsAppWeb,
+  getReceptionistWhatsAppApiOwnerIds,
+  getWhatsAppCredentialsForUser,
+  resolveWhatsAppWorkspaceForUser,
+} from '../utils/whatsapp-integration';
 import { sendWhatsAppTemplateMessage } from '../utils/whatsapp-meta-api';
 import { buildReminderTemplateBodyParams } from '../utils/whatsapp-reminder-params';
 import { logAuditEvent } from '../utils/audit-log';
@@ -33,17 +40,34 @@ function normalizePhone(phone: string | null | undefined): string | null {
 whatsappMessagesRoutes.get('/', async (c) => {
   try {
     const user = c.get('user');
-    if (!canConfigureWhatsApp(user.role)) {
+    if (!canUseWhatsAppWeb(user.role)) {
       return c.json({ error: 'Acceso denegado' }, 403);
     }
 
     const limit = Math.min(parseInt(c.req.query('limit') || '100', 10) || 100, 300);
-    const rows = await database
-      .select()
-      .from(whatsappMessageEvents)
-      .where(eq(whatsappMessageEvents.userId, user.userId))
-      .orderBy(desc(whatsappMessageEvents.createdAt))
-      .limit(limit);
+
+    let rows;
+    if (user.role === 'receptionist') {
+      const ownerIds = await getReceptionistWhatsAppApiOwnerIds(user.userId, user.clinicId);
+      if (ownerIds.length === 0) {
+        return c.json({ success: true, messages: [] });
+      }
+      rows = await database
+        .select()
+        .from(whatsappMessageEvents)
+        .where(inArray(whatsappMessageEvents.userId, ownerIds))
+        .orderBy(desc(whatsappMessageEvents.createdAt))
+        .limit(limit);
+    } else if (canConfigureWhatsApp(user.role)) {
+      rows = await database
+        .select()
+        .from(whatsappMessageEvents)
+        .where(eq(whatsappMessageEvents.userId, user.userId))
+        .orderBy(desc(whatsappMessageEvents.createdAt))
+        .limit(limit);
+    } else {
+      return c.json({ error: 'Acceso denegado' }, 403);
+    }
 
     return c.json({
       success: true,
@@ -75,7 +99,7 @@ whatsappMessagesRoutes.get('/', async (c) => {
 whatsappMessagesRoutes.post('/send-reminder', async (c) => {
   try {
     const user = c.get('user');
-    if (!canConfigureWhatsApp(user.role)) {
+    if (!canUseWhatsAppWeb(user.role)) {
       return c.json({ error: 'Acceso denegado' }, 403);
     }
 
@@ -92,15 +116,32 @@ whatsappMessagesRoutes.post('/send-reminder', async (c) => {
     const appointment = appointmentRows[0];
     if (!appointment) return c.json({ error: 'Cita no encontrada' }, 404);
 
-    // Ownership: clinic_admin puede enviar de su clínica; podiatrist solo sus citas.
+    const workspace = await resolveWhatsAppWorkspaceForUser(user);
+    if (!workspace.canUseApi || !workspace.integrationOwnerUserId) {
+      return c.json(
+        {
+          error: 'WhatsApp API no disponible',
+          message: 'No tienes acceso al envío automático por API Meta.',
+        },
+        403
+      );
+    }
+
+    // Ownership: clinic_admin puede enviar de su clínica; podiatrist solo sus citas; recepción solo citas asignadas.
     if (user.role === 'podiatrist' && appointment.createdBy !== user.userId) {
       return c.json({ error: 'Acceso denegado', message: 'No puedes enviar recordatorios de citas de otro podólogo' }, 403);
     }
     if (user.role === 'clinic_admin' && user.clinicId && appointment.clinicId !== user.clinicId) {
       return c.json({ error: 'Acceso denegado', message: 'No puedes enviar recordatorios de otra clínica' }, 403);
     }
+    if (user.role === 'receptionist') {
+      const allowed = await assertReceptionistAppointmentAccess(user.userId, appointment.createdBy);
+      if (!allowed) {
+        return c.json({ error: 'Acceso denegado', message: 'No puedes enviar recordatorios de citas de otro podólogo' }, 403);
+      }
+    }
 
-    const creds = await getWhatsAppCredentialsForUser(user.userId);
+    const creds = await getWhatsAppCredentialsForUser(workspace.integrationOwnerUserId);
     if (!creds || !creds.enabled || !creds.remindersEnabled) {
       return c.json(
         {
@@ -167,7 +208,7 @@ whatsappMessagesRoutes.post('/send-reminder', async (c) => {
 
     await database.insert(whatsappMessageEvents).values({
       id: eventId,
-      userId: user.userId,
+      userId: workspace.integrationOwnerUserId,
       clinicId: appointment.clinicId ?? user.clinicId ?? null,
       appointmentId: appointment.id,
       patientId: appointment.patientId ?? null,

@@ -11,6 +11,7 @@ import { getClientIP, createRateLimitIdentifier, isIPWhitelisted, getIPWhitelist
 import { getSafeUserAgent } from '../utils/request-headers';
 import type { User } from '../../web/contexts/auth-context';
 import { getUserByIdFromDB } from '../utils/user-db';
+import { resolveAvatarForClient } from '../utils/r2-media';
 import { RETENTION } from '../utils/user-retention';
 import { isAdministrativelyBlocked, resolveSystemAccess } from '../utils/access-control';
 import { requireNonProductionDev } from '../middleware/dev-only';
@@ -501,6 +502,7 @@ authRoutes.post('/login', async (c) => {
         systemAccess: access.granted,
         accessReason: access.reason,
         accessMessage: access.granted ? undefined : access.message,
+        avatarUrl: resolveAvatarForClient(dbUser?.avatarUrl ?? null, matchedUser.user.id, dbUser?.updatedAt),
       },
       trialEligibility,
     });
@@ -613,6 +615,7 @@ authRoutes.get('/verify', requireAuth, async (c) => {
       mustChangePassword: dbUser.mustChangePassword ?? false,
       systemAccess: access.granted,
       accessReason: access.reason,
+      avatarUrl: resolveAvatarForClient(dbUser.avatarUrl ?? null, dbUser.userId, dbUser.updatedAt),
     },
   });
 });
@@ -1823,7 +1826,11 @@ authRoutes.post('/google/callback', async (c) => {
         name: row.name,
         role: row.role,
         clinicId: row.clinicId ?? undefined,
-        avatarUrl: googleUser.picture ?? row.avatarUrl,
+        avatarUrl: resolveAvatarForClient(
+          googleUser.picture ?? row.avatarUrl ?? null,
+          row.userId,
+          row.updatedAt
+        ),
         systemAccess: access.granted,
         accessReason: access.reason,
       },

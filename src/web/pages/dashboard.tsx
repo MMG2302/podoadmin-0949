@@ -22,19 +22,18 @@ import WhatsAppMessagesPage from "./whatsapp-messages-page";
 import ClinicalToolsPage from "./clinical-tools-page";
 import WhatsAppCampaignsPage from "./whatsapp-campaigns-page";
 import BillingPage from "./billing-page";
+import CheckoutPage from "./checkout-page";
 
 // Super Admin Dashboard - focused on Users, Settings
 const SuperAdminDashboard = () => {
   const { t } = useLanguage();
-  const { user } = useAuth();
-  const [allUsers, setAllUsers] = useState<{ id: string; name: string; email: string; role: string }[]>([]);
+  const { user, users, ensureVisibleUsers } = useAuth();
 
   useEffect(() => {
-    if (!user?.id) return;
-    api.get<{ success?: boolean; users?: { id: string; name: string; email: string; role: string }[] }>("/users").then((r) => {
-      if (r.success && Array.isArray(r.data?.users)) setAllUsers(r.data.users);
-    });
-  }, [user?.id]);
+    void ensureVisibleUsers();
+  }, [ensureVisibleUsers]);
+
+  const allUsers = users;
 
   const podiatrists = allUsers.filter(u => u.role === "podiatrist");
   const clinicAdmins = allUsers.filter(u => u.role === "clinic_admin");
@@ -56,10 +55,10 @@ const SuperAdminDashboard = () => {
         ]}
       >
         {/* Users Overview - full width */}
-        <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-100 dark:border-gray-800 overflow-hidden">
+        <div className="bg-brand-surface rounded-xl border border-brand-border overflow-hidden">
           <div className="flex items-center justify-between p-4 border-b border-gray-50 dark:border-gray-800">
-            <h3 className="text-lg font-semibold text-[#1a1a1a] dark:text-white">Usuarios del Sistema</h3>
-            <Link href="/users" className="text-sm text-gray-500 dark:text-gray-400 hover:text-[#1a1a1a] dark:hover:text-white transition-colors">
+            <h3 className="text-lg font-semibold text-brand-ink">Usuarios del Sistema</h3>
+            <Link href="/users" className="text-sm text-brand-muted hover:text-brand-ink dark:hover:text-white transition-colors">
               Ver todos →
             </Link>
           </div>
@@ -74,17 +73,17 @@ const SuperAdminDashboard = () => {
               
               return (
                 <div key={u.id} className="p-4 flex items-center gap-4 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
-                  <div className="w-10 h-10 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center">
-                    <span className="font-medium text-[#1a1a1a] dark:text-white">
+                  <div className="w-10 h-10 bg-brand-canvas rounded-full flex items-center justify-center">
+                    <span className="font-medium text-brand-ink">
                       {u.name.charAt(0)}
                     </span>
                   </div>
                   <div className="flex-1">
-                    <p className="text-sm font-medium text-[#1a1a1a] dark:text-white">{u.name}</p>
-                    <p className="text-xs text-gray-500 dark:text-gray-400">{u.email}</p>
+                    <p className="text-sm font-medium text-brand-ink">{u.name}</p>
+                    <p className="text-xs text-brand-muted">{u.email}</p>
                   </div>
                   <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                    u.role === "super_admin" ? "bg-[#1a1a1a] text-white" :
+                    u.role === "super_admin" ? "bg-brand-ink text-brand-ink-fg" :
                     u.role === "clinic_admin" ? "bg-blue-100 text-blue-700" :
                     u.role === "admin" ? "bg-orange-100 text-orange-700" :
                     "bg-gray-100 text-gray-700"
@@ -174,15 +173,15 @@ const PodiatristDashboard = () => {
         {/* Recent Activity */}
         <div>
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold text-[#1a1a1a] dark:text-white">{t.dashboard.recentActivity}</h3>
-            <Link href="/sessions" className="text-sm text-gray-500 dark:text-gray-400 hover:text-[#1a1a1a] dark:hover:text-white transition-colors">
+            <h3 className="text-lg font-semibold text-brand-ink">{t.dashboard.recentActivity}</h3>
+            <Link href="/sessions" className="text-sm text-brand-muted hover:text-brand-ink dark:hover:text-white transition-colors">
               Ver todo →
             </Link>
           </div>
-          <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-100 dark:border-gray-800 divide-y divide-gray-50 dark:divide-gray-800">
+          <div className="bg-brand-surface rounded-xl border border-brand-border divide-y divide-gray-50 dark:divide-gray-800">
             {recentSessions.length === 0 ? (
               <div className="p-8 text-center">
-                <p className="text-gray-500 dark:text-gray-400">{t.dashboard.noRecentActivity}</p>
+                <p className="text-brand-muted">{t.dashboard.noRecentActivity}</p>
               </div>
             ) : (
               recentSessions.map((session) => (
@@ -195,7 +194,7 @@ const PodiatristDashboard = () => {
                     }`}>
                       <svg className={`w-5 h-5 ${
                         session.status === "completed"
-                          ? "text-green-600 dark:text-green-400"
+                          ? "text-semantic-success"
                           : "text-yellow-600 dark:text-yellow-400"
                       }`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         {session.status === "completed" ? (
@@ -206,10 +205,10 @@ const PodiatristDashboard = () => {
                       </svg>
                     </div>
                     <div className="flex-1">
-                      <p className="text-sm font-medium text-[#1a1a1a] dark:text-white">
+                      <p className="text-sm font-medium text-brand-ink">
                         {session.patientName ?? getPatientName(session.patientId)} - {session.status === "completed" ? "Sesión completada" : "Borrador"}
                       </p>
-                      <p className="text-xs text-gray-500 dark:text-gray-400">{formatDate(session.createdAt)}</p>
+                      <p className="text-xs text-brand-muted">{formatDate(session.createdAt)}</p>
                     </div>
                     <span className={`px-2 py-1 rounded-full text-xs font-medium ${
                       session.status === "completed"
@@ -349,7 +348,7 @@ const DashboardHome = () => {
 const Dashboard = () => {
   const { user } = useAuth();
   const [location] = useLocation();
-  const { isSuperAdmin, isClinicAdmin, isAdmin, isPodiatrist, isReceptionist } = usePermissions();
+  const { isSuperAdmin, isClinicAdmin, isAdmin, isPodiatrist, isReceptionist, hasPermission } = usePermissions();
 
   if (user && !hasActiveSystemAccess(user) && isClinicalAppPath(location)) {
     return <Redirect to={getPostLoginPath(user)} />;
@@ -375,6 +374,9 @@ const Dashboard = () => {
       {user && <Route path="/sessions" component={SessionsPage} />}
       {user && <Route path="/sessions/:id" component={SessionsPage} />}
       {user && <Route path="/calendar" component={CalendarPage} />}
+      {hasPermission("view_checkout_handoffs") && (
+        <Route path="/checkout" component={CheckoutPage} />
+      )}
 
       {/* Clinic Admin routes */}
       {isClinicAdmin && <Route path="/clinic" component={ClinicManagementPage} />}
@@ -388,6 +390,14 @@ const Dashboard = () => {
       {isPodiatrist && <Route path="/whatsapp-campaigns" component={WhatsAppCampaignsPage} />}
       {isPodiatrist && <Route path="/clinical-tools" component={ClinicalToolsPage} />}
       {isPodiatrist && <Route path="/billing" component={BillingPage} />}
+
+      {/* Recepción: mensajes WhatsApp Web (+ API si el podólogo lo asignó) */}
+      {isReceptionist && hasPermission("view_whatsapp_web") && (
+        <>
+          <Route path="/whatsapp-messages" component={WhatsAppMessagesPage} />
+          <Route path="/whatsapp-campaigns" component={WhatsAppCampaignsPage} />
+        </>
+      )}
       
       {/* Common routes */}
       <Route path="/settings" component={SettingsPage} />

@@ -81,97 +81,97 @@ export function ComplianceSettingsSection() {
   };
 
   return (
-    <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-100 dark:border-gray-800 p-6 space-y-6">
+    <div className="bg-brand-surface rounded-xl border border-brand-border p-6 space-y-6">
       <div>
-        <h2 className="text-lg font-semibold text-[#1a1a1a] dark:text-white">{c.title}</h2>
-        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{c.subtitle}</p>
-        <Link href="/privacy" className="text-sm text-[#1a1a1a] dark:text-gray-200 underline mt-2 inline-block">
+        <h2 className="text-lg font-semibold text-brand-ink">{c.title}</h2>
+        <p className="text-sm text-brand-muted mt-1">{c.subtitle}</p>
+        <Link href="/privacy" className="text-sm text-brand-ink underline mt-2 inline-block">
           {c.privacyLink}
         </Link>
       </div>
 
-      <div className="rounded-lg border border-gray-200 dark:border-gray-700 p-4 space-y-3">
-        <h3 className="font-medium text-[#1a1a1a] dark:text-white">{c.exportTitle}</h3>
-        <p className="text-sm text-gray-600 dark:text-gray-400">{c.exportDesc}</p>
+      <div className="rounded-lg border border-brand-border p-4 space-y-3">
+        <h3 className="font-medium text-brand-ink">{c.exportTitle}</h3>
+        <p className="text-sm text-brand-muted">{c.exportDesc}</p>
         <button
           type="button"
           onClick={() => void downloadMyData()}
           disabled={exporting}
-          className="px-4 py-2 bg-[#1a1a1a] dark:bg-white text-white dark:text-[#1a1a1a] rounded-lg text-sm font-medium disabled:opacity-50"
+          className="px-4 py-2 bg-brand-ink text-brand-ink-fg rounded-lg text-sm font-medium disabled:opacity-50"
         >
           {exporting ? t.common.loading : c.exportButton}
         </button>
       </div>
 
-      <div className="rounded-lg border border-gray-200 dark:border-gray-700 p-4 space-y-3">
-        <h3 className="font-medium text-[#1a1a1a] dark:text-white">{c.deletionTitle}</h3>
-        <p className="text-sm text-gray-600 dark:text-gray-400">{c.deletionDesc}</p>
+      <div className="rounded-lg border border-brand-border p-4 space-y-3">
+        <h3 className="font-medium text-brand-ink">{c.deletionTitle}</h3>
+        <p className="text-sm text-brand-muted">{c.deletionDesc}</p>
         <button
           type="button"
           onClick={() => void requestDeletion()}
           disabled={deletionLoading}
-          className="px-4 py-2 border border-red-300 dark:border-red-800 text-red-700 dark:text-red-300 rounded-lg text-sm font-medium disabled:opacity-50"
+          className="px-4 py-2 border border-red-300 dark:border-red-800 text-semantic-error rounded-lg text-sm font-medium disabled:opacity-50"
         >
           {deletionLoading ? t.common.loading : c.deletionButton}
         </button>
         {deletionMsg && <p className="text-sm text-green-700 dark:text-green-400">{deletionMsg}</p>}
       </div>
 
-      <div className="rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/30 p-4">
+      <div className="rounded-lg border border-semantic-warning/30 bg-semantic-warning-bg p-4">
         <h3 className="font-medium text-amber-950 dark:text-amber-100">{c.retentionTitle}</h3>
-        <p className="text-sm text-amber-900 dark:text-amber-200 mt-1">{c.retentionNote}</p>
+        <p className="text-sm text-semantic-warning mt-1">{c.retentionNote}</p>
       </div>
 
       {isAdmin && (
-        <div className="rounded-lg border border-gray-200 dark:border-gray-700 p-4 space-y-4">
+        <div className="rounded-lg border border-brand-border p-4 space-y-4">
           <div>
-            <h3 className="font-medium text-[#1a1a1a] dark:text-white">{c.legalHoldTitle}</h3>
-            <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">{c.legalHoldDesc}</p>
+            <h3 className="font-medium text-brand-ink">{c.legalHoldTitle}</h3>
+            <p className="text-sm text-brand-muted mt-1">{c.legalHoldDesc}</p>
           </div>
           <form onSubmit={createHold} className="grid gap-3 sm:grid-cols-2">
             <div>
-              <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">{c.holdResourceType}</label>
+              <label className="block text-xs font-medium text-brand-muted mb-1">{c.holdResourceType}</label>
               <select
                 value={holdForm.resourceType}
                 onChange={(e) => setHoldForm({ ...holdForm, resourceType: e.target.value })}
-                className="w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm dark:text-white"
+                className="w-full px-3 py-2 rounded-lg border border-brand-border bg-brand-surface text-sm text-brand-ink"
               >
                 <option value="patient">patient</option>
               </select>
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">{c.holdResourceId}</label>
+              <label className="block text-xs font-medium text-brand-muted mb-1">{c.holdResourceId}</label>
               <input
                 value={holdForm.resourceId}
                 onChange={(e) => setHoldForm({ ...holdForm, resourceId: e.target.value })}
-                className="w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm dark:text-white"
+                className="w-full px-3 py-2 rounded-lg border border-brand-border bg-brand-surface text-sm text-brand-ink"
                 required
               />
             </div>
             <div className="sm:col-span-2">
-              <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">{c.holdReason}</label>
+              <label className="block text-xs font-medium text-brand-muted mb-1">{c.holdReason}</label>
               <textarea
                 value={holdForm.reason}
                 onChange={(e) => setHoldForm({ ...holdForm, reason: e.target.value })}
-                className="w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm dark:text-white"
+                className="w-full px-3 py-2 rounded-lg border border-brand-border bg-brand-surface text-sm text-brand-ink"
                 rows={2}
                 required
               />
             </div>
             <button
               type="submit"
-              className="sm:col-span-2 px-4 py-2 bg-[#1a1a1a] dark:bg-white text-white dark:text-[#1a1a1a] rounded-lg text-sm font-medium"
+              className="sm:col-span-2 px-4 py-2 bg-brand-ink text-brand-ink-fg rounded-lg text-sm font-medium"
             >
               {c.holdCreate}
             </button>
           </form>
           {holdMsg && <p className="text-sm text-green-700 dark:text-green-400">{holdMsg}</p>}
           {holds.length === 0 ? (
-            <p className="text-sm text-gray-500 dark:text-gray-400">{c.holdsEmpty}</p>
+            <p className="text-sm text-brand-muted">{c.holdsEmpty}</p>
           ) : (
-            <ul className="text-xs space-y-2 text-gray-600 dark:text-gray-300">
+            <ul className="text-xs space-y-2 text-brand-muted">
               {holds.slice(0, 10).map((h) => (
-                <li key={h.id} className="border-b border-gray-100 dark:border-gray-800 pb-2 flex justify-between gap-2">
+                <li key={h.id} className="border-b border-brand-border pb-2 flex justify-between gap-2">
                   <span>
                     <strong>{h.resourceType}</strong> {h.resourceId} — {h.reason}
                   </span>

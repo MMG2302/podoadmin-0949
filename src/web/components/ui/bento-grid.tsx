@@ -24,7 +24,7 @@ const BentoCard = ({
     <Link href={href}>
     <div
       className={cn(
-        "group relative overflow-hidden rounded-xl border border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 p-6 transition-all hover:border-[#1a1a1a] dark:hover:border-gray-600 hover:shadow-lg",
+        "group relative overflow-hidden rounded-xl border border-brand-border bg-brand-surface p-6 transition-all hover:border-brand-ink dark:hover:border-gray-600 hover:shadow-lg",
         "cursor-pointer",
         className
       )}
@@ -32,15 +32,15 @@ const BentoCard = ({
       {background}
       <div className="relative z-10 flex flex-col justify-between h-full min-h-[140px]">
         <div className="space-y-4 transition-transform duration-300 group-hover:-translate-y-1">
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 transition-colors group-hover:bg-[#1a1a1a] dark:group-hover:bg-white group-hover:text-white dark:group-hover:text-gray-900">
+          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-brand-canvas text-brand-muted transition-colors group-hover:bg-brand-ink dark:group-hover:bg-white group-hover:text-white dark:group-hover:text-gray-900">
             <Icon className="h-5 w-5" />
           </div>
           <div>
-            <h3 className="font-semibold text-[#1a1a1a] dark:text-white">{name}</h3>
-            <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">{description}</p>
+            <h3 className="font-semibold text-brand-ink">{name}</h3>
+            <p className="mt-1 text-sm text-brand-muted">{description}</p>
           </div>
         </div>
-        <p className="mt-4 flex items-center text-sm font-medium text-[#1a1a1a] dark:text-white opacity-0 transition-opacity group-hover:opacity-100 md:opacity-100">
+        <p className="mt-4 flex items-center text-sm font-medium text-brand-ink opacity-0 transition-opacity group-hover:opacity-100 md:opacity-100">
           {cta}
           <svg
             className="ml-1 h-4 w-4 transition-transform group-hover:translate-x-1"
@@ -77,24 +77,24 @@ const BentoStatCard = ({
   <Link href={href}>
     <div
       className={cn(
-        "group relative overflow-hidden rounded-xl border border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 p-6 transition-all hover:border-[#1a1a1a] dark:hover:border-gray-600 hover:shadow-lg",
+        "group relative overflow-hidden rounded-xl border border-brand-border bg-brand-surface p-6 transition-all hover:border-brand-ink dark:hover:border-gray-600 hover:shadow-lg",
         "cursor-pointer",
         className
       )}
     >
       <div className="relative z-10 flex flex-col justify-between h-full min-h-[120px]">
         <div className="space-y-4 transition-transform duration-300 group-hover:-translate-y-1">
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 transition-colors group-hover:bg-[#1a1a1a] dark:group-hover:bg-white group-hover:text-white dark:group-hover:text-gray-900">
+          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-brand-canvas text-brand-muted transition-colors group-hover:bg-brand-ink dark:group-hover:bg-white group-hover:text-white dark:group-hover:text-gray-900">
             <Icon className="h-5 w-5" />
           </div>
           <div>
-            <p className="text-sm text-gray-500 dark:text-gray-400">{name}</p>
-            <p className="mt-1 text-3xl font-semibold text-[#1a1a1a] dark:text-white group-hover:text-[#1a1a1a] dark:hover:text-white/90 dark:group-hover:text-white/90 transition-colors">
+            <p className="text-sm text-brand-muted">{name}</p>
+            <p className="mt-1 text-3xl font-semibold text-brand-ink group-hover:text-brand-ink dark:hover:text-white/90 dark:group-hover:text-white/90 transition-colors">
               {value}
             </p>
           </div>
         </div>
-        <p className="mt-4 flex items-center text-sm font-medium text-[#1a1a1a] dark:text-white opacity-0 transition-opacity group-hover:opacity-100 md:opacity-100">
+        <p className="mt-4 flex items-center text-sm font-medium text-brand-ink opacity-0 transition-opacity group-hover:opacity-100 md:opacity-100">
           {cta}
           <svg
             className="ml-1 h-4 w-4 transition-transform group-hover:translate-x-1"
@@ -136,7 +136,7 @@ interface BentoWelcomeCardProps {
 const BentoWelcomeCard = ({ title, description, className }: BentoWelcomeCardProps) => (
   <div
     className={cn(
-      "relative overflow-hidden rounded-xl border border-transparent dark:border-gray-700 bg-[#1a1a1a] dark:bg-gray-900 p-6 text-white",
+      "relative overflow-hidden rounded-xl border border-transparent dark:border-gray-700 bg-brand-ink dark:bg-gray-900 p-6 text-white",
       "flex flex-col justify-center min-h-[160px] md:min-h-[180px]",
       className
     )}

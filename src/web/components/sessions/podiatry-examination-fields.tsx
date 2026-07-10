@@ -221,7 +221,7 @@ export function PodiatryExaminationFields({ value, onChange, readOnly = false, d
                   )}
                   <td className="p-2">
                     {readOnly ? (
-                      <span className="text-gray-600 dark:text-gray-400">{row.notes || "—"}</span>
+                      <span className="text-brand-muted">{row.notes || "—"}</span>
                     ) : (
                       <input
                         disabled={disabled}

@@ -14,6 +14,10 @@ export interface Prescription {
   nextVisitDate: string | null;
   notes: string;
   folio: string;
+  patientAgeYears: number | null;
+  patientWeightKg: string | null;
+  patientHeightCm: string | null;
+  podiatristCedula: string | null;
   createdAt: string;
   createdBy: string;
 }

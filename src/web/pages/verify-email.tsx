@@ -62,7 +62,7 @@ const VerifyEmail = () => {
   return (
     <div className="min-h-screen bg-white flex">
       {/* Left Panel - Branding */}
-      <div className="hidden lg:flex lg:w-1/2 bg-[#1a1a1a] relative overflow-hidden">
+      <div className="hidden lg:flex lg:w-1/2 bg-brand-ink relative overflow-hidden">
         <div className="absolute inset-0">
           <div className="absolute top-0 left-0 w-full h-full opacity-[0.03]">
             <svg width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
@@ -101,7 +101,7 @@ const VerifyEmail = () => {
           <div className="w-full max-w-md text-center">
             {/* Mobile Logo */}
             <div className="lg:hidden text-center mb-12">
-              <h1 className="text-[#1a1a1a] dark:text-white text-4xl font-light tracking-tight">
+              <h1 className="text-brand-ink text-4xl font-light tracking-tight">
                 Podo<span className="font-bold">Admin</span>
               </h1>
             </div>
@@ -109,12 +109,12 @@ const VerifyEmail = () => {
             {isVerifying && (
               <div>
                 <div className="mb-6">
-                  <svg className="animate-spin h-12 w-12 text-[#1a1a1a] dark:text-white mx-auto" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <svg className="animate-spin h-12 w-12 text-brand-ink mx-auto" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                   </svg>
                 </div>
-                <h2 className="text-2xl font-semibold text-[#1a1a1a] dark:text-white mb-2">
+                <h2 className="text-2xl font-semibold text-brand-ink mb-2">
                   {t.auth.verifyEmailTitle}
                 </h2>
                 <p className="text-gray-600">
@@ -131,7 +131,7 @@ const VerifyEmail = () => {
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                     </svg>
                   </div>
-                  <h2 className="text-2xl font-semibold text-[#1a1a1a] dark:text-white mb-2">
+                  <h2 className="text-2xl font-semibold text-brand-ink mb-2">
                     {t.auth.verifyEmailSuccess}
                   </h2>
                   <p className="text-gray-600 mb-4">
@@ -161,7 +161,7 @@ const VerifyEmail = () => {
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                     </svg>
                   </div>
-                  <h2 className="text-2xl font-semibold text-[#1a1a1a] dark:text-white mb-2">
+                  <h2 className="text-2xl font-semibold text-brand-ink mb-2">
                     {t.auth.verifyEmailError}
                   </h2>
                   <p className="text-gray-600 mb-4">
@@ -176,7 +176,7 @@ const VerifyEmail = () => {
                 <div className="space-y-3">
                   <button
                     onClick={() => setLocation("/login")}
-                    className="w-full py-3 bg-[#1a1a1a] text-white font-medium rounded-lg hover:bg-[#2a2a2a] transition-colors"
+                    className="w-full py-3 bg-brand-ink text-brand-ink-fg font-medium rounded-lg hover:bg-brand-ink-hover transition-colors"
                   >
                     {t.auth.goToLogin}
                   </button>

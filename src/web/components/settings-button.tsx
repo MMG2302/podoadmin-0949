@@ -12,7 +12,7 @@ export const SettingsButton = () => {
       title={t.settings.title}
     >
       <svg 
-        className="w-5 h-5 text-[#1a1a1a] dark:text-white" 
+        className="w-5 h-5 text-brand-ink" 
         fill="none" 
         viewBox="0 0 24 24" 
         stroke="currentColor" 

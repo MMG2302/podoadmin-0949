@@ -88,23 +88,17 @@ export async function saveClinicalLayoutForUser(
   }
 
   if (user.role === 'podiatrist') {
-    const existing = await database
-      .select({ userId: professionalInfo.userId })
-      .from(professionalInfo)
-      .where(eq(professionalInfo.userId, user.userId))
-      .limit(1);
-    if (existing[0]) {
-      await database
-        .update(professionalInfo)
-        .set({ clinicalLayoutJson: json })
-        .where(eq(professionalInfo.userId, user.userId));
-    } else {
-      await database.insert(professionalInfo).values({
+    await database
+      .insert(professionalInfo)
+      .values({
         userId: user.userId,
         name: '',
         clinicalLayoutJson: json,
+      })
+      .onConflictDoUpdate({
+        target: professionalInfo.userId,
+        set: { clinicalLayoutJson: json },
       });
-    }
     return { ok: true };
   }
 

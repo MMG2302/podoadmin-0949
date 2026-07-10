@@ -16,7 +16,9 @@ type Permission =
   | 'view_settings'
   | 'manage_settings'
   | 'view_clinic_stats'
-  | 'reassign_patients';
+  | 'reassign_patients'
+  | 'view_checkout_handoffs'
+  | 'manage_checkout_handoffs';
 
 const rolePermissions: Record<UserRole, Permission[]> = {
   super_admin: [
@@ -40,6 +42,8 @@ const rolePermissions: Record<UserRole, Permission[]> = {
     'reassign_patients',
     'print_documents',
     'view_settings',
+    'view_checkout_handoffs',
+    'manage_checkout_handoffs',
   ],
   admin: [
     'view_dashboard',
@@ -55,6 +59,8 @@ const rolePermissions: Record<UserRole, Permission[]> = {
     'manage_appointments',
     'print_documents',
     'view_settings',
+    'view_checkout_handoffs',
+    'manage_checkout_handoffs',
   ],
   receptionist: [
     'view_dashboard',
@@ -63,6 +69,8 @@ const rolePermissions: Record<UserRole, Permission[]> = {
     'view_sessions',
     'manage_appointments',
     'view_settings',
+    'view_checkout_handoffs',
+    'manage_checkout_handoffs',
   ],
 };
 
@@ -148,13 +156,30 @@ export function requireClinicalLayoutRead() {
   return requireRole(...CLINICAL_LAYOUT_READ_ROLES);
 }
 
-/** @deprecated Usar requireClinicalLayoutRead */
-export function requireClinicalLayoutView() {
-  return requireClinicalLayoutRead();
-}
-
 export function requireClinicalLayoutEdit() {
   return requireRole(...CLINICAL_LAYOUT_EDIT_ROLES);
+}
+
+/** Plantillas de historia clínica: lectura (sesiones + herramientas clínicas). */
+const CLINICAL_TEMPLATE_READ_ROLES: UserRole[] = [
+  'super_admin',
+  'clinic_admin',
+  'podiatrist',
+];
+
+/** Crear/editar/eliminar plantillas (personal o de consultorio). */
+const CLINICAL_TEMPLATE_MANAGE_ROLES: UserRole[] = [
+  'super_admin',
+  'clinic_admin',
+  'podiatrist',
+];
+
+export function requireClinicalTemplateRead() {
+  return requireRole(...CLINICAL_TEMPLATE_READ_ROLES);
+}
+
+export function requireClinicalTemplateManage() {
+  return requireRole(...CLINICAL_TEMPLATE_MANAGE_ROLES);
 }
 
 /**

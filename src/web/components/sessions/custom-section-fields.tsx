@@ -10,9 +10,9 @@ import {
 } from "../../types/clinical-layout";
 
 const inputClass =
-  "w-full px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 text-[#1a1a1a] dark:text-white text-sm focus:outline-none focus:border-[#1a1a1a] dark:focus:border-gray-400 focus:ring-1 focus:ring-[#1a1a1a] dark:focus:ring-gray-500";
+  "w-full px-3 py-2 border border-brand-border rounded-lg bg-brand-surface text-brand-ink text-sm focus:outline-none focus:border-brand-ink focus:ring-1 focus:ring-brand-ink";
 const inputSm =
-  "w-full px-2 py-1 border border-gray-200 dark:border-gray-700 rounded bg-white dark:bg-gray-900 text-[#1a1a1a] dark:text-white text-xs focus:outline-none focus:border-[#1a1a1a] dark:focus:border-gray-400";
+  "w-full px-2 py-1 border border-brand-border rounded bg-brand-surface text-brand-ink text-xs focus:outline-none focus:border-brand-ink";
 
 type Props = {
   section: ClinicalLayoutSection;
@@ -236,7 +236,7 @@ export function CustomSectionField({ section, value, readOnly = false, onPatch }
           />
           <div className="flex justify-between text-xs text-gray-500">
             <span>0</span>
-            <span className="font-medium text-[#1a1a1a] dark:text-white">
+            <span className="font-medium text-brand-ink">
               {val.number ?? 0}/{max}
             </span>
             <span>{max}</span>
@@ -372,9 +372,9 @@ export function CustomSectionField({ section, value, readOnly = false, onPatch }
 export function CustomSectionPreview({ section }: { section: ClinicalLayoutSection }) {
   switch (section.kind) {
     case "custom_text":
-      return <div className="mt-1 h-8 rounded border border-dashed border-gray-200 dark:border-gray-700" />;
+      return <div className="mt-1 h-8 rounded border border-dashed border-brand-border" />;
     case "custom_short_text":
-      return <div className="mt-1 h-6 rounded border border-dashed border-gray-200 dark:border-gray-700" />;
+      return <div className="mt-1 h-6 rounded border border-dashed border-brand-border" />;
     case "custom_checklist":
     case "custom_multi_choice":
       return (

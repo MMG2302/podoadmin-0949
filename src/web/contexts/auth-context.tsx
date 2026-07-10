@@ -1,5 +1,6 @@
-import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from "react";
+import { createContext, useContext, useState, useEffect, useCallback, useRef, ReactNode } from "react";
 import { api } from "../lib/api-client";
+import { fetchShared, invalidateSharedPrefix } from "../lib/shared-query";
 
 export type UserRole = "super_admin" | "clinic_admin" | "admin" | "podiatrist" | "receptionist";
 
@@ -21,6 +22,8 @@ export interface User {
     label: string;
     tone: 'green' | 'amber' | 'red' | 'orange' | 'blue' | 'gray' | 'yellow';
   };
+  /** URL o data URI de la foto de perfil */
+  avatarUrl?: string | null;
 }
 
 import {
@@ -43,6 +46,7 @@ export {
 interface AuthContextType {
   user: User | null;
   users: User[];
+  usersLoading: boolean;
   isLoading: boolean;
   login: (email: string, password: string, captchaToken?: string | null) => Promise<{ 
     success: boolean; 
@@ -59,7 +63,9 @@ interface AuthContextType {
   /** Lista de usuarios (desde API). Solo disponible para super_admin, admin, clinic_admin. */
   getAllUsers: () => User[];
   /** Recarga la lista de usuarios desde la API. */
-  fetchUsers: () => Promise<void>;
+  fetchUsers: () => Promise<User[]>;
+  /** Carga usuarios visibles bajo demanda (con caché compartida). */
+  ensureVisibleUsers: () => Promise<User[]>;
   /** Comprueba si un email está en uso (según la lista cargada desde API). */
   isEmailTaken: (email: string) => boolean;
   /** Actualiza datos del usuario en el contexto (p. ej. tras cambiar contraseña). */
@@ -80,6 +86,15 @@ function readCachedUser(): User | null {
 }
 
 const AUTH_VERIFY_TIMEOUT_MS = 12_000;
+const VISIBLE_USERS_CACHE_PREFIX = "users:visible";
+
+function visibleUsersCacheKey(userId: string) {
+  return `${VISIBLE_USERS_CACHE_PREFIX}:${userId}`;
+}
+
+export function invalidateVisibleUsersCache() {
+  invalidateSharedPrefix(VISIBLE_USERS_CACHE_PREFIX);
+}
 
 function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
   return Promise.race([
@@ -93,27 +108,45 @@ function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(() => readCachedUser());
   const [users, setUsers] = useState<User[]>([]);
+  const [usersLoading, setUsersLoading] = useState(false);
+  const usersRef = useRef<User[]>([]);
+  usersRef.current = users;
   /** Solo bloquea rutas si aún no hay sesión en caché (primera visita). */
   const [isLoading, setIsLoading] = useState(() => readCachedUser() === null);
 
-  const fetchUsers = useCallback(async () => {
-    if (!user) return;
-    try {
-      const r = await api.get<{ success?: boolean; users?: User[] }>("/users/visible");
-      if (r.success && Array.isArray(r.data?.users)) setUsers(r.data.users);
-      else setUsers([]);
-    } catch {
-      setUsers([]);
-    }
-  }, [user]);
+  const loadVisibleUsers = useCallback(
+    async (force?: boolean): Promise<User[]> => {
+      if (!user) return [];
+      setUsersLoading(true);
+      try {
+        const list = await fetchShared(
+          visibleUsersCacheKey(user.id),
+          async () => {
+            const r = await api.get<{ success?: boolean; users?: User[] }>("/users/visible");
+            if (r.success && Array.isArray(r.data?.users)) return r.data.users;
+            return [];
+          },
+          { staleTime: 30_000, force }
+        );
+        setUsers(list);
+        return list;
+      } catch {
+        setUsers([]);
+        return [];
+      } finally {
+        setUsersLoading(false);
+      }
+    },
+    [user]
+  );
 
-  useEffect(() => {
-    if (!user) {
-      setUsers([]);
-      return;
-    }
-    fetchUsers();
-  }, [user, fetchUsers]);
+  const fetchUsers = useCallback(() => loadVisibleUsers(true), [loadVisibleUsers]);
+
+  const ensureVisibleUsers = useCallback(async (): Promise<User[]> => {
+    if (!user) return [];
+    if (usersRef.current.length > 0) return usersRef.current;
+    return loadVisibleUsers();
+  }, [user, loadVisibleUsers]);
 
   useEffect(() => {
     const applyUserSession = (raw: User | null) => {
@@ -237,6 +270,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     } finally {
       setUser(null);
       setUsers([]);
+      invalidateVisibleUsersCache();
       localStorage.removeItem("podoadmin_user");
     }
   };
@@ -259,11 +293,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       value={{
         user,
         users,
+        usersLoading,
         isLoading,
         login,
         logout,
         getAllUsers,
         fetchUsers,
+        ensureVisibleUsers,
         isEmailTaken,
         updateUser,
       }}

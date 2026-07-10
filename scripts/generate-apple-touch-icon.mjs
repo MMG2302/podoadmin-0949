@@ -1,5 +1,5 @@
 /**
- * Genera apple-touch-icon.png (180×180) desde favicon.svg para iOS.
+ * Genera apple-touch-icon.png (180×180) desde favicon.png para iOS.
  * iOS no soporta SVG en "añadir a pantalla de inicio"; requiere PNG.
  * Uso: node scripts/generate-apple-touch-icon.mjs
  */
@@ -9,7 +9,7 @@ import { fileURLToPath } from 'url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(__dirname, '..');
-const src = path.join(root, 'public', 'favicon.svg');
+const src = path.join(root, 'public', 'favicon.png');
 const dest = path.join(root, 'public', 'apple-touch-icon.png');
 
 await sharp(src)

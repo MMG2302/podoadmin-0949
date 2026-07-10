@@ -44,6 +44,7 @@ export interface Patient {
   clinicalAlerts?: ClinicalAlert[];
   /** Conteo de sesiones (listado paginado) */
   sessionCount?: number;
+  lastSessionDate?: string | null;
 }
 
 export interface Appointment {

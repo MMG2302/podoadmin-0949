@@ -39,8 +39,8 @@ export const LanguageSwitcher = ({ variant = "dropdown", className = "" }: Langu
             onClick={() => setLanguage(lang)}
             className={`px-2 py-1 text-sm rounded transition-all ${
               language === lang
-                ? "bg-[#1a1a1a] dark:bg-white text-white dark:text-[#1a1a1a]"
-                : "text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800"
+                ? "bg-brand-ink text-brand-ink-fg"
+                : "text-brand-muted hover:bg-brand-canvas"
             }`}
             title={languageNames[lang]}
           >
@@ -55,12 +55,12 @@ export const LanguageSwitcher = ({ variant = "dropdown", className = "" }: Langu
     <div ref={dropdownRef} className={`relative ${className}`}>
       <button
         onClick={() => setIsOpen((o) => !o)}
-        className="flex items-center gap-2 px-3 py-2 text-sm rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 active:bg-gray-200 dark:active:bg-gray-700 transition-all min-w-[44px] min-h-[44px] items-center justify-center text-[#1a1a1a] dark:text-white"
+        className="flex items-center gap-2 px-3 py-2 text-sm rounded-lg hover:bg-brand-canvas active:bg-gray-200 dark:active:bg-gray-700 transition-all min-w-[44px] min-h-[44px] items-center justify-center text-brand-ink"
         aria-expanded={isOpen}
         aria-haspopup="listbox"
       >
         <span>{flagEmojis[language]}</span>
-        <span className="hidden sm:inline text-gray-700 dark:text-gray-200">{languageNames[language]}</span>
+        <span className="hidden sm:inline text-brand-muted">{languageNames[language]}</span>
         <svg
           className={`w-4 h-4 text-gray-400 transition-transform ${isOpen ? "rotate-180" : ""}`}
           fill="none"
@@ -72,7 +72,7 @@ export const LanguageSwitcher = ({ variant = "dropdown", className = "" }: Langu
       </button>
       
       <div
-        className={`absolute right-0 top-full mt-1 bg-white dark:bg-gray-900 rounded-lg shadow-lg border border-gray-100 dark:border-gray-800 py-1 min-w-[160px] transition-all z-50 ${
+        className={`absolute right-0 top-full mt-1 bg-brand-surface rounded-lg shadow-lg border border-brand-border py-1 min-w-[160px] transition-all z-50 ${
           isOpen ? "opacity-100 visible" : "opacity-0 invisible pointer-events-none"
         }`}
         role="listbox"
@@ -85,13 +85,13 @@ export const LanguageSwitcher = ({ variant = "dropdown", className = "" }: Langu
               setIsOpen(false);
             }}
             className={`w-full flex items-center gap-3 px-4 py-2 text-sm text-left hover:bg-gray-50 dark:hover:bg-gray-800 active:bg-gray-100 dark:active:bg-gray-700 transition-all min-h-[44px] ${
-              language === lang ? "bg-gray-50 dark:bg-gray-800 font-medium" : ""
+              language === lang ? "bg-brand-canvas font-medium" : ""
             }`}
           >
             <span>{flagEmojis[lang]}</span>
-            <span className="text-gray-700 dark:text-gray-200">{languageNames[lang]}</span>
+            <span className="text-brand-muted">{languageNames[lang]}</span>
             {language === lang && (
-              <svg className="w-4 h-4 text-[#1a1a1a] dark:text-white ml-auto" fill="currentColor" viewBox="0 0 20 20">
+              <svg className="w-4 h-4 text-brand-ink ml-auto" fill="currentColor" viewBox="0 0 20 20">
                 <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
               </svg>
             )}

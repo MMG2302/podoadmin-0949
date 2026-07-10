@@ -10,10 +10,22 @@ import { parseAndSanitizeHeaders } from '../utils/request-headers';
  */
 const BODY_METHODS = ['POST', 'PUT', 'PATCH'];
 
+/** Rutas con payloads binarios grandes: no parsear/sanitizar el body en middleware. */
+function shouldSkipBodySanitization(path: string, method: string): boolean {
+  if (!BODY_METHODS.includes(method)) return false;
+  if (path.endsWith('/stripe/webhook')) return true;
+  if (path === '/api/users/me/avatar') return true;
+  if (/^\/api\/professionals\/logo\/[^/]+$/.test(path)) return true;
+  if (/^\/api\/clinics\/[^/]+\/logo$/.test(path)) return true;
+  return false;
+}
+
 export const sanitizationMiddleware = createMiddleware(async (c, next) => {
   if (c.req.path === '/stripe/webhook' || c.req.path.endsWith('/stripe/webhook')) {
     return next();
   }
+
+  const skipBody = shouldSkipBodySanitization(c.req.path, c.req.method);
 
   // 1. Query: mismo pipeline (normalize + escape en sanitizeInput)
   const query = c.req.query();
@@ -25,7 +37,7 @@ export const sanitizationMiddleware = createMiddleware(async (c, next) => {
   }
 
   // 2. Body: solo para métodos que envían body (evita colgar en GET/OPTIONS al leer stream vacío)
-  if (BODY_METHODS.includes(c.req.method)) {
+  if (!skipBody && BODY_METHODS.includes(c.req.method)) {
     try {
       const body = await c.req.json().catch(() => null);
       if (body && typeof body === 'object') {

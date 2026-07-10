@@ -25,7 +25,7 @@ interface Campaign {
 }
 
 const WhatsAppCampaignsPage = () => {
-  const { canViewWhatsAppMessages } = usePermissions();
+  const { canViewWhatsAppWeb, isReceptionist, canConfigureWhatsApp } = usePermissions();
   const { user } = useAuth();
   const tenantCountry = useTenantCountry(user);
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
@@ -39,21 +39,45 @@ const WhatsAppCampaignsPage = () => {
   const [expandedWebId, setExpandedWebId] = useState<string | null>(null);
   const [webAssistant, setWebAssistant] = useState<{ campaignId: string; index: number } | null>(null);
   const [showApiSection, setShowApiSection] = useState(false);
+  const [apiConnected, setApiConnected] = useState(false);
+  const [canUseApi, setCanUseApi] = useState(false);
+
+  const ensurePatients = useCallback(async () => {
+    if (patients.length > 0) return;
+    const patientList = await fetchAllClinicalPages<Patient>(
+      "/patients",
+      "patients",
+      () => "Error pacientes"
+    );
+    setPatients(patientList);
+  }, [patients.length]);
 
   const load = useCallback(async () => {
     setLoading(true);
-    const [cRes, patientList] = await Promise.all([
+    const [cRes, wRes] = await Promise.all([
       api.get<{ success?: boolean; campaigns?: Campaign[] }>("/whatsapp-campaigns"),
-      fetchAllClinicalPages<Patient>("/patients", "patients", () => "Error pacientes"),
+      api.get<{ success?: boolean; apiConnected?: boolean; canUseApi?: boolean }>("/integrations/whatsapp/workspace"),
     ]);
     if (cRes.success && cRes.data?.campaigns) setCampaigns(cRes.data.campaigns);
-    setPatients(patientList);
+    const connected = Boolean(wRes.data?.apiConnected);
+    const apiAccess = Boolean(wRes.data?.canUseApi && connected);
+    setApiConnected(connected);
+    setCanUseApi(apiAccess);
+    if (isReceptionist) {
+      setShowApiSection(apiAccess);
+    } else {
+      setShowApiSection(connected);
+    }
     setLoading(false);
-  }, []);
+  }, [isReceptionist]);
 
   useEffect(() => {
-    if (canViewWhatsAppMessages) load();
-  }, [canViewWhatsAppMessages, load]);
+    if (canViewWhatsAppWeb) load();
+  }, [canViewWhatsAppWeb, load]);
+
+  useEffect(() => {
+    if (messageBody.trim() || expandedWebId) void ensurePatients();
+  }, [messageBody, expandedWebId, ensurePatients]);
 
   const previewRecipients = useMemo(
     () =>
@@ -82,10 +106,10 @@ const WhatsAppCampaignsPage = () => {
     window.open(buildWaMeUrl(recipient.waPhone, text), "_blank", "noopener,noreferrer");
   };
 
-  if (!canViewWhatsAppMessages) {
+  if (!canViewWhatsAppWeb) {
     return (
       <MainLayout title="Campañas WhatsApp">
-        <p className="text-gray-500 dark:text-gray-400">Sin permiso para campañas WhatsApp.</p>
+        <p className="text-brand-muted">Sin permiso para campañas WhatsApp.</p>
       </MainLayout>
     );
   }
@@ -139,13 +163,13 @@ const WhatsAppCampaignsPage = () => {
 
   return (
     <MainLayout title="Campañas WhatsApp">
-      <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
+      <p className="text-sm text-brand-muted mb-4">
         Difunde mensajes a pacientes con teléfono. Puedes usar WhatsApp Web (manual, sin API) o el envío
         automático por API Meta si lo tienes configurado.
       </p>
 
       {feedback && (
-        <div className="mb-4 p-3 bg-blue-50 dark:bg-blue-950/30 text-blue-900 dark:text-blue-200 rounded-lg text-sm border border-blue-100 dark:border-blue-900/60">
+        <div className="mb-4 p-3 bg-semantic-info-bg text-blue-900 dark:text-blue-200 rounded-lg text-sm border border-blue-100 dark:border-blue-900/60">
           {feedback}
         </div>
       )}
@@ -153,7 +177,7 @@ const WhatsAppCampaignsPage = () => {
       <div className="bg-emerald-50 dark:bg-emerald-950/30 rounded-xl border border-emerald-200 dark:border-emerald-900/50 p-6 mb-6 space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
           <div>
-            <h3 className="font-semibold text-[#1a1a1a] dark:text-white">Campañas por WhatsApp Web</h3>
+            <h3 className="font-semibold text-brand-ink">Campañas por WhatsApp Web</h3>
             <p className="text-sm text-emerald-900/80 dark:text-emerald-100/80 mt-1 max-w-2xl">
               Crea el borrador del mensaje y envíalo paciente a paciente con{" "}
               <code className="text-xs">wa.me</code>. Sin configurar Meta: tú pulsas Enviar en WhatsApp.
@@ -170,25 +194,25 @@ const WhatsAppCampaignsPage = () => {
         </div>
 
         <div className="bg-white/70 dark:bg-gray-900/50 rounded-lg border border-emerald-100 dark:border-emerald-900/40 p-4 space-y-3">
-          <h4 className="text-sm font-medium text-[#1a1a1a] dark:text-white">Nueva campaña (borrador)</h4>
+          <h4 className="text-sm font-medium text-brand-ink">Nueva campaña (borrador)</h4>
           <input
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder="Nombre interno (ej. Promo verano)"
-            className="w-full px-3 py-2 border border-emerald-200 dark:border-emerald-900/60 rounded-lg bg-white dark:bg-gray-950 text-[#1a1a1a] dark:text-white"
+            className="w-full px-3 py-2 border border-emerald-200 dark:border-emerald-900/60 rounded-lg bg-white dark:bg-gray-950 text-brand-ink"
           />
           <textarea
             value={messageBody}
             onChange={(e) => setMessageBody(e.target.value)}
             placeholder={`Mensaje con variables, ej:\nHola {{nombre}}, le informamos que...`}
             rows={5}
-            className="w-full px-3 py-2 border border-emerald-200 dark:border-emerald-900/60 rounded-lg bg-white dark:bg-gray-950 text-sm text-[#1a1a1a] dark:text-white"
+            className="w-full px-3 py-2 border border-emerald-200 dark:border-emerald-900/60 rounded-lg bg-white dark:bg-gray-950 text-sm text-brand-ink"
           />
-          <p className="text-xs text-gray-600 dark:text-gray-400">
+          <p className="text-xs text-brand-muted">
             Variables: <code>{"{{nombre}}"}</code>, <code>{"{{apellido}}"}</code>,{" "}
             <code>{"{{nombre_completo}}"}</code>
           </p>
-          <label className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
+          <label className="flex items-center gap-2 text-sm text-brand-muted">
             <input
               type="checkbox"
               checked={filterClinicOnly}
@@ -215,25 +239,25 @@ const WhatsAppCampaignsPage = () => {
             type="button"
             onClick={createCampaign}
             disabled={!name.trim() || !messageBody.trim()}
-            className="px-4 py-2 bg-[#1a1a1a] dark:bg-white dark:text-[#1a1a1a] text-white rounded-lg text-sm font-medium disabled:opacity-50"
+            className="px-4 py-2 bg-brand-ink text-brand-ink-fg rounded-lg text-sm font-medium disabled:opacity-50"
           >
             Guardar borrador
           </button>
         </div>
 
         {webAssistant && activeAssistantCampaign && assistantCurrent && (
-          <div className="rounded-lg border border-emerald-300 dark:border-emerald-800 bg-white dark:bg-gray-900 p-4 space-y-3">
-            <p className="text-sm font-medium text-[#1a1a1a] dark:text-white">
+          <div className="rounded-lg border border-emerald-300 dark:border-emerald-800 bg-brand-surface p-4 space-y-3">
+            <p className="text-sm font-medium text-brand-ink">
               Asistente de envío — {activeAssistantCampaign.name}
             </p>
-            <p className="text-sm text-gray-600 dark:text-gray-400">
+            <p className="text-sm text-brand-muted">
               Paciente {webAssistant.index + 1} de {assistantRecipients.length}:{" "}
               <strong>
                 {assistantCurrent.firstName} {assistantCurrent.lastName}
               </strong>{" "}
               · {assistantCurrent.phone}
             </p>
-            <p className="text-xs text-gray-500 dark:text-gray-400 whitespace-pre-wrap border border-gray-100 dark:border-gray-800 rounded p-2 max-h-32 overflow-y-auto">
+            <p className="text-xs text-brand-muted whitespace-pre-wrap border border-brand-border rounded p-2 max-h-32 overflow-y-auto">
               {applyCampaignWebMessage(activeAssistantCampaign.messageBody, assistantCurrent)}
             </p>
             <div className="flex flex-wrap gap-2">
@@ -255,7 +279,7 @@ const WhatsAppCampaignsPage = () => {
                     setWebAssistant({ campaignId: webAssistant.campaignId, index: next });
                   }
                 }}
-                className="px-4 py-2 border border-gray-200 dark:border-gray-700 rounded-lg text-sm"
+                className="px-4 py-2 border border-brand-border rounded-lg text-sm"
               >
                 {webAssistant.index + 1 >= assistantRecipients.length ? "Finalizar" : "Siguiente paciente"}
               </button>
@@ -271,11 +295,11 @@ const WhatsAppCampaignsPage = () => {
         )}
 
         <div>
-          <h4 className="text-sm font-semibold text-[#1a1a1a] dark:text-white mb-2">Borradores para enviar</h4>
+          <h4 className="text-sm font-semibold text-brand-ink mb-2">Borradores para enviar</h4>
           {loading ? (
             <p className="text-sm text-gray-500">Cargando…</p>
           ) : (
-            <ul className="divide-y divide-emerald-100 dark:divide-emerald-900/40 bg-white dark:bg-gray-900 rounded-lg border border-emerald-100 dark:border-emerald-900/40 overflow-hidden">
+            <ul className="divide-y divide-emerald-100 dark:divide-emerald-900/40 bg-brand-surface rounded-lg border border-emerald-100 dark:border-emerald-900/40 overflow-hidden">
               {campaigns
                 .filter((c) => c.status === "draft")
                 .map((c) => {
@@ -285,8 +309,8 @@ const WhatsAppCampaignsPage = () => {
                     <li key={c.id} className="p-4">
                       <div className="flex flex-wrap items-start justify-between gap-3">
                         <div className="min-w-0 flex-1">
-                          <p className="font-medium text-[#1a1a1a] dark:text-white">{c.name}</p>
-                          <p className="text-sm text-gray-600 dark:text-gray-400 line-clamp-2">{c.messageBody}</p>
+                          <p className="font-medium text-brand-ink">{c.name}</p>
+                          <p className="text-sm text-brand-muted line-clamp-2">{c.messageBody}</p>
                           <p className="text-xs text-gray-400 mt-1">
                             {recipients.length} destinatario(s) con WhatsApp
                           </p>
@@ -310,7 +334,7 @@ const WhatsAppCampaignsPage = () => {
                         </div>
                       </div>
                       {expanded && (
-                        <ul className="mt-4 max-h-64 overflow-y-auto divide-y divide-gray-100 dark:divide-gray-800 border border-gray-100 dark:border-gray-800 rounded-lg">
+                        <ul className="mt-4 max-h-64 overflow-y-auto divide-y divide-gray-100 dark:divide-gray-800 border border-brand-border rounded-lg">
                           {recipients.length === 0 ? (
                             <li className="p-3 text-sm text-gray-500">Sin destinatarios válidos.</li>
                           ) : (
@@ -345,26 +369,39 @@ const WhatsAppCampaignsPage = () => {
         </div>
       </div>
 
-      <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-100 dark:border-gray-800 p-6 mb-6">
+      {(canConfigureWhatsApp || canUseApi) && (
+      <div className="bg-brand-surface rounded-xl border border-brand-border p-6 mb-6">
         <button
           type="button"
-          onClick={() => setShowApiSection((v) => !v)}
-          className="w-full flex items-center justify-between text-left"
+          onClick={() => !isReceptionist && setShowApiSection((v) => !v)}
+          className={`w-full flex items-center justify-between text-left ${isReceptionist ? "cursor-default" : ""}`}
         >
           <div>
-            <h3 className="font-semibold text-[#1a1a1a] dark:text-white">
-              Envío automático por API Meta (opcional)
+            <h3 className="font-semibold text-brand-ink">
+              Envío automático por API Meta {apiConnected ? "(conectado)" : "(opcional)"}
             </h3>
-            <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
-              Requiere WhatsApp Business configurado en Ajustes. Puedes ignorar esta sección.
+            <p className="text-sm text-brand-muted mt-0.5">
+              {isReceptionist
+                ? "Envío automático habilitado por tu podólogo."
+                : "Requiere WhatsApp Business configurado en Ajustes. Puedes ignorar esta sección."}
             </p>
           </div>
-          <span className="text-gray-400 text-sm ml-4">{showApiSection ? "▲" : "▼"}</span>
+          {!isReceptionist && (
+            <span className="text-gray-400 text-sm ml-4">{showApiSection ? "▲" : "▼"}</span>
+          )}
         </button>
 
         {showApiSection && (
-          <div className="mt-4 pt-4 border-t border-gray-100 dark:border-gray-800">
-            <h4 className="font-semibold mb-3 text-[#1a1a1a] dark:text-white">Todas las campañas</h4>
+          <div className="mt-4 pt-4 border-t border-brand-border">
+            {!canUseApi ? (
+              <p className="text-sm text-gray-500">
+                {isReceptionist
+                  ? "Tu podólogo aún no ha habilitado el envío automático por API Meta para recepción."
+                  : "Configura WhatsApp Business en Ajustes para enviar campañas por API Meta."}
+              </p>
+            ) : (
+              <>
+            <h4 className="font-semibold mb-3 text-brand-ink">Todas las campañas</h4>
             {loading ? (
               <p className="text-gray-500 text-sm">Cargando…</p>
             ) : (
@@ -372,7 +409,7 @@ const WhatsAppCampaignsPage = () => {
                 {campaigns.map((c) => (
                   <li key={c.id} className="py-4 flex flex-wrap items-center justify-between gap-3">
                     <div>
-                      <p className="font-medium text-[#1a1a1a] dark:text-white">{c.name}</p>
+                      <p className="font-medium text-brand-ink">{c.name}</p>
                       <p className="text-xs text-gray-400 mt-1">
                         {c.status}
                         {c.sentAt ? ` · enviada ${new Date(c.sentAt).toLocaleString("es-ES")}` : ""}
@@ -395,9 +432,12 @@ const WhatsAppCampaignsPage = () => {
                 )}
               </ul>
             )}
+              </>
+            )}
           </div>
         )}
       </div>
+      )}
     </MainLayout>
   );
 };

@@ -3,6 +3,38 @@ import { api } from '../lib/api-client';
 import { fetchAllClinicalPages } from '../lib/clinical-list-fetch';
 import type { Patient } from '../types/clinical';
 
+/** A partir de este número de pacientes se usa búsqueda indexada en lugar del &lt;select&gt;. */
+export const PATIENT_SEARCH_SELECT_THRESHOLD = 15;
+
+/** Búsqueda paginada de pacientes (nombre, email, teléfono, DNI…). */
+export async function searchPatients(query: string, limit = 25): Promise<Patient[]> {
+  const params = new URLSearchParams({ limit: String(limit), offset: '0' });
+  const q = query.trim();
+  if (q) params.set('q', q);
+  const res = await api.get<{ success?: boolean; patients?: Patient[] }>(`/patients?${params}`);
+  if (res.success && Array.isArray(res.data?.patients)) return res.data.patients;
+  return [];
+}
+
+/** Carga una página inicial para decidir select clásico vs búsqueda. */
+export async function fetchPatientPickerSample(limit = PATIENT_SEARCH_SELECT_THRESHOLD + 1): Promise<{
+  patients: Patient[];
+  hasMore: boolean;
+}> {
+  const res = await api.get<{
+    success?: boolean;
+    patients?: Patient[];
+    pagination?: { hasMore?: boolean };
+  }>(`/patients?limit=${limit}&offset=0`);
+  if (!res.success || !Array.isArray(res.data?.patients)) {
+    return { patients: [], hasMore: false };
+  }
+  return {
+    patients: res.data.patients,
+    hasMore: Boolean(res.data.pagination?.hasMore),
+  };
+}
+
 /** Carga pacientes para selectores de formulario (solo cuando el formulario está abierto). */
 export function usePatientPicker(enabled: boolean) {
   const [patients, setPatients] = useState<Patient[]>([]);
@@ -50,6 +82,6 @@ export async function fetchPatientById(id: string): Promise<Patient | null> {
   return null;
 }
 
-export function clearPatientDetailCache() {
-  patientDetailCache.clear();
+export function invalidatePatientDetailCache(id: string) {
+  patientDetailCache.delete(id);
 }

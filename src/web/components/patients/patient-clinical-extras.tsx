@@ -50,7 +50,7 @@ export function PatientClinicalAlertsSection({
 
   return (
     <div>
-      <h4 className="font-medium text-[#1a1a1a] dark:text-white mb-3">Alertas clínicas</h4>
+      <h4 className="font-medium text-brand-ink mb-3">Alertas clínicas</h4>
       <ul className="space-y-2 mb-3">
         {alerts.map((a, i) => (
           <li
@@ -105,7 +105,7 @@ export function PatientClinicalAlertsSection({
           type="button"
           disabled={saving}
           onClick={addAlert}
-          className="px-3 py-1.5 bg-[#1a1a1a] text-white rounded-lg text-sm disabled:opacity-50"
+          className="px-3 py-1.5 bg-brand-ink text-brand-ink-fg rounded-lg text-sm disabled:opacity-50"
         >
           Añadir
         </button>
@@ -174,7 +174,7 @@ export function PatientLabAttachmentsSection({ patientId }: { patientId: string 
 
   return (
     <div className="mt-6">
-      <h4 className="font-medium text-[#1a1a1a] dark:text-white mb-3">Informes de laboratorio</h4>
+      <h4 className="font-medium text-brand-ink mb-3">Informes de laboratorio</h4>
       <p className="text-xs text-gray-500 mb-2">PDF o imagen (máx. 10 MB).</p>
       <div className="flex flex-wrap gap-2 mb-3">
         <input

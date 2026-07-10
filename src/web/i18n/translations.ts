@@ -292,6 +292,46 @@ export interface Translations {
     profile: string;
     clinicManagement: string;
     whatsappMessages: string;
+    checkout: string;
+  };
+
+  checkout: {
+    title: string;
+    receptionHint: string;
+    podiatristHint: string;
+    adminHint: string;
+    tabPending: string;
+    tabPaid: string;
+    allPodiatrists: string;
+    emptyPending: string;
+    emptyPaid: string;
+    markPaid: string;
+    confirmPaid: string;
+    paidAt: string;
+    statusAwaiting: string;
+    statusReady: string;
+    statusPaid: string;
+    modalTitle: string;
+    modalSubtitle: string;
+    modalHint: string;
+    amountLabel: string;
+    notesLabel: string;
+    notesPlaceholder: string;
+    skipForNow: string;
+    sendToReception: string;
+    invalidAmount: string;
+    saveFailed: string;
+    saving: string;
+    quickTariffs: string;
+    requestAmount: string;
+    requestAmountSent: string;
+    setAmount: string;
+    tariffsTitle: string;
+    tariffsHint: string;
+    saveTariffs: string;
+    tariffsSaved: string;
+    addTariff: string;
+    tariffLabelPlaceholder: string;
   };
   
   // Dashboard
@@ -371,6 +411,7 @@ export interface Translations {
     startSession: string;
     creditReserved: string;
     sessionSaved: string;
+    checkoutCompleteHint: string;
   };
 
   // Calendar
@@ -499,6 +540,48 @@ export interface Translations {
     appearance: string;
     notifications: string;
     security: string;
+    paletteHint: string;
+    paletteGroupBrand: string;
+    paletteGroupSemantic: string;
+    changeColor: string;
+    resetPaletteMode: string;
+    resetPaletteAll: string;
+    palettePreviewBrand: string;
+    palettePreviewSemantic: string;
+    palettePreviewMessages: {
+      error: string;
+      warning: string;
+      success: string;
+      info: string;
+    };
+    palettePreviewLabels: {
+      error: string;
+      warning: string;
+      success: string;
+      info: string;
+    };
+    navMenuTitle: string;
+    navMenuHint: string;
+    navMenuMinOne: string;
+    navMenuReset: string;
+    paletteTokens: Record<
+      | "sidebar"
+      | "primary"
+      | "primaryHover"
+      | "canvas"
+      | "surface"
+      | "muted"
+      | "border"
+      | "error"
+      | "errorBg"
+      | "warning"
+      | "warningBg"
+      | "success"
+      | "successBg"
+      | "info"
+      | "infoBg",
+      string
+    >;
   };
 
   // Contact PodoAdmin / Support (2-way messaging)
@@ -906,6 +989,45 @@ export const translations: Record<Language, Translations> = {
       profile: "Perfil",
       clinicManagement: "Gestión de Clínica",
       whatsappMessages: "Mensajes WhatsApp",
+      checkout: "Cobros",
+    },
+    checkout: {
+      title: "Salida de pacientes",
+      receptionHint: "Pacientes que el podólogo indicó listos para cobrar. No necesitas interrumpir la consulta.",
+      podiatristHint: "Importes enviados a recepción. Puedes revisar el estado de cobro aquí.",
+      adminHint: "Supervisión de cobros pendientes y completados en la clínica.",
+      tabPending: "Pendientes",
+      tabPaid: "Cobrados",
+      allPodiatrists: "Todos los podólogos",
+      emptyPending: "No hay cobros pendientes.",
+      emptyPaid: "No hay cobros registrados en esta pestaña.",
+      markPaid: "Marcar cobrado",
+      confirmPaid: "¿Confirmas que {patient} ya pagó?",
+      paidAt: "Cobrado a las",
+      statusAwaiting: "Sin importe",
+      statusReady: "Listo para cobrar",
+      statusPaid: "Cobrado",
+      modalTitle: "Importe para recepción",
+      modalSubtitle: "Paciente: {patient}",
+      modalHint: "Indica cuánto debe cobrar recepción al paciente que sale de consulta. Recibirán el aviso al instante.",
+      amountLabel: "Importe a cobrar",
+      notesLabel: "Nota para recepción (opcional)",
+      notesPlaceholder: "Ej. consulta + vendaje",
+      skipForNow: "Omitir por ahora",
+      sendToReception: "Enviar a recepción",
+      invalidAmount: "Introduce un importe válido mayor que cero.",
+      saveFailed: "No se pudo enviar el importe.",
+      saving: "Enviando…",
+      quickTariffs: "Tarifas rápidas",
+      requestAmount: "Solicitar importe",
+      requestAmountSent: "Solicitud enviada",
+      setAmount: "Indicar importe",
+      tariffsTitle: "Tarifas rápidas de cobro",
+      tariffsHint: "Atajos al completar sesión o indicar importe. El admin de clínica define tarifas para toda la clínica; el podólogo puede personalizar las suyas.",
+      saveTariffs: "Guardar tarifas",
+      tariffsSaved: "Tarifas guardadas",
+      addTariff: "Añadir tarifa",
+      tariffLabelPlaceholder: "Nombre (ej. Consulta)",
     },
     dashboard: {
       title: "Panel principal",
@@ -979,6 +1101,8 @@ export const translations: Record<Language, Translations> = {
       startSession: "Iniciar sesión",
       creditReserved: "Crédito reservado",
       sessionSaved: "Sesión guardada",
+      checkoutCompleteHint:
+        "El cobro a recepción solo aparece al pulsar Completar (paciente que sale de consulta). Guardar borrador solo guarda sin cerrar la visita.",
     },
     calendar: {
       title: "Calendario",
@@ -1101,6 +1225,47 @@ export const translations: Record<Language, Translations> = {
       appearance: "Apariencia",
       notifications: "Notificaciones",
       security: "Seguridad",
+      paletteHint: "Personaliza los colores de cada zona de la interfaz. Puedes definir paletas distintas para modo claro y oscuro.",
+      paletteGroupBrand: "Marca e interfaz",
+      paletteGroupSemantic: "Estados semánticos",
+      changeColor: "Cambiar",
+      resetPaletteMode: "Restablecer este modo",
+      resetPaletteAll: "Restablecer todo",
+      palettePreviewBrand: "Vista previa — interfaz",
+      palettePreviewSemantic: "Vista previa — estados semánticos",
+      palettePreviewMessages: {
+        error: "No se pudo guardar el registro.",
+        warning: "Revisa los datos antes de continuar.",
+        success: "Cambios guardados correctamente.",
+        info: "La sesión expira en 5 minutos.",
+      },
+      palettePreviewLabels: {
+        error: "Error",
+        warning: "Advertencia",
+        success: "Éxito",
+        info: "Info",
+      },
+      navMenuTitle: "Menú lateral",
+      navMenuHint: "Elige qué secciones aparecen en el menú de navegación. Los cambios se aplican al instante en este dispositivo.",
+      navMenuMinOne: "Debe quedar al menos una sección visible en el menú.",
+      navMenuReset: "Mostrar todas",
+      paletteTokens: {
+        sidebar: "Barra lateral",
+        primary: "Color primario",
+        primaryHover: "Hover primario",
+        canvas: "Fondo general",
+        surface: "Tarjetas y paneles",
+        muted: "Texto secundario",
+        border: "Bordes",
+        error: "Error (texto)",
+        errorBg: "Error (fondo)",
+        warning: "Advertencia (texto)",
+        warningBg: "Advertencia (fondo)",
+        success: "Éxito (texto)",
+        successBg: "Éxito (fondo)",
+        info: "Info (texto)",
+        infoBg: "Info (fondo)",
+      },
     },
     support: {
       title: "Contactar PodoAdmin",
@@ -1661,6 +1826,45 @@ export const translations: Record<Language, Translations> = {
       profile: "Profile",
       clinicManagement: "Clinic Management",
       whatsappMessages: "WhatsApp Messages",
+      checkout: "Checkout",
+    },
+    checkout: {
+      title: "Patient checkout",
+      receptionHint: "Patients the podiatrist marked ready to pay. No need to interrupt the consultation.",
+      podiatristHint: "Amounts sent to reception. Track payment status here.",
+      adminHint: "Overview of pending and completed checkout handoffs in the clinic.",
+      tabPending: "Pending",
+      tabPaid: "Paid",
+      allPodiatrists: "All podiatrists",
+      emptyPending: "No pending checkouts.",
+      emptyPaid: "No paid checkouts in this tab.",
+      markPaid: "Mark as paid",
+      confirmPaid: "Confirm that {patient} has paid?",
+      paidAt: "Paid at",
+      statusAwaiting: "No amount",
+      statusReady: "Ready to pay",
+      statusPaid: "Paid",
+      modalTitle: "Amount for reception",
+      modalSubtitle: "Patient: {patient}",
+      modalHint: "Enter the amount reception should charge the patient leaving the room. They will be notified instantly.",
+      amountLabel: "Amount to charge",
+      notesLabel: "Note for reception (optional)",
+      notesPlaceholder: "E.g. consultation + dressing",
+      skipForNow: "Skip for now",
+      sendToReception: "Send to reception",
+      invalidAmount: "Enter a valid amount greater than zero.",
+      saveFailed: "Could not send the amount.",
+      saving: "Sending…",
+      quickTariffs: "Quick rates",
+      requestAmount: "Request amount",
+      requestAmountSent: "Request sent",
+      setAmount: "Set amount",
+      tariffsTitle: "Quick checkout rates",
+      tariffsHint: "Shortcuts when completing a session. Clinic admin sets clinic-wide rates; podiatrists can customize their own.",
+      saveTariffs: "Save rates",
+      tariffsSaved: "Rates saved",
+      addTariff: "Add rate",
+      tariffLabelPlaceholder: "Label (e.g. Consultation)",
     },
     dashboard: {
       title: "Dashboard",
@@ -1734,6 +1938,8 @@ export const translations: Record<Language, Translations> = {
       startSession: "Start Session",
       creditReserved: "Credit reserved",
       sessionSaved: "Session saved",
+      checkoutCompleteHint:
+        "Checkout for reception only appears when you tap Complete (patient leaving). Save draft only saves without closing the visit.",
     },
     calendar: {
       title: "Calendar",
@@ -1856,6 +2062,47 @@ export const translations: Record<Language, Translations> = {
       appearance: "Appearance",
       notifications: "Notifications",
       security: "Security",
+      paletteHint: "Customize colors for each area of the interface. You can set different palettes for light and dark mode.",
+      paletteGroupBrand: "Brand & UI",
+      paletteGroupSemantic: "Semantic states",
+      changeColor: "Change",
+      resetPaletteMode: "Reset this mode",
+      resetPaletteAll: "Reset all",
+      palettePreviewBrand: "Preview — interface",
+      palettePreviewSemantic: "Preview — semantic states",
+      palettePreviewMessages: {
+        error: "Could not save the record.",
+        warning: "Review the data before continuing.",
+        success: "Changes saved successfully.",
+        info: "Session expires in 5 minutes.",
+      },
+      palettePreviewLabels: {
+        error: "Error",
+        warning: "Warning",
+        success: "Success",
+        info: "Info",
+      },
+      navMenuTitle: "Sidebar menu",
+      navMenuHint: "Choose which sections appear in the navigation menu. Changes apply instantly on this device.",
+      navMenuMinOne: "At least one section must remain visible in the menu.",
+      navMenuReset: "Show all",
+      paletteTokens: {
+        sidebar: "Sidebar",
+        primary: "Primary color",
+        primaryHover: "Primary hover",
+        canvas: "Background",
+        surface: "Cards & panels",
+        muted: "Secondary text",
+        border: "Borders",
+        error: "Error (text)",
+        errorBg: "Error (background)",
+        warning: "Warning (text)",
+        warningBg: "Warning (background)",
+        success: "Success (text)",
+        successBg: "Success (background)",
+        info: "Info (text)",
+        infoBg: "Info (background)",
+      },
     },
     support: {
       title: "Contact PodoAdmin",
@@ -2411,6 +2658,45 @@ export const translations: Record<Language, Translations> = {
       profile: "Perfil",
       clinicManagement: "Gestão da Clínica",
       whatsappMessages: "Mensagens WhatsApp",
+      checkout: "Cobranças",
+    },
+    checkout: {
+      title: "Saída de pacientes",
+      receptionHint: "Pacientes que o podologista indicou prontos para cobrar.",
+      podiatristHint: "Valores enviados à recepção. Acompanhe o status aqui.",
+      adminHint: "Supervisão de cobranças pendentes e concluídas na clínica.",
+      tabPending: "Pendentes",
+      tabPaid: "Cobrados",
+      allPodiatrists: "Todos os podologistas",
+      emptyPending: "Não há cobranças pendentes.",
+      emptyPaid: "Não há cobranças nesta aba.",
+      markPaid: "Marcar como pago",
+      confirmPaid: "Confirma que {patient} já pagou?",
+      paidAt: "Pago às",
+      statusAwaiting: "Sem valor",
+      statusReady: "Pronto para cobrar",
+      statusPaid: "Pago",
+      modalTitle: "Valor para recepção",
+      modalSubtitle: "Paciente: {patient}",
+      modalHint: "Indique quanto a recepção deve cobrar. Serão notificados na hora.",
+      amountLabel: "Valor a cobrar",
+      notesLabel: "Nota para recepção (opcional)",
+      notesPlaceholder: "Ex. consulta + curativo",
+      skipForNow: "Omitir por agora",
+      sendToReception: "Enviar à recepção",
+      invalidAmount: "Introduza um valor válido maior que zero.",
+      saveFailed: "Não foi possível enviar o valor.",
+      saving: "A enviar…",
+      quickTariffs: "Tarifas rápidas",
+      requestAmount: "Solicitar valor",
+      requestAmountSent: "Pedido enviado",
+      setAmount: "Indicar valor",
+      tariffsTitle: "Tarifas rápidas de cobrança",
+      tariffsHint: "Atalhos ao concluir sessão. O admin define tarifas da clínica; o podologista pode personalizar as suas.",
+      saveTariffs: "Guardar tarifas",
+      tariffsSaved: "Tarifas guardadas",
+      addTariff: "Adicionar tarifa",
+      tariffLabelPlaceholder: "Nome (ex. Consulta)",
     },
     dashboard: {
       title: "Painel",
@@ -2482,6 +2768,8 @@ export const translations: Record<Language, Translations> = {
       startSession: "Iniciar Sessão",
       creditReserved: "Crédito reservado",
       sessionSaved: "Sessão salva",
+      checkoutCompleteHint:
+        "O cobro na receção só aparece ao tocar em Concluir (paciente a sair). Guardar rascunho apenas guarda sem fechar a consulta.",
     },
     calendar: {
       title: "Calendário",
@@ -2604,6 +2892,47 @@ export const translations: Record<Language, Translations> = {
       appearance: "Aparência",
       notifications: "Notificações",
       security: "Segurança",
+      paletteHint: "Personalize as cores de cada área da interface. Paletas distintas para modo claro e escuro.",
+      paletteGroupBrand: "Marca e interface",
+      paletteGroupSemantic: "Estados semânticos",
+      changeColor: "Alterar",
+      resetPaletteMode: "Restaurar este modo",
+      resetPaletteAll: "Restaurar tudo",
+      palettePreviewBrand: "Prévia — interface",
+      palettePreviewSemantic: "Prévia — estados semânticos",
+      palettePreviewMessages: {
+        error: "Não foi possível salvar o registro.",
+        warning: "Revise os dados antes de continuar.",
+        success: "Alterações salvas com sucesso.",
+        info: "A sessão expira em 5 minutos.",
+      },
+      palettePreviewLabels: {
+        error: "Erro",
+        warning: "Aviso",
+        success: "Sucesso",
+        info: "Info",
+      },
+      navMenuTitle: "Menu lateral",
+      navMenuHint: "Escolha quais seções aparecem no menu de navegação. As alterações aplicam-se instantaneamente neste dispositivo.",
+      navMenuMinOne: "Pelo menos uma seção deve permanecer visível no menu.",
+      navMenuReset: "Mostrar todas",
+      paletteTokens: {
+        sidebar: "Barra lateral",
+        primary: "Cor primária",
+        primaryHover: "Hover primário",
+        canvas: "Fundo geral",
+        surface: "Cartões e painéis",
+        muted: "Texto secundário",
+        border: "Bordas",
+        error: "Erro (texto)",
+        errorBg: "Erro (fundo)",
+        warning: "Aviso (texto)",
+        warningBg: "Aviso (fundo)",
+        success: "Sucesso (texto)",
+        successBg: "Sucesso (fundo)",
+        info: "Info (texto)",
+        infoBg: "Info (fundo)",
+      },
     },
     support: {
       title: "Contactar PodoAdmin",
@@ -3134,6 +3463,45 @@ export const translations: Record<Language, Translations> = {
       profile: "Profil",
       clinicManagement: "Gestion de Clinique",
       whatsappMessages: "Messages WhatsApp",
+      checkout: "Encaissements",
+    },
+    checkout: {
+      title: "Sortie des patients",
+      receptionHint: "Patients que le podologue a indiqués prêts à payer.",
+      podiatristHint: "Montants envoyés à l'accueil. Suivez le statut ici.",
+      adminHint: "Supervision des encaissements en attente et effectués.",
+      tabPending: "En attente",
+      tabPaid: "Encaissés",
+      allPodiatrists: "Tous les podologues",
+      emptyPending: "Aucun encaissement en attente.",
+      emptyPaid: "Aucun encaissement dans cet onglet.",
+      markPaid: "Marquer encaissé",
+      confirmPaid: "Confirmer que {patient} a payé ?",
+      paidAt: "Encaissé à",
+      statusAwaiting: "Sans montant",
+      statusReady: "Prêt à encaisser",
+      statusPaid: "Encaissé",
+      modalTitle: "Montant pour l'accueil",
+      modalSubtitle: "Patient : {patient}",
+      modalHint: "Indiquez le montant à encaisser. L'accueil sera notifié immédiatement.",
+      amountLabel: "Montant à encaisser",
+      notesLabel: "Note pour l'accueil (optionnel)",
+      notesPlaceholder: "Ex. consultation + pansement",
+      skipForNow: "Passer pour l'instant",
+      sendToReception: "Envoyer à l'accueil",
+      invalidAmount: "Entrez un montant valide supérieur à zéro.",
+      saveFailed: "Impossible d'envoyer le montant.",
+      saving: "Envoi…",
+      quickTariffs: "Tarifs rapides",
+      requestAmount: "Demander le montant",
+      requestAmountSent: "Demande envoyée",
+      setAmount: "Indiquer le montant",
+      tariffsTitle: "Tarifs rapides d'encaissement",
+      tariffsHint: "Raccourcis à la fin de séance. L'admin définit les tarifs de la clinique ; le podologue peut personnaliser les siens.",
+      saveTariffs: "Enregistrer les tarifs",
+      tariffsSaved: "Tarifs enregistrés",
+      addTariff: "Ajouter un tarif",
+      tariffLabelPlaceholder: "Libellé (ex. Consultation)",
     },
     dashboard: {
       title: "Tableau de bord",
@@ -3207,6 +3575,8 @@ export const translations: Record<Language, Translations> = {
       startSession: "Démarrer la Séance",
       creditReserved: "Crédit réservé",
       sessionSaved: "Séance enregistrée",
+      checkoutCompleteHint:
+        "L'encaissement à l'accueil n'apparaît qu'en appuyant sur Terminer (patient qui part). Enregistrer le brouillon sauvegarde sans clôturer la visite.",
     },
     calendar: {
       title: "Calendrier",
@@ -3329,6 +3699,47 @@ export const translations: Record<Language, Translations> = {
       appearance: "Apparence",
       notifications: "Notifications",
       security: "Sécurité",
+      paletteHint: "Personnalisez les couleurs de chaque zone. Palettes distinctes pour les modes clair et sombre.",
+      paletteGroupBrand: "Marque et interface",
+      paletteGroupSemantic: "États sémantiques",
+      changeColor: "Modifier",
+      resetPaletteMode: "Réinitialiser ce mode",
+      resetPaletteAll: "Tout réinitialiser",
+      palettePreviewBrand: "Aperçu — interface",
+      palettePreviewSemantic: "Aperçu — états sémantiques",
+      palettePreviewMessages: {
+        error: "Impossible d'enregistrer.",
+        warning: "Vérifiez les données avant de continuer.",
+        success: "Modifications enregistrées.",
+        info: "La session expire dans 5 minutes.",
+      },
+      palettePreviewLabels: {
+        error: "Erreur",
+        warning: "Avertissement",
+        success: "Succès",
+        info: "Info",
+      },
+      navMenuTitle: "Menu latéral",
+      navMenuHint: "Choisissez les sections visibles dans le menu de navigation. Les changements s'appliquent immédiatement sur cet appareil.",
+      navMenuMinOne: "Au moins une section doit rester visible dans le menu.",
+      navMenuReset: "Tout afficher",
+      paletteTokens: {
+        sidebar: "Barre latérale",
+        primary: "Couleur primaire",
+        primaryHover: "Survol primaire",
+        canvas: "Fond général",
+        surface: "Cartes et panneaux",
+        muted: "Texte secondaire",
+        border: "Bordures",
+        error: "Erreur (texte)",
+        errorBg: "Erreur (fond)",
+        warning: "Avertissement (texte)",
+        warningBg: "Avertissement (fond)",
+        success: "Succès (texte)",
+        successBg: "Succès (fond)",
+        info: "Info (texte)",
+        infoBg: "Info (fond)",
+      },
     },
     support: {
       title: "Contacter PodoAdmin",

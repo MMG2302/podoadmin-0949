@@ -48,6 +48,25 @@
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
+  --color-brand-sidebar: var(--brand-sidebar);
+  --color-brand-sidebar-fg: var(--brand-sidebar-fg);
+  --color-brand-sidebar-active-bg: var(--brand-sidebar-active-bg);
+  --color-brand-sidebar-active-fg: var(--brand-sidebar-active-fg);
+  --color-brand-ink: var(--brand-ink);
+  --color-brand-ink-fg: var(--brand-ink-fg);
+  --color-brand-ink-hover: var(--brand-ink-hover);
+  --color-brand-canvas: var(--brand-canvas);
+  --color-brand-surface: var(--brand-surface);
+  --color-brand-muted: var(--brand-muted);
+  --color-brand-border: var(--brand-border);
+  --color-semantic-error: var(--semantic-error);
+  --color-semantic-error-bg: var(--semantic-error-bg);
+  --color-semantic-warning: var(--semantic-warning);
+  --color-semantic-warning-bg: var(--semantic-warning-bg);
+  --color-semantic-success: var(--semantic-success);
+  --color-semantic-success-bg: var(--semantic-success-bg);
+  --color-semantic-info: var(--semantic-info);
+  --color-semantic-info-bg: var(--semantic-info-bg);
 }
 
 :root {
@@ -83,6 +102,26 @@
   --sidebar-accent-foreground: oklch(0.205 0 0);
   --sidebar-border: oklch(0.922 0 0);
   --sidebar-ring: oklch(0.708 0 0);
+  /* Paleta de marca (sobrescrita por podoadmin-palette style tag) */
+  --brand-sidebar: #1a1a1a;
+  --brand-sidebar-fg: #ffffff;
+  --brand-sidebar-active-bg: #ffffff;
+  --brand-sidebar-active-fg: #1a1a1a;
+  --brand-ink: #1a1a1a;
+  --brand-ink-fg: #ffffff;
+  --brand-ink-hover: #2a2a2a;
+  --brand-canvas: #f9fafb;
+  --brand-surface: #ffffff;
+  --brand-muted: #6b7280;
+  --brand-border: #e5e7eb;
+  --semantic-error: #dc2626;
+  --semantic-error-bg: #fef2f2;
+  --semantic-warning: #92400e;
+  --semantic-warning-bg: #fffbeb;
+  --semantic-success: #16a34a;
+  --semantic-success-bg: #f0fdf4;
+  --semantic-info: #2563eb;
+  --semantic-info-bg: #eff6ff;
 }
 
 .dark {
@@ -117,6 +156,25 @@
   --sidebar-accent-foreground: oklch(0.985 0 0);
   --sidebar-border: oklch(1 0 0 / 10%);
   --sidebar-ring: oklch(0.556 0 0);
+  --brand-sidebar: #1a1a1a;
+  --brand-sidebar-fg: #ffffff;
+  --brand-sidebar-active-bg: #ffffff;
+  --brand-sidebar-active-fg: #1a1a1a;
+  --brand-ink: #ffffff;
+  --brand-ink-fg: #1a1a1a;
+  --brand-ink-hover: #e5e7eb;
+  --brand-canvas: #030712;
+  --brand-surface: #111827;
+  --brand-muted: #9ca3af;
+  --brand-border: #374151;
+  --semantic-error: #fca5a5;
+  --semantic-error-bg: #450a0a;
+  --semantic-warning: #fde68a;
+  --semantic-warning-bg: #451a03;
+  --semantic-success: #4ade80;
+  --semantic-success-bg: #14532d;
+  --semantic-info: #93c5fd;
+  --semantic-info-bg: #1e3a5f;
 }
 
 @layer base {
@@ -229,7 +287,7 @@ input[type="checkbox"],
 input[type="radio"] {
   -webkit-appearance: auto;
   appearance: auto;
-  accent-color: #1a1a1a;
+  accent-color: var(--brand-ink);
 }
 
 /* Backdrop filter Safari fallback */
@@ -336,15 +394,24 @@ button, a, [role="button"], input, select, textarea {
   .scrollbar-hide::-webkit-scrollbar {
     display: none;
   }
+  .surface-card {
+    @apply bg-brand-surface rounded-xl border border-brand-border;
+  }
+  .text-brand {
+    @apply text-brand-ink;
+  }
+  .btn-brand {
+    @apply bg-brand-ink text-brand-ink-fg hover:bg-brand-ink-hover;
+  }
 }
 
 /* Mobile card styles for responsive tables */
 .mobile-card {
-  @apply bg-white dark:bg-gray-900 rounded-xl border border-gray-100 dark:border-gray-800 p-4 mb-3 shadow-sm;
+  @apply bg-brand-surface rounded-xl border border-brand-border p-4 mb-3 shadow-sm;
 }
 
 .mobile-card-header {
-  @apply flex items-center justify-between mb-3 pb-3 border-b border-gray-100 dark:border-gray-800;
+  @apply flex items-center justify-between mb-3 pb-3 border-b border-brand-border;
 }
 
 .mobile-card-row {
@@ -352,15 +419,15 @@ button, a, [role="button"], input, select, textarea {
 }
 
 .mobile-card-label {
-  @apply text-gray-500 dark:text-gray-400 font-medium;
+  @apply text-brand-muted font-medium;
 }
 
 .mobile-card-value {
-  @apply text-[#1a1a1a] dark:text-white text-right;
+  @apply text-brand-ink text-right;
 }
 
 .mobile-card-actions {
-  @apply flex items-center justify-end gap-2 mt-3 pt-3 border-t border-gray-100 dark:border-gray-800;
+  @apply flex items-center justify-end gap-2 mt-3 pt-3 border-t border-brand-border;
 }
 
 /* Active state for touch devices */

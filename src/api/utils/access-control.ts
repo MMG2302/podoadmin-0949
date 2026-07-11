@@ -199,10 +199,11 @@ export function resolveInitialIsEnabled(
   role: string,
   requesterRole: string
 ): boolean {
-  if (role === 'receptionist' && (requesterRole === 'clinic_admin' || requesterRole === 'podiatrist')) {
+  // Cuentas creadas manualmente por super_admin quedan activas de inmediato.
+  if (requesterRole === 'super_admin') {
     return true;
   }
-  if (requesterRole === 'super_admin' && role === 'admin') {
+  if (role === 'receptionist' && (requesterRole === 'clinic_admin' || requesterRole === 'podiatrist')) {
     return true;
   }
   return false;

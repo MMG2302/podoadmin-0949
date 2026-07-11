@@ -32,6 +32,10 @@ import {
   resolveWorkspaceWatermarkForUser,
   saveWorkspaceWatermarkForUser,
 } from '../utils/workspace-watermark';
+import {
+  resolveDashboardLogoForUser,
+  saveDashboardLogoForUser,
+} from '../utils/dashboard-logo';
 import { validateLogoPayload } from '../utils/logo-upload';
 
 const clinicalRoutes = new Hono();
@@ -636,6 +640,54 @@ clinicalRoutes.put('/workspace-watermark', requireClinicalLayoutEdit(), async (c
     displayImage: resolved.displayImage,
     scope: resolved.scope,
     canEdit: resolved.canEdit,
+  });
+});
+
+// --- Logo en tarjeta del dashboard ---
+clinicalRoutes.get('/dashboard-logo', requireClinicalLayoutRead(), async (c) => {
+  const user = c.get('user')!;
+  const resolved = await resolveDashboardLogoForUser(user);
+  return c.json({
+    success: true,
+    config: resolved.config,
+    logoUrl: resolved.logoUrl,
+    visible: resolved.visible,
+    canEdit: resolved.canEdit,
+    scope: resolved.scope,
+    scopeId: resolved.scopeId,
+  });
+});
+
+const dashboardLogoSchema = z.object({
+  config: z.object({
+    enabled: z.boolean(),
+    opacity: z.number().min(0.01).max(1),
+    size: z.number().min(20).max(200),
+    zoom: z.number().min(50).max(400),
+    positionX: z.number().min(0).max(100),
+    positionY: z.number().min(0).max(100),
+  }),
+});
+
+clinicalRoutes.put('/dashboard-logo', requireClinicalLayoutEdit(), async (c) => {
+  const user = c.get('user')!;
+  const parsed = dashboardLogoSchema.safeParse(await c.req.json().catch(() => ({})));
+  if (!parsed.success) return c.json({ error: 'Datos inválidos', issues: parsed.error.flatten() }, 400);
+
+  const result = await saveDashboardLogoForUser(user, parsed.data.config);
+  if (!result.ok) {
+    return c.json({ error: 'forbidden', message: result.error }, 403);
+  }
+
+  const resolved = await resolveDashboardLogoForUser(user);
+  return c.json({
+    success: true,
+    config: resolved.config,
+    logoUrl: resolved.logoUrl,
+    visible: resolved.visible,
+    canEdit: resolved.canEdit,
+    scope: resolved.scope,
+    scopeId: resolved.scopeId,
   });
 });
 

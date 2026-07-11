@@ -5,6 +5,7 @@ import { AuthPublicToolbar } from "../components/auth/auth-public-toolbar";
 import { CaptchaWidget, type CaptchaProvider } from "../components/captcha-widget";
 import { useLocation } from "wouter";
 import { authPage as ap } from "../lib/auth-page-styles";
+import { formErrorClass } from "../lib/form-field-classes";
 
 type PublicConfig = {
   officialDomain?: string | null;
@@ -166,8 +167,7 @@ const Login = () => {
   };
 
   return (
-    <div className={`${ap.shell} flex`}>
-      {/* Left Panel - Branding */}
+    <div className={ap.shell}>
       <div className="hidden lg:flex lg:w-1/2 bg-brand-ink relative overflow-hidden">
         <div className="absolute inset-0">
           <div className="absolute top-0 left-0 w-full h-full opacity-[0.03]">
@@ -212,11 +212,11 @@ const Login = () => {
       </div>
 
       {/* Right Panel - Login Form */}
-      <div className={`${ap.formColumn} w-full lg:w-1/2`}>
+      <div className={ap.formColumnScroll}>
         <AuthPublicToolbar />
-        
-        <div className="flex-1 flex items-center justify-center p-8">
-          <div className="w-full max-w-md">
+
+        <div className={ap.formScrollArea}>
+          <div className={ap.formScrollInner}>
             {/* Mobile Logo */}
             <div className="lg:hidden text-center mb-12">
               <h1 className={ap.mobileLogo}>
@@ -235,7 +235,7 @@ const Login = () => {
 
             {/* Alerta crítica: el usuario no está en el dominio oficial (posible phishing) */}
             {originMismatch && (
-              <div className="mb-6 rounded-lg border-2 border-red-400 bg-red-50 px-4 py-3 text-sm text-red-900 font-medium">
+              <div className={`mb-6 ${ap.error} border-2 font-medium`}>
                 {officialDomain ? (
                   (() => {
                     const [before, after] = t.auth.notOnOfficialDomain.split("{domain}");
@@ -248,7 +248,7 @@ const Login = () => {
             )}
 
             {/* Aviso anti-phishing: solo iniciar sesión en el dominio oficial */}
-            <div className="mb-6 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+            <div className={`mb-6 ${ap.amber}`}>
               <span className="font-medium">{t.auth.securityLabel} </span>
               {officialDomain ? (
                 (() => {
@@ -263,7 +263,7 @@ const Login = () => {
             <form onSubmit={handleSubmit} className="space-y-6">
               {/* Zona de bloqueo: aviso prominente cuando la cuenta está bloqueada por el backend */}
               {errorDetails.isBlocked && (
-                <div className="bg-red-100 border-2 border-red-400 text-red-900 px-5 py-4 rounded-lg animate-in fade-in slide-in-from-top-2 duration-300" role="alert">
+                <div className={`${ap.error} border-2 !px-5 !py-4 animate-in fade-in slide-in-from-top-2 duration-300`} role="alert">
                   <div className="flex items-start gap-3">
                     <span className="flex-shrink-0 text-2xl" aria-hidden>🔒</span>
                     <div>
@@ -284,25 +284,25 @@ const Login = () => {
                 </div>
               )}
               {error && !errorDetails.isBlocked && (
-                <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm animate-in fade-in slide-in-from-top-2 duration-300">
+                <div className={`${ap.error} animate-in fade-in slide-in-from-top-2 duration-300`}>
                   <div className="font-semibold mb-1">{error}</div>
                   {errorDetails.attemptCount && errorDetails.attemptCount > 0 && (
-                    <div className="text-xs text-red-600 mt-1">
+                    <div className={`${formErrorClass} text-xs mt-1`}>
                       {t.auth.failedAttempts} {errorDetails.attemptCount}
                     </div>
                   )}
                   {errorDetails.blockedUntil && (
-                    <div className="text-xs text-red-600 mt-1">
+                    <div className={`${formErrorClass} text-xs mt-1`}>
                       {t.auth.blockedUntil} {new Date(errorDetails.blockedUntil).toLocaleTimeString()}
                     </div>
                   )}
                   {errorDetails.retryAfter && countdown !== null && countdown > 0 && (
-                    <div className="text-xs text-red-600 mt-1 font-medium">
+                    <div className={`${formErrorClass} text-xs mt-1 font-medium`}>
                       {t.auth.retryIn} {formatTime(countdown)}
                     </div>
                   )}
                   {errorDetails.attemptCount && errorDetails.attemptCount >= 3 && (
-                    <div className="text-xs text-red-600 mt-2 pt-2 border-t border-red-200">
+                    <div className={`${formErrorClass} text-xs mt-2 pt-2 border-t border-semantic-error/30`}>
                       {t.auth.emailNotificationSent}
                     </div>
                   )}

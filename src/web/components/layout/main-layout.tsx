@@ -8,6 +8,8 @@ import { Dock, DockIcon } from "../ui/dock";
 import { getSidebarSettings, saveSidebarSettings } from "../../lib/ui-preferences";
 import { useAuth, getPostLoginPath, hasActiveSystemAccess } from "../../contexts/auth-context";
 import { useMainWorkspaceWatermark } from "../../hooks/use-main-workspace-watermark";
+import { LocationAnnouncementBanner } from "../location-announcement-banner";
+import { semanticAlertWarningClass } from "../../lib/form-field-classes";
 
 interface MainLayoutProps {
   children: ReactNode;
@@ -180,13 +182,13 @@ export const MainLayout = ({ children, title }: MainLayoutProps) => {
           )}
           <main className="relative z-[1] flex-1 min-h-0 overflow-y-auto overflow-x-hidden p-3 sm:p-4 md:p-6 lg:p-8 pb-safe bg-transparent">
           {pendingAccess && !location.startsWith("/billing") && !location.startsWith("/support") && (
-            <div className="mb-4 p-3 rounded-lg bg-amber-50 border border-amber-200 text-amber-900 text-sm flex flex-wrap items-center justify-between gap-2">
+            <div className={`mb-4 ${semanticAlertWarningClass} !p-3 flex flex-wrap items-center justify-between gap-2`}>
               <span>
                 Tu acceso clínico está pendiente. Activa el pago en Facturación o espera a que un administrador habilite tu cuenta.
               </span>
               <button
                 type="button"
-                className="px-3 py-1 bg-amber-900 text-white rounded-lg text-xs font-medium"
+                className="px-3 py-1 bg-brand-ink text-brand-ink-fg rounded-lg text-xs font-medium"
                 onClick={() => setLocation(getPostLoginPath(user!))}
               >
                 {user?.role === "clinic_admin" || user?.role === "podiatrist" ? "Ir a facturación" : "Ir a soporte"}
@@ -194,17 +196,18 @@ export const MainLayout = ({ children, title }: MainLayoutProps) => {
             </div>
           )}
           {subscriptionBanner && !location.startsWith("/billing") && (
-            <div className="mb-4 p-3 rounded-lg bg-amber-50 border border-amber-200 text-amber-900 text-sm flex flex-wrap items-center justify-between gap-2">
+            <div className={`mb-4 ${semanticAlertWarningClass} !p-3 flex flex-wrap items-center justify-between gap-2`}>
               <span>Tu suscripción no está activa. Renueva para seguir usando la plataforma.</span>
               <button
                 type="button"
-                className="px-3 py-1 bg-amber-900 text-white rounded-lg text-xs font-medium"
+                className="px-3 py-1 bg-brand-ink text-brand-ink-fg rounded-lg text-xs font-medium"
                 onClick={() => setLocation("/billing")}
               >
                 Ir a facturación
               </button>
             </div>
           )}
+          <LocationAnnouncementBanner />
           {children}
           </main>
         </div>

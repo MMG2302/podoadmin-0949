@@ -1,3 +1,8 @@
+import {
+  semanticAlertErrorClass,
+  semanticDestructiveTextClass,
+} from "../../lib/form-field-classes";
+
 /** Indicador de carga para listas clínicas (pacientes / sesiones). */
 export function ClinicalListLoading({ label = "Cargando…" }: { label?: string }) {
   return (
@@ -29,13 +34,13 @@ export function ClinicalListError({
   onRetry?: () => void;
 }) {
   return (
-    <div className="bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-900 rounded-xl p-6 text-center">
-      <p className="text-sm text-red-800 dark:text-red-200 mb-3">{message}</p>
+    <div className={`${semanticAlertErrorClass} !p-6 text-center rounded-xl`}>
+      <p className="mb-3">{message}</p>
       {onRetry && (
         <button
           type="button"
           onClick={onRetry}
-          className="px-4 py-2 text-sm font-medium bg-brand-surface border border-semantic-error/30 rounded-lg hover:bg-red-50 dark:hover:bg-red-950/50"
+          className={`px-4 py-2 text-sm font-medium bg-brand-surface border border-semantic-error/30 rounded-lg ${semanticDestructiveTextClass}`}
         >
           Reintentar
         </button>

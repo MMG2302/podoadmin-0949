@@ -4,6 +4,11 @@ import { MainLayout } from "../components/layout/main-layout";
 import { useAuth } from "../contexts/auth-context";
 import { usePermissions } from "../hooks/use-permissions";
 import { api } from "../lib/api-client";
+import {
+  semanticAlertInfoClass,
+  semanticAlertSuccessClass,
+  semanticAlertWarningClass,
+} from "../lib/form-field-classes";
 
 interface SubscriptionInfo {
   id: string;
@@ -218,11 +223,11 @@ const BillingPage = () => {
     <MainLayout title="Facturación y suscripción">
       <div className="max-w-lg mx-auto space-y-6">
         {message && (
-          <div className="p-3 rounded-lg bg-blue-50 text-blue-900 text-sm">{message}</div>
+          <div className={`${semanticAlertInfoClass} !p-3`}>{message}</div>
         )}
 
         {trialEligibility && !trialEligibility.eligible && trialEligibility.message && !subscription?.hasStripeBilling && (
-          <div className="p-3 rounded-lg bg-amber-50 border border-amber-200 text-amber-900 text-sm">
+          <div className={`${semanticAlertWarningClass} !p-3`}>
             {trialEligibility.message}
           </div>
         )}
@@ -282,14 +287,14 @@ const BillingPage = () => {
           )}
 
         {trialEligibility?.eligible && subscription?.status === "trial" && subscription.isActive && (
-          <div className="p-3 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-900 text-sm">
+          <div className={`${semanticAlertSuccessClass} !p-3`}>
             Periodo de prueba de 1 mes activo. Disfruta del acceso completo hasta{" "}
             {new Date(subscription.currentPeriodEnd).toLocaleDateString()}.
           </div>
         )}
 
         {checkoutBlocked && (
-          <div className="p-3 rounded-lg bg-amber-50 border border-amber-200 text-amber-900 text-sm">
+          <div className={`${semanticAlertWarningClass} !p-3`}>
             Tu clínica tiene <strong>{pricing?.podiatristCount}</strong> podólogos activos, por encima
             del plan en línea (hasta {pricing?.podiatristLimit}). Contacta a PodoAdmin para ampliar tu
             capacidad y la facturación.
@@ -328,7 +333,7 @@ const BillingPage = () => {
                   <span className="text-gray-500">Estado</span>
                   <span
                     className={`font-medium ${
-                      subscription.isActive ? "text-green-700" : "text-amber-700"
+                      subscription.isActive ? "text-semantic-success" : "text-semantic-warning"
                     }`}
                   >
                     {statusLabel[subscription.status] || subscription.status}
@@ -342,7 +347,7 @@ const BillingPage = () => {
             )}
 
             {!stripeEnabled && (
-              <p className="text-sm text-amber-700 bg-amber-50 p-3 rounded-lg">
+              <p className={`${semanticAlertWarningClass} !p-3`}>
                 Stripe no está configurado. Define STRIPE_PRICE_CLINIC_MONTHLY_STANDARD y
                 STRIPE_PRICE_INDEPENDENT_MONTHLY en el servidor.
               </p>

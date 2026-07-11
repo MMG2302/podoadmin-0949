@@ -24,7 +24,7 @@ const Privacy = () => {
   const p = t.privacy;
 
   return (
-    <div className={`${ap.shell} min-h-screen`}>
+    <div className={ap.shell}>
       <div className="hidden lg:flex lg:w-1/2 bg-brand-ink relative overflow-hidden">
         <div className="relative z-10 flex flex-col justify-center items-center w-full p-12">
           <img src="/favicon.svg" alt="Logo" className="w-40 h-40 mb-8" />

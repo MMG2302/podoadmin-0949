@@ -3,6 +3,14 @@ import { useLocation } from "wouter";
 import { useLanguage } from "../contexts/language-context";
 import { LanguageSwitcher } from "../components/language-switcher";
 import { api } from "../lib/api-client";
+import { authPage as ap } from "../lib/auth-page-styles";
+import {
+  semanticAlertInfoClass,
+  semanticRuleOkIconClass,
+  semanticRuleOkTextClass,
+  semanticStatusIconErrorClass,
+  semanticStatusIconSuccessClass,
+} from "../lib/form-field-classes";
 
 const PASSWORD_REQUIREMENTS = [
   { key: "length", test: (p: string) => p.length >= 12, labelKey: "passwordMinLength" as const },
@@ -87,13 +95,13 @@ const ResetPassword = () => {
           <div className="flex justify-end mb-4">
             <LanguageSwitcher />
           </div>
-          <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
-            <svg className="w-8 h-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <div className={semanticStatusIconErrorClass}>
+            <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
             </svg>
           </div>
           <p className="text-gray-700 mb-4">{error}</p>
-          <div className="mb-6 rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-900 text-left">
+          <div className={`mb-6 ${semanticAlertInfoClass} text-left`}>
             <p>
               {t.auth.contactToVerifyRecovery}{" "}
               <a
@@ -160,8 +168,8 @@ const ResetPassword = () => {
 
             {success ? (
               <div className="text-center">
-                <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div className={semanticStatusIconSuccessClass}>
+                  <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                   </svg>
                 </div>
@@ -181,7 +189,7 @@ const ResetPassword = () => {
                   </p>
                 </div>
 
-                <div className="mb-6 rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-900">
+                <div className={`mb-6 ${semanticAlertInfoClass}`}>
                   <p>
                     {t.auth.contactToVerifyRecovery}{" "}
                     <a
@@ -195,7 +203,7 @@ const ResetPassword = () => {
 
                 <form onSubmit={handleSubmit} className="space-y-6">
                   {error && (
-                    <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
+                    <div className={ap.error}>
                       {error}
                     </div>
                   )}
@@ -247,7 +255,7 @@ const ResetPassword = () => {
                         const ok = req.test(newPassword);
                         return (
                           <div key={req.key} className="flex items-center gap-2 text-sm">
-                            <span className={`flex-shrink-0 w-5 h-5 rounded-full flex items-center justify-center ${ok ? "bg-green-100 text-green-600" : "bg-gray-100 text-gray-400"}`}>
+                            <span className={`${ok ? semanticRuleOkIconClass : "flex-shrink-0 w-5 h-5 rounded-full flex items-center justify-center bg-gray-100 text-gray-400"}`}>
                               {ok ? (
                                 <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                                   <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
@@ -256,7 +264,7 @@ const ResetPassword = () => {
                                 <span className="text-xs">—</span>
                               )}
                             </span>
-                            <span className={ok ? "text-green-700" : "text-gray-500"}>
+                            <span className={ok ? semanticRuleOkTextClass : "text-gray-500"}>
                               {t.auth[req.labelKey]}
                             </span>
                           </div>

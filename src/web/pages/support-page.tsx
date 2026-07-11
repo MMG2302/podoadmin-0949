@@ -4,6 +4,7 @@ import { useLanguage } from "../contexts/language-context";
 import { useAuth } from "../contexts/auth-context";
 import { usePermissions } from "../hooks/use-permissions";
 import { api } from "../lib/api-client";
+import { semanticChipSuccessClass } from "../lib/form-field-classes";
 
 type Conversation = {
   id: string;
@@ -324,8 +325,10 @@ const SupportPage = () => {
                         <div className="flex justify-between items-start gap-2">
                           <span className="font-medium text-brand-ink truncate">{c.subject}</span>
                           <span
-                            className={`flex-shrink-0 text-xs px-2 py-0.5 rounded-full ${
-                              c.status === "open" ? "bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-400" : "bg-brand-canvas text-brand-muted"
+                            className={`flex-shrink-0 ${
+                              c.status === "open"
+                                ? semanticChipSuccessClass
+                                : "inline-flex items-center rounded-full border border-brand-border bg-brand-canvas px-2 py-0.5 text-xs font-medium text-brand-muted"
                             }`}
                           >
                             {c.status === "open" ? t.support.open : t.support.closed}

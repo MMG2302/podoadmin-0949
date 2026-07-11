@@ -1,6 +1,9 @@
 import * as React from "react";
 import { Link } from "wouter";
 import { cn } from "@/lib/utils";
+import { useDashboardLogo } from "@/hooks/use-dashboard-logo";
+import type { DashboardLogoConfig } from "@/types/dashboard-logo";
+import { DashboardLogoDisplay } from "@/components/ui/dashboard-logo-display";
 
 interface BentoCardProps {
   Icon: React.ComponentType<{ className?: string }>;
@@ -110,6 +113,23 @@ const BentoStatCard = ({
   </Link>
 );
 
+/** Tarjeta con el logo de clínica/profesional en el dashboard */
+interface BentoLogoCardProps {
+  logoUrl: string;
+  config: DashboardLogoConfig;
+  alt?: string;
+  className?: string;
+}
+
+const BentoLogoCard = ({ logoUrl, config, alt = "Logo", className }: BentoLogoCardProps) => (
+  <DashboardLogoDisplay
+    logoUrl={logoUrl}
+    config={config}
+    alt={alt}
+    className={cn("transition-all", className)}
+  />
+);
+
 interface BentoGridProps {
   children: React.ReactNode;
   className?: string;
@@ -179,6 +199,9 @@ interface RoleDashboardBentoProps {
   welcomeDescription: React.ReactNode;
   statItems?: StatItem[];
   actionItems: ActionItem[];
+  /** Logo en tarjeta (solo si hay URL y está habilitado en configuración) */
+  logoUrl?: string | null;
+  logoConfig?: DashboardLogoConfig;
   children?: React.ReactNode;
   /** Clases para el grid (ej: md:grid-cols-2 para menos columnas) */
   gridClassName?: string;
@@ -190,6 +213,8 @@ const RoleDashboardBento = ({
   welcomeDescription,
   statItems = [],
   actionItems,
+  logoUrl,
+  logoConfig,
   children,
   gridClassName,
 }: RoleDashboardBentoProps) => (
@@ -200,6 +225,9 @@ const RoleDashboardBento = ({
         description={welcomeDescription}
         className="lg:col-span-2 lg:row-span-2"
       />
+      {logoUrl && logoConfig ? (
+        <BentoLogoCard key={`logo-${logoConfig.size}-${logoConfig.zoom}`} logoUrl={logoUrl} config={logoConfig} />
+      ) : null}
       {statItems.map((stat, index) => (
         <BentoStatCard
           key={index}
@@ -225,4 +253,29 @@ const RoleDashboardBento = ({
   </div>
 );
 
-export { BentoCard, BentoGrid, BentoStatCard, BentoWelcomeCard, RoleDashboardBento };
+/** Dashboard Bento con logo clínico/profesional cuando está habilitado en configuración */
+const ClinicalRoleDashboardBento = ({
+  welcomeTitle,
+  welcomeDescription,
+  statItems,
+  actionItems,
+  children,
+  gridClassName,
+}: Omit<RoleDashboardBentoProps, "logoUrl">) => {
+  const { visible, logoUrl, config } = useDashboardLogo();
+  return (
+    <RoleDashboardBento
+      welcomeTitle={welcomeTitle}
+      welcomeDescription={welcomeDescription}
+      statItems={statItems}
+      actionItems={actionItems}
+      logoUrl={visible ? logoUrl : null}
+      logoConfig={visible ? config : undefined}
+      gridClassName={gridClassName}
+    >
+      {children}
+    </RoleDashboardBento>
+  );
+};
+
+export { BentoCard, BentoGrid, BentoLogoCard, BentoStatCard, BentoWelcomeCard, ClinicalRoleDashboardBento, RoleDashboardBento };

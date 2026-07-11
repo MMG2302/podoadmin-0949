@@ -302,7 +302,7 @@ export async function buildPodiatristClinicalHistoriesBundle(
         postalCode: row.postalCode ?? undefined,
         licenseNumber: row.licenseNumber ?? undefined,
       };
-      clinicLogo = resolveLogoForClient(row.logo ?? null, 'clinic', user.clinicId);
+      clinicLogo = resolveLogoForClient(row.logo ?? null, 'clinic', user.clinicId, row.logoUpdatedAt);
     }
   }
 
@@ -339,11 +339,16 @@ export async function buildPodiatristClinicalHistoriesBundle(
 
   if (!clinicLogo) {
     const logoRows = await database
-      .select({ logo: professionalLogosTable.logo })
+      .select({ logo: professionalLogosTable.logo, updatedAt: professionalLogosTable.updatedAt })
       .from(professionalLogosTable)
       .where(eq(professionalLogosTable.userId, user.userId))
       .limit(1);
-    clinicLogo = resolveLogoForClient(logoRows[0]?.logo ?? null, 'professional', user.userId);
+    clinicLogo = resolveLogoForClient(
+      logoRows[0]?.logo?.trim() ? logoRows[0].logo : null,
+      'professional',
+      user.userId,
+      logoRows[0]?.updatedAt
+    );
   }
 
   return {

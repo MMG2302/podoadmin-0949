@@ -3,6 +3,10 @@ import { useLocation, useLocation as useWouterLocation } from "wouter";
 import { useLanguage } from "../contexts/language-context";
 import { LanguageSwitcher } from "../components/language-switcher";
 import { api } from "../lib/api-client";
+import {
+  semanticStatusIconErrorClass,
+  semanticStatusIconSuccessClass,
+} from "../lib/form-field-classes";
 
 const VerifyEmail = () => {
   const { t } = useLanguage();
@@ -126,8 +130,8 @@ const VerifyEmail = () => {
             {isVerified && (
               <div>
                 <div className="mb-6">
-                  <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <div className={semanticStatusIconSuccessClass}>
+                    <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                     </svg>
                   </div>
@@ -156,8 +160,8 @@ const VerifyEmail = () => {
             {error && !isVerifying && (
               <div>
                 <div className="mb-6">
-                  <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <svg className="w-8 h-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <div className={semanticStatusIconErrorClass}>
+                    <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                     </svg>
                   </div>

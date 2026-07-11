@@ -30,7 +30,7 @@ mediaRoutes.get('/logo/clinic/:clinicId', async (c) => {
   if (!object) return c.json({ error: 'Archivo no encontrado' }, 404);
   const headers = new Headers();
   headers.set('Content-Type', object.httpMetadata?.contentType ?? 'image/webp');
-  headers.set('Cache-Control', 'private, max-age=86400');
+  headers.set('Cache-Control', 'private, no-cache, must-revalidate');
   return new Response(object.body, { headers });
 });
 
@@ -50,7 +50,7 @@ mediaRoutes.get('/logo/professional/:userId', async (c) => {
   if (!object) return c.json({ error: 'Archivo no encontrado' }, 404);
   const headers = new Headers();
   headers.set('Content-Type', object.httpMetadata?.contentType ?? 'image/webp');
-  headers.set('Cache-Control', 'private, max-age=86400');
+  headers.set('Cache-Control', 'private, no-cache, must-revalidate');
   return new Response(object.body, { headers });
 });
 

@@ -1,5 +1,6 @@
 import { ClinicalLayoutDesigner } from "./clinical-layout-designer";
 import { useClinicalLayout } from "../../hooks/use-clinical-layout";
+import { semanticAlertErrorClass } from "../../lib/form-field-classes";
 
 export function ClinicalLayoutSettingsSection() {
   const { layout, canEdit, scope, loading, error, reload } = useClinicalLayout();
@@ -15,7 +16,7 @@ export function ClinicalLayoutSettingsSection() {
   return (
     <div className="space-y-4">
       {error && (
-        <p className="text-sm text-red-600 bg-red-50 dark:bg-red-950/30 rounded-lg p-3">{error}</p>
+        <div className={`${semanticAlertErrorClass} !p-3`}>{error}</div>
       )}
       <ClinicalLayoutDesigner
         initialLayout={layout}

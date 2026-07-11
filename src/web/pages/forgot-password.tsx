@@ -1,8 +1,13 @@
 import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { useLanguage } from "../contexts/language-context";
-import { LanguageSwitcher } from "../components/language-switcher";
+import { AuthPublicToolbar } from "../components/auth/auth-public-toolbar";
 import { api } from "../lib/api-client";
+import { authPage as ap } from "../lib/auth-page-styles";
+import {
+  semanticAlertInfoClass,
+  semanticStatusIconSuccessClass,
+} from "../lib/form-field-classes";
 
 const ForgotPassword = () => {
   const { t } = useLanguage();
@@ -52,7 +57,7 @@ const ForgotPassword = () => {
   };
 
   return (
-    <div className="min-h-screen bg-white flex">
+    <div className={ap.shell}>
       {/* Left Panel - Branding */}
       <div className="hidden lg:flex lg:w-1/2 bg-brand-ink relative overflow-hidden">
         <div className="absolute inset-0">
@@ -81,12 +86,10 @@ const ForgotPassword = () => {
       </div>
 
       {/* Right Panel - Form */}
-      <div className="w-full lg:w-1/2 flex flex-col">
-        <div className="flex justify-end p-4">
-          <LanguageSwitcher />
-        </div>
-        <div className="flex-1 flex items-center justify-center p-8">
-          <div className="w-full max-w-md">
+      <div className={ap.formColumnScroll}>
+        <AuthPublicToolbar />
+        <div className={ap.formScrollArea}>
+          <div className={ap.formScrollInner}>
             <div className="lg:hidden text-center mb-12">
               <h1 className="text-brand-ink text-4xl font-light tracking-tight">
                 Podo<span className="font-bold">Admin</span>
@@ -104,7 +107,7 @@ const ForgotPassword = () => {
                   </p>
                 </div>
 
-                <div className="mb-6 rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-900">
+                <div className={`mb-6 ${semanticAlertInfoClass}`}>
                   <p>
                     {t.auth.contactToVerifyRecovery}{" "}
                     <a
@@ -118,7 +121,7 @@ const ForgotPassword = () => {
 
                 <form onSubmit={handleSubmit} className="space-y-6">
                   {error && (
-                    <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
+                    <div className={ap.error}>
                       {error}
                     </div>
                   )}
@@ -147,8 +150,8 @@ const ForgotPassword = () => {
               </>
             ) : (
               <div className="text-center">
-                <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div className={semanticStatusIconSuccessClass}>
+                  <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                   </svg>
                 </div>

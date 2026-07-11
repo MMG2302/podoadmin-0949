@@ -225,6 +225,14 @@ authRoutes.post('/login', async (c) => {
 
       // Registrar evento de auditoría
       const { logAuditEvent } = await import('../utils/audit-log');
+      const { recordUserAccessEvent } = await import('../utils/user-access-events');
+      await recordUserAccessEvent({
+        eventType: 'login_failed',
+        ipAddress: clientIP,
+        userAgent: getSafeUserAgent(c),
+        userId: dbUser?.userId ?? null,
+        role: dbUser?.role ?? null,
+      });
       await logAuditEvent({
         userId: 'anonymous',
         action: 'LOGIN_FAILED',
@@ -460,6 +468,14 @@ authRoutes.post('/login', async (c) => {
 
     // Registrar evento de auditoría
     const { logAuditEvent } = await import('../utils/audit-log');
+    const { recordUserAccessEvent } = await import('../utils/user-access-events');
+    await recordUserAccessEvent({
+      eventType: 'login_success',
+      ipAddress: clientIP,
+      userAgent: getSafeUserAgent(c),
+      userId: matchedUser.user.id,
+      role: matchedUser.user.role,
+    });
     await logAuditEvent({
       userId: matchedUser.user.id,
       action: 'LOGIN_SUCCESS',

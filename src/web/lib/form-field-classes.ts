@@ -60,3 +60,72 @@ export const formErrorClass = "text-sm text-semantic-error";
 export const formSuccessClass = "text-sm text-semantic-success";
 
 export const formWarningClass = "text-sm text-semantic-warning";
+
+/** Cajas de alerta semánticas (respetan la paleta del usuario vía CSS vars). */
+export const semanticAlertErrorClass =
+  "rounded-lg border border-semantic-error bg-semantic-error-bg px-4 py-3 text-sm text-semantic-error";
+
+export const semanticAlertWarningClass =
+  "rounded-lg border border-semantic-warning bg-semantic-warning-bg px-4 py-3 text-sm text-semantic-warning";
+
+export const semanticAlertSuccessClass =
+  "rounded-lg border border-semantic-success bg-semantic-success-bg px-4 py-3 text-sm text-semantic-success";
+
+export const semanticAlertInfoClass =
+  "rounded-lg border border-semantic-info bg-semantic-info-bg px-4 py-3 text-sm text-semantic-info";
+
+/** Badge / chip semántico compacto */
+export const semanticChipWarningClass =
+  "inline-flex items-center rounded-full border border-semantic-warning bg-semantic-warning-bg px-2 py-0.5 text-xs font-medium text-semantic-warning";
+
+export const semanticChipSuccessClass =
+  "inline-flex items-center rounded-full border border-semantic-success bg-semantic-success-bg px-2 py-0.5 text-xs font-medium text-semantic-success";
+
+export const semanticChipErrorClass =
+  "inline-flex items-center rounded-full border border-semantic-error bg-semantic-error-bg px-2 py-0.5 text-xs font-medium text-semantic-error";
+
+export const semanticChipInfoClass =
+  "inline-flex items-center rounded-full border border-semantic-info bg-semantic-info-bg px-2 py-0.5 text-xs font-medium text-semantic-info";
+
+/** Icono circular de estado (auth, verify, etc.) */
+export const semanticStatusIconSuccessClass =
+  "w-16 h-16 bg-semantic-success-bg rounded-full flex items-center justify-center mx-auto mb-4 text-semantic-success";
+
+export const semanticStatusIconErrorClass =
+  "w-16 h-16 bg-semantic-error-bg rounded-full flex items-center justify-center mx-auto mb-4 text-semantic-error";
+
+/** Reglas de contraseña cumplidas */
+export const semanticRuleOkTextClass = "text-semantic-success";
+
+export const semanticRuleOkIconClass =
+  "flex-shrink-0 w-5 h-5 rounded-full flex items-center justify-center bg-semantic-success-bg text-semantic-success";
+
+/** Botón/acción destructiva secundaria */
+export const semanticDestructiveTextClass = "text-semantic-error hover:bg-semantic-error-bg";
+
+/** Panel y botones de WhatsApp Web (paleta dedicada, independiente de estados semánticos). */
+export const whatsappPanelClass =
+  "rounded-xl border border-whatsapp-border bg-whatsapp-bg p-6";
+
+export const whatsappPanelInnerClass =
+  "rounded-lg border border-whatsapp-border/60 bg-brand-surface p-4";
+
+export const whatsappMutedTextClass = "text-whatsapp-muted";
+
+export const whatsappButtonClass =
+  "inline-flex items-center justify-center px-4 py-2 rounded-lg bg-whatsapp text-whatsapp-fg text-sm font-medium hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed";
+
+export const whatsappButtonSmClass =
+  "inline-flex items-center justify-center px-3 py-1.5 rounded-lg bg-whatsapp text-whatsapp-fg text-sm font-medium hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed";
+
+export const whatsappButtonXsClass =
+  "inline-flex items-center justify-center px-3 py-1 rounded bg-whatsapp text-whatsapp-fg text-xs font-medium hover:opacity-90";
+
+export const whatsappInputBorderClass =
+  "border border-whatsapp-border rounded-lg";
+
+export const whatsappListClass =
+  "divide-y divide-whatsapp-border/40 bg-brand-surface rounded-lg border border-whatsapp-border/60 overflow-hidden";
+
+export const whatsappOutlineButtonClass =
+  "px-3 py-1.5 border border-whatsapp-border rounded-lg text-sm hover:bg-whatsapp-bg/50";

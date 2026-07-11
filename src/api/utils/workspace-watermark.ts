@@ -27,19 +27,22 @@ export function parseWorkspaceWatermarkJson(raw: string | null | undefined): Wor
 async function resolveLogoImage(user: WatermarkUser): Promise<string | null> {
   if (user.clinicId) {
     const rows = await database
-      .select({ logo: clinics.logo })
+      .select({ logo: clinics.logo, logoUpdatedAt: clinics.logoUpdatedAt })
       .from(clinics)
       .where(eq(clinics.clinicId, user.clinicId))
       .limit(1);
-    return resolveLogoForClient(rows[0]?.logo ?? null, 'clinic', user.clinicId);
+    const row = rows[0];
+    return resolveLogoForClient(row?.logo ?? null, 'clinic', user.clinicId, row?.logoUpdatedAt);
   }
   if (user.role === 'podiatrist') {
     const rows = await database
-      .select({ logo: professionalLogos.logo })
+      .select({ logo: professionalLogos.logo, updatedAt: professionalLogos.updatedAt })
       .from(professionalLogos)
       .where(eq(professionalLogos.userId, user.userId))
       .limit(1);
-    return resolveLogoForClient(rows[0]?.logo ?? null, 'professional', user.userId);
+    const row = rows[0];
+    const stored = row?.logo?.trim() ? row.logo : null;
+    return resolveLogoForClient(stored, 'professional', user.userId, row?.updatedAt);
   }
   return null;
 }

@@ -1,10 +1,19 @@
 import { useState, useMemo, useEffect, useCallback } from "react";
 import { Link } from "wouter";
 import { MainLayout } from "../components/layout/main-layout";
+import { AppModal, AppModalBody, AppModalFooter, AppModalHeader } from "../components/ui/app-modal";
+import { formFieldClassSm, formFieldDisabledClassSm, formHintClass, formLabelClass, formLabelClassXs, formPanelMutedClass, whatsappButtonSmClass } from "../lib/form-field-classes";
+import { PatientSearchSelect } from "../components/patients/patient-search-select";
 import { useLanguage } from "../contexts/language-context";
 import { useAuth } from "../contexts/auth-context";
 import { usePermissions } from "../hooks/use-permissions";
 import { useRefreshOnFocus } from "../hooks/use-refresh-on-focus";
+import {
+  fetchPatientPickerSample,
+} from "../hooks/use-patient-picker";
+
+/** Por encima de este número se usa búsqueda indexada en lugar del &lt;select&gt;. */
+const APPOINTMENT_PATIENT_SELECT_THRESHOLD = 10;
 import { api } from "../lib/api-client";
 import {
   buildAgendaWhatsAppMessage,
@@ -85,6 +94,11 @@ const CalendarPage = () => {
   const [allAppointments, setAllAppointments] = useState<Appointment[]>([]);
 
   const [showAppointmentForm, setShowAppointmentForm] = useState(false);
+  const [appointmentPatientMode, setAppointmentPatientMode] = useState<"registered" | "pending">("registered");
+  const [appointmentPatientPickerMode, setAppointmentPatientPickerMode] = useState<
+    "loading" | "select" | "search"
+  >("loading");
+  const [appointmentCompactPatients, setAppointmentCompactPatients] = useState<Patient[]>([]);
   const [appointmentForm, setAppointmentForm] = useState<AppointmentFormData>(emptyAppointmentForm);
   const [editingAppointment, setEditingAppointment] = useState<Appointment | null>(null);
   const [isSubmittingAppointment, setIsSubmittingAppointment] = useState(false);
@@ -398,6 +412,9 @@ const isSelected = (date: Date) => {
     }
   };
 
+  const getSessionStatusLabel = (status: string) =>
+    status === "completed" ? t.calendar.completed : t.calendar.draft;
+
   // Selected date sessions and appointments
   const selectedDateSessions = selectedDate ? getSessionsForDate(selectedDate) : [];
   const selectedDateAppointments = selectedDate ? getAppointmentsForDate(selectedDate) : [];
@@ -458,14 +475,17 @@ const isSelected = (date: Date) => {
     else if (isReceptionist && user?.assignedPodiatristIds?.length === 1) defaultPodiatristId = user.assignedPodiatristIds[0];
     setAppointmentForm({
       ...emptyAppointmentForm,
-      date: date ? date.toISOString().split("T")[0] : new Date().toISOString().split("T")[0],
+      date: date ? formatLocalDateString(date) : formatLocalDateString(new Date()),
       podiatristId: defaultPodiatristId,
+      patientId: "",
     });
+    setAppointmentPatientMode("registered");
     setShowAppointmentForm(true);
   };
 
   const openEditAppointmentForm = (appointment: Appointment) => {
     setEditingAppointment(appointment);
+    setAppointmentPatientMode(appointment.patientId ? "registered" : "pending");
     setAppointmentForm({
       patientId: appointment.patientId || "",
       podiatristId: appointment.podiatristId,
@@ -478,6 +498,16 @@ const isSelected = (date: Date) => {
     });
     setShowAppointmentForm(true);
   };
+
+  const closeAppointmentForm = () => {
+    setShowAppointmentForm(false);
+    setEditingAppointment(null);
+    setAppointmentForm(emptyAppointmentForm);
+    setAppointmentSubmitError("");
+    setAppointmentPatientMode("registered");
+  };
+
+  const isPendingPatientMode = appointmentPatientMode === "pending";
 
   const getPatientById = (id: string) => allPatients.find((p) => p.id === id) ?? null;
 
@@ -499,7 +529,7 @@ const isSelected = (date: Date) => {
       return;
     }
 
-    const patientId = appointmentForm.patientId === "" ? null : appointmentForm.patientId;
+    const patientId = isPendingPatientMode ? null : appointmentForm.patientId || null;
 
     if (patientId === null) {
       if (!appointmentForm.pendingPatientName || !appointmentForm.pendingPatientPhone) {
@@ -589,14 +619,65 @@ const isSelected = (date: Date) => {
     setRefreshTrigger((prev) => prev + 1);
   };
 
-  // Get clinic patients for the form (podólogos de la clínica, o del usuario, o de los asignados a la recepcionista)
-  const clinicPatients = useMemo(() => {
-    if (isClinicAdmin || isReceptionist) {
-      const podiatristIds = clinicPodiatrists.map(p => p.id);
-      return allPatients.filter(p => podiatristIds.includes(p.createdBy));
+  // Pacientes del formulario de cita: select corto o búsqueda indexada si hay muchos
+  const filterPatientsForClinic = useCallback(
+    (patients: Patient[]) => {
+      if (isClinicAdmin || isReceptionist) {
+        const podiatristIds = clinicPodiatrists.map((p) => p.id);
+        return patients.filter((p) => podiatristIds.includes(p.createdBy));
+      }
+      return patients.filter((p) => p.createdBy === user?.id);
+    },
+    [isClinicAdmin, isReceptionist, clinicPodiatrists, user?.id]
+  );
+
+  const clinicPatients = useMemo(
+    () => filterPatientsForClinic(appointmentCompactPatients),
+    [filterPatientsForClinic, appointmentCompactPatients]
+  );
+
+  const isAppointmentPatientInClinic = useCallback(
+    (patient: Patient) => filterPatientsForClinic([patient]).length > 0,
+    [filterPatientsForClinic]
+  );
+
+  useEffect(() => {
+    if (!showAppointmentForm) {
+      setAppointmentPatientPickerMode("loading");
+      setAppointmentCompactPatients([]);
+      return;
     }
-    return allPatients.filter(p => p.createdBy === user?.id);
-  }, [allPatients, isClinicAdmin, isReceptionist, clinicPodiatrists, user]);
+    if (isPendingPatientMode) return;
+
+    let cancelled = false;
+    void fetchPatientPickerSample().then(({ patients, hasMore }) => {
+      if (cancelled) return;
+      const filtered = filterPatientsForClinic(patients);
+      const useSearch =
+        hasMore || patients.length > APPOINTMENT_PATIENT_SELECT_THRESHOLD;
+      setAppointmentCompactPatients(filtered);
+      setAppointmentPatientPickerMode(useSearch ? "search" : "select");
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [showAppointmentForm, isPendingPatientMode, filterPatientsForClinic]);
+
+  useEffect(() => {
+    if (!showAppointmentForm || editingAppointment || isPendingPatientMode) return;
+    if (appointmentPatientPickerMode !== "select") return;
+    if (!clinicPatients.length) return;
+    if (appointmentForm.patientId && clinicPatients.some((p) => p.id === appointmentForm.patientId)) return;
+    setAppointmentForm((prev) => ({ ...prev, patientId: clinicPatients[0].id }));
+  }, [
+    showAppointmentForm,
+    editingAppointment,
+    isPendingPatientMode,
+    appointmentPatientPickerMode,
+    clinicPatients,
+    appointmentForm.patientId,
+  ]);
 
   const getAgendaExportDate = () => formatLocalDateString(selectedDate ?? currentDate);
 
@@ -735,7 +816,7 @@ const isSelected = (date: Date) => {
                       onClick={handleShareAgendaWhatsApp}
                       disabled={agendaExportBusy}
                       title={t.calendar.exportWaHint}
-                      className="px-3 py-2 text-sm font-medium rounded-lg bg-[#25D366] text-white hover:opacity-90 disabled:opacity-50 flex items-center gap-1.5"
+                      className={`${whatsappButtonSmClass} flex items-center gap-1.5`}
                     >
                       <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
                         <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.435 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z" />
@@ -892,15 +973,24 @@ const isSelected = (date: Date) => {
                             <div
                               key={appt.id}
                               className="text-xs px-1.5 py-0.5 rounded truncate bg-blue-50 border border-blue-200 text-blue-700"
+                              title={`${t.calendar.appointment} · ${appt.time}`}
                             >
-                              <span className="font-medium">{appt.time}</span> {getPatientDisplayNameShort(appt)}
+                              <span className="font-semibold uppercase tracking-wide text-[10px] opacity-80">
+                                {t.calendar.appointment}
+                              </span>{" "}
+                              <span className="font-medium">{appt.time}</span>{" "}
+                              {getPatientDisplayNameShort(appt)}
                             </div>
                           ))}
                           {sessions.slice(0, Math.max(0, 3 - appointments.length)).map((session) => (
                             <div
                               key={session.id}
-                              className={`text-xs px-1.5 py-0.5 rounded truncate ${getStatusBg(session.status)}`}
+                              className={`text-xs px-1.5 py-0.5 rounded truncate border ${getStatusBg(session.status)}`}
+                              title={`${t.calendar.session} · ${getSessionStatusLabel(session.status)}`}
                             >
+                              <span className="font-semibold uppercase tracking-wide text-[10px] opacity-80">
+                                {t.calendar.session}
+                              </span>{" "}
                               {session.patient?.firstName} {session.patient?.lastName?.charAt(0)}.
                             </div>
                           ))}
@@ -969,11 +1059,11 @@ const isSelected = (date: Date) => {
                                 {getPatientDisplayName(appt)}
                               </p>
                               <div className="flex items-center gap-1 mt-0.5">
-                                <p className="text-[10px] opacity-70">
-                                  Cita
+                                <p className="text-[10px] font-semibold uppercase tracking-wide opacity-80">
+                                  {t.calendar.appointment}
                                 </p>
                                 {!appt.patientId && (
-                                  <span className="text-[9px] text-orange-600 bg-orange-100 px-1 py-0.5 rounded">Pendiente</span>
+                                  <span className="text-[9px] text-orange-600 bg-orange-100 px-1 py-0.5 rounded">{t.calendar.pendingShort}</span>
                                 )}
                               </div>
                             </div>
@@ -985,8 +1075,11 @@ const isSelected = (date: Date) => {
                                 <p className="text-xs font-medium truncate">
                                   {session.patient?.firstName} {session.patient?.lastName}
                                 </p>
-                                <p className="text-[10px] mt-0.5 opacity-70">
-                                  {session.status === "completed" ? t.calendar.completed : t.calendar.draft}
+                                <p className="text-[10px] mt-0.5">
+                                  <span className="font-semibold uppercase tracking-wide opacity-80">
+                                    {t.calendar.session}
+                                  </span>
+                                  <span className="opacity-70"> · {getSessionStatusLabel(session.status)}</span>
                                 </p>
                               </div>
                             </Link>
@@ -1050,7 +1143,9 @@ const isSelected = (date: Date) => {
                           <div className="flex-1">
                             <div className="flex items-center gap-2">
                               <span className="text-sm font-semibold text-blue-700">{appt.time}</span>
-                              <span className="text-xs text-blue-600 bg-blue-100 px-2 py-0.5 rounded">{t.calendar.scheduled}</span>
+                              <span className="text-xs text-blue-600 bg-blue-100 px-2 py-0.5 rounded font-medium">
+                                {t.calendar.appointment}
+                              </span>
                               {!appt.patientId && (
                                 <span className="text-xs text-orange-600 bg-orange-100 px-2 py-0.5 rounded">{t.calendar.pendingPatient}</span>
                               )}
@@ -1100,9 +1195,14 @@ const isSelected = (date: Date) => {
                           <div className="flex items-center gap-4 p-4 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors cursor-pointer">
                             <div className={`w-1.5 h-12 rounded-full ${getStatusColor(session.status)}`} />
                             <div className="flex-1">
-                              <p className="font-medium text-brand-ink">
-                                {session.patient?.firstName} {session.patient?.lastName}
-                              </p>
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <p className="font-medium text-brand-ink">
+                                  {session.patient?.firstName} {session.patient?.lastName}
+                                </p>
+                                <span className="text-xs font-medium px-2 py-0.5 rounded bg-gray-200 text-gray-700">
+                                  {t.calendar.session}
+                                </span>
+                              </div>
                               <p className="text-sm text-gray-500">
                                 {session.diagnosis || t.calendar.noDiagnosis}
                               </p>
@@ -1172,6 +1272,9 @@ const isSelected = (date: Date) => {
                     >
                       <div className="flex items-center gap-2 mb-1">
                         <div className="w-2 h-2 rounded-full bg-blue-500" />
+                        <span className="text-xs font-medium text-blue-700 bg-blue-100 px-1.5 py-0.5 rounded">
+                          {t.calendar.appointment}
+                        </span>
                         <span className="text-sm font-medium text-brand-ink">
                           {appt.time} - {getPatientDisplayName(appt)}
                         </span>
@@ -1217,6 +1320,9 @@ const isSelected = (date: Date) => {
                       <div className="p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors cursor-pointer">
                         <div className="flex items-center gap-2 mb-1">
                           <div className={`w-2 h-2 rounded-full ${getStatusColor(session.status)}`} />
+                          <span className="text-xs font-medium px-1.5 py-0.5 rounded bg-gray-200 text-gray-700">
+                            {t.calendar.session}
+                          </span>
                           <span className="text-sm font-medium text-brand-ink">
                             {session.patient?.firstName} {session.patient?.lastName}
                           </span>
@@ -1355,226 +1461,279 @@ const isSelected = (date: Date) => {
                 <div className="w-3 h-3 rounded-full bg-gray-400" />
                 <span className="text-sm text-brand-muted">{t.calendar.legendCancelled}</span>
               </div>
+              <p className="text-xs text-brand-muted pt-2 border-t border-brand-border mt-2">
+                {t.calendar.exportIcsHint}
+              </p>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Appointment Form Modal */}
-      {showAppointmentForm && (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4 overflow-y-auto form-modal-scroll">
-          <div className="bg-white rounded-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto form-modal-scroll">
-            <div className="sticky top-0 bg-white border-b border-gray-100 p-6 z-10">
-              <div className="flex items-center justify-between">
-                <h3 className="text-xl font-semibold text-brand-ink">
+      {/* Appointment Form Modal — portal flotante (evita fixed dentro de main) */}
+      <AppModal open={showAppointmentForm} onClose={closeAppointmentForm} maxWidth="xl" panelId="appointment-form-panel">
+        <form onSubmit={handleAppointmentSubmit} className="flex min-h-0 flex-1 flex-col">
+          <AppModalHeader>
+            <div className="flex items-center justify-between gap-3">
+              <div className="min-w-0">
+                <h3 className="text-lg font-semibold text-brand-ink">
                   {editingAppointment ? t.calendar.formTitleEdit : t.calendar.formTitleNew}
                 </h3>
+                {appointmentForm.date && (
+                  <p className="text-sm text-brand-muted mt-1 truncate">
+                    {new Date(`${appointmentForm.date}T12:00:00`).toLocaleDateString(locale, {
+                      weekday: "long",
+                      day: "numeric",
+                      month: "long",
+                    })}
+                    {appointmentForm.time ? ` · ${appointmentForm.time}` : ""}
+                  </p>
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={closeAppointmentForm}
+                className="p-2 hover:bg-brand-canvas rounded-lg transition-colors flex-shrink-0"
+                aria-label={t.calendar.close}
+              >
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+          </AppModalHeader>
+
+          <AppModalBody className="space-y-5">
+            {/* Patient Selection */}
+            <section className="space-y-3">
+              <label className={formLabelClass}>{t.calendar.patientLabel}</label>
+              <div className="grid grid-cols-2 gap-2 p-1 rounded-xl bg-brand-canvas border border-brand-border">
                 <button
                   type="button"
                   onClick={() => {
-                    setShowAppointmentForm(false);
-                    setEditingAppointment(null);
-                    setAppointmentForm(emptyAppointmentForm);
-                    setAppointmentSubmitError("");
+                    setAppointmentPatientMode("registered");
+                    setAppointmentForm((prev) => ({
+                      ...prev,
+                      patientId: clinicPatients[0]?.id ?? "",
+                      pendingPatientName: "",
+                      pendingPatientPhone: "",
+                    }));
                   }}
-                  className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                  className={`px-3 py-2 text-sm font-medium rounded-lg transition-colors ${
+                    !isPendingPatientMode
+                      ? "bg-brand-surface text-brand-ink shadow-sm border border-brand-border"
+                      : "text-brand-muted hover:text-brand-ink"
+                  }`}
                 >
-                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
+                  {t.calendar.patientLabel}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAppointmentPatientMode("pending");
+                    setAppointmentForm((prev) => ({
+                      ...prev,
+                      patientId: "",
+                      pendingPatientName: "",
+                      pendingPatientPhone: "",
+                    }));
+                  }}
+                  className={`px-3 py-2 text-sm font-medium rounded-lg transition-colors ${
+                    isPendingPatientMode
+                      ? "bg-brand-surface text-brand-ink shadow-sm border border-brand-border"
+                      : "text-brand-muted hover:text-brand-ink"
+                  }`}
+                >
+                  {t.calendar.patientPendingOption}
                 </button>
               </div>
-            </div>
 
-            <form onSubmit={handleAppointmentSubmit} className="p-6 space-y-4">
-              {/* Patient Selection */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  {t.calendar.patientLabel}
-                </label>
+              {isPendingPatientMode ? (
+                <div className={`${formPanelMutedClass} space-y-3`}>
+                  <p className={formLabelClassXs}>{t.calendar.pendingPatientInfo}</p>
+                  <div>
+                    <label className={formLabelClassXs}>{t.calendar.nameRequired}</label>
+                    <input
+                      type="text"
+                      value={appointmentForm.pendingPatientName}
+                      onChange={(e) =>
+                        setAppointmentForm((prev) => ({ ...prev, pendingPatientName: e.target.value }))
+                      }
+                      placeholder={t.calendar.namePlaceholder}
+                      className={`${formFieldClassSm} mt-1`}
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className={formLabelClassXs}>{t.calendar.phoneRequired}</label>
+                    <input
+                      type="tel"
+                      inputMode="tel"
+                      autoComplete="tel"
+                      value={appointmentForm.pendingPatientPhone}
+                      onChange={(e) => {
+                        const v = e.target.value.replace(/[^\d+\s\-()]/g, "");
+                        setAppointmentForm((prev) => ({ ...prev, pendingPatientPhone: v }));
+                      }}
+                      placeholder={t.calendar.phonePlaceholder}
+                      className={`${formFieldClassSm} mt-1`}
+                      required
+                      maxLength={20}
+                      pattern="[\d+\s\-()]*"
+                      title={t.calendar.phonePlaceholder}
+                    />
+                  </div>
+                </div>
+              ) : appointmentPatientPickerMode === "loading" ? (
+                <p className={`text-sm ${formHintClass} py-2`}>{t.common.loading}</p>
+              ) : appointmentPatientPickerMode === "search" ? (
+                <PatientSearchSelect
+                  value={appointmentForm.patientId || ""}
+                  onChange={(patientId) =>
+                    setAppointmentForm((prev) => ({
+                      ...prev,
+                      patientId,
+                      pendingPatientName: "",
+                      pendingPatientPhone: "",
+                    }))
+                  }
+                  required
+                  placeholder={t.patients.searchPatients}
+                  isPatientEligible={isAppointmentPatientInClinic}
+                />
+              ) : (
                 <select
                   value={appointmentForm.patientId || ""}
-                  onChange={(e) => setAppointmentForm(prev => ({ 
-                    ...prev, 
-                    patientId: e.target.value || null,
-                    pendingPatientName: e.target.value ? "" : prev.pendingPatientName,
-                    pendingPatientPhone: e.target.value ? "" : prev.pendingPatientPhone,
-                  }))}
-                  className="w-full px-3 py-2.5 border border-brand-border rounded-lg bg-brand-surface text-brand-ink focus:outline-none focus:border-brand-ink focus:ring-1 focus:ring-brand-ink placeholder:text-gray-400 dark:placeholder:text-gray-500"
+                  onChange={(e) =>
+                    setAppointmentForm((prev) => ({
+                      ...prev,
+                      patientId: e.target.value,
+                      pendingPatientName: "",
+                      pendingPatientPhone: "",
+                    }))
+                  }
+                  className={formFieldClassSm}
+                  required
                 >
-                  <option value="">{t.calendar.patientPendingOption}</option>
-                  {clinicPatients.map(patient => (
+                  <option value="" disabled>
+                    {t.patients.selectPatient}
+                  </option>
+                  {clinicPatients.map((patient) => (
                     <option key={patient.id} value={patient.id}>
-                      {patient.firstName} {patient.lastName} - {patient.email}
+                      {patient.firstName} {patient.lastName}
+                      {patient.email ? ` · ${patient.email}` : ""}
                     </option>
                   ))}
                 </select>
-                {(appointmentForm.patientId === "" || appointmentForm.patientId === null) && (
-                  <div className="mt-3 space-y-3 p-3 bg-gray-50 rounded-lg border border-gray-200">
-                    <p className="text-xs font-medium text-gray-700 mb-2">
-                      {t.calendar.pendingPatientInfo}
-                    </p>
-                    <div>
-                      <label className="block text-xs font-medium text-gray-600 mb-1">
-                        {t.calendar.nameRequired}
-                      </label>
-                      <input
-                        type="text"
-                        value={appointmentForm.pendingPatientName}
-                        onChange={(e) => setAppointmentForm(prev => ({ ...prev, pendingPatientName: e.target.value }))}
-                        placeholder={t.calendar.namePlaceholder}
-                        className="w-full px-3 py-2 text-sm border border-brand-border rounded-lg bg-brand-surface text-brand-ink focus:outline-none focus:border-brand-ink focus:ring-1 focus:ring-brand-ink placeholder:text-gray-400 dark:placeholder:text-gray-500"
-                        required={appointmentForm.patientId === "" || appointmentForm.patientId === null}
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-medium text-gray-600 mb-1">
-                        {t.calendar.phoneRequired}
-                      </label>
-                      <input
-                        type="tel"
-                        inputMode="tel"
-                        autoComplete="tel"
-                        value={appointmentForm.pendingPatientPhone}
-                        onChange={(e) => {
-                          const v = e.target.value.replace(/[^\d+\s\-()]/g, "");
-                          setAppointmentForm(prev => ({ ...prev, pendingPatientPhone: v }));
-                        }}
-                        placeholder={t.calendar.phonePlaceholder}
-                        className="w-full px-3 py-2 text-sm border border-brand-border rounded-lg bg-brand-surface text-brand-ink focus:outline-none focus:border-brand-ink focus:ring-1 focus:ring-brand-ink placeholder:text-gray-400 dark:placeholder:text-gray-500"
-                        required={appointmentForm.patientId === "" || appointmentForm.patientId === null}
-                        maxLength={20}
-                        pattern="[\d+\s\-()]*"
-                        title={t.calendar.phonePlaceholder}
-                      />
-                    </div>
-                  </div>
-                )}
-              </div>
+              )}
+            </section>
 
-              {/* Podiatrist Selection */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  {t.calendar.podiatristRequired}
-                </label>
-                {isPodiatrist && !isClinicAdmin ? (
-                  <input
-                    type="text"
-                    value={user?.name || ""}
-                    disabled
-                    className="w-full px-3 py-2.5 border border-gray-200 rounded-lg bg-gray-50 text-gray-600 cursor-not-allowed"
-                  />
-                ) : (
-                  <select
-                    value={appointmentForm.podiatristId}
-                    onChange={(e) => setAppointmentForm(prev => ({ ...prev, podiatristId: e.target.value }))}
-                    className="w-full px-3 py-2.5 border border-brand-border rounded-lg bg-brand-surface text-brand-ink focus:outline-none focus:border-brand-ink focus:ring-1 focus:ring-brand-ink placeholder:text-gray-400 dark:placeholder:text-gray-500"
-                    required
-                  >
-                    <option value="">{t.calendar.selectPodiatrist}</option>
-                    {clinicPodiatrists.map(pod => (
-                      <option key={pod.id} value={pod.id}>
-                        {pod.name}
-                      </option>
-                    ))}
-                  </select>
-                )}
-              </div>
+            {/* Podiatrist Selection */}
+            <section>
+              <label className={`${formLabelClass} mb-1`}>{t.calendar.podiatristRequired}</label>
+              {isPodiatrist && !isClinicAdmin ? (
+                <input
+                  type="text"
+                  value={user?.name || ""}
+                  disabled
+                  className={formFieldDisabledClassSm}
+                />
+              ) : (
+                <select
+                  value={appointmentForm.podiatristId}
+                  onChange={(e) => setAppointmentForm((prev) => ({ ...prev, podiatristId: e.target.value }))}
+                  className={formFieldClassSm}
+                  required
+                >
+                  <option value="">{t.calendar.selectPodiatrist}</option>
+                  {clinicPodiatrists.map((pod) => (
+                    <option key={pod.id} value={pod.id}>
+                      {pod.name}
+                    </option>
+                  ))}
+                </select>
+              )}
+            </section>
 
-              {/* Date */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  {t.calendar.dateRequired}
-                </label>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <section>
+                <label className={`${formLabelClass} mb-1`}>{t.calendar.dateRequired}</label>
                 <input
                   type="date"
                   value={appointmentForm.date}
-                  onChange={(e) => setAppointmentForm(prev => ({ ...prev, date: e.target.value }))}
-                  className="w-full px-3 py-2.5 border border-brand-border rounded-lg bg-brand-surface text-brand-ink focus:outline-none focus:border-brand-ink focus:ring-1 focus:ring-brand-ink placeholder:text-gray-400 dark:placeholder:text-gray-500"
+                  onChange={(e) => setAppointmentForm((prev) => ({ ...prev, date: e.target.value }))}
+                  className={formFieldClassSm}
                   required
                 />
-              </div>
-
-              {/* Time */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  {t.calendar.timeRequired}
-                </label>
+              </section>
+              <section>
+                <label className={`${formLabelClass} mb-1`}>{t.calendar.timeRequired}</label>
                 <input
                   type="time"
                   value={appointmentForm.time}
-                  onChange={(e) => setAppointmentForm(prev => ({ ...prev, time: e.target.value }))}
-                  className="w-full px-3 py-2.5 border border-brand-border rounded-lg bg-brand-surface text-brand-ink focus:outline-none focus:border-brand-ink focus:ring-1 focus:ring-brand-ink placeholder:text-gray-400 dark:placeholder:text-gray-500"
+                  onChange={(e) => setAppointmentForm((prev) => ({ ...prev, time: e.target.value }))}
+                  className={formFieldClassSm}
                   required
                 />
+              </section>
+            </div>
+
+            <section>
+              <label className={`${formLabelClass} mb-1`}>{t.calendar.durationMinutes}</label>
+              <select
+                value={appointmentForm.duration}
+                onChange={(e) =>
+                  setAppointmentForm((prev) => ({ ...prev, duration: parseInt(e.target.value, 10) }))
+                }
+                className={formFieldClassSm}
+              >
+                <option value={15}>{t.calendar.duration15}</option>
+                <option value={30}>{t.calendar.duration30}</option>
+                <option value={45}>{t.calendar.duration45}</option>
+                <option value={60}>{t.calendar.duration60}</option>
+                <option value={90}>{t.calendar.duration90}</option>
+              </select>
+            </section>
+
+            <section>
+              <label className={`${formLabelClass} mb-1`}>{t.common.notes}</label>
+              <textarea
+                value={appointmentForm.notes}
+                onChange={(e) => setAppointmentForm((prev) => ({ ...prev, notes: e.target.value }))}
+                rows={3}
+                className={`${formFieldClassSm} resize-none`}
+                placeholder={t.calendar.notesPlaceholder}
+              />
+            </section>
+
+            {appointmentSubmitError && (
+              <div className="p-3 rounded-lg bg-red-50 border border-red-200 text-red-800 text-sm dark:bg-red-950/40 dark:border-red-900 dark:text-red-200">
+                {appointmentSubmitError}
               </div>
+            )}
+          </AppModalBody>
 
-              {/* Duration */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  {t.calendar.durationMinutes}
-                </label>
-                <select
-                  value={appointmentForm.duration}
-                  onChange={(e) => setAppointmentForm(prev => ({ ...prev, duration: parseInt(e.target.value) }))}
-                  className="w-full px-3 py-2.5 border border-brand-border rounded-lg bg-brand-surface text-brand-ink focus:outline-none focus:border-brand-ink focus:ring-1 focus:ring-brand-ink placeholder:text-gray-400 dark:placeholder:text-gray-500"
-                >
-                  <option value={15}>{t.calendar.duration15}</option>
-                  <option value={30}>{t.calendar.duration30}</option>
-                  <option value={45}>{t.calendar.duration45}</option>
-                  <option value={60}>{t.calendar.duration60}</option>
-                  <option value={90}>{t.calendar.duration90}</option>
-                </select>
-              </div>
-
-              {/* Notes */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  {t.common.notes}
-                </label>
-                <textarea
-                  value={appointmentForm.notes}
-                  onChange={(e) => setAppointmentForm(prev => ({ ...prev, notes: e.target.value }))}
-                  rows={3}
-                  className="w-full px-3 py-2.5 border border-brand-border rounded-lg bg-brand-surface text-brand-ink focus:outline-none focus:border-brand-ink focus:ring-1 focus:ring-brand-ink placeholder:text-gray-400 dark:placeholder:text-gray-500 resize-none"
-                  placeholder={t.calendar.notesPlaceholder}
-                />
-              </div>
-
-              {appointmentSubmitError && (
-                <div className="p-3 rounded-lg bg-red-50 border border-red-200 text-red-800 text-sm">
-                  {appointmentSubmitError}
-                </div>
-              )}
-
-              {/* Actions */}
-              <div className="flex gap-3 pt-4">
-                {editingAppointment && editingAppointment.status !== "cancelled" && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (confirm(t.calendar.confirmCancelAppointment)) {
-                        handleCancelAppointment(editingAppointment);
-                        setShowAppointmentForm(false);
-                        setEditingAppointment(null);
-                        setAppointmentForm(emptyAppointmentForm);
-                      }
-                    }}
-                    className="px-4 py-2.5 border border-red-200 text-red-700 rounded-lg hover:bg-red-50 transition-colors font-medium"
-                  >
-                    {t.calendar.cancelAppointmentButton}
-                  </button>
-                )}
+          <AppModalFooter>
+            <div className="flex flex-col-reverse sm:flex-row gap-3">
+              {editingAppointment && editingAppointment.status !== "cancelled" && (
                 <button
                   type="button"
                   onClick={() => {
-                    setShowAppointmentForm(false);
-                    setEditingAppointment(null);
-                    setAppointmentForm(emptyAppointmentForm);
-                    setAppointmentSubmitError("");
+                    if (confirm(t.calendar.confirmCancelAppointment)) {
+                      handleCancelAppointment(editingAppointment);
+                      closeAppointmentForm();
+                    }
                   }}
+                  className="px-4 py-2.5 border border-red-200 text-red-700 rounded-lg hover:bg-red-50 transition-colors font-medium dark:border-red-900 dark:text-red-300 dark:hover:bg-red-950/40"
+                >
+                  {t.calendar.cancelAppointmentButton}
+                </button>
+              )}
+              <div className="flex flex-1 gap-3 sm:justify-end">
+                <button
+                  type="button"
+                  onClick={closeAppointmentForm}
                   disabled={isSubmittingAppointment}
-                  className={`px-4 py-2.5 border border-gray-200 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed ${editingAppointment && editingAppointment.status !== "cancelled" ? "flex-1" : ""}`}
+                  className="flex-1 sm:flex-none px-4 py-2.5 border border-brand-border text-brand-ink rounded-lg hover:bg-brand-canvas transition-colors font-medium disabled:opacity-50"
                 >
                   {editingAppointment ? t.calendar.close : t.common.cancel}
                 </button>
@@ -1582,16 +1741,22 @@ const isSelected = (date: Date) => {
                   <button
                     type="submit"
                     disabled={isSubmittingAppointment}
-                    className="flex-1 px-4 py-2.5 bg-brand-ink text-brand-ink-fg rounded-lg hover:bg-brand-ink-hover transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="flex-1 sm:flex-none px-4 py-2.5 bg-brand-ink text-brand-ink-fg rounded-lg hover:bg-brand-ink-hover transition-colors font-medium disabled:opacity-50"
                   >
-                    {isSubmittingAppointment ? (editingAppointment ? t.calendar.saving : t.calendar.creating) : (editingAppointment ? t.calendar.saveChanges : t.calendar.createAppointment)}
+                    {isSubmittingAppointment
+                      ? editingAppointment
+                        ? t.calendar.saving
+                        : t.calendar.creating
+                      : editingAppointment
+                        ? t.calendar.saveChanges
+                        : t.calendar.createAppointment}
                   </button>
                 )}
               </div>
-            </form>
-          </div>
-        </div>
-      )}
+            </div>
+          </AppModalFooter>
+        </form>
+      </AppModal>
     </MainLayout>
   );
 };

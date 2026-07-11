@@ -20,6 +20,21 @@ import { CountrySelect } from "../components/settings/country-select";
 import { phonePlaceholderForCountry } from "../lib/whatsapp-web-link";
 import { DEFAULT_TENANT_COUNTRY, resolveTenantCountryCode } from "../../lib/phone-country";
 import { compressImageForLogo } from "../lib/image-compress";
+import {
+  formErrorClass,
+  formSuccessClass,
+  semanticAlertErrorClass,
+  semanticAlertInfoClass,
+  semanticAlertSuccessClass,
+  semanticAlertWarningClass,
+  semanticChipErrorClass,
+  semanticChipSuccessClass,
+  semanticChipWarningClass,
+  semanticDestructiveTextClass,
+  whatsappPanelInnerClass,
+} from "../lib/form-field-classes";
+import { DashboardLogoSettingsSection } from "../components/settings/dashboard-logo-settings-section";
+import { EditCooldownNotice } from "../components/settings/edit-cooldown-notice";
 
 interface ClinicInfoForm {
   clinicName: string;
@@ -128,9 +143,13 @@ const SettingsPage = () => {
         setCurrentLogo(res.success && res.data?.logo ? res.data.logo : null);
       }).catch(() => setCurrentLogo(null));
     } else if (isPodiatristIndependent && user?.id) {
-      api.get<{ success?: boolean; logo?: string | null }>(`/professionals/logo/${user.id}`).then((res) => {
+      api.get<{ success?: boolean; logo?: string | null; logoBlockedUntil?: string | null }>(`/professionals/logo/${user.id}`).then((res) => {
         setCurrentLogo(res.success && res.data?.logo ? res.data.logo : null);
-      }).catch(() => setCurrentLogo(null));
+        setLogoBlockedUntil(res.data?.logoBlockedUntil ?? null);
+      }).catch(() => {
+        setCurrentLogo(null);
+        setLogoBlockedUntil(null);
+      });
     } else {
       setCurrentLogo(null);
     }
@@ -161,6 +180,7 @@ const SettingsPage = () => {
   const [clinicConsentError, setClinicConsentError] = useState<string | null>(null);
   const [infoBlockedUntil, setInfoBlockedUntil] = useState<string | null>(null);
   const [logoBlockedUntil, setLogoBlockedUntil] = useState<string | null>(null);
+  const [professionalInfoBlockedUntil, setProfessionalInfoBlockedUntil] = useState<string | null>(null);
   
   // Professional Info state (for independent podiatrists)
   const [professionalInfoForm, setProfessionalInfoForm] = useState<ProfessionalInfo & { consentDocumentUrl?: string }>({
@@ -241,7 +261,7 @@ const SettingsPage = () => {
   // Cargar professional info desde API (podólogos)
   useEffect(() => {
     if (user?.role === "podiatrist" && user?.id) {
-      api.get<{ success?: boolean; info?: ProfessionalInfo & { countryCode?: string } | null }>(`/professionals/info/${user.id}`).then((res) => {
+      api.get<{ success?: boolean; info?: ProfessionalInfo & { countryCode?: string } | null; infoBlockedUntil?: string | null }>(`/professionals/info/${user.id}`).then((res) => {
         if (res.success && res.data?.info) {
           setProfessionalInfoForm({
             ...res.data.info,
@@ -261,6 +281,7 @@ const SettingsPage = () => {
             consentText: "",
           });
         }
+        setProfessionalInfoBlockedUntil(res.data?.infoBlockedUntil ?? null);
       });
     }
   }, [user?.role, user?.id, user?.name, user?.email, isPodiatristIndependent]);
@@ -289,10 +310,13 @@ const SettingsPage = () => {
   // Cargar professional credentials desde API (podólogos de clínica)
   useEffect(() => {
     if (isPodiatristWithClinic && user?.id) {
-      api.get<{ success?: boolean; credentials?: { cedula?: string; registro?: string } | null }>(`/professionals/credentials/${user.id}`).then((res) => {
+      api.get<{ success?: boolean; credentials?: { cedula?: string; registro?: string } | null; infoBlockedUntil?: string | null }>(`/professionals/credentials/${user.id}`).then((res) => {
         if (res.success && res.data?.credentials) {
           setCredentialsCedula(res.data.credentials.cedula || "");
           setCredentialsRegistro(res.data.credentials.registro || "");
+        }
+        if (res.data?.infoBlockedUntil) {
+          setProfessionalInfoBlockedUntil(res.data.infoBlockedUntil);
         }
       });
     }
@@ -317,10 +341,31 @@ const SettingsPage = () => {
   const clinicName = userClinic?.clinicName ?? getClinicNameFrom(userClinic, user?.clinicId ?? "");
   const isInfoBlocked = !!infoBlockedUntil && new Date(infoBlockedUntil) > new Date();
   const isLogoBlocked = !!logoBlockedUntil && new Date(logoBlockedUntil) > new Date();
+  const isProfessionalInfoBlocked =
+    !!professionalInfoBlockedUntil && new Date(professionalInfoBlockedUntil) > new Date();
   const formatBlockedUntil = (iso: string) => {
     const d = new Date(iso);
     return d.toLocaleDateString(undefined, { day: "numeric", month: "long", year: "numeric" });
   };
+  const logoCooldownPolicy =
+    "Tras guardar, el logo queda fijo durante 15 días. Pasado ese período podrás subirlo o cambiarlo de nuevo.";
+  const logoCooldownBlocked = (date: string) =>
+    `El logo solo puede modificarse cada 15 días. Próximo cambio permitido: ${date}.`;
+  const clinicInfoCooldownPolicy =
+    "Tras guardar, los datos de la clínica quedan fijos durante 15 días. Pasado ese período podrás modificarlos de nuevo.";
+  const clinicInfoCooldownBlocked = (date: string) =>
+    `Los datos de la clínica solo pueden modificarse cada 15 días. Próximo cambio permitido: ${date}.`;
+  const professionalInfoCooldownPolicy =
+    "Tras guardar, estos datos quedan fijos durante 15 días. Pasado ese período podrás modificarlos de nuevo.";
+  const professionalInfoCooldownBlocked = (date: string) =>
+    `Estos datos solo pueden modificarse cada 15 días. Próximo cambio permitido: ${date}.`;
+  const profileCooldownPolicy =
+    "Nombre y correo electrónico solo pueden modificarse por un administrador. Tras cada cambio deben transcurrir 15 días antes de una nueva modificación.";
+  const clinicReadOnlyPolicy =
+    "La información de la clínica la gestiona tu administrador. Tras cada cambio deben transcurrir 15 días antes de una nueva modificación.";
+  const proInfoInputClass = isProfessionalInfoBlocked
+    ? "w-full px-4 py-2.5 bg-brand-canvas text-brand-muted border border-brand-border rounded-lg cursor-not-allowed"
+    : "w-full px-4 py-2.5 bg-brand-surface text-brand-ink border border-brand-border rounded-lg focus:ring-2 focus:ring-brand-ink focus:border-transparent transition-all";
   
   const handleClinicInfoChange = (field: keyof ClinicInfoForm, value: string) => {
     setClinicInfoForm(prev => ({ ...prev, [field]: value }));
@@ -402,16 +447,20 @@ const SettingsPage = () => {
   const handleSaveProfessionalInfo = async () => {
     if (user?.role !== "podiatrist" || !user?.id) return;
     if (!isPodiatristIndependent && !isPodiatristWithClinic) return;
+    if (isProfessionalInfoBlocked) return;
     try {
       const payload = {
         ...professionalInfoForm,
         name: professionalInfoForm.name || user.name || "",
         email: professionalInfoForm.email || user.email || "",
       };
-      const res = await api.put<{ success?: boolean }>(`/professionals/info/${user.id}`, payload);
+      const res = await api.put<{ success?: boolean; infoBlockedUntil?: string }>(`/professionals/info/${user.id}`, payload);
       if (res.success) {
+        setProfessionalInfoBlockedUntil(res.data?.infoBlockedUntil ?? null);
         setProfessionalInfoSaved(true);
         setTimeout(() => setProfessionalInfoSaved(false), 2000);
+      } else if (res.error === "cooldown" && res.data?.infoBlockedUntil) {
+        setProfessionalInfoBlockedUntil(res.data.infoBlockedUntil);
       }
     } catch {
       // No marcar como guardado si la API falla
@@ -435,11 +484,15 @@ const SettingsPage = () => {
   // Professional credentials handler (for clinic podiatrists)
   const handleSaveCredentials = async () => {
     if (!isPodiatristWithClinic || !user?.id) return;
+    if (isProfessionalInfoBlocked) return;
     try {
-      const res = await api.put<{ success?: boolean }>(`/professionals/credentials/${user.id}`, { cedula: credentialsCedula, registro: credentialsRegistro });
+      const res = await api.put<{ success?: boolean; infoBlockedUntil?: string }>(`/professionals/credentials/${user.id}`, { cedula: credentialsCedula, registro: credentialsRegistro });
       if (res.success) {
+        setProfessionalInfoBlockedUntil(res.data?.infoBlockedUntil ?? null);
         setCredentialsSaved(true);
         setTimeout(() => setCredentialsSaved(false), 2000);
+      } else if (res.error === "cooldown" && res.data?.infoBlockedUntil) {
+        setProfessionalInfoBlockedUntil(res.data.infoBlockedUntil);
       }
     } catch {
       // No marcar como guardado en caso de error
@@ -557,8 +610,11 @@ const SettingsPage = () => {
     try {
       const res = await api.put<{ success?: boolean; logoBlockedUntil?: string }>(`/clinics/${user.clinicId}/logo`, { logo: logoPreview });
       if (res.success) {
-        const logoRes = await api.get<{ success?: boolean; logo?: string | null }>(`/clinics/${user.clinicId}/logo`);
-        setCurrentLogo(logoRes.success && logoRes.data?.logo ? logoRes.data.logo : logoPreview);
+        const savedLogo =
+          res.data?.logo ??
+          (await api.get<{ success?: boolean; logo?: string | null }>(`/clinics/${user.clinicId}/logo`)).data?.logo ??
+          logoPreview;
+        setCurrentLogo(savedLogo);
         setLogoPreview(null);
         if (fileInputRef.current) fileInputRef.current.value = "";
         setLogoBlockedUntil(res.data?.logoBlockedUntil ?? null);
@@ -591,19 +647,22 @@ const SettingsPage = () => {
 
   // Professional logo upload handler for independent podiatrists
   const handleProfessionalLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (!isPodiatristIndependent) return;
-    
-    const file = e.target.files?.[0];
+    if (!isPodiatristIndependent || isLogoBlocked) return;
+
+    const input = e.target;
+    const file = input.files?.[0];
     if (!file) return;
 
     const validTypes = ["image/png", "image/jpeg", "image/jpg", "image/webp"];
     if (!validTypes.includes(file.type)) {
       setLogoError("Formato no válido. Use PNG, JPG o WebP (máx. 2MB).");
+      input.value = "";
       return;
     }
 
     if (file.size > 2 * 1024 * 1024) {
       setLogoError("El archivo es demasiado grande. Máximo 2MB.");
+      input.value = "";
       return;
     }
 
@@ -613,31 +672,50 @@ const SettingsPage = () => {
       setLogoPreview(base64);
     } catch (err) {
       setLogoError(err instanceof Error ? err.message : "No se pudo procesar la imagen.");
+    } finally {
+      input.value = "";
     }
   };
 
   const handleSaveProfessionalLogo = async () => {
-    if (!isPodiatristIndependent || !logoPreview || !user?.id) return;
-    const res = await api.put(`/professionals/logo/${user.id}`, { logo: logoPreview });
+    if (!isPodiatristIndependent || !logoPreview || !user?.id || isLogoBlocked) return;
+    const res = await api.put<{ success?: boolean; logo?: string | null; logoBlockedUntil?: string; message?: string }>(
+      `/professionals/logo/${user.id}`,
+      { logo: logoPreview }
+    );
     if (res.success) {
-      const logoRes = await api.get<{ success?: boolean; logo?: string | null }>(`/professionals/logo/${user.id}`);
-      setCurrentLogo(logoRes.success && logoRes.data?.logo ? logoRes.data.logo : logoPreview);
+      const savedLogo =
+        res.data?.logo ??
+        (await api.get<{ success?: boolean; logo?: string | null }>(`/professionals/logo/${user.id}`)).data?.logo ??
+        logoPreview;
+      setCurrentLogo(savedLogo);
       setLogoPreview(null);
-      if (fileInputRef.current) fileInputRef.current.value = "";
+      setLogoBlockedUntil(res.data?.logoBlockedUntil ?? null);
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
       window.dispatchEvent(new CustomEvent("clinic-logo:updated"));
+    } else if (res.error === "cooldown" && res.data?.logoBlockedUntil) {
+      setLogoBlockedUntil(res.data.logoBlockedUntil);
+      setLogoError(res.message ?? "El logo solo puede modificarse cada 15 días.");
+    } else {
+      setLogoError(res.message ?? "No se pudo guardar el logo. Inténtalo de nuevo.");
     }
   };
 
   const handleRemoveProfessionalLogo = async () => {
-    if (!isPodiatristIndependent || !user?.id) return;
-    const res = await api.delete(`/professionals/logo/${user.id}`);
+    if (!isPodiatristIndependent || !user?.id || isLogoBlocked) return;
+    const res = await api.delete<{ success?: boolean; logoBlockedUntil?: string; message?: string }>(
+      `/professionals/logo/${user.id}`
+    );
     if (res.success) {
       setCurrentLogo(null);
       setLogoPreview(null);
       if (fileInputRef.current) fileInputRef.current.value = "";
+      setLogoBlockedUntil(res.data?.logoBlockedUntil ?? null);
       window.dispatchEvent(new CustomEvent("clinic-logo:updated"));
+    } else if (res.error === "cooldown" && res.data?.logoBlockedUntil) {
+      setLogoBlockedUntil(res.data.logoBlockedUntil);
+      setLogoError(res.message ?? "El logo solo puede modificarse cada 15 días.");
     }
   };
 
@@ -770,6 +848,8 @@ const SettingsPage = () => {
         {/* Profile Settings */}
         <div className="bg-brand-surface rounded-xl border border-brand-border p-6">
           <h3 className="text-lg font-semibold text-brand-ink mb-4">Perfil de usuario</h3>
+
+          <EditCooldownNotice policyText={profileCooldownPolicy} className="!mb-4" />
           
           <div className="space-y-4">
             <ProfileAvatarSettingsSection />
@@ -795,8 +875,8 @@ const SettingsPage = () => {
                   />
                 </div>
               </div>
-              <p className="text-xs text-gray-400 mt-3">
-                Los datos del perfil no pueden ser modificados desde esta pantalla. Contacte con el administrador si necesita realizar cambios.
+              <p className="text-xs text-brand-muted mt-3">
+                Los datos del perfil no pueden editarse aquí. Contacte con el administrador si necesita realizar cambios.
               </p>
             </div>
           </div>
@@ -970,7 +1050,7 @@ const SettingsPage = () => {
                         Guardar asignación
                       </button>
                       {assignedPodiatristsSaved && (
-                        <span className="text-sm text-green-600 font-medium">Guardado</span>
+                        <span className={`${formSuccessClass} font-medium`}>Guardado</span>
                       )}
                     </div>
                   )}
@@ -1013,7 +1093,7 @@ const SettingsPage = () => {
 
         {/* Save Confirmation */}
         {saved && (
-          <div className="flex items-center gap-2 text-green-600 font-medium">
+          <div className={`flex items-center gap-2 ${formSuccessClass} font-medium`}>
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
             </svg>
@@ -1032,13 +1112,13 @@ const SettingsPage = () => {
 
             {isPodiatristWithClinic ? (
               <div className="space-y-4">
-                <div className="bg-blue-50 border border-blue-100 rounded-lg p-4 flex items-start gap-3">
-                  <svg className="w-5 h-5 text-blue-500 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <div className={`${semanticAlertInfoClass} !p-4 flex items-start gap-3`}>
+                  <svg className="w-5 h-5 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
                   <div>
-                    <p className="text-sm text-blue-700 font-medium">Logo compartido de la clínica</p>
-                    <p className="text-sm text-blue-600 mt-1">
+                    <p className="font-medium">Logo compartido de la clínica</p>
+                    <p className="mt-1">
                       Este logo pertenece a <strong>{clinicName}</strong>. Todos los doctores de esta clínica lo utilizan. Solo el administrador de la clínica puede modificarlo.
                     </p>
                   </div>
@@ -1071,15 +1151,18 @@ const SettingsPage = () => {
                     </div>
                   </div>
                 </div>
+                <DashboardLogoSettingsSection logoUrl={currentLogo} readOnly />
               </div>
             ) : canUploadLogo ? (
               // Clinic Admin can upload their clinic's logo
               <>
-                {isLogoBlocked && (
-                  <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-sm text-amber-800 mb-4">
-                    El logo solo puede modificarse cada 15 días. Próximo cambio permitido: {formatBlockedUntil(logoBlockedUntil!)}.
-                  </div>
-                )}
+                <EditCooldownNotice
+                  policyText={logoCooldownPolicy}
+                  blockedUntil={logoBlockedUntil}
+                  blockedText={
+                    isLogoBlocked ? logoCooldownBlocked(formatBlockedUntil(logoBlockedUntil!)) : undefined
+                  }
+                />
                 <p className="text-sm text-gray-500 mb-4">
                   Sube el logo de tu clínica. Este logo se mostrará en los documentos PDF de todos los podólogos de tu clínica. Dimensiones recomendadas: 200x80px
                 </p>
@@ -1131,7 +1214,7 @@ const SettingsPage = () => {
                       </label>
                       
                       {logoError && (
-                        <p className="text-sm text-red-600 mt-2">{logoError}</p>
+                        <p className={`${formErrorClass} mt-2`}>{logoError}</p>
                       )}
                       
                       <p className="text-xs text-gray-400 mt-2">
@@ -1167,13 +1250,14 @@ const SettingsPage = () => {
                         <button
                           onClick={handleRemoveLogo}
                           disabled={isLogoBlocked}
-                          className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${isLogoBlocked ? "text-gray-400 cursor-not-allowed" : "text-red-600 hover:bg-red-50"}`}
+                          className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${isLogoBlocked ? "text-gray-400 cursor-not-allowed" : semanticDestructiveTextClass}`}
                         >
                           Eliminar logo
                         </button>
                       )}
                     </div>
                   )}
+                  <DashboardLogoSettingsSection logoUrl={currentLogo || logoPreview} />
                 </div>
               </>
             ) : null}
@@ -1184,6 +1268,13 @@ const SettingsPage = () => {
         {isPodiatristIndependent && (
           <div className="bg-brand-surface rounded-xl border border-brand-border p-6">
             <h3 className="text-lg font-semibold text-brand-ink mb-2">Logo Profesional</h3>
+            <EditCooldownNotice
+              policyText={logoCooldownPolicy}
+              blockedUntil={logoBlockedUntil}
+              blockedText={
+                isLogoBlocked ? logoCooldownBlocked(formatBlockedUntil(logoBlockedUntil!)) : undefined
+              }
+            />
             <p className="text-sm text-gray-500 mb-4">
               Sube tu logo profesional personal. Este logo se mostrará en los documentos PDF que generes. Dimensiones recomendadas: 200x80px
             </p>
@@ -1222,10 +1313,11 @@ const SettingsPage = () => {
                     onChange={handleProfessionalLogoUpload}
                     className="hidden"
                     id="professional-logo-upload"
+                    disabled={isLogoBlocked}
                   />
                   <label
-                    htmlFor="professional-logo-upload"
-                    className="inline-flex items-center gap-2 px-4 py-2.5 bg-brand-canvas text-brand-ink rounded-lg text-sm font-medium hover:bg-gray-200 transition-colors cursor-pointer"
+                    htmlFor={isLogoBlocked ? undefined : "professional-logo-upload"}
+                    className={`inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors ${isLogoBlocked ? "bg-gray-200 text-gray-500 cursor-not-allowed" : "bg-brand-canvas text-brand-ink hover:bg-gray-200 cursor-pointer"}`}
                   >
                     <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
@@ -1234,7 +1326,7 @@ const SettingsPage = () => {
                   </label>
                   
                   {logoError && (
-                    <p className="text-sm text-red-600 mt-2">{logoError}</p>
+                    <p className={`${formErrorClass} mt-2`}>{logoError}</p>
                   )}
                   
                   <p className="text-xs text-gray-400 mt-2">
@@ -1249,7 +1341,8 @@ const SettingsPage = () => {
                   {logoPreview && (
                     <button
                       onClick={handleSaveProfessionalLogo}
-                      className="px-4 py-2 bg-brand-ink text-brand-ink-fg rounded-lg text-sm font-medium hover:bg-brand-ink-hover transition-colors"
+                      disabled={isLogoBlocked}
+                      className="px-4 py-2 bg-brand-ink text-brand-ink-fg rounded-lg text-sm font-medium hover:bg-brand-ink-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       Guardar logo
                     </button>
@@ -1268,13 +1361,15 @@ const SettingsPage = () => {
                   {currentLogo && !logoPreview && (
                     <button
                       onClick={handleRemoveProfessionalLogo}
-                      className="px-4 py-2 text-red-600 hover:bg-red-50 rounded-lg text-sm font-medium transition-colors"
+                      disabled={isLogoBlocked}
+                      className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${isLogoBlocked ? "text-gray-400 cursor-not-allowed" : semanticDestructiveTextClass}`}
                     >
                       Eliminar logo
                     </button>
                   )}
                 </div>
               )}
+              <DashboardLogoSettingsSection logoUrl={currentLogo || logoPreview} />
             </div>
           </div>
         )}
@@ -1287,13 +1382,14 @@ const SettingsPage = () => {
             {/* Clínica: admin edita, podólogo con clínica solo lectura */}
             {isPodiatristWithClinic && userClinic && (
               <div className="space-y-4">
-                <div className="bg-blue-50 border border-blue-100 rounded-lg p-4 flex items-start gap-3">
-                  <svg className="w-5 h-5 text-blue-500 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <EditCooldownNotice policyText={clinicReadOnlyPolicy} className="!mb-0" />
+                <div className={`${semanticAlertInfoClass} !p-4 flex items-start gap-3`}>
+                  <svg className="w-5 h-5 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
                   <div>
-                    <p className="text-sm text-blue-700 font-medium">Texto compartido de la clínica</p>
-                    <p className="text-sm text-blue-600 mt-1">
+                    <p className="font-medium">Texto compartido de la clínica</p>
+                    <p className="mt-1">
                       Este consentimiento pertenece a <strong>{clinicName}</strong>. Solo el administrador de la clínica puede modificarlo.
                     </p>
                   </div>
@@ -1310,11 +1406,13 @@ const SettingsPage = () => {
             )}
             {canUploadLogo && user?.clinicId && (
               <>
-                {isInfoBlocked && (
-                  <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-sm text-amber-800 mb-4">
-                    Los datos de la clínica solo pueden modificarse cada 15 días. Próximo cambio permitido: {formatBlockedUntil(infoBlockedUntil!)}.
-                  </div>
-                )}
+                <EditCooldownNotice
+                  policyText={clinicInfoCooldownPolicy}
+                  blockedUntil={infoBlockedUntil}
+                  blockedText={
+                    isInfoBlocked ? clinicInfoCooldownBlocked(formatBlockedUntil(infoBlockedUntil!)) : undefined
+                  }
+                />
                 <p className="text-sm text-gray-500 mb-4">
                   Texto que el paciente leerá y aceptará al crear la ficha. Si lo editas, los pacientes con versión anterior deberán volver a aceptar.
                 </p>
@@ -1330,7 +1428,7 @@ const SettingsPage = () => {
                   className={`w-full px-4 py-2.5 border border-gray-200 rounded-lg transition-all resize-y ${isInfoBlocked ? "bg-brand-canvas text-brand-muted cursor-not-allowed" : "bg-brand-surface text-brand-ink focus:ring-2 focus:ring-brand-ink focus:border-transparent"}`}
                 />
                 {clinicConsentError && (
-                  <p className="text-sm text-red-600 mt-2">{clinicConsentError}</p>
+                  <p className={`${formErrorClass} mt-2`}>{clinicConsentError}</p>
                 )}
                 <div className="flex items-center gap-3 pt-4 border-t border-gray-100">
                   <button
@@ -1342,7 +1440,7 @@ const SettingsPage = () => {
                     Guardar consentimiento
                   </button>
                   {clinicConsentSaved && (
-                    <span className="flex items-center gap-2 text-green-600 text-sm font-medium">
+                    <span className={`flex items-center gap-2 ${formSuccessClass} font-medium`}>
                       <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                       </svg>
@@ -1356,6 +1454,15 @@ const SettingsPage = () => {
             {/* Podólogo independiente: edita su propio texto */}
             {isPodiatristIndependent && (
               <>
+                <EditCooldownNotice
+                  policyText={professionalInfoCooldownPolicy}
+                  blockedUntil={professionalInfoBlockedUntil}
+                  blockedText={
+                    isProfessionalInfoBlocked
+                      ? professionalInfoCooldownBlocked(formatBlockedUntil(professionalInfoBlockedUntil!))
+                      : undefined
+                  }
+                />
                 <p className="text-sm text-gray-500 mb-4">
                   Texto que el paciente leerá y aceptará al crear la ficha. Si lo editas, los pacientes con versión anterior deberán volver a aceptar.
                 </p>
@@ -1367,17 +1474,19 @@ const SettingsPage = () => {
                   onChange={(e) => handleProfessionalInfoChange("consentText", e.target.value)}
                   placeholder="Redacta aquí los términos y el consentimiento informado que el paciente debe aceptar."
                   rows={6}
-                  className="w-full px-4 py-2.5 bg-brand-surface text-brand-ink border border-brand-border rounded-lg focus:ring-2 focus:ring-brand-ink focus:border-transparent transition-all resize-y"
+                  disabled={isProfessionalInfoBlocked}
+                  className={`w-full px-4 py-2.5 border border-brand-border rounded-lg transition-all resize-y ${isProfessionalInfoBlocked ? "bg-brand-canvas text-brand-muted cursor-not-allowed" : "bg-brand-surface text-brand-ink focus:ring-2 focus:ring-brand-ink focus:border-transparent"}`}
                 />
                 <div className="flex items-center gap-3 pt-4 border-t border-gray-100">
                   <button
                     onClick={handleSaveProfessionalInfo}
-                    className="px-4 py-2.5 bg-brand-ink text-brand-ink-fg rounded-lg text-sm font-medium hover:bg-brand-ink-hover transition-colors"
+                    disabled={isProfessionalInfoBlocked}
+                    className={`px-4 py-2.5 rounded-lg text-sm font-medium transition-colors ${isProfessionalInfoBlocked ? "bg-gray-300 text-gray-500 cursor-not-allowed" : "bg-brand-ink text-brand-ink-fg hover:bg-brand-ink-hover"}`}
                   >
                     Guardar consentimiento
                   </button>
                   {professionalInfoSaved && (
-                    <span className="flex items-center gap-2 text-green-600 text-sm font-medium">
+                    <span className={`flex items-center gap-2 ${formSuccessClass} font-medium`}>
                       <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                       </svg>
@@ -1407,11 +1516,11 @@ const SettingsPage = () => {
                     <p className="text-sm text-gray-600">{rec.email}</p>
                     <div className="flex flex-wrap gap-2 mt-3">
                       {rec.isBlocked ? (
-                        <span className="text-xs px-2 py-0.5 rounded-full bg-red-100 text-red-700">Bloqueada</span>
+                        <span className={semanticChipErrorClass}>Bloqueada</span>
                       ) : rec.isEnabled === false ? (
-                        <span className="text-xs px-2 py-0.5 rounded-full bg-amber-100 text-amber-700">Deshabilitada</span>
+                        <span className={semanticChipWarningClass}>Deshabilitada</span>
                       ) : (
-                        <span className="text-xs px-2 py-0.5 rounded-full bg-green-100 text-green-700">Activa</span>
+                        <span className={semanticChipSuccessClass}>Activa</span>
                       )}
                     </div>
                   </div>
@@ -1436,7 +1545,7 @@ const SettingsPage = () => {
                       type="button"
                       onClick={() => handleDeleteMyReceptionist(rec)}
                       disabled={receptionistActionLoadingId === rec.id}
-                      className="px-3 py-1.5 text-xs rounded-lg border border-red-200 text-red-600 hover:bg-red-50 disabled:opacity-50"
+                      className={`px-3 py-1.5 text-xs rounded-lg border border-semantic-error/30 ${semanticDestructiveTextClass} disabled:opacity-50`}
                     >
                       Eliminar
                     </button>
@@ -1477,10 +1586,10 @@ const SettingsPage = () => {
                     />
                   </div>
                   {receptionistError && (
-                    <div className="text-sm text-red-600 bg-red-50 border border-red-100 rounded-lg p-3">{receptionistError}</div>
+                    <div className={`${semanticAlertErrorClass} !p-3`}>{receptionistError}</div>
                   )}
                   {receptionistSuccess && (
-                    <div className="text-sm text-green-600 bg-green-50 border border-green-100 rounded-lg p-3">
+                    <div className={`${semanticAlertSuccessClass} !p-3`}>
                       Recepcionista creada. Deberá iniciar sesión y cambiar la contraseña en el primer acceso.
                     </div>
                   )}
@@ -1504,16 +1613,19 @@ const SettingsPage = () => {
             {canUploadLogo ? (
               // Clinic Admin can edit clinic information
               <div className="space-y-4">
-                {isInfoBlocked && (
-                  <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-sm text-amber-800">
-                    Los datos de la clínica solo pueden modificarse cada 15 días. Próximo cambio permitido: {formatBlockedUntil(infoBlockedUntil!)}.
-                  </div>
-                )}
+                <EditCooldownNotice
+                  policyText={clinicInfoCooldownPolicy}
+                  blockedUntil={infoBlockedUntil}
+                  blockedText={
+                    isInfoBlocked ? clinicInfoCooldownBlocked(formatBlockedUntil(infoBlockedUntil!)) : undefined
+                  }
+                  className="!mb-0"
+                />
                 <p className="text-sm text-gray-500">
                   Completa la información de tu clínica. Estos datos aparecerán en los documentos PDF generados.
                 </p>
                 {(clinicInfoForm.clinicName === "Clínica pendiente de configuración" || !clinicInfoForm.phone && !clinicInfoForm.email && !clinicInfoForm.address) && (
-                  <div className="bg-blue-50 border border-blue-100 rounded-lg p-3 text-sm text-blue-700">
+                  <div className={`${semanticAlertInfoClass} !p-3`}>
                     Completa los datos de tu clínica. Aparecerán en facturas, recetas y otros documentos.
                   </div>
                 )}
@@ -1688,7 +1800,7 @@ const SettingsPage = () => {
 
                   <div className="pt-4 border-t border-gray-100 space-y-3">
                     {clinicInfoError && (
-                      <p className="text-sm text-red-600">{clinicInfoError}</p>
+                      <p className={formErrorClass}>{clinicInfoError}</p>
                     )}
                     <div className="flex items-center gap-4">
                     <button
@@ -1699,7 +1811,7 @@ const SettingsPage = () => {
                       Guardar información
                     </button>
                     {clinicInfoSaved && (
-                      <span className="flex items-center gap-2 text-green-600 text-sm font-medium">
+                      <span className={`flex items-center gap-2 ${formSuccessClass} font-medium`}>
                         <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                         </svg>
@@ -1713,13 +1825,14 @@ const SettingsPage = () => {
             ) : (
               // Podiatrists view clinic info as read-only
               <div className="space-y-4">
-                <div className="bg-blue-50 border border-blue-100 rounded-lg p-4 flex items-start gap-3">
-                  <svg className="w-5 h-5 text-blue-500 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <EditCooldownNotice policyText={clinicReadOnlyPolicy} className="!mb-0" />
+                <div className={`${semanticAlertInfoClass} !p-4 flex items-start gap-3`}>
+                  <svg className="w-5 h-5 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
                   <div>
-                    <p className="text-sm text-blue-700 font-medium">Detalles de tu clínica</p>
-                    <p className="text-sm text-blue-600 mt-1">
+                    <p className="font-medium">Detalles de tu clínica</p>
+                    <p className="mt-1">
                       Esta información es gestionada por el administrador de la clínica.
                     </p>
                   </div>
@@ -1809,6 +1922,15 @@ const SettingsPage = () => {
         {isPodiatristIndependent && (
           <div className="bg-brand-surface rounded-xl border border-brand-border p-6">
             <h3 className="text-lg font-semibold text-brand-ink mb-2">Información del Consultorio</h3>
+            <EditCooldownNotice
+              policyText={professionalInfoCooldownPolicy}
+              blockedUntil={professionalInfoBlockedUntil}
+              blockedText={
+                isProfessionalInfoBlocked
+                  ? professionalInfoCooldownBlocked(formatBlockedUntil(professionalInfoBlockedUntil!))
+                  : undefined
+              }
+            />
             <p className="text-sm text-gray-500 mb-4">
               Completa la información de tu consultorio profesional. Estos datos aparecerán en los documentos PDF que generes.
             </p>
@@ -1822,7 +1944,8 @@ const SettingsPage = () => {
                     value={professionalInfoForm.name}
                     onChange={(e) => handleProfessionalInfoChange("name", e.target.value)}
                     placeholder="Dr. Juan Pérez García"
-                    className="w-full px-4 py-2.5 bg-brand-surface text-brand-ink border border-brand-border rounded-lg focus:ring-2 focus:ring-brand-ink focus:border-transparent transition-all"
+                    disabled={isProfessionalInfoBlocked}
+                    className={proInfoInputClass}
                   />
                 </div>
 
@@ -1831,6 +1954,7 @@ const SettingsPage = () => {
                   <CountrySelect
                     value={professionalInfoForm.countryCode || DEFAULT_TENANT_COUNTRY}
                     onChange={(code) => handleProfessionalInfoChange("countryCode", code)}
+                    disabled={isProfessionalInfoBlocked}
                   />
                   <p className="text-xs text-gray-500 mt-1">
                     Se aplica a teléfonos de pacientes y enlaces de WhatsApp sin prefijo +.
@@ -1847,7 +1971,8 @@ const SettingsPage = () => {
                       placeholder={phonePlaceholderForCountry(
                         resolveTenantCountryCode(professionalInfoForm.countryCode)
                       )}
-                      className="w-full px-4 py-2.5 bg-brand-surface text-brand-ink border border-brand-border rounded-lg focus:ring-2 focus:ring-brand-ink focus:border-transparent transition-all"
+                      className={proInfoInputClass}
+                      disabled={isProfessionalInfoBlocked}
                     />
                   </div>
                   <div>
@@ -1857,7 +1982,8 @@ const SettingsPage = () => {
                       value={professionalInfoForm.email}
                       onChange={(e) => handleProfessionalInfoChange("email", e.target.value)}
                       placeholder="doctor@consultorio.es"
-                      className="w-full px-4 py-2.5 bg-brand-surface text-brand-ink border border-brand-border rounded-lg focus:ring-2 focus:ring-brand-ink focus:border-transparent transition-all"
+                      className={proInfoInputClass}
+                      disabled={isProfessionalInfoBlocked}
                     />
                   </div>
                 </div>
@@ -1869,7 +1995,8 @@ const SettingsPage = () => {
                     value={professionalInfoForm.address}
                     onChange={(e) => handleProfessionalInfoChange("address", e.target.value)}
                     placeholder="Calle Gran Vía, 45, 2º Izquierda"
-                    className="w-full px-4 py-2.5 bg-brand-surface text-brand-ink border border-brand-border rounded-lg focus:ring-2 focus:ring-brand-ink focus:border-transparent transition-all"
+                    disabled={isProfessionalInfoBlocked}
+                    className={proInfoInputClass}
                   />
                 </div>
                 
@@ -1881,7 +2008,8 @@ const SettingsPage = () => {
                       value={professionalInfoForm.city}
                       onChange={(e) => handleProfessionalInfoChange("city", e.target.value)}
                       placeholder="Madrid"
-                      className="w-full px-4 py-2.5 bg-brand-surface text-brand-ink border border-brand-border rounded-lg focus:ring-2 focus:ring-brand-ink focus:border-transparent transition-all"
+                      disabled={isProfessionalInfoBlocked}
+                      className={proInfoInputClass}
                     />
                   </div>
                   <div>
@@ -1891,7 +2019,8 @@ const SettingsPage = () => {
                       value={professionalInfoForm.postalCode}
                       onChange={(e) => handleProfessionalInfoChange("postalCode", e.target.value)}
                       placeholder="28001"
-                      className="w-full px-4 py-2.5 bg-brand-surface text-brand-ink border border-brand-border rounded-lg focus:ring-2 focus:ring-brand-ink focus:border-transparent transition-all"
+                      disabled={isProfessionalInfoBlocked}
+                      className={proInfoInputClass}
                     />
                   </div>
                 </div>
@@ -1904,7 +2033,8 @@ const SettingsPage = () => {
                       value={professionalInfoForm.licenseNumber}
                       onChange={(e) => handleProfessionalInfoChange("licenseNumber", e.target.value)}
                       placeholder="CS-28/2024-POD-001"
-                      className="w-full px-4 py-2.5 bg-brand-surface text-brand-ink border border-brand-border rounded-lg focus:ring-2 focus:ring-brand-ink focus:border-transparent transition-all"
+                      disabled={isProfessionalInfoBlocked}
+                      className={proInfoInputClass}
                     />
                   </div>
                   <div>
@@ -1914,7 +2044,8 @@ const SettingsPage = () => {
                       value={professionalInfoForm.professionalLicense}
                       onChange={(e) => handleProfessionalInfoChange("professionalLicense", e.target.value)}
                       placeholder="12345678"
-                      className="w-full px-4 py-2.5 bg-brand-surface text-brand-ink border border-brand-border rounded-lg focus:ring-2 focus:ring-brand-ink focus:border-transparent transition-all"
+                      disabled={isProfessionalInfoBlocked}
+                      className={proInfoInputClass}
                     />
                   </div>
                 </div>
@@ -1922,12 +2053,13 @@ const SettingsPage = () => {
                 <div className="flex items-center gap-4 pt-4 border-t border-gray-100">
                   <button
                     onClick={handleSaveProfessionalInfo}
-                    className="px-6 py-2.5 bg-brand-ink text-brand-ink-fg rounded-lg text-sm font-medium hover:bg-brand-ink-hover transition-colors"
+                    disabled={isProfessionalInfoBlocked}
+                    className={`px-6 py-2.5 rounded-lg text-sm font-medium transition-colors ${isProfessionalInfoBlocked ? "bg-gray-300 text-gray-500 cursor-not-allowed" : "bg-brand-ink text-brand-ink-fg hover:bg-brand-ink-hover"}`}
                   >
                     Guardar información
                   </button>
                   {professionalInfoSaved && (
-                    <span className="flex items-center gap-2 text-green-600 text-sm font-medium">
+                    <span className={`flex items-center gap-2 ${formSuccessClass} font-medium`}>
                       <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                       </svg>
@@ -1944,12 +2076,21 @@ const SettingsPage = () => {
         {isPodiatristWithClinic && userClinic && (
           <div className="bg-brand-surface rounded-xl border border-brand-border p-6">
             <h3 className="text-lg font-semibold text-brand-ink mb-2">Credenciales Profesionales</h3>
+            <EditCooldownNotice
+              policyText={professionalInfoCooldownPolicy}
+              blockedUntil={professionalInfoBlockedUntil}
+              blockedText={
+                isProfessionalInfoBlocked
+                  ? professionalInfoCooldownBlocked(formatBlockedUntil(professionalInfoBlockedUntil!))
+                  : undefined
+              }
+            />
             <p className="text-sm text-gray-500 mb-4">
               Ingresa tus credenciales profesionales individuales. La información de la clínica es gestionada por tu administrador.
             </p>
             
             <div className="space-y-6">
-              <div className="rounded-lg border border-emerald-100 bg-emerald-50/60 p-4 space-y-4">
+              <div className={`${whatsappPanelInnerClass} space-y-4`}>
                 <div>
                   <h4 className="text-sm font-semibold text-brand-ink">Teléfono de contacto</h4>
                   <p className="text-xs text-brand-muted mt-1">
@@ -1961,6 +2102,7 @@ const SettingsPage = () => {
                   <CountrySelect
                     value={professionalInfoForm.countryCode || DEFAULT_TENANT_COUNTRY}
                     onChange={(code) => handleProfessionalInfoChange("countryCode", code)}
+                    disabled={isProfessionalInfoBlocked}
                   />
                 </div>
                 <div>
@@ -1972,19 +2114,21 @@ const SettingsPage = () => {
                     placeholder={phonePlaceholderForCountry(
                       resolveTenantCountryCode(professionalInfoForm.countryCode)
                     )}
-                    className="w-full px-4 py-2.5 bg-brand-surface text-brand-ink border border-brand-border rounded-lg focus:ring-2 focus:ring-brand-ink focus:border-transparent transition-all"
+                    disabled={isProfessionalInfoBlocked}
+                    className={proInfoInputClass}
                   />
                 </div>
                 <div className="flex items-center gap-4">
                   <button
                     type="button"
                     onClick={handleSaveProfessionalInfo}
-                    className="px-4 py-2 bg-brand-ink text-brand-ink-fg rounded-lg text-sm font-medium hover:bg-brand-ink-hover transition-colors"
+                    disabled={isProfessionalInfoBlocked}
+                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${isProfessionalInfoBlocked ? "bg-gray-300 text-gray-500 cursor-not-allowed" : "bg-brand-ink text-brand-ink-fg hover:bg-brand-ink-hover"}`}
                   >
                     Guardar teléfono
                   </button>
                   {professionalInfoSaved && (
-                    <span className="text-sm text-green-600 font-medium">Guardado</span>
+                    <span className={`${formSuccessClass} font-medium`}>Guardado</span>
                   )}
                 </div>
               </div>
@@ -1998,7 +2142,8 @@ const SettingsPage = () => {
                     value={credentialsCedula}
                     onChange={(e) => setCredentialsCedula(e.target.value)}
                     placeholder="12345678"
-                    className="w-full px-4 py-2.5 bg-brand-surface text-brand-ink border border-brand-border rounded-lg focus:ring-2 focus:ring-brand-ink focus:border-transparent transition-all"
+                    disabled={isProfessionalInfoBlocked}
+                    className={proInfoInputClass}
                   />
                 </div>
                 <div>
@@ -2008,7 +2153,8 @@ const SettingsPage = () => {
                     value={credentialsRegistro}
                     onChange={(e) => setCredentialsRegistro(e.target.value)}
                     placeholder="REG-2024-001"
-                    className="w-full px-4 py-2.5 bg-brand-surface text-brand-ink border border-brand-border rounded-lg focus:ring-2 focus:ring-brand-ink focus:border-transparent transition-all"
+                    disabled={isProfessionalInfoBlocked}
+                    className={proInfoInputClass}
                   />
                 </div>
               </div>
@@ -2016,12 +2162,13 @@ const SettingsPage = () => {
               <div className="flex items-center gap-4 pt-4 border-t border-gray-100">
                 <button
                   onClick={handleSaveCredentials}
-                  className="px-6 py-2.5 bg-brand-ink text-brand-ink-fg rounded-lg text-sm font-medium hover:bg-brand-ink-hover transition-colors"
+                  disabled={isProfessionalInfoBlocked}
+                  className={`px-6 py-2.5 rounded-lg text-sm font-medium transition-colors ${isProfessionalInfoBlocked ? "bg-gray-300 text-gray-500 cursor-not-allowed" : "bg-brand-ink text-brand-ink-fg hover:bg-brand-ink-hover"}`}
                 >
                   Guardar credenciales
                 </button>
                 {credentialsSaved && (
-                  <span className="flex items-center gap-2 text-green-600 text-sm font-medium">
+                  <span className={`flex items-center gap-2 ${formSuccessClass} font-medium`}>
                     <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                     </svg>
@@ -2032,13 +2179,13 @@ const SettingsPage = () => {
               
               {/* Read-only clinic information */}
               <div className="pt-6 border-t border-gray-100">
-                <div className="bg-blue-50 border border-blue-100 rounded-lg p-4 flex items-start gap-3 mb-4">
-                  <svg className="w-5 h-5 text-blue-500 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <div className={`${semanticAlertInfoClass} !p-4 flex items-start gap-3 mb-4`}>
+                  <svg className="w-5 h-5 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
                   <div>
-                    <p className="text-sm text-blue-700 font-medium">Información de tu clínica</p>
-                    <p className="text-sm text-blue-600 mt-1">
+                    <p className="font-medium">Información de tu clínica</p>
+                    <p className="mt-1">
                       El resto de tu información es gestionada por el administrador de tu clínica.
                     </p>
                   </div>

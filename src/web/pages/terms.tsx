@@ -24,7 +24,7 @@ const Terms = () => {
   };
 
   return (
-    <div className={`${ap.shell} min-h-screen`}>
+    <div className={ap.shell}>
       {/* Left Panel - Branding */}
       <div className="hidden lg:flex lg:w-1/2 bg-brand-ink relative overflow-hidden">
         <div className="absolute inset-0">

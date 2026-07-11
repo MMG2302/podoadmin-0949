@@ -12,11 +12,17 @@ import { AppModal, AppModalBody, AppModalFooter, AppModalHeader } from "../compo
 import { CheckoutHandoffModal } from "../components/checkout/checkout-handoff-modal";
 import { PatientSearchSelect } from "../components/patients/patient-search-select";
 import {
+  formErrorClass,
   formFieldClassSm,
   formFieldResizeClass,
   formHintClass,
   formLabelClass,
   formPanelMutedClass,
+  formWarningClass,
+  semanticAlertErrorClass,
+  semanticAlertWarningClass,
+  semanticChipSuccessClass,
+  semanticChipWarningClass,
 } from "../lib/form-field-classes";
 
 // Helper to check if user puede crear recetas
@@ -1323,10 +1329,10 @@ const SessionsPage = () => {
                 <p className="text-sm text-gray-500 truncate">{getPatientName(selectedSession.patientId)}</p>
               </div>
               <div className="flex items-center gap-2 flex-shrink-0">
-                <span className={`px-3 py-1 rounded-full text-xs font-medium whitespace-nowrap ${
+                <span className={`whitespace-nowrap ${
                   selectedSession.status === "completed"
-                    ? "bg-green-100 text-green-700"
-                    : "bg-yellow-100 text-yellow-700"
+                    ? semanticChipSuccessClass
+                    : semanticChipWarningClass
                 }`}>
                   {selectedSession.status === "completed" ? t.sessions.completed : t.sessions.draft}
                 </span>
@@ -1709,7 +1715,7 @@ const SessionsPage = () => {
               </div>
 
               {prescriptionFormError && (
-                <p className="text-sm text-red-600" role="alert">
+                <p className={formErrorClass} role="alert">
                   {prescriptionFormError}
                 </p>
               )}
@@ -1824,15 +1830,15 @@ const SessionsPage = () => {
                       sessionFormPatients.find((x) => x.id === formData.patientId);
                     return p && !isPatientCompleteForSessions(p);
                   })() && (
-                    <div className="mt-2 p-3 bg-amber-50 border border-amber-200 rounded-lg space-y-2">
-                      <p className="text-sm text-amber-800">
+                    <div className={`mt-2 ${semanticAlertWarningClass} space-y-2`}>
+                      <p className="text-sm">
                         Faltan datos obligatorios del paciente (nombre, apellido, fecha nacimiento, género, DNI). Para menores use el DNI del padre/tutor. <strong>Edite la ficha del paciente</strong> para poder guardar la sesión.
                       </p>
                       <div className="flex flex-wrap gap-2">
                         <button
                           type="button"
                           onClick={() => window.open(`/patients?id=${formData.patientId}`, "_blank")}
-                          className="px-4 py-2 bg-amber-600 text-white text-sm font-medium rounded-lg hover:bg-amber-700 transition-colors"
+                          className="px-4 py-2 bg-brand-ink text-brand-ink-fg text-sm font-medium rounded-lg hover:bg-brand-ink-hover transition-colors"
                         >
                           Editar paciente →
                         </button>
@@ -1843,7 +1849,7 @@ const SessionsPage = () => {
                             void reloadPickerPatients();
                             void fetchPatientById(formData.patientId).then((p) => setFormSelectedPatient(p));
                           }}
-                          className="px-4 py-2 bg-white border border-amber-300 text-amber-800 text-sm font-medium rounded-lg hover:bg-amber-50 transition-colors"
+                          className="px-4 py-2 bg-brand-surface border border-semantic-warning text-semantic-warning text-sm font-medium rounded-lg hover:bg-semantic-warning-bg transition-colors"
                         >
                           Actualizar datos (si ya editó el paciente)
                         </button>
@@ -1904,7 +1910,7 @@ const SessionsPage = () => {
                     secciones visibles. Elige «Sin plantilla» para ver el formulario completo.
                   </p>
                 ) : selectedTemplateId ? (
-                  <p className="text-xs text-amber-700 dark:text-amber-300">
+                  <p className={`text-xs ${formWarningClass}`}>
                     Esta plantilla no tiene secciones definidas. Edítala en Herramientas clínicas, marca qué
                     incluir y guarda de nuevo.
                   </p>
@@ -2049,7 +2055,7 @@ const SessionsPage = () => {
                   </button>
                 )}
                 {imageUploadError && (
-                  <p className="text-xs text-red-600 mt-2">{imageUploadError}</p>
+                  <p className={`text-xs ${formErrorClass} mt-2`}>{imageUploadError}</p>
                 )}
                 <p className="text-xs text-gray-500 mt-2">{t.sessions.maxImages}</p>
               </div>
@@ -2120,14 +2126,14 @@ const SessionsPage = () => {
                 return (
                   <div className="flex flex-col gap-3 pt-4 border-t border-gray-100">
                     {showSaveBlockedHint && (
-                      <p className="text-sm text-amber-700 bg-amber-50 px-4 py-2 rounded-lg border border-amber-200">
+                      <p className={`text-sm ${semanticAlertWarningClass}`}>
                         Para guardar borrador o completar la sesión, primero complete los datos del paciente y haga clic en &quot;Actualizar datos&quot; arriba.
                       </p>
                     )}
                     {graceError && (
-                      <div className="bg-red-50 border border-red-200 rounded-lg p-3 sm:p-4 flex gap-3">
+                      <div className={`${semanticAlertErrorClass} flex gap-3`}>
                         <svg
-                          className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5"
+                          className="w-5 h-5 text-semantic-error flex-shrink-0 mt-0.5"
                           fill="none"
                           viewBox="0 0 24 24"
                           stroke="currentColor"
@@ -2140,10 +2146,10 @@ const SessionsPage = () => {
                           />
                         </svg>
                         <div>
-                          <p className="text-sm font-semibold text-red-800">
+                          <p className="text-sm font-semibold">
                             No puedes crear nuevas sesiones en este momento
                           </p>
-                          <p className="mt-1 text-sm text-red-700">
+                          <p className="mt-1 text-sm">
                             {graceError}
                           </p>
                         </div>
@@ -2386,11 +2392,11 @@ const SessionsPage = () => {
                       <h4 className="font-medium text-brand-ink truncate max-w-full">
                         {getPatientName(session.patientId)}
                       </h4>
-                      <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
+                      <span className={
                         session.status === "completed"
-                          ? "bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300"
-                          : "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/40 dark:text-yellow-300"
-                      }`}>
+                          ? semanticChipSuccessClass
+                          : semanticChipWarningClass
+                      }>
                         {session.status === "completed" ? t.sessions.completed : t.sessions.draft}
                       </span>
                       {/* Follow-up status badge */}

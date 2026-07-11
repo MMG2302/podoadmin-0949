@@ -1,17 +1,19 @@
 import { useEffect, useState } from "react";
 import { Route, Switch, Link, Redirect, useLocation } from "wouter";
-import { Users, Stethoscope, Building2, UserCircle, CalendarCheck, Settings, UserPlus, Building, Calendar, FileText, Shield } from "lucide-react";
+import { Users, Stethoscope, Building2, UserCircle, CalendarCheck, Settings, UserPlus, Building, Calendar, FileText, Shield, MapPin } from "lucide-react";
 import { MainLayout } from "../components/layout/main-layout";
-import { RoleDashboardBento } from "../components/ui/bento-grid";
+import { ClinicalRoleDashboardBento, RoleDashboardBento } from "../components/ui/bento-grid";
 import { useLanguage } from "../contexts/language-context";
 import { useAuth, getPostLoginPath, hasActiveSystemAccess, isClinicalAppPath } from "../contexts/auth-context";
 import { usePermissions } from "../hooks/use-permissions";
 import { api } from "../lib/api-client";
+import { semanticChipSuccessClass, semanticChipWarningClass } from "../lib/form-field-classes";
 import PatientsPage from "./patients-page";
 import SessionsPage from "./sessions-page";
 import SettingsPage from "./settings-page";
 import AuditLogPage from "./audit-log-page";
 import SecurityMetricsPage from "./security-metrics-page";
+import SponsoredAnnouncementsPage from "./sponsored-announcements-page";
 import UsersManagementPage from "./users-page";
 import ClinicManagementPage from "./clinic-page";
 import NotificationsPage from "./notifications-page";
@@ -52,6 +54,7 @@ const SuperAdminDashboard = () => {
           { Icon: Users, name: t.nav.users, description: "Gestionar usuarios y clínicas", href: "/users" },
           { Icon: Settings, name: t.settings.title, description: "Configuración del sistema", href: "/settings" },
           { Icon: Shield, name: t.nav.securityMetrics, description: "Métricas y alertas de seguridad", href: "/security-metrics" },
+          { Icon: MapPin, name: "Anuncios patrocinados", description: "Campañas por estado/provincia", href: "/sponsored-announcements" },
         ]}
       >
         {/* Users Overview - full width */}
@@ -156,7 +159,7 @@ const PodiatristDashboard = () => {
 
   return (
     <MainLayout title={t.dashboard.title}>
-      <RoleDashboardBento
+      <ClinicalRoleDashboardBento
         welcomeTitle={<>{t.auth.welcomeBack}, <span className="font-semibold">{user?.name}</span></>}
         welcomeDescription={t.roles.podiatristDesc}
         statItems={[
@@ -210,11 +213,11 @@ const PodiatristDashboard = () => {
                       </p>
                       <p className="text-xs text-brand-muted">{formatDate(session.createdAt)}</p>
                     </div>
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                    <span className={
                       session.status === "completed"
-                        ? "bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300"
-                        : "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/40 dark:text-yellow-300"
-                    }`}>
+                        ? semanticChipSuccessClass
+                        : semanticChipWarningClass
+                    }>
                       {session.status === "completed" ? t.sessions.completed : t.sessions.draft}
                     </span>
                   </div>
@@ -223,7 +226,7 @@ const PodiatristDashboard = () => {
             )}
           </div>
         </div>
-      </RoleDashboardBento>
+      </ClinicalRoleDashboardBento>
     </MainLayout>
   );
 };
@@ -254,7 +257,7 @@ const ClinicAdminDashboard = () => {
 
   return (
     <MainLayout title={t.dashboard.title}>
-      <RoleDashboardBento
+      <ClinicalRoleDashboardBento
         welcomeTitle={<>{t.auth.welcomeBack}, <span className="font-semibold">{user?.name}</span></>}
         welcomeDescription={t.roles.clinicAdminDesc}
         actionItems={[
@@ -317,7 +320,7 @@ const ReceptionistDashboard = () => {
 
   return (
     <MainLayout title={t.dashboard.title}>
-      <RoleDashboardBento
+      <ClinicalRoleDashboardBento
         welcomeTitle={<>{t.auth.welcomeBack}, <span className="font-semibold">{user?.name}</span></>}
         welcomeDescription={welcomeDescription}
         statItems={[
@@ -364,6 +367,7 @@ const Dashboard = () => {
       {isSuperAdmin && <Route path="/support" component={SupportPage} />}
       {isSuperAdmin && <Route path="/audit-log" component={AuditLogPage} />}
       {isSuperAdmin && <Route path="/security-metrics" component={SecurityMetricsPage} />}
+      {isSuperAdmin && <Route path="/sponsored-announcements" component={SponsoredAnnouncementsPage} />}
       
       {/* Admin routes */}
       {isAdmin && <Route path="/users" component={UsersManagementPage} />}

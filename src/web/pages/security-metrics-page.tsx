@@ -4,6 +4,7 @@ import { useLanguage } from "../contexts/language-context";
 import { useAuth } from "../contexts/auth-context";
 import { api } from "../lib/api-client";
 import { Shield, AlertTriangle, LogIn, Lock, RefreshCw } from "lucide-react";
+import { semanticAlertErrorClass } from "../lib/form-field-classes";
 
 type SecurityStats = Record<string, number>;
 
@@ -39,6 +40,16 @@ const SecurityMetricsPage = () => {
   const { user } = useAuth();
   const [stats, setStats] = useState<SecurityStats>({});
   const [recentFailedLogins, setRecentFailedLogins] = useState<SecurityMetricRow[]>([]);
+  const [accessEvents, setAccessEvents] = useState<Array<{
+    id: string;
+    userId: string | null;
+    role: string | null;
+    eventType: string;
+    ipAddress: string | null;
+    locationLabel: string;
+    isVpn: boolean;
+    createdAt: string;
+  }>>([]);
   const [alerts, setAlerts] = useState<AlertNotification[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -52,13 +63,14 @@ const SecurityMetricsPage = () => {
     const end = new Date();
     const start = new Date(end.getTime() - days * 24 * 60 * 60 * 1000);
 
-    const [statsRes, failedRes, notifRes] = await Promise.all([
+    const [statsRes, failedRes, accessRes, notifRes] = await Promise.all([
       api.get<{ success: boolean; stats: SecurityStats }>(
         `/security-metrics/stats?startTime=${encodeURIComponent(start.toISOString())}&endTime=${encodeURIComponent(end.toISOString())}`
       ),
       api.get<{ success: boolean; metrics: SecurityMetricRow[] }>(
         "/security-metrics/by-type/failed_login?limit=15"
       ),
+      api.get<{ success: boolean; events: typeof accessEvents }>("/access-events/recent?limit=30"),
       api.get<{ success: boolean; notifications: AlertNotification[] }>("/notifications?limit=50"),
     ]);
 
@@ -70,6 +82,10 @@ const SecurityMetricsPage = () => {
 
     if (failedRes.success && failedRes.data?.success) {
       setRecentFailedLogins(failedRes.data.metrics || []);
+    }
+
+    if (accessRes.success && accessRes.data?.success) {
+      setAccessEvents(accessRes.data.events || []);
     }
 
     if (notifRes.success && notifRes.data?.success) {
@@ -139,7 +155,7 @@ const SecurityMetricsPage = () => {
         </div>
 
         {error && (
-          <div className="p-4 rounded-lg bg-red-50 dark:bg-red-900/20 text-semantic-error text-sm">
+          <div className={semanticAlertErrorClass}>
             {error}
           </div>
         )}
@@ -184,6 +200,42 @@ const SecurityMetricsPage = () => {
             </div>
           </Panel>
         </div>
+
+        <Panel title="Accesos recientes (geolocalización)">
+          <div className="overflow-x-auto -mx-4">
+            <table className="w-full text-sm">
+              <thead className="bg-brand-canvas/50">
+                <tr>
+                  <th className="text-left p-3 font-medium text-gray-500">Fecha</th>
+                  <th className="text-left p-3 font-medium text-gray-500">Evento</th>
+                  <th className="text-left p-3 font-medium text-gray-500">Usuario / rol</th>
+                  <th className="text-left p-3 font-medium text-gray-500">IP</th>
+                  <th className="text-left p-3 font-medium text-gray-500">Ubicación</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-50 dark:divide-gray-800">
+                {accessEvents.length === 0 ? (
+                  <tr>
+                    <td colSpan={5} className="p-4 text-gray-500">Sin accesos registrados aún. Inicia sesión para generar datos.</td>
+                  </tr>
+                ) : (
+                  accessEvents.map((row) => (
+                    <tr key={row.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/30">
+                      <td className="p-3 whitespace-nowrap">{formatDate(row.createdAt)}</td>
+                      <td className="p-3 text-xs">{row.eventType === "login_success" ? "Login OK" : row.eventType === "login_failed" ? "Login fallido" : row.eventType}</td>
+                      <td className="p-3 text-xs">{row.userId ? `${row.userId.slice(0, 12)}…` : "—"} {row.role ? `(${row.role})` : ""}</td>
+                      <td className="p-3 font-mono text-xs">{row.ipAddress || "—"}</td>
+                      <td className="p-3 text-xs">
+                        {row.locationLabel}
+                        {row.isVpn ? <span className="ml-1 text-amber-600">VPN</span> : null}
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </Panel>
 
         <Panel title="Últimos logins fallidos">
           <div className="overflow-x-auto -mx-4">

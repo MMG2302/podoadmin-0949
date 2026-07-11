@@ -1,6 +1,7 @@
 import { Hono } from 'hono';
 import { eq, inArray } from 'drizzle-orm';
 import { requireAuth } from '../middleware/auth';
+import { requireRole } from '../middleware/authorization';
 import { database } from '../database';
 import {
   createdUsers,
@@ -18,6 +19,17 @@ import { purgeLogoR2 } from '../utils/r2-purge';
 import { getSafeUserAgent } from '../utils/request-headers';
 import { sanitizePathParam } from '../utils/sanitization';
 import { checkLogoUploadRateLimit } from '../utils/action-rate-limit';
+import {
+  EDIT_COOLDOWN_MS,
+  canBypassEditCooldown,
+  editCooldownErrorMessage,
+  editCooldownInfoErrorMessage,
+  getEditCooldownBlockedUntil,
+  getEditCooldownRetryAfterSeconds,
+  getNextEditAllowedAt,
+  isWithinEditCooldown,
+  parseEditCooldownScopes,
+} from '../utils/edit-cooldown';
 
 const professionalsRoutes = new Hono();
 
@@ -62,7 +74,7 @@ professionalsRoutes.get('/info/:userId', async (c) => {
   }
   const rows = await database.select().from(professionalInfoTable).where(eq(professionalInfoTable.userId, userId)).limit(1);
   const row = rows[0];
-  if (!row) return c.json({ success: true, info: null });
+  if (!row) return c.json({ success: true, info: null, infoBlockedUntil: null });
   return c.json({
     success: true,
     info: {
@@ -78,6 +90,7 @@ professionalsRoutes.get('/info/:userId', async (c) => {
       consentText: row.consentText ?? '',
       consentTextVersion: row.consentTextVersion ?? 0,
     },
+    infoBlockedUntil: getEditCooldownBlockedUntil(row.infoUpdatedAt),
   });
 });
 
@@ -94,11 +107,24 @@ professionalsRoutes.put('/info/:userId', async (c) => {
   const body = (await c.req.json().catch(() => ({}))) as Record<string, string>;
   const consentText = body.consentText !== undefined ? (String(body.consentText || '').trim() || null) : undefined;
   const existing = await database.select().from(professionalInfoTable).where(eq(professionalInfoTable.userId, userId)).limit(1);
+  const existingRow = existing[0];
+  if (!canBypassEditCooldown(user) && isWithinEditCooldown(existingRow?.infoUpdatedAt)) {
+    const nextAt = getNextEditAllowedAt(existingRow?.infoUpdatedAt)!;
+    c.header('Retry-After', String(getEditCooldownRetryAfterSeconds(nextAt)));
+    return c.json(
+      {
+        error: 'cooldown',
+        message: editCooldownInfoErrorMessage(nextAt),
+        infoBlockedUntil: nextAt,
+      },
+      429,
+    );
+  }
   let consentTextVersion: number | undefined;
   if (consentText !== undefined) {
-    const currentText = existing[0]?.consentText ?? null;
+    const currentText = existingRow?.consentText ?? null;
     if (String(consentText || '') !== String(currentText || '')) {
-      const newVersion = (existing[0]?.consentTextVersion ?? 0) + 1;
+      const newVersion = (existingRow?.consentTextVersion ?? 0) + 1;
       consentTextVersion = newVersion;
       // Pacientes del podólogo independiente que dieron consentimiento a versión antigua: borrar DNI y resetear consentimiento
       const podPatients = await database.select().from(patientsTable).where(eq(patientsTable.createdBy, userId));
@@ -132,6 +158,7 @@ professionalsRoutes.put('/info/:userId', async (c) => {
     ...(consentText !== undefined && { consentText }),
     ...(consentTextVersion !== undefined && { consentTextVersion }),
   };
+  const now = new Date().toISOString();
   const setData: Record<string, unknown> = {
     name: data.name,
     phone: data.phone,
@@ -142,13 +169,15 @@ professionalsRoutes.put('/info/:userId', async (c) => {
     licenseNumber: data.licenseNumber,
     professionalLicense: data.professionalLicense,
     countryCode: data.countryCode,
+    infoUpdatedAt: now,
   };
   if (consentText !== undefined) setData.consentText = consentText;
   if (consentTextVersion !== undefined) setData.consentTextVersion = consentTextVersion;
-  await database.insert(professionalInfoTable).values(data).onConflictDoUpdate({
+  await database.insert(professionalInfoTable).values({ ...data, infoUpdatedAt: now }).onConflictDoUpdate({
     target: professionalInfoTable.userId,
     set: setData,
   });
+  const nextInfoAt = new Date(Date.now() + EDIT_COOLDOWN_MS).toISOString();
   await logAuditEvent({
     userId: user.userId,
     action: 'UPDATE',
@@ -158,7 +187,7 @@ professionalsRoutes.put('/info/:userId', async (c) => {
     ipAddress: getClientIP(c.req.raw.headers),
     userAgent: getSafeUserAgent(c),
   });
-  return c.json({ success: true });
+  return c.json({ success: true, infoBlockedUntil: nextInfoAt });
 });
 
 /**
@@ -248,8 +277,14 @@ professionalsRoutes.get('/credentials/:userId', async (c) => {
   }
   const rows = await database.select().from(professionalCredentialsTable).where(eq(professionalCredentialsTable.userId, userId)).limit(1);
   const row = rows[0];
-  if (!row) return c.json({ success: true, credentials: null });
-  return c.json({ success: true, credentials: { cedula: row.cedula ?? '', registro: row.registro ?? '' } });
+  const infoRows = await database
+    .select({ infoUpdatedAt: professionalInfoTable.infoUpdatedAt })
+    .from(professionalInfoTable)
+    .where(eq(professionalInfoTable.userId, userId))
+    .limit(1);
+  const infoBlockedUntil = getEditCooldownBlockedUntil(infoRows[0]?.infoUpdatedAt);
+  if (!row) return c.json({ success: true, credentials: null, infoBlockedUntil });
+  return c.json({ success: true, credentials: { cedula: row.cedula ?? '', registro: row.registro ?? '' }, infoBlockedUntil });
 });
 
 /**
@@ -265,10 +300,39 @@ professionalsRoutes.put('/credentials/:userId', async (c) => {
   const body = (await c.req.json().catch(() => ({}))) as { cedula?: string; registro?: string };
   const cedula = body.cedula ?? '';
   const registro = body.registro ?? '';
+
+  const infoRows = await database
+    .select({ infoUpdatedAt: professionalInfoTable.infoUpdatedAt, name: professionalInfoTable.name })
+    .from(professionalInfoTable)
+    .where(eq(professionalInfoTable.userId, userId))
+    .limit(1);
+  const infoRow = infoRows[0];
+  if (!canBypassEditCooldown(user) && isWithinEditCooldown(infoRow?.infoUpdatedAt)) {
+    const nextAt = getNextEditAllowedAt(infoRow?.infoUpdatedAt)!;
+    c.header('Retry-After', String(getEditCooldownRetryAfterSeconds(nextAt)));
+    return c.json(
+      {
+        error: 'cooldown',
+        message: editCooldownInfoErrorMessage(nextAt),
+        infoBlockedUntil: nextAt,
+      },
+      429,
+    );
+  }
+
+  const now = new Date().toISOString();
   await database.insert(professionalCredentialsTable).values({ userId, cedula, registro }).onConflictDoUpdate({
     target: professionalCredentialsTable.userId,
     set: { cedula, registro },
   });
+  await database
+    .insert(professionalInfoTable)
+    .values({ userId, name: infoRow?.name ?? '', infoUpdatedAt: now })
+    .onConflictDoUpdate({
+      target: professionalInfoTable.userId,
+      set: { infoUpdatedAt: now },
+    });
+  const nextInfoAt = new Date(Date.now() + EDIT_COOLDOWN_MS).toISOString();
   await logAuditEvent({
     userId: user.userId,
     action: 'UPDATE',
@@ -278,7 +342,7 @@ professionalsRoutes.put('/credentials/:userId', async (c) => {
     ipAddress: getClientIP(c.req.raw.headers),
     userAgent: getSafeUserAgent(c),
   });
-  return c.json({ success: true });
+  return c.json({ success: true, infoBlockedUntil: nextInfoAt });
 });
 
 /**
@@ -292,8 +356,11 @@ professionalsRoutes.get('/logo/:userId', async (c) => {
     return c.json({ error: 'Acceso denegado' }, 403);
   }
   const rows = await database.select().from(professionalLogosTable).where(eq(professionalLogosTable.userId, userId)).limit(1);
-  const logo = resolveLogoForClient(rows[0]?.logo ?? null, 'professional', userId);
-  return c.json({ success: true, logo });
+  const row = rows[0];
+  const storedLogo = row?.logo?.trim() ? row.logo : null;
+  const logo = resolveLogoForClient(storedLogo, 'professional', userId, row?.updatedAt);
+  const logoBlockedUntil = getEditCooldownBlockedUntil(row?.updatedAt);
+  return c.json({ success: true, logo, logoUpdatedAt: row?.updatedAt ?? null, logoBlockedUntil });
 });
 
 /**
@@ -308,6 +375,25 @@ professionalsRoutes.put('/logo/:userId', async (c) => {
   }
   const body = (await c.req.json().catch(() => ({}))) as { logo: string };
   if (!body.logo) return c.json({ error: 'Campo logo requerido' }, 400);
+
+  const existingRows = await database
+    .select({ logo: professionalLogosTable.logo, updatedAt: professionalLogosTable.updatedAt })
+    .from(professionalLogosTable)
+    .where(eq(professionalLogosTable.userId, userId))
+    .limit(1);
+  const existing = existingRows[0];
+  if (!canBypassEditCooldown(user) && isWithinEditCooldown(existing?.updatedAt)) {
+    const nextAt = getNextEditAllowedAt(existing?.updatedAt)!;
+    c.header('Retry-After', String(getEditCooldownRetryAfterSeconds(nextAt)));
+    return c.json(
+      {
+        error: 'cooldown',
+        message: editCooldownErrorMessage(nextAt),
+        logoBlockedUntil: nextAt,
+      },
+      429
+    );
+  }
 
   const logoRateLimit = await checkLogoUploadRateLimit(user.userId);
   if (!logoRateLimit.allowed) {
@@ -331,21 +417,17 @@ professionalsRoutes.put('/logo/:userId', async (c) => {
     });
     return c.json({ error: validation.error, message: validation.message }, 400);
   }
-  const existingRows = await database
-    .select({ logo: professionalLogosTable.logo })
-    .from(professionalLogosTable)
-    .where(eq(professionalLogosTable.userId, userId))
-    .limit(1);
   const storedLogo = await persistLogoPayload(
     validation.sanitized,
     'professional',
     userId,
     getR2Bucket(c.env as { BUCKET?: R2Bucket }),
-    existingRows[0]?.logo ?? null
+    existing?.logo?.trim() ? existing.logo : null
   );
-  await database.insert(professionalLogosTable).values({ userId, logo: storedLogo }).onConflictDoUpdate({
+  const updatedAt = new Date().toISOString();
+  await database.insert(professionalLogosTable).values({ userId, logo: storedLogo, updatedAt }).onConflictDoUpdate({
     target: professionalLogosTable.userId,
-    set: { logo: storedLogo },
+    set: { logo: storedLogo, updatedAt },
   });
   await logAuditEvent({
     userId: user.userId,
@@ -356,7 +438,12 @@ professionalsRoutes.put('/logo/:userId', async (c) => {
     ipAddress: getClientIP(c.req.raw.headers),
     userAgent: getSafeUserAgent(c),
   });
-  return c.json({ success: true });
+  return c.json({
+    success: true,
+    logo: resolveLogoForClient(storedLogo, 'professional', userId, updatedAt),
+    logoUpdatedAt: updatedAt,
+    logoBlockedUntil: new Date(Date.now() + EDIT_COOLDOWN_MS).toISOString(),
+  });
 });
 
 /**
@@ -370,12 +457,32 @@ professionalsRoutes.delete('/logo/:userId', async (c) => {
     return c.json({ error: 'Acceso denegado' }, 403);
   }
   const existingRows = await database
-    .select({ logo: professionalLogosTable.logo })
+    .select({ logo: professionalLogosTable.logo, updatedAt: professionalLogosTable.updatedAt })
     .from(professionalLogosTable)
     .where(eq(professionalLogosTable.userId, userId))
     .limit(1);
-  await purgeLogoR2(existingRows[0]?.logo, getR2Bucket(c.env as { BUCKET?: R2Bucket }));
-  await database.delete(professionalLogosTable).where(eq(professionalLogosTable.userId, userId));
+  const existing = existingRows[0];
+  if (!existing?.logo?.trim()) {
+    return c.json({ success: true, logoBlockedUntil: getEditCooldownBlockedUntil(existing?.updatedAt) });
+  }
+  if (!canBypassEditCooldown(user) && isWithinEditCooldown(existing.updatedAt)) {
+    const nextAt = getNextEditAllowedAt(existing.updatedAt)!;
+    c.header('Retry-After', String(getEditCooldownRetryAfterSeconds(nextAt)));
+    return c.json(
+      {
+        error: 'cooldown',
+        message: editCooldownErrorMessage(nextAt),
+        logoBlockedUntil: nextAt,
+      },
+      429
+    );
+  }
+  await purgeLogoR2(existing.logo, getR2Bucket(c.env as { BUCKET?: R2Bucket }));
+  const updatedAt = new Date().toISOString();
+  await database
+    .update(professionalLogosTable)
+    .set({ logo: '', updatedAt })
+    .where(eq(professionalLogosTable.userId, userId));
   await logAuditEvent({
     userId: user.userId,
     action: 'DELETE',
@@ -385,7 +492,69 @@ professionalsRoutes.delete('/logo/:userId', async (c) => {
     ipAddress: getClientIP(c.req.raw.headers),
     userAgent: getSafeUserAgent(c),
   });
-  return c.json({ success: true });
+  return c.json({
+    success: true,
+    logoBlockedUntil: new Date(Date.now() + EDIT_COOLDOWN_MS).toISOString(),
+  });
+});
+
+/**
+ * POST /api/professionals/:userId/reset-edit-cooldown
+ * Super admin: autoriza cambios excepcionales de datos/logo profesional antes de 15 días.
+ */
+professionalsRoutes.post('/:userId/reset-edit-cooldown', requireRole('super_admin'), async (c) => {
+  const userId = getValidatedUserId(c);
+  if (!userId) return c.json({ error: 'userId inválido' }, 400);
+  const user = c.get('user')!;
+  const body = await c.req.json().catch(() => ({})) as { scopes?: unknown; reason?: string };
+  const scopes = parseEditCooldownScopes(body.scopes);
+
+  const targetRows = await database
+    .select({ role: createdUsers.role })
+    .from(createdUsers)
+    .where(eq(createdUsers.id, userId))
+    .limit(1);
+  if (!targetRows[0]) return c.json({ error: 'Usuario no encontrado' }, 404);
+  if (targetRows[0].role !== 'podiatrist') {
+    return c.json({
+      error: 'invalid_role',
+      message: 'El reinicio profesional aplica a podólogos. Para administradores de clínica use el reinicio de clínica.',
+    }, 400);
+  }
+
+  if (scopes.includes('info')) {
+    await database
+      .update(professionalInfoTable)
+      .set({ infoUpdatedAt: null })
+      .where(eq(professionalInfoTable.userId, userId));
+  }
+  if (scopes.includes('logo')) {
+    await database
+      .update(professionalLogosTable)
+      .set({ updatedAt: null })
+      .where(eq(professionalLogosTable.userId, userId));
+  }
+
+  await logAuditEvent({
+    userId: user.userId,
+    action: 'RESET_EDIT_COOLDOWN',
+    resourceType: 'professional',
+    resourceId: userId,
+    details: {
+      action: 'reset_professional_edit_cooldown',
+      targetUserId: userId,
+      scopes,
+      reason: typeof body.reason === 'string' && body.reason.trim() ? body.reason.trim().slice(0, 500) : null,
+    },
+    ipAddress: getClientIP(c.req.raw.headers),
+    userAgent: getSafeUserAgent(c),
+  });
+
+  return c.json({
+    success: true,
+    message: 'Autorización excepcional aplicada. El profesional puede editar de nuevo.',
+    resetScopes: scopes,
+  });
 });
 
 export default professionalsRoutes;

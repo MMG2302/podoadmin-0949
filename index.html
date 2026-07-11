@@ -59,7 +59,12 @@
 								";--semantic-success:" + (m.success || "#16a34a") +
 								";--semantic-success-bg:" + (m.successBg || "#f0fdf4") +
 								";--semantic-info:" + (m.info || "#2563eb") +
-								";--semantic-info-bg:" + (m.infoBg || "#eff6ff");
+								";--semantic-info-bg:" + (m.infoBg || "#eff6ff") +
+								";--whatsapp:" + (m.whatsapp || "#25d366") +
+								";--whatsapp-fg:" + fg(m.whatsapp || "#25d366") +
+								";--whatsapp-bg:" + (m.whatsappBg || "#ecfdf5") +
+								";--whatsapp-border:" + (m.whatsappBorder || "#a7f3d0") +
+								";--whatsapp-muted:" + (m.whatsappMuted || "#065f46");
 						}
 						var st = document.createElement("style");
 						st.id = "podoadmin-palette";
@@ -72,7 +77,11 @@
 	</head>
 
 	<body>
-		<div id="root"></div>
+		<div id="root">
+			<div style="min-height:100vh;display:flex;align-items:center;justify-content:center;font-family:system-ui,sans-serif;color:#6b7280;background:#f9fafb">
+				Cargando PodoAdmin…
+			</div>
+		</div>
 		<script type="module" src="/src/web/main.tsx"></script>
 	</body>
 </html>

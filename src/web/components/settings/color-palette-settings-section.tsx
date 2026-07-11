@@ -4,6 +4,7 @@ import {
   type PaletteMode,
   type PaletteSettings,
   type PaletteTokenId,
+  normalizePaletteSettings,
 } from "../../types/color-palette";
 import {
   applyPaletteStyles,
@@ -18,6 +19,7 @@ import {
 import { PaintColorPicker } from "./paint-color-picker";
 import { PalettePreviewMockup } from "./palette-preview-mockup";
 import { PaletteSemanticPreviewMockup } from "./palette-semantic-preview-mockup";
+import { PaletteWhatsappPreviewMockup } from "./palette-whatsapp-preview-mockup";
 
 type EditMode = "light" | "dark";
 
@@ -112,6 +114,7 @@ export function ColorPaletteSettingsSection() {
   const [message, setMessage] = useState<string | null>(null);
   const [brandOpen, setBrandOpen] = useState(() => getPaletteSectionsState().brand);
   const [semanticOpen, setSemanticOpen] = useState(() => getPaletteSectionsState().semantic);
+  const [whatsappOpen, setWhatsappOpen] = useState(() => getPaletteSectionsState().whatsapp);
 
   const toggleBrand = () => {
     setBrandOpen((v) => {
@@ -129,6 +132,14 @@ export function ColorPaletteSettingsSection() {
     });
   };
 
+  const toggleWhatsapp = () => {
+    setWhatsappOpen((v) => {
+      const next = !v;
+      savePaletteSectionOpen("whatsapp", next);
+      return next;
+    });
+  };
+
   const tokenLabels = t.settings.paletteTokens;
   const previewMode = draft[editMode];
 
@@ -142,24 +153,36 @@ export function ColorPaletteSettingsSection() {
       ["error", "errorBg", "warning", "warningBg", "success", "successBg", "info", "infoBg"] as PaletteTokenId[],
     [],
   );
+  const whatsappTokenIds = useMemo(
+    () => ["whatsapp", "whatsappBg", "whatsappBorder", "whatsappMuted"] as PaletteTokenId[],
+    [],
+  );
 
   const applyDraftPreview = useCallback((settings: PaletteSettings) => {
     let el = document.getElementById("podoadmin-palette-preview") as HTMLStyleElement | null;
     if (!el) {
       el = document.createElement("style");
       el.id = "podoadmin-palette-preview";
-      document.head.appendChild(el);
     }
     el.textContent = buildPaletteStylesheet(settings);
+    document.head.appendChild(el);
   }, []);
 
+  // Vista previa en vivo: no restaurar localStorage en cada cambio de draft
+  // (evita que al guardar se pisen los tokens semánticos con valores antiguos).
   useEffect(() => {
     applyDraftPreview(draft);
     return () => {
       document.getElementById("podoadmin-palette-preview")?.remove();
-      applyPaletteStyles();
     };
   }, [draft, applyDraftPreview]);
+
+  useEffect(() => {
+    return () => {
+      document.getElementById("podoadmin-palette-preview")?.remove();
+      applyPaletteStyles();
+    };
+  }, []);
 
   const handleColorAccept = (hex: string) => {
     if (!pickerToken) return;
@@ -171,7 +194,10 @@ export function ColorPaletteSettingsSection() {
   };
 
   const handleSave = () => {
-    savePaletteSettings(draft);
+    const normalized = normalizePaletteSettings(draft);
+    savePaletteSettings(normalized);
+    setDraft(normalized);
+    // Tras guardar, quitar la capa de preview: la paleta persistida ya está activa.
     document.getElementById("podoadmin-palette-preview")?.remove();
     setMessage(t.settings.settingsSaved);
     setTimeout(() => setMessage(null), 2500);
@@ -243,9 +269,26 @@ export function ColorPaletteSettingsSection() {
           changeColorLabel={t.settings.changeColor}
           preview={
             <PaletteSemanticPreviewMockup
-              mode={previewMode}
               labels={t.settings.palettePreviewLabels}
               messages={t.settings.palettePreviewMessages}
+            />
+          }
+        />
+
+        <PaletteCollapsibleGroup
+          title={t.settings.paletteGroupWhatsapp}
+          previewTitle={t.settings.palettePreviewWhatsapp}
+          open={whatsappOpen}
+          onToggle={toggleWhatsapp}
+          tokenIds={whatsappTokenIds}
+          tokenLabels={tokenLabels}
+          previewMode={previewMode}
+          onPickToken={setPickerToken}
+          changeColorLabel={t.settings.changeColor}
+          preview={
+            <PaletteWhatsappPreviewMockup
+              title={t.settings.paletteGroupWhatsapp}
+              buttonLabel={t.settings.paletteTokens.whatsapp}
             />
           }
         />

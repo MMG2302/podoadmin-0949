@@ -1,6 +1,10 @@
 import { useState } from "react";
 import { useLanguage } from "../../contexts/language-context";
 import {
+  semanticAlertInfoClass,
+  semanticAlertWarningClass,
+} from "../../lib/form-field-classes";
+import {
   officialMetaLinks,
   whatsappSetupGuideContent,
   type SetupGuidePhase,
@@ -66,10 +70,10 @@ function PhaseBlock({
           </ol>
           {phase.callout && (
             <p
-              className={`mt-3 text-xs rounded-md px-3 py-2 border ${
+              className={`mt-3 text-xs ${
                 phase.callout.variant === "warning"
-                  ? "bg-amber-50 dark:bg-amber-950/30 border-amber-200 dark:border-amber-900/50 text-semantic-warning"
-                  : "bg-blue-50/80 dark:bg-blue-950/20 border-blue-100 dark:border-blue-900/40 text-blue-900 dark:text-blue-200"
+                  ? semanticAlertWarningClass
+                  : semanticAlertInfoClass
               }`}
             >
               {phase.callout.text}
@@ -136,16 +140,16 @@ export function WhatsAppSetupGuide() {
           </ul>
         </div>
 
-        <div className="rounded-lg border-2 border-amber-300 dark:border-amber-800/70 bg-amber-50 dark:bg-amber-950/25 overflow-hidden">
+        <div className="rounded-lg border-2 border-semantic-warning bg-semantic-warning-bg overflow-hidden">
           <button
             type="button"
             onClick={() => setTroubleshootingOpen((v) => !v)}
-            className="w-full flex items-center justify-between gap-2 px-3 py-2.5 text-left hover:bg-amber-100/60 dark:hover:bg-amber-950/40"
+            className="w-full flex items-center justify-between gap-2 px-3 py-2.5 text-left hover:bg-semantic-warning-bg/80"
             aria-expanded={troubleshootingOpen}
           >
-            <span className="text-sm font-semibold text-amber-950 dark:text-amber-100">{content.troubleshootingTitle}</span>
+            <span className="text-sm font-semibold text-semantic-warning">{content.troubleshootingTitle}</span>
             <svg
-              className={`w-4 h-4 shrink-0 text-amber-800 dark:text-amber-300 transition-transform ${troubleshootingOpen ? "rotate-180" : ""}`}
+              className={`w-4 h-4 shrink-0 text-semantic-warning transition-transform ${troubleshootingOpen ? "rotate-180" : ""}`}
               fill="none"
               viewBox="0 0 24 24"
               stroke="currentColor"
@@ -155,12 +159,12 @@ export function WhatsAppSetupGuide() {
             </svg>
           </button>
           {troubleshootingOpen && (
-            <div className="px-3 pb-3 border-t border-amber-200 dark:border-amber-900/50">
-              <p className="text-xs text-amber-900/90 dark:text-amber-100/90 mt-2 mb-2">{content.troubleshootingIntro}</p>
+            <div className="px-3 pb-3 border-t border-semantic-warning/40">
+              <p className="text-xs text-semantic-warning mt-2 mb-2">{content.troubleshootingIntro}</p>
               <ul className="space-y-2">
                 {content.troubleshootingItems.map((item, i) => (
-                  <li key={i} className="flex gap-2 text-xs text-amber-950/90 dark:text-amber-100/90">
-                    <span className="font-bold text-amber-700 dark:text-amber-400 shrink-0">{i + 1}.</span>
+                  <li key={i} className="flex gap-2 text-xs text-semantic-warning">
+                    <span className="font-bold text-semantic-warning shrink-0">{i + 1}.</span>
                     <span>{item}</span>
                   </li>
                 ))}

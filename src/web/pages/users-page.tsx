@@ -14,6 +14,18 @@ import {
   downloadUserClinicalExport,
 } from "../lib/clinical-api";
 import type { ClinicalStatsMap } from "../types/clinical";
+import {
+  formErrorClass,
+  formSuccessClass,
+  semanticAlertErrorClass,
+  semanticAlertInfoClass,
+  semanticAlertSuccessClass,
+  semanticAlertWarningClass,
+  semanticChipErrorClass,
+  semanticChipInfoClass,
+  semanticChipSuccessClass,
+  semanticChipWarningClass,
+} from "../lib/form-field-classes";
 
 interface UserWithData extends User {
   patientCount: number;
@@ -45,6 +57,10 @@ interface CreateUserPayload {
   newClinic?: NewClinicPayload;
 }
 
+function isValidEmail(value: string): boolean {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
+}
+
 // Create User Modal
 const CreateUserModal = ({ 
   isOpen, 
@@ -54,17 +70,18 @@ const CreateUserModal = ({
 }: { 
   isOpen: boolean; 
   onClose: () => void; 
-  onSave: (payload: CreateUserPayload) => void;
+  onSave: (payload: CreateUserPayload) => void | Promise<boolean | string>;
   clinics?: ClinicOption[];
 }) => {
   const { t } = useLanguage();
+  const [isSaving, setIsSaving] = useState(false);
   const [formData, setFormData] = useState({
     name: "",
     email: "",
     password: "",
     role: "podiatrist" as UserRole,
     clinicId: "",
-    clinicMode: "existing" as "existing" | "new" | "none",
+    clinicMode: "none" as "existing" | "new" | "none",
     newClinic: { podiatristLimit: null as number | null } as NewClinicPayload,
   });
 
@@ -75,26 +92,51 @@ const CreateUserModal = ({
       password: "",
       role: "podiatrist",
       clinicId: "",
-      clinicMode: "existing",
+      clinicMode: "none",
       newClinic: { podiatristLimit: null } as NewClinicPayload,
     });
   };
 
   if (!isOpen) return null;
 
-  const needsClinic = formData.role === "podiatrist" || formData.role === "clinic_admin";
-  const showClinicSelector = needsClinic && formData.clinicMode === "existing";
-  const showNewClinicForm = needsClinic && formData.clinicMode === "new";
+  const needsClinic = formData.role === "podiatrist" || formData.role === "clinic_admin" || formData.role === "receptionist";
+  const showClinicSelector = needsClinic && (formData.clinicMode === "existing" || formData.role === "receptionist");
+  const showNewClinicForm = needsClinic && formData.clinicMode === "new" && formData.role !== "receptionist";
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    const name = formData.name.trim();
+    const email = formData.email.trim();
+    const password = formData.password;
+
+    if (!name) {
+      alert("El nombre es obligatorio.");
+      return;
+    }
+    if (!email || !isValidEmail(email)) {
+      alert("Introduce un correo electrónico válido.");
+      return;
+    }
+    if (!password || password.length < 8) {
+      alert("La contraseña debe tener al menos 8 caracteres.");
+      return;
+    }
+    if (formData.role === "receptionist" && !formData.clinicId) {
+      alert("Selecciona una clínica para el recepcionista.");
+      return;
+    }
+    if (formData.role === "clinic_admin" && formData.clinicMode === "existing" && !formData.clinicId) {
+      alert("Selecciona una clínica existente o elige crear una nueva.");
+      return;
+    }
     const payload: CreateUserPayload = {
-      name: formData.name,
-      email: formData.email,
-      password: formData.password,
+      name,
+      email,
+      password,
       role: formData.role,
     };
-    if (formData.clinicMode === "existing" && formData.clinicId) {
+    if ((formData.clinicMode === "existing" || formData.role === "receptionist") && formData.clinicId) {
       payload.clinicId = formData.clinicId;
     } else if (formData.clinicMode === "new") {
       payload.newClinic = {
@@ -103,9 +145,19 @@ const CreateUserModal = ({
           : undefined,
       };
     }
-    onSave(payload);
-    resetForm();
-    onClose();
+    setIsSaving(true);
+    try {
+      const ok = await onSave(payload);
+      if (ok !== false) {
+        resetForm();
+        onClose();
+        if (typeof ok === "string") {
+          alert(ok);
+        }
+      }
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   return (
@@ -114,7 +166,7 @@ const CreateUserModal = ({
         <div className="p-6 border-b border-gray-100">
           <h3 className="text-lg font-semibold text-brand-ink">Crear nuevo usuario</h3>
         </div>
-        <form onSubmit={handleSubmit} className="p-6 space-y-4 max-h-[70vh] overflow-y-auto">
+        <form onSubmit={handleSubmit} noValidate className="p-6 space-y-4 max-h-[70vh] overflow-y-auto">
           <div>
             <label className="block text-sm font-medium text-brand-ink mb-1">Nombre</label>
             <input
@@ -122,7 +174,7 @@ const CreateUserModal = ({
               value={formData.name}
               onChange={(e) => setFormData({ ...formData, name: e.target.value })}
               className="w-full px-4 py-2.5 rounded-lg border border-gray-200 focus:border-brand-ink focus:ring-1 focus:ring-brand-ink outline-none transition-colors"
-              required
+              autoComplete="off"
             />
           </div>
           <div>
@@ -132,9 +184,7 @@ const CreateUserModal = ({
               value={formData.email}
               onChange={(e) => setFormData({ ...formData, email: e.target.value })}
               className="w-full px-4 py-2.5 rounded-lg border border-gray-200 focus:border-brand-ink focus:ring-1 focus:ring-brand-ink outline-none transition-colors"
-              pattern="[a-zA-Z0-9._%+\\-]+@[a-zA-Z0-9.\\-]+\\.[a-zA-Z]{2,}"
-              title={t.errors.invalidEmail}
-              required
+              autoComplete="off"
             />
           </div>
           <div>
@@ -144,18 +194,33 @@ const CreateUserModal = ({
               value={formData.password}
               onChange={(e) => setFormData({ ...formData, password: e.target.value })}
               className="w-full px-4 py-2.5 rounded-lg border border-gray-200 focus:border-brand-ink focus:ring-1 focus:ring-brand-ink outline-none transition-colors"
-              required
+              autoComplete="new-password"
             />
+            <p className="text-xs text-gray-500 mt-1">Mínimo 8 caracteres.</p>
           </div>
           <div>
             <label className="block text-sm font-medium text-brand-ink mb-1">Rol</label>
             <select
               value={formData.role}
-              onChange={(e) => setFormData({ ...formData, role: e.target.value as UserRole, clinicId: "", clinicMode: "existing" })}
+              onChange={(e) => {
+                const role = e.target.value as UserRole;
+                setFormData({
+                  ...formData,
+                  role,
+                  clinicId: "",
+                  clinicMode:
+                    role === "podiatrist"
+                      ? "none"
+                      : role === "receptionist" || role === "clinic_admin"
+                        ? "existing"
+                        : "existing",
+                });
+              }}
               className="w-full px-4 py-2.5 rounded-lg border border-gray-200 focus:border-brand-ink focus:ring-1 focus:ring-brand-ink outline-none transition-colors"
             >
               <option value="podiatrist">Podólogo</option>
               <option value="clinic_admin">Administrador de Clínica</option>
+              <option value="receptionist">Recepcionista</option>
               <option value="admin">Soporte</option>
               <option value="super_admin">Super Administrador</option>
             </select>
@@ -165,17 +230,19 @@ const CreateUserModal = ({
             <>
               <div>
                 <label className="block text-sm font-medium text-brand-ink mb-1">
-                  {formData.role === "clinic_admin" ? "Clínica" : "Clínica (opcional)"}
+                  {formData.role === "clinic_admin" || formData.role === "receptionist" ? "Clínica" : "Clínica (opcional)"}
                 </label>
-                <select
-                  value={formData.clinicMode}
-                  onChange={(e) => setFormData({ ...formData, clinicMode: e.target.value as "existing" | "new" | "none", clinicId: "" })}
-                  className="w-full px-4 py-2.5 rounded-lg border border-gray-200 focus:border-brand-ink focus:ring-1 focus:ring-brand-ink outline-none transition-colors"
-                >
-                  <option value="existing">Seleccionar clínica existente</option>
-                  <option value="new">{formData.role === "clinic_admin" ? "Crear nueva clínica" : "Crear nueva clínica"}</option>
-                  {formData.role === "podiatrist" && <option value="none">Sin clínica (independiente)</option>}
-                </select>
+                {formData.role !== "receptionist" && (
+                  <select
+                    value={formData.clinicMode}
+                    onChange={(e) => setFormData({ ...formData, clinicMode: e.target.value as "existing" | "new" | "none", clinicId: "" })}
+                    className="w-full px-4 py-2.5 rounded-lg border border-gray-200 focus:border-brand-ink focus:ring-1 focus:ring-brand-ink outline-none transition-colors"
+                  >
+                    <option value="existing">Seleccionar clínica existente</option>
+                    <option value="new">Crear nueva clínica</option>
+                    {formData.role === "podiatrist" && <option value="none">Sin clínica (independiente)</option>}
+                  </select>
+                )}
               </div>
 
               {showClinicSelector && (
@@ -185,7 +252,6 @@ const CreateUserModal = ({
                     value={formData.clinicId}
                     onChange={(e) => setFormData({ ...formData, clinicId: e.target.value })}
                     className="w-full px-4 py-2.5 rounded-lg border border-gray-200 focus:border-brand-ink focus:ring-1 focus:ring-brand-ink outline-none transition-colors"
-                    required={formData.role === "clinic_admin"}
                   >
                     <option value="">— Seleccionar —</option>
                     {clinics.map((c) => (
@@ -239,9 +305,10 @@ const CreateUserModal = ({
             </button>
             <button
               type="submit"
-              className="flex-1 px-4 py-2.5 bg-brand-ink text-brand-ink-fg rounded-lg font-medium hover:bg-brand-ink-hover transition-colors"
+              disabled={isSaving}
+              className="flex-1 px-4 py-2.5 bg-brand-ink text-brand-ink-fg rounded-lg font-medium hover:bg-brand-ink-hover transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
             >
-              {t.common.create}
+              {isSaving ? "Creando..." : t.common.create}
             </button>
           </div>
         </form>
@@ -504,7 +571,7 @@ const BulkImportModal = ({
               className="w-full px-4 py-2.5 rounded-lg border border-gray-200 focus:border-brand-ink focus:ring-1 focus:ring-brand-ink outline-none transition-colors"
             />
           </div>
-          {parseError && <div className="p-3 bg-red-50 border border-red-100 rounded-lg text-sm text-red-700">{parseError}</div>}
+          {parseError && <div className={semanticAlertErrorClass}>{parseError}</div>}
           {parsedRows.length > 0 && !importDone && (
             <div className="border border-gray-200 rounded-lg overflow-hidden">
               <p className="p-3 bg-brand-canvas text-sm font-medium text-brand-ink">
@@ -540,9 +607,9 @@ const BulkImportModal = ({
               </p>
               <div className="max-h-48 overflow-y-auto">
                 {importResults.map((r) => (
-                  <div key={r.index} className={`flex items-center justify-between p-2 text-sm border-b border-gray-100 ${r.success ? "bg-green-50" : "bg-red-50"}`}>
+                  <div key={r.index} className={`flex items-center justify-between p-2 text-sm border-b border-gray-100 ${r.success ? "bg-semantic-success-bg" : "bg-semantic-error-bg"}`}>
                     <span className="font-medium">{r.name}</span>
-                    <span className={r.success ? "text-green-700" : "text-red-700"}>{r.success ? "✓ Creado" : r.error}</span>
+                    <span className={r.success ? formSuccessClass : formErrorClass}>{r.success ? "✓ Creado" : r.error}</span>
                   </div>
                 ))}
               </div>
@@ -693,17 +760,17 @@ const EditUserModal = ({
             </select>
             {isPromotingToSuperAdmin && (
               <div
-                className="mt-3 rounded-lg border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-950/50 p-4 text-sm"
+                className={`mt-3 ${semanticAlertWarningClass}`}
                 role="alert"
               >
-                <p className="font-medium text-amber-950 dark:text-amber-100">
+                <p className="font-medium">
                   {t.roles.superAdminAssignWarning}
                 </p>
-                <p className="mt-1 text-amber-900/90 dark:text-amber-200/90">
+                <p className="mt-1 opacity-90">
                   {t.roles.superAdminAssignConfirmPrompt}
                 </p>
                 {superAdminRoleConfirmed ? (
-                  <p className="mt-3 text-xs font-medium text-green-700 dark:text-green-400">
+                  <p className={`mt-3 ${formSuccessClass} text-xs font-medium`}>
                     ✓ {t.roles.superAdminAssignConfirmed}
                   </p>
                 ) : (
@@ -711,14 +778,14 @@ const EditUserModal = ({
                     <button
                       type="button"
                       onClick={handleConfirmSuperAdminRole}
-                      className="flex-1 px-3 py-2 rounded-lg bg-amber-600 hover:bg-amber-700 text-white font-medium transition-colors"
+                      className="flex-1 px-3 py-2 rounded-lg bg-brand-ink text-brand-ink-fg font-medium transition-colors hover:bg-brand-ink-hover"
                     >
                       {t.common.confirm}
                     </button>
                     <button
                       type="button"
                       onClick={handleCancelSuperAdminRole}
-                      className="flex-1 px-3 py-2 rounded-lg border border-amber-400 dark:border-amber-600 text-amber-950 dark:text-amber-100 font-medium hover:bg-amber-100 dark:hover:bg-amber-900/50 transition-colors"
+                      className="flex-1 px-3 py-2 rounded-lg border border-semantic-warning bg-brand-surface text-semantic-warning font-medium hover:bg-semantic-warning-bg transition-colors"
                     >
                       {t.common.cancel}
                     </button>
@@ -829,7 +896,7 @@ const TransferHistoryModal = ({
         </div>
         <div className="p-6 space-y-4">
           {result ? (
-            <div className={`p-4 rounded-lg ${result.success ? "bg-green-50 text-green-700" : "bg-red-50 text-red-700"}`}>
+            <div className={result.success ? semanticAlertSuccessClass : semanticAlertErrorClass}>
               <p className="font-medium">{result.success ? "¡Éxito!" : "Error"}</p>
               <p className="text-sm mt-1">{result.message}</p>
             </div>
@@ -877,8 +944,8 @@ const TransferHistoryModal = ({
                 </select>
               </div>
 
-              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
-                <p className="text-sm text-yellow-700">
+              <div className={semanticAlertWarningClass}>
+                <p>
                   <strong>Advertencia:</strong> Esta acción transferirá la propiedad de todos los pacientes y sesiones. El usuario origen perderá acceso a estos datos.
                 </p>
               </div>
@@ -1331,19 +1398,19 @@ const UsersPage = () => {
       NonNullable<User['accessBadge']>['tone'],
       string
     > = {
-      green: 'bg-green-100 text-green-700',
-      blue: 'bg-sky-100 text-sky-700',
-      amber: 'bg-amber-100 text-amber-700',
-      yellow: 'bg-yellow-100 text-yellow-700',
-      orange: 'bg-orange-100 text-orange-700',
-      red: 'bg-red-100 text-red-700',
-      gray: 'bg-gray-100 text-gray-600',
+      green: semanticChipSuccessClass,
+      blue: semanticChipInfoClass,
+      amber: semanticChipWarningClass,
+      yellow: semanticChipWarningClass,
+      orange: semanticChipWarningClass,
+      red: semanticChipErrorClass,
+      gray: "inline-flex items-center rounded-full border border-brand-border bg-brand-canvas px-2 py-0.5 text-xs font-medium text-brand-muted",
     };
 
     if (user.accessBadge) {
       const cls = toneClasses[user.accessBadge.tone] ?? toneClasses.gray;
       return (
-        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${cls}`}>
+        <span className={cls}>
           {user.accessBadge.label}
         </span>
       );
@@ -1351,7 +1418,7 @@ const UsersPage = () => {
 
     if (user.isBanned) {
       return (
-        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-700">
+        <span className={`${semanticChipErrorClass} gap-1`}>
           <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
           </svg>
@@ -1361,7 +1428,7 @@ const UsersPage = () => {
     }
     if (user.isBlocked) {
       return (
-        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-700">
+        <span className={`${semanticChipWarningClass} gap-1`}>
           <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
           </svg>
@@ -1376,7 +1443,7 @@ const UsersPage = () => {
       const graceDays = Math.max(0, Math.floor(daysSinceDisabled));
       const graceLabel = `Período de gracia (${graceDays} día${graceDays === 1 ? "" : "s"})`;
       return (
-        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${isGracePeriod ? "bg-amber-100 text-amber-700" : "bg-yellow-100 text-yellow-700"}`}>
+        <span className={`${semanticChipWarningClass} gap-1`}>
           <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
@@ -1386,13 +1453,13 @@ const UsersPage = () => {
     }
     if (user.isEnabled === false && (user.role === "clinic_admin" || user.role === "podiatrist")) {
       return (
-        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-700">
+        <span className={semanticChipWarningClass}>
           Pendiente pago
         </span>
       );
     }
     return (
-      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700">
+      <span className={`${semanticChipSuccessClass} gap-1`}>
         <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
         </svg>
@@ -1410,88 +1477,92 @@ const UsersPage = () => {
     return false;
   };
 
-  const handleCreateUser = (payload: CreateUserPayload) => {
-    (async () => {
-      const email = (payload.email || "").trim();
-      if (!email) {
-        alert("El correo electrónico es obligatorio.");
-        return;
+  const handleCreateUser = async (payload: CreateUserPayload): Promise<boolean | string> => {
+    const email = (payload.email || "").trim();
+    if (!email) {
+      alert("El correo electrónico es obligatorio.");
+      return false;
+    }
+
+    const emailExists = allUsers.some((u) => u.email.toLowerCase() === email.toLowerCase());
+    if (emailExists) {
+      alert("Ya existe una cuenta con este correo electrónico.");
+      return false;
+    }
+
+    if (!payload.password || payload.password.length < 8) {
+      alert("La contraseña debe tener al menos 8 caracteres.");
+      return false;
+    }
+
+    try {
+      const userPayload: Record<string, unknown> = {
+        email,
+        name: payload.name || "",
+        role: payload.role || "podiatrist",
+        password: payload.password,
+      };
+      if (payload.clinicId) userPayload.clinicId = payload.clinicId;
+
+      const response = await api.post<{ success: boolean; user: User }>("/users", userPayload);
+
+      if (!response.success || !response.data?.success) {
+        const msg = response.data?.message || response.error || "Error al crear usuario";
+        const issues = (response.data as any)?.issues as Array<{ message?: string; path?: (string | number)[] }> | undefined;
+        const details = issues?.length ? issues.map((i) => i.message || i.path?.join(".")).join(". ") : "";
+        alert(details ? `${msg}\n\nDetalles: ${details}` : msg);
+        return false;
       }
 
-      const emailExists = allUsers.some((u) => u.email.toLowerCase() === email.toLowerCase());
-      if (emailExists) {
-        alert("Ya existe una cuenta con este correo electrónico.");
-        return;
-      }
+      let newUser = response.data.user;
+      let createdClinic: { clinicId: string; clinicName: string; clinicCode: string } | null = null;
 
-      if (!payload.password || payload.password.length < 8) {
-        alert("La contraseña debe tener al menos 8 caracteres.");
-        return;
-      }
+      if (payload.newClinic) {
+        const clinicPayload: Record<string, unknown> = { ownerId: newUser.id };
+        if (payload.newClinic.podiatristLimit != null && payload.newClinic.podiatristLimit >= 1) {
+          clinicPayload.podiatristLimit = payload.newClinic.podiatristLimit;
+        }
+        const clinicRes = await api.post<{ success?: boolean; clinic?: { clinicId: string; clinicName: string; clinicCode: string } }>("/clinics", clinicPayload);
 
-      try {
-        const userPayload: Record<string, unknown> = {
-          email,
-          name: payload.name || "",
-          role: payload.role || "podiatrist",
-          password: payload.password,
-        };
-        if (payload.clinicId) userPayload.clinicId = payload.clinicId;
-
-        const response = await api.post<{ success: boolean; user: User }>("/users", userPayload);
-
-        if (!response.success || !response.data?.success) {
-          const msg = response.data?.message || response.error || "Error al crear usuario";
-          const issues = (response.data as any)?.issues as Array<{ message?: string; path?: (string | number)[] }> | undefined;
-          const details = issues?.length ? issues.map((i) => i.message || i.path?.join(".")).join(". ") : "";
-          alert(details ? `${msg}\n\nDetalles: ${details}` : msg);
-          return;
+        if (!clinicRes.success || !clinicRes.data?.clinic) {
+          await fetchUsers();
+          return "Usuario creado, pero no se pudo crear la clínica. Asigna una clínica manualmente.";
         }
 
-        let newUser = response.data.user;
-        let createdClinic: { clinicId: string; clinicName: string; clinicCode: string } | null = null;
-
-        if (payload.newClinic) {
-          const clinicPayload: Record<string, unknown> = { ownerId: newUser.id };
-          if (payload.newClinic.podiatristLimit != null && payload.newClinic.podiatristLimit >= 1) {
-            clinicPayload.podiatristLimit = payload.newClinic.podiatristLimit;
-          }
-          const clinicRes = await api.post<{ success?: boolean; clinic?: { clinicId: string; clinicName: string; clinicCode: string } }>("/clinics", clinicPayload);
-
-          if (clinicRes.success && clinicRes.data?.clinic) {
-            createdClinic = clinicRes.data.clinic;
-            const updateRes = await api.put<{ success?: boolean; user?: User }>(`/users/${newUser.id}`, {
-              clinicId: clinicRes.data.clinic.clinicId,
-            });
-            if (updateRes.success && updateRes.data?.user) {
-              newUser = updateRes.data.user;
-            }
-          }
-        }
-
-        setAllUsers((prev) => [...prev, newUser]);
-        if (createdClinic) {
-          setClinics((prev) => [...prev, { clinicId: createdClinic!.clinicId, clinicName: createdClinic!.clinicName, clinicCode: createdClinic!.clinicCode }]);
-        }
-
-        void postAuditLog({
-          action: "CREATE",
-          resourceType: "user",
-          resourceId: newUser.id,
-          details: {
-            action: "user_create",
-            newUserName: newUser.name,
-            newUserEmail: newUser.email,
-            newUserRole: newUser.role,
-            newUserClinicId: newUser.clinicId,
-          },
+        createdClinic = clinicRes.data.clinic;
+        const updateRes = await api.put<{ success?: boolean; user?: User }>(`/users/${newUser.id}`, {
+          clinicId: clinicRes.data.clinic.clinicId,
         });
-        alert("Usuario creado exitosamente. El usuario puede iniciar sesión inmediatamente.");
-      } catch (error) {
-        console.error("Error creando usuario:", error);
-        alert("Error al crear usuario. Comprueba la consola del navegador (F12) para más detalles.");
+        if (updateRes.success && updateRes.data?.user) {
+          newUser = updateRes.data.user;
+        }
       }
-    })();
+
+      if (createdClinic) {
+        setClinics((prev) => [...prev, { clinicId: createdClinic!.clinicId, clinicName: createdClinic!.clinicName, clinicCode: createdClinic!.clinicCode }]);
+        void loadClinics();
+      }
+
+      await fetchUsers();
+
+      void postAuditLog({
+        action: "CREATE",
+        resourceType: "user",
+        resourceId: newUser.id,
+        details: {
+          action: "user_create",
+          newUserName: newUser.name,
+          newUserEmail: newUser.email,
+          newUserRole: newUser.role,
+          newUserClinicId: newUser.clinicId,
+        },
+      });
+      return "Usuario creado correctamente. Ya puede iniciar sesión con la contraseña indicada.";
+    } catch (error) {
+      console.error("Error creando usuario:", error);
+      alert("Error al crear usuario. Comprueba la consola del navegador (F12) para más detalles.");
+      return false;
+    }
   };
 
   const handleEditUser = (userId: string, updates: Partial<User>) => {
@@ -1505,7 +1576,7 @@ const UsersPage = () => {
 
         const response = await api.put<{ success?: boolean; user?: User }>(`/users/${userId}`, payload);
         if (response.success && response.data?.user) {
-          setAllUsers((prev) => prev.map((u) => (u.id === userId ? response.data!.user! : u)));
+          await fetchUsers();
           void postAuditLog({
             action: "UPDATE",
             resourceType: "user",
@@ -1588,9 +1659,7 @@ const UsersPage = () => {
       try {
         const response = await api.post<{ success: boolean; message?: string }>(`/users/${user.id}/block`);
         if (response.success && response.data?.success) {
-          setAllUsers((prev) =>
-            prev.map((u) => (u.id === user.id ? { ...u, isBlocked: true } : u))
-          );
+          await fetchUsers();
 
           void postAuditLog({
             action: "BLOCK_USER",
@@ -1622,9 +1691,7 @@ const UsersPage = () => {
       try {
         const response = await api.post<{ success: boolean; message?: string }>(`/users/${user.id}/unblock`);
         if (response.success && response.data?.success) {
-          setAllUsers((prev) =>
-            prev.map((u) => (u.id === user.id ? { ...u, isBlocked: false } : u))
-          );
+          await fetchUsers();
 
           void postAuditLog({
             action: "UNBLOCK_USER",
@@ -1718,11 +1785,7 @@ const UsersPage = () => {
       try {
         const response = await api.post<{ success: boolean; message?: string }>(`/users/${user.id}/ban`);
         if (response.success && response.data?.success) {
-          setAllUsers((prev) =>
-            prev.map((u) =>
-              u.id === user.id ? { ...u, isBanned: true, isEnabled: false, isBlocked: true } : u
-            )
-          );
+          await fetchUsers();
 
           void postAuditLog({
             action: "BAN_USER",
@@ -1754,11 +1817,7 @@ const UsersPage = () => {
       try {
         const response = await api.post<{ success: boolean; message?: string }>(`/users/${user.id}/unban`);
         if (response.success && response.data?.success) {
-          setAllUsers((prev) =>
-            prev.map((u) =>
-              u.id === user.id ? { ...u, isBanned: false } : u
-            )
-          );
+          await fetchUsers();
 
           void postAuditLog({
             action: "UNBAN_USER",
@@ -1781,6 +1840,56 @@ const UsersPage = () => {
     })();
   };
 
+  const handleResetEditCooldown = (user: User) => {
+    const appliesToClinic = user.role === "clinic_admin" && !!user.clinicId;
+    const appliesToProfessional = user.role === "podiatrist";
+    if (!appliesToClinic && !appliesToProfessional) {
+      alert("Este rol no tiene restricción de edición de 15 días aplicable.");
+      return;
+    }
+
+    const scopeLabel = appliesToClinic ? "datos y logo de la clínica" : "datos y logo profesional";
+    const reason = window.prompt(
+      `Autorizar cambio excepcional para ${user.name} (${scopeLabel}).\n\nOmite la espera de 15 días. Motivo (opcional):`,
+      ""
+    );
+    if (reason === null) return;
+
+    if (!window.confirm(`¿Confirmar autorización excepcional para ${user.name}? Podrá editar ${scopeLabel} de inmediato.`)) {
+      return;
+    }
+
+    (async () => {
+      try {
+        const payload = { scopes: ["info", "logo"] as const, reason: reason.trim() || undefined };
+        const response = appliesToClinic
+          ? await api.post<{ success: boolean; message?: string }>(`/clinics/${user.clinicId}/reset-edit-cooldown`, payload)
+          : await api.post<{ success: boolean; message?: string }>(`/professionals/${user.id}/reset-edit-cooldown`, payload);
+
+        if (response.success && response.data?.success) {
+          void postAuditLog({
+            action: "RESET_EDIT_COOLDOWN",
+            resourceType: appliesToClinic ? "clinic" : "user",
+            resourceId: appliesToClinic ? user.clinicId! : user.id,
+            details: {
+              action: appliesToClinic ? "reset_clinic_edit_cooldown" : "reset_professional_edit_cooldown",
+              targetUserId: user.id,
+              targetUserName: user.name,
+              targetUserEmail: user.email,
+              reason: reason.trim() || null,
+            },
+          });
+          alert(response.data.message || "Autorización excepcional aplicada.");
+        } else {
+          alert(response.error || response.data?.message || "Error al autorizar el cambio excepcional.");
+        }
+      } catch (error) {
+        console.error("Error autorizando cambio excepcional:", error);
+        alert("Error al autorizar el cambio excepcional.");
+      }
+    })();
+  };
+
   const handleDeleteUser = (user: User) => {
     if (!window.confirm(`¿Estás seguro de que deseas ELIMINAR permanentemente la cuenta de ${user.name}? Esta acción es irreversible y eliminará todos los datos del usuario.`)) {
       return;
@@ -1794,7 +1903,7 @@ const UsersPage = () => {
       try {
         const response = await api.delete<{ success: boolean; message?: string }>(`/users/${user.id}`);
         if (response.success && response.data?.success) {
-          setAllUsers((prev) => prev.filter((u) => u.id !== user.id));
+          await fetchUsers();
 
           void postAuditLog({
             action: "DELETE_USER",
@@ -1921,8 +2030,8 @@ const UsersPage = () => {
 
         {/* Solicitudes de recuperación de contraseña (solo super_admin, admin) */}
         {(isSuperAdmin || currentUser?.role === "admin") && pendingPasswordResets.length > 0 && (
-          <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-6">
-            <h3 className="text-sm font-semibold text-amber-800 mb-3 flex items-center gap-2">
+          <div className={`${semanticAlertWarningClass} !p-4 mb-6`}>
+            <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
               </svg>
@@ -1930,7 +2039,7 @@ const UsersPage = () => {
             </h3>
             <div className="space-y-2">
               {pendingPasswordResets.map((req) => (
-                <div key={req.id} className="flex flex-wrap items-center justify-between gap-2 bg-white rounded-lg p-3 border border-amber-100">
+                <div key={req.id} className="flex flex-wrap items-center justify-between gap-2 bg-brand-surface rounded-lg p-3 border border-brand-border">
                   <div>
                     <span className="font-medium text-brand-ink">{req.userName || "—"}</span>
                     <span className="text-gray-500 text-sm ml-2">({req.email})</span>
@@ -1941,13 +2050,13 @@ const UsersPage = () => {
                   <div className="flex gap-2">
                     <button
                       onClick={() => handleApprovePasswordReset(req.id)}
-                      className="px-3 py-1.5 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700"
+                      className="px-3 py-1.5 bg-brand-ink text-brand-ink-fg text-sm font-medium rounded-lg hover:bg-brand-ink-hover"
                     >
                       Aprobar
                     </button>
                     <button
                       onClick={() => handleRejectPasswordReset(req.id)}
-                      className="px-3 py-1.5 bg-red-100 text-red-700 text-sm font-medium rounded-lg hover:bg-red-200"
+                      className={`px-3 py-1.5 text-sm font-medium rounded-lg border border-semantic-error bg-semantic-error-bg text-semantic-error hover:opacity-90`}
                     >
                       Rechazar
                     </button>
@@ -1960,8 +2069,8 @@ const UsersPage = () => {
 
         {/* Listas de registro pendientes (solo super_admin) - enviadas por vendedores/soporte */}
         {isSuperAdmin && pendingRegistrationLists.length > 0 && (
-          <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-6">
-            <h3 className="text-sm font-semibold text-blue-800 mb-3 flex items-center gap-2">
+          <div className={`${semanticAlertInfoClass} !p-4 mb-6`}>
+            <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
               </svg>
@@ -1991,13 +2100,13 @@ const UsersPage = () => {
                     </button>
                     <button
                       onClick={() => handleApproveRegistrationList(list.id)}
-                      className="px-3 py-1.5 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700"
+                      className="px-3 py-1.5 bg-brand-ink text-brand-ink-fg text-sm font-medium rounded-lg hover:bg-brand-ink-hover"
                     >
                       Aprobar
                     </button>
                     <button
                       onClick={() => handleRejectRegistrationList(list.id)}
-                      className="px-3 py-1.5 bg-red-100 text-red-700 text-sm font-medium rounded-lg hover:bg-red-200"
+                      className={`px-3 py-1.5 text-sm font-medium rounded-lg border border-semantic-error bg-semantic-error-bg text-semantic-error hover:opacity-90`}
                     >
                       Rechazar
                     </button>
@@ -2473,23 +2582,30 @@ const UsersPage = () => {
           >
             <div className="py-1">
               {isSuperAdmin && (u.isBanned ? (
-                <button onClick={() => { handleUnbanUser(u); closeMenu(); }} className="w-full text-left px-4 py-2 text-sm text-green-700 hover:bg-green-50">Desbanear cuenta</button>
+                <button onClick={() => { handleUnbanUser(u); closeMenu(); }} className="w-full text-left px-4 py-2 text-sm text-semantic-success hover:bg-semantic-success-bg">Desbanear cuenta</button>
               ) : (
-                <button onClick={() => { handleBanUser(u); closeMenu(); }} className="w-full text-left px-4 py-2 text-sm text-red-700 hover:bg-red-50">Banear cuenta</button>
+                <button onClick={() => { handleBanUser(u); closeMenu(); }} className="w-full text-left px-4 py-2 text-sm text-semantic-error hover:bg-semantic-error-bg">Banear cuenta</button>
               ))}
               {u.isBlocked ? (
-                <button onClick={() => { handleUnblockUser(u); closeMenu(); }} className="w-full text-left px-4 py-2 text-sm text-green-700 hover:bg-green-50">Desbloquear cuenta</button>
+                <button onClick={() => { handleUnblockUser(u); closeMenu(); }} className="w-full text-left px-4 py-2 text-sm text-semantic-success hover:bg-semantic-success-bg">Desbloquear cuenta</button>
               ) : (
                 <button onClick={() => { handleBlockUser(u); closeMenu(); }} className="w-full text-left px-4 py-2 text-sm text-orange-700 hover:bg-orange-50">Bloquear cuenta</button>
               )}
               {u.isEnabled === false ? (
-                <button onClick={() => { handleEnableUser(u); closeMenu(); }} className="w-full text-left px-4 py-2 text-sm text-green-700 hover:bg-green-50 font-medium">✅ Habilitar cuenta</button>
+                <button onClick={() => { handleEnableUser(u); closeMenu(); }} className="w-full text-left px-4 py-2 text-sm text-semantic-success hover:bg-semantic-success-bg font-medium">✅ Habilitar cuenta</button>
               ) : (
                 <button onClick={() => { handleDisableUser(u); closeMenu(); }} className="w-full text-left px-4 py-2 text-sm text-yellow-700 hover:bg-yellow-50 font-medium">⚠️ Deshabilitar cuenta</button>
               )}
+              {isSuperAdmin && ((u.role === "clinic_admin" && u.clinicId) || u.role === "podiatrist") && (
+                <button
+                  onClick={() => { handleResetEditCooldown(u); closeMenu(); }}
+                  className="w-full text-left px-4 py-2 text-sm text-blue-700 hover:bg-blue-50"
+                >
+                  Autorizar cambio excepcional (15 días)
+                </button>
+              )}
               <div className="border-t border-gray-100 my-1" />
-              <div className="border-t border-gray-100 my-1" />
-              <button onClick={() => { handleDeleteUser(u); closeMenu(); }} className="w-full text-left px-4 py-2 text-sm text-red-700 hover:bg-red-50">Eliminar cuenta</button>
+              <button onClick={() => { handleDeleteUser(u); closeMenu(); }} className="w-full text-left px-4 py-2 text-sm text-semantic-error hover:bg-semantic-error-bg">Eliminar cuenta</button>
             </div>
           </div>,
           document.body

@@ -13,6 +13,17 @@ import {
   type CampaignWebRecipient,
 } from "../lib/whatsapp-web-link";
 import { useTenantCountry } from "../hooks/use-tenant-country";
+import {
+  whatsappButtonClass,
+  whatsappButtonSmClass,
+  whatsappButtonXsClass,
+  whatsappInputBorderClass,
+  whatsappListClass,
+  whatsappMutedTextClass,
+  whatsappOutlineButtonClass,
+  whatsappPanelClass,
+  whatsappPanelInnerClass,
+} from "../lib/form-field-classes";
 
 interface Campaign {
   id: string;
@@ -174,11 +185,11 @@ const WhatsAppCampaignsPage = () => {
         </div>
       )}
 
-      <div className="bg-emerald-50 dark:bg-emerald-950/30 rounded-xl border border-emerald-200 dark:border-emerald-900/50 p-6 mb-6 space-y-4">
+      <div className={`${whatsappPanelClass} mb-6 space-y-4`}>
         <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
           <div>
             <h3 className="font-semibold text-brand-ink">Campañas por WhatsApp Web</h3>
-            <p className="text-sm text-emerald-900/80 dark:text-emerald-100/80 mt-1 max-w-2xl">
+            <p className={`text-sm mt-1 max-w-2xl opacity-90 ${whatsappMutedTextClass}`}>
               Crea el borrador del mensaje y envíalo paciente a paciente con{" "}
               <code className="text-xs">wa.me</code>. Sin configurar Meta: tú pulsas Enviar en WhatsApp.
             </p>
@@ -187,26 +198,26 @@ const WhatsAppCampaignsPage = () => {
             href="https://web.whatsapp.com"
             target="_blank"
             rel="noopener noreferrer"
-            className="shrink-0 inline-flex items-center justify-center px-4 py-2 rounded-lg bg-[#25D366] text-white text-sm font-medium hover:opacity-90"
+            className={`shrink-0 ${whatsappButtonClass}`}
           >
             Abrir WhatsApp Web
           </a>
         </div>
 
-        <div className="bg-white/70 dark:bg-gray-900/50 rounded-lg border border-emerald-100 dark:border-emerald-900/40 p-4 space-y-3">
+        <div className={`${whatsappPanelInnerClass} space-y-3`}>
           <h4 className="text-sm font-medium text-brand-ink">Nueva campaña (borrador)</h4>
           <input
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder="Nombre interno (ej. Promo verano)"
-            className="w-full px-3 py-2 border border-emerald-200 dark:border-emerald-900/60 rounded-lg bg-white dark:bg-gray-950 text-brand-ink"
+            className={`w-full px-3 py-2 ${whatsappInputBorderClass} bg-brand-surface text-brand-ink`}
           />
           <textarea
             value={messageBody}
             onChange={(e) => setMessageBody(e.target.value)}
             placeholder={`Mensaje con variables, ej:\nHola {{nombre}}, le informamos que...`}
             rows={5}
-            className="w-full px-3 py-2 border border-emerald-200 dark:border-emerald-900/60 rounded-lg bg-white dark:bg-gray-950 text-sm text-brand-ink"
+            className={`w-full px-3 py-2 ${whatsappInputBorderClass} bg-brand-surface text-sm text-brand-ink`}
           />
           <p className="text-xs text-brand-muted">
             Variables: <code>{"{{nombre}}"}</code>, <code>{"{{apellido}}"}</code>,{" "}
@@ -221,7 +232,7 @@ const WhatsAppCampaignsPage = () => {
             />
             Solo pacientes de mi clínica
           </label>
-          <p className="text-sm text-emerald-800 dark:text-emerald-200">
+          <p className={`text-sm ${whatsappMutedTextClass}`}>
             Destinatarios con teléfono válido: <strong>{previewRecipients.length}</strong>
             {previewRecipients.length === 0 && patients.length > 0 && (
               <span className="block text-xs text-amber-700 dark:text-amber-300 mt-1">
@@ -246,7 +257,7 @@ const WhatsAppCampaignsPage = () => {
         </div>
 
         {webAssistant && activeAssistantCampaign && assistantCurrent && (
-          <div className="rounded-lg border border-emerald-300 dark:border-emerald-800 bg-brand-surface p-4 space-y-3">
+          <div className={`${whatsappPanelInnerClass} space-y-3`}>
             <p className="text-sm font-medium text-brand-ink">
               Asistente de envío — {activeAssistantCampaign.name}
             </p>
@@ -264,7 +275,7 @@ const WhatsAppCampaignsPage = () => {
               <button
                 type="button"
                 onClick={() => openWaMe(activeAssistantCampaign, assistantCurrent)}
-                className="px-4 py-2 bg-[#25D366] text-white rounded-lg text-sm font-medium"
+                className={whatsappButtonClass}
               >
                 Abrir WhatsApp
               </button>
@@ -299,7 +310,7 @@ const WhatsAppCampaignsPage = () => {
           {loading ? (
             <p className="text-sm text-gray-500">Cargando…</p>
           ) : (
-            <ul className="divide-y divide-emerald-100 dark:divide-emerald-900/40 bg-brand-surface rounded-lg border border-emerald-100 dark:border-emerald-900/40 overflow-hidden">
+            <ul className={whatsappListClass}>
               {campaigns
                 .filter((c) => c.status === "draft")
                 .map((c) => {
@@ -320,14 +331,14 @@ const WhatsAppCampaignsPage = () => {
                             type="button"
                             disabled={recipients.length === 0}
                             onClick={() => setWebAssistant({ campaignId: c.id, index: 0 })}
-                            className="px-3 py-1.5 bg-[#25D366] text-white rounded-lg text-sm disabled:opacity-40"
+                            className={whatsappButtonSmClass}
                           >
                             Asistente de envío
                           </button>
                           <button
                             type="button"
                             onClick={() => setExpandedWebId(expanded ? null : c.id)}
-                            className="px-3 py-1.5 border border-emerald-300 dark:border-emerald-800 rounded-lg text-sm"
+                            className={whatsappOutlineButtonClass}
                           >
                             {expanded ? "Ocultar lista" : "Ver lista"}
                           </button>
@@ -349,7 +360,7 @@ const WhatsAppCampaignsPage = () => {
                                 <button
                                   type="button"
                                   onClick={() => openWaMe(c, r)}
-                                  className="px-3 py-1 bg-[#25D366] text-white rounded text-xs font-medium"
+                                  className={whatsappButtonXsClass}
                                 >
                                   WhatsApp
                                 </button>

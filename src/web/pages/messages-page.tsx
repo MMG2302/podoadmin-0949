@@ -5,6 +5,10 @@ import { useAuth } from "../contexts/auth-context";
 import { useRefreshOnFocus } from "../hooks/use-refresh-on-focus";
 import { api } from "../lib/api-client";
 import { SentMessage } from "../types/message";
+import {
+  semanticAlertErrorClass,
+  semanticAlertSuccessClass,
+} from "../lib/form-field-classes";
 
 type RecipientMode = "all" | "specific" | "single";
 type ViewMode = "compose" | "sent";
@@ -206,7 +210,7 @@ const MessagesPage = () => {
 
         {/* Success Message */}
         {successMessage && (
-          <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-xl flex items-center gap-3">
+          <div className={`${semanticAlertSuccessClass} rounded-xl flex items-center gap-3`}>
             <svg className="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
             </svg>
@@ -216,7 +220,7 @@ const MessagesPage = () => {
 
         {/* Error Message */}
         {error && (
-          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl flex items-center gap-3">
+          <div className={`${semanticAlertErrorClass} rounded-xl flex items-center gap-3`}>
             <svg className="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>

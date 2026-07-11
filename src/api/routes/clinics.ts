@@ -12,29 +12,31 @@ import { purgeLogoR2 } from '../utils/r2-purge';
 import { getSafeUserAgent } from '../utils/request-headers';
 import { sanitizePathParam } from '../utils/sanitization';
 import { checkLogoUploadRateLimit } from '../utils/action-rate-limit';
+import {
+  EDIT_COOLDOWN_MS,
+  canBypassEditCooldown,
+  getNextEditAllowedAt,
+  isWithinEditCooldown,
+  parseEditCooldownScopes,
+} from '../utils/edit-cooldown';
 import { validateData, createClinicSchema } from '../utils/validation';
 
 const clinicsRoutes = new Hono();
 
-/** Cooldown: 15 días entre cambios de datos de clínica y de logo. super_admin puede omitir. */
+/** @deprecated use edit-cooldown utils */
 const COOLDOWN_DAYS = 15;
-const COOLDOWN_MS = COOLDOWN_DAYS * 24 * 60 * 60 * 1000;
+const COOLDOWN_MS = EDIT_COOLDOWN_MS;
 
 function canBypassCooldown(user: { role: string }): boolean {
-  return user.role === 'super_admin';
+  return canBypassEditCooldown(user);
 }
 
 function isWithinCooldown(lastUpdatedAt: string | null | undefined): boolean {
-  if (!lastUpdatedAt) return false;
-  const last = new Date(lastUpdatedAt).getTime();
-  return Date.now() - last < COOLDOWN_MS;
+  return isWithinEditCooldown(lastUpdatedAt);
 }
 
 function getNextAllowedAt(lastUpdatedAt: string | null | undefined): string | null {
-  if (!lastUpdatedAt) return null;
-  const last = new Date(lastUpdatedAt).getTime();
-  const next = last + COOLDOWN_MS;
-  return new Date(next).toISOString();
+  return getNextEditAllowedAt(lastUpdatedAt);
 }
 
 /** Valida clinicId del path; devuelve null si es inválido (evita inyección / log forging). */
@@ -399,9 +401,10 @@ clinicsRoutes.get('/:clinicId/logo', async (c) => {
   if (!user || !canAccessClinic(user, clinicId)) {
     return c.json({ error: 'Acceso denegado' }, 403);
   }
-  const rows = await database.select({ logo: clinicsTable.logo }).from(clinicsTable).where(eq(clinicsTable.clinicId, clinicId)).limit(1);
-  const logo = resolveLogoForClient(rows[0]?.logo ?? null, 'clinic', clinicId);
-  return c.json({ success: true, logo });
+  const rows = await database.select({ logo: clinicsTable.logo, logoUpdatedAt: clinicsTable.logoUpdatedAt }).from(clinicsTable).where(eq(clinicsTable.clinicId, clinicId)).limit(1);
+  const row = rows[0];
+  const logo = resolveLogoForClient(row?.logo ?? null, 'clinic', clinicId, row?.logoUpdatedAt);
+  return c.json({ success: true, logo, logoUpdatedAt: row?.logoUpdatedAt ?? null });
 });
 
 /**
@@ -512,6 +515,47 @@ clinicsRoutes.delete('/:clinicId/logo', async (c) => {
   });
   const nextLogoAt = new Date(Date.now() + COOLDOWN_MS).toISOString();
   return c.json({ success: true, logoBlockedUntil: nextLogoAt });
+});
+
+/**
+ * POST /api/clinics/:clinicId/reset-edit-cooldown
+ * Super admin: autoriza cambios excepcionales de datos/logo de clínica antes de 15 días.
+ */
+clinicsRoutes.post('/:clinicId/reset-edit-cooldown', requireRole('super_admin'), async (c) => {
+  const clinicId = getValidatedClinicId(c);
+  if (!clinicId) return c.json({ error: 'clinicId inválido' }, 400);
+  const user = c.get('user')!;
+  const body = await c.req.json().catch(() => ({})) as { scopes?: unknown; reason?: string };
+  const scopes = parseEditCooldownScopes(body.scopes);
+  const rows = await database.select().from(clinicsTable).where(eq(clinicsTable.clinicId, clinicId)).limit(1);
+  if (!rows[0]) return c.json({ error: 'Clínica no encontrada' }, 404);
+
+  const updates: { infoUpdatedAt?: null; logoUpdatedAt?: null } = {};
+  if (scopes.includes('info')) updates.infoUpdatedAt = null;
+  if (scopes.includes('logo')) updates.logoUpdatedAt = null;
+  await database.update(clinicsTable).set(updates).where(eq(clinicsTable.clinicId, clinicId));
+
+  await logAuditEvent({
+    userId: user.userId,
+    action: 'RESET_EDIT_COOLDOWN',
+    resourceType: 'clinic',
+    resourceId: clinicId,
+    details: {
+      action: 'reset_clinic_edit_cooldown',
+      clinicId,
+      scopes,
+      reason: typeof body.reason === 'string' && body.reason.trim() ? body.reason.trim().slice(0, 500) : null,
+    },
+    ipAddress: getClientIP(c.req.raw.headers),
+    userAgent: getSafeUserAgent(c),
+    clinicId,
+  });
+
+  return c.json({
+    success: true,
+    message: 'Autorización excepcional aplicada. La clínica puede editar de nuevo.',
+    resetScopes: scopes,
+  });
 });
 
 export default clinicsRoutes;

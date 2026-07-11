@@ -1,5 +1,9 @@
 import { useEffect, useState, useRef } from "react";
 import { api } from "../../lib/api-client";
+import {
+  semanticAlertErrorClass,
+  semanticAlertWarningClass,
+} from "../../lib/form-field-classes";
 import type { Patient, ClinicalAlert } from "../../types/clinical";
 
 export function PatientClinicalAlertsSection({
@@ -48,6 +52,13 @@ export function PatientClinicalAlertsSection({
     void save(next);
   };
 
+  const alertItemClass = (severity: ClinicalAlert["severity"]) => {
+    const base = "text-sm flex justify-between gap-2";
+    if (severity === "high") return `${semanticAlertErrorClass} ${base} !py-2`;
+    if (severity === "medium") return `${semanticAlertWarningClass} ${base} !py-2`;
+    return `${base} px-3 py-2 rounded-lg bg-brand-canvas text-brand-muted border border-brand-border`;
+  };
+
   return (
     <div>
       <h4 className="font-medium text-brand-ink mb-3">Alertas clínicas</h4>
@@ -55,13 +66,7 @@ export function PatientClinicalAlertsSection({
         {alerts.map((a, i) => (
           <li
             key={`${a.type}-${i}`}
-            className={`text-sm px-3 py-2 rounded-lg flex justify-between gap-2 ${
-              a.severity === "high"
-                ? "bg-red-50 text-red-800"
-                : a.severity === "medium"
-                  ? "bg-amber-50 text-amber-900"
-                  : "bg-gray-50 text-gray-700"
-            }`}
+            className={alertItemClass(a.severity)}
           >
             <span>
               <strong>{a.type}:</strong> {a.message}

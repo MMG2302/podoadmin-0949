@@ -30,6 +30,9 @@ describe('r2-media references', () => {
     expect(resolveLogoForClient(toR2Reference('logos/clinic/x.webp'), 'clinic', 'x')).toBe(
       clinicLogoFilePath('x')
     );
+    expect(
+      resolveLogoForClient(toR2Reference('logos/clinic/x.webp'), 'clinic', 'x', '2026-01-01T00:00:00.000Z')
+    ).toBe(`${clinicLogoFilePath('x')}?v=2026-01-01T00%3A00%3A00.000Z`);
     expect(resolveLogoForClient('data:image/webp;base64,abc', 'clinic', 'x')).toBe(
       'data:image/webp;base64,abc'
     );

@@ -6,6 +6,10 @@ import { useRefreshOnFocus } from "../hooks/use-refresh-on-focus";
 import { useClinicalListPage } from "../hooks/use-clinical-list-page";
 import { invalidateClinicalListCache } from "../lib/clinical-list-cache";
 import { api } from "../lib/api-client";
+import {
+  semanticAlertErrorClass,
+  semanticAlertInfoClass,
+} from "../lib/form-field-classes";
 import type { Patient } from "../types/clinical";
 
 interface PodiatristStats {
@@ -59,8 +63,8 @@ const ReassignPatientModal = ({
           <p className="text-sm text-gray-500 mt-1">{patient.firstName} {patient.lastName}</p>
         </div>
         <div className="p-6 space-y-4">
-          <div className="bg-blue-50 border border-blue-100 rounded-lg p-4">
-            <p className="text-sm text-blue-700">
+          <div className={semanticAlertInfoClass}>
+            <p className="text-sm">
               <strong>Caso de uso:</strong> Cuando un podólogo no puede atender citas por ausencia o indisponibilidad, puede reasignar sus pacientes a otro profesional de la clínica.
             </p>
           </div>
@@ -864,7 +868,7 @@ const ClinicPage = () => {
                 />
               </div>
               {podiatristError && (
-                <div className="text-sm text-red-600 bg-red-50 border border-red-100 rounded-lg p-3">{podiatristError}</div>
+                <div className={semanticAlertErrorClass}>{podiatristError}</div>
               )}
               <div className="flex gap-3 pt-4">
                 <button
@@ -927,7 +931,7 @@ const ClinicPage = () => {
                 />
               </div>
               {receptionistError && (
-                <div className="text-sm text-red-600 bg-red-50 border border-red-100 rounded-lg p-3">{receptionistError}</div>
+                <div className={semanticAlertErrorClass}>{receptionistError}</div>
               )}
               <div className="flex gap-3 pt-4">
                 <button
@@ -985,7 +989,7 @@ const ClinicPage = () => {
                 })
               )}
               {editAssignmentsError && (
-                <div className="text-sm text-red-600 bg-red-50 border border-red-100 rounded-lg p-3">{editAssignmentsError}</div>
+                <div className={semanticAlertErrorClass}>{editAssignmentsError}</div>
               )}
               <div className="flex gap-3 pt-4">
                 <button

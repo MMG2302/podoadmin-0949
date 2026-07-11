@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { formErrorClass } from "../lib/form-field-classes";
 import { api } from "../lib/api-client";
 import { getPostLoginPath, normalizeUserSystemAccess, type User } from "../contexts/auth-context";
 
@@ -35,7 +36,7 @@ const GoogleCallbackPage = () => {
       <div className="text-center max-w-md">
         {error ? (
           <>
-            <p className="text-red-600 mb-4">{error}</p>
+            <p className={`${formErrorClass} mb-4`}>{error}</p>
             <a href="/login" className="text-brand-ink underline">
               Volver al inicio de sesión
             </a>

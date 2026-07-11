@@ -94,6 +94,10 @@ export const createdUsers = sqliteTable('created_users', {
   // Ciclo cancelación: 1 mes grace → bloqueo → 7 meses después borrado permanente
   disabledAt: integer('disabled_at'), // Timestamp (ms) cuando se deshabilitó; null = nunca deshabilitado
   mustChangePassword: integer('must_change_password', { mode: 'boolean' }).notNull().default(false), // Contraseña temporal: obligar cambio en primer login
+  lastAccessCountry: text('last_access_country'),
+  lastAccessState: text('last_access_state'),
+  lastAccessCity: text('last_access_city'),
+  lastAccessAt: text('last_access_at'),
 });
 
 // Tabla de créditos de usuario
@@ -144,6 +148,8 @@ export const clinics = sqliteTable('clinics', {
   cofeprisRegistration: text('cofepris_registration'),
   clinicalLayoutJson: text('clinical_layout_json'),
   workspaceWatermarkJson: text('workspace_watermark_json'),
+  dashboardLogoEnabled: integer('dashboard_logo_enabled', { mode: 'boolean' }).notNull().default(false),
+  dashboardLogoJson: text('dashboard_logo_json'),
   checkoutTariffsJson: text('checkout_tariffs_json'),
   createdAt: text('created_at').notNull(),
 });
@@ -313,7 +319,10 @@ export const professionalInfo = sqliteTable('professional_info', {
   consentTextVersion: integer('consent_text_version').notNull().default(0),
   clinicalLayoutJson: text('clinical_layout_json'),
   workspaceWatermarkJson: text('workspace_watermark_json'),
+  dashboardLogoEnabled: integer('dashboard_logo_enabled', { mode: 'boolean' }).notNull().default(false),
+  dashboardLogoJson: text('dashboard_logo_json'),
   checkoutTariffsJson: text('checkout_tariffs_json'),
+  infoUpdatedAt: text('info_updated_at'),
 });
 
 // Licencia profesional (todos los podólogos)
@@ -332,7 +341,8 @@ export const professionalCredentials = sqliteTable('professional_credentials', {
 // Logos profesionales (podólogos independientes)
 export const professionalLogos = sqliteTable('professional_logos', {
   userId: text('user_id').primaryKey(),
-  logo: text('logo').notNull(), // base64
+  logo: text('logo').notNull(), // base64 o r2://
+  updatedAt: text('updated_at'),
 });
 
 // Solicitudes de recuperación de contraseña (requieren revisión por admin/soporte)
@@ -720,4 +730,77 @@ export const trialSmsOtp = sqliteTable('trial_sms_otp', {
   expiresAt: integer('expires_at').notNull(),
   attempts: integer('attempts').notNull().default(0),
   createdAt: text('created_at').notNull(),
+});
+
+/** Eventos de acceso con geolocalización (login, etc.). */
+export const userAccessEvents = sqliteTable('user_access_events', {
+  id: text('id').primaryKey(),
+  userId: text('user_id'),
+  role: text('role'),
+  eventType: text('event_type').notNull(),
+  ipAddress: text('ip_address'),
+  countryCode: text('country_code'),
+  state: text('state'),
+  city: text('city'),
+  isp: text('isp'),
+  riskScore: integer('risk_score'),
+  isVpn: integer('is_vpn', { mode: 'boolean' }).notNull().default(false),
+  ipqueryJson: text('ipquery_json'),
+  userAgent: text('user_agent'),
+  createdAt: text('created_at').notNull(),
+});
+
+/** Proveedores que pagan por anuncios geolocalizados. */
+export const advertisers = sqliteTable('advertisers', {
+  id: text('id').primaryKey(),
+  name: text('name').notNull(),
+  contactEmail: text('contact_email'),
+  contactPhone: text('contact_phone'),
+  website: text('website'),
+  notes: text('notes'),
+  status: text('status').notNull().default('active'),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+});
+
+/** Campañas de anuncios por estado/provincia. */
+export const locationAnnouncements = sqliteTable('location_announcements', {
+  id: text('id').primaryKey(),
+  advertiserId: text('advertiser_id').notNull(),
+  title: text('title').notNull(),
+  body: text('body').notNull(),
+  targetCountry: text('target_country').notNull(),
+  targetState: text('target_state').notNull(),
+  externalUrl: text('external_url').notNull(),
+  promoCode: text('promo_code'),
+  ctaLabel: text('cta_label').notNull().default('Ver más'),
+  bannerImageUrl: text('banner_image_url'),
+  pricePaid: real('price_paid'),
+  startsAt: integer('starts_at').notNull(),
+  endsAt: integer('ends_at').notNull(),
+  status: text('status').notNull().default('draft'),
+  createdBy: text('created_by').notNull(),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+});
+
+/** Leads "Me interesa" para el anunciante. */
+export const announcementInterests = sqliteTable('announcement_interests', {
+  id: text('id').primaryKey(),
+  announcementId: text('announcement_id').notNull(),
+  userId: text('user_id').notNull(),
+  userState: text('user_state'),
+  userCountry: text('user_country'),
+  userName: text('user_name'),
+  userEmail: text('user_email'),
+  status: text('status').notNull().default('interested'),
+  createdAt: text('created_at').notNull(),
+});
+
+/** Usuario cerró el banner de un anuncio. */
+export const announcementDismissals = sqliteTable('announcement_dismissals', {
+  id: text('id').primaryKey(),
+  announcementId: text('announcement_id').notNull(),
+  userId: text('user_id').notNull(),
+  dismissedAt: text('dismissed_at').notNull(),
 });

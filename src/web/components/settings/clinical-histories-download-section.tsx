@@ -5,6 +5,7 @@ import { postAuditLog } from "../../lib/audit-client";
 import { normalizeClinicalLayout } from "../../types/clinical-layout";
 import type { ClinicalLayoutConfig } from "../../types/clinical-layout";
 import type { ClinicalSession, Patient } from "../../types/clinical";
+import { formErrorClass, formSuccessClass } from "../../lib/form-field-classes";
 import {
   buildCombinedPodiatryHistoriesPrintHtml,
   buildPodiatryPrintInputsFromBundle,
@@ -202,8 +203,8 @@ export function ClinicalHistoriesDownloadSection() {
         </p>
       )}
 
-      {error && <p className="text-sm text-semantic-error">{error}</p>}
-      {success && <p className="text-sm text-green-700 dark:text-green-400">{success}</p>}
+      {error && <p className={formErrorClass}>{error}</p>}
+      {success && <p className={formSuccessClass}>{success}</p>}
 
       <div className="flex flex-wrap gap-3">
         <button

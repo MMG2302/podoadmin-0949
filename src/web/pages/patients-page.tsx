@@ -30,7 +30,7 @@ import {
 } from "../components/patients/patient-antecedents-fields";
 import { useTenantCountry } from "../hooks/use-tenant-country";
 import { formatPhoneDisplay, phonePlaceholderForCountry } from "../lib/whatsapp-web-link";
-import { formHintClass, formLabelClass } from "../lib/form-field-classes";
+import { formErrorClass, formHintClass, formLabelClass, formSuccessClass, semanticAlertErrorClass, semanticAlertWarningClass } from "../lib/form-field-classes";
 
 interface PatientFormData {
   firstName: string;
@@ -559,10 +559,10 @@ const PatientsPage = () => {
                 <div className="flex items-center gap-2 text-sm">
                   {selectedPatient.consent.given ? (
                     <>
-                      <svg className="w-5 h-5 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <svg className="w-5 h-5 text-semantic-success" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                       </svg>
-                      <span className="text-green-700">{t.patients.consentGiven}</span>
+                      <span className={formSuccessClass}>{t.patients.consentGiven}</span>
                       {selectedPatient.consent.date && (
                         <span className="text-gray-500">
                           ({formatDate(selectedPatient.consent.date)})
@@ -571,10 +571,10 @@ const PatientsPage = () => {
                     </>
                   ) : (
                     <>
-                      <svg className="w-5 h-5 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <svg className="w-5 h-5 text-semantic-error" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                       </svg>
-                      <span className="text-red-700">Sin consentimiento</span>
+                      <span className={formErrorClass}>Sin consentimiento</span>
                     </>
                   )}
                 </div>
@@ -705,14 +705,14 @@ const PatientsPage = () => {
             <form id="patient-form" onSubmit={handleSubmit} className="space-y-5 sm:space-y-6 pb-safe">
               {/* Immutable fields notice when editing */}
               {editingPatient && (
-                <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+                <div className={semanticAlertWarningClass}>
                   <div className="flex items-start gap-3">
-                    <svg className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <svg className="w-5 h-5 text-semantic-warning flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
                     </svg>
                     <div>
-                      <p className="text-sm font-medium text-amber-800">Campos protegidos</p>
-                      <p className="text-sm text-amber-700 mt-0.5">
+                      <p className="text-sm font-medium">Campos protegidos</p>
+                      <p className="text-sm mt-0.5">
                         Los campos con 🔒 no pueden ser modificados después de la creación para garantizar la integridad de los datos.
                       </p>
                     </div>
@@ -756,13 +756,13 @@ const PatientsPage = () => {
                       editingPatient
                         ? "bg-brand-canvas border-brand-border text-brand-muted cursor-not-allowed"
                         : formErrors.firstName
-                        ? "border-red-500 focus:border-red-500 focus:ring-1 focus:ring-red-500"
+                        ? "border-semantic-error focus:border-semantic-error focus:ring-1 focus:ring-semantic-error"
                         : "border-brand-border bg-brand-surface text-brand-ink focus:border-brand-ink focus:ring-1 focus:ring-brand-ink placeholder:text-gray-400 dark:placeholder:text-gray-500"
                     }`}
                     title={editingPatient ? "Este campo no puede ser modificado después de la creación del paciente" : ""}
                   />
                   {formErrors.firstName && (
-                    <p className="mt-1 text-xs text-red-600">{formErrors.firstName}</p>
+                    <p className={`mt-1 text-xs ${formErrorClass}`}>{formErrors.firstName}</p>
                   )}
                 </div>
                 <div>
@@ -780,13 +780,13 @@ const PatientsPage = () => {
                       editingPatient
                         ? "bg-brand-canvas border-brand-border text-brand-muted cursor-not-allowed"
                         : formErrors.lastName
-                        ? "border-red-500 focus:border-red-500 focus:ring-1 focus:ring-red-500"
+                        ? "border-semantic-error focus:border-semantic-error focus:ring-1 focus:ring-semantic-error"
                         : "border-brand-border bg-brand-surface text-brand-ink focus:border-brand-ink focus:ring-1 focus:ring-brand-ink placeholder:text-gray-400 dark:placeholder:text-gray-500"
                     }`}
                     title={editingPatient ? "Este campo no puede ser modificado después de la creación del paciente" : ""}
                   />
                   {formErrors.lastName && (
-                    <p className="mt-1 text-xs text-red-600">{formErrors.lastName}</p>
+                    <p className={`mt-1 text-xs ${formErrorClass}`}>{formErrors.lastName}</p>
                   )}
                 </div>
                 <div>
@@ -804,13 +804,13 @@ const PatientsPage = () => {
                       editingPatient
                         ? "bg-brand-canvas border-brand-border text-brand-muted cursor-not-allowed"
                         : formErrors.dateOfBirth
-                        ? "border-red-500 focus:border-red-500 focus:ring-1 focus:ring-red-500"
+                        ? "border-semantic-error focus:border-semantic-error focus:ring-1 focus:ring-semantic-error"
                         : "border-brand-border bg-brand-surface text-brand-ink focus:border-brand-ink focus:ring-1 focus:ring-brand-ink placeholder:text-gray-400 dark:placeholder:text-gray-500"
                     }`}
                     title={editingPatient ? "Este campo no puede ser modificado después de la creación del paciente" : ""}
                   />
                   {formErrors.dateOfBirth && (
-                    <p className="mt-1 text-xs text-red-600">{formErrors.dateOfBirth}</p>
+                    <p className={`mt-1 text-xs ${formErrorClass}`}>{formErrors.dateOfBirth}</p>
                   )}
                 </div>
                 <div>
@@ -827,7 +827,7 @@ const PatientsPage = () => {
                       editingPatient
                         ? "bg-brand-canvas border-brand-border text-brand-muted cursor-not-allowed"
                         : formErrors.gender
-                        ? "border-red-500 focus:border-red-500 focus:ring-1 focus:ring-red-500"
+                        ? "border-semantic-error focus:border-semantic-error focus:ring-1 focus:ring-semantic-error"
                         : "border-brand-border bg-brand-surface text-brand-ink focus:border-brand-ink focus:ring-1 focus:ring-brand-ink placeholder:text-gray-400 dark:placeholder:text-gray-500"
                     }`}
                     title={editingPatient ? "Este campo no puede ser modificado después de la creación del paciente" : ""}
@@ -856,7 +856,7 @@ const PatientsPage = () => {
                       editingPatient && editingPatient.idNumber?.trim()
                         ? "bg-brand-canvas border-brand-border text-brand-muted cursor-not-allowed"
                         : formErrors.idNumber
-                        ? "border-red-500 focus:border-red-500 focus:ring-1 focus:ring-red-500"
+                        ? "border-semantic-error focus:border-semantic-error focus:ring-1 focus:ring-semantic-error"
                         : "border-brand-border bg-brand-surface text-brand-ink focus:border-brand-ink focus:ring-1 focus:ring-brand-ink placeholder:text-gray-400 dark:placeholder:text-gray-500"
                     }`}
                     title={editingPatient && editingPatient.idNumber?.trim() ? "Este campo no puede ser modificado" : "Obligatorio. Para menores de edad, indicar el DNI del padre o tutor legal."}
@@ -865,7 +865,7 @@ const PatientsPage = () => {
                     Obligatorio para crear sesiones. Si el paciente es menor de edad, indicar el DNI del padre o tutor.
                   </p>
                   {formErrors.idNumber && (
-                    <p className="mt-1 text-xs text-red-600">{formErrors.idNumber}</p>
+                    <p className={`mt-1 text-xs ${formErrorClass}`}>{formErrors.idNumber}</p>
                   )}
                 </div>
                 {showPatientCurp && (
@@ -916,12 +916,12 @@ const PatientsPage = () => {
                     placeholder={phonePlaceholderForCountry(tenantCountry)}
                     className={`w-full px-3 py-2 border rounded-lg focus:outline-none ${
                       formErrors.phone
-                        ? "border-red-500 focus:border-red-500 focus:ring-1 focus:ring-red-500"
+                        ? "border-semantic-error focus:border-semantic-error focus:ring-1 focus:ring-semantic-error"
                         : "border-brand-border bg-brand-surface text-brand-ink focus:border-brand-ink focus:ring-1 focus:ring-brand-ink placeholder:text-gray-400 dark:placeholder:text-gray-500"
                     }`}
                   />
                   {formErrors.phone && (
-                    <p className="mt-1 text-xs text-red-600">{formErrors.phone}</p>
+                    <p className={`mt-1 text-xs ${formErrorClass}`}>{formErrors.phone}</p>
                   )}
                 </div>
                 {showPatientEmail && (
@@ -940,12 +940,12 @@ const PatientsPage = () => {
                     placeholder="paciente@ejemplo.com"
                     className={`w-full px-3 py-2 border rounded-lg focus:outline-none ${
                       formErrors.email
-                        ? "border-red-500 focus:border-red-500 focus:ring-1 focus:ring-red-500"
+                        ? "border-semantic-error focus:border-semantic-error focus:ring-1 focus:ring-semantic-error"
                         : "border-brand-border bg-brand-surface text-brand-ink focus:border-brand-ink focus:ring-1 focus:ring-brand-ink placeholder:text-gray-400 dark:placeholder:text-gray-500"
                     }`}
                   />
                   {formErrors.email && (
-                    <p className="mt-1 text-xs text-red-600">{formErrors.email}</p>
+                    <p className={`mt-1 text-xs ${formErrorClass}`}>{formErrors.email}</p>
                   )}
                 </div>
                 )}
@@ -1036,8 +1036,8 @@ const PatientsPage = () => {
                         <p className="text-sm text-brand-ink whitespace-pre-wrap">{consentText}</p>
                       </div>
                     ) : (
-                      <div className="rounded-lg border border-amber-200 bg-amber-50 p-3">
-                        <p className="text-sm text-amber-800">
+                      <div className={semanticAlertWarningClass}>
+                        <p className="text-sm">
                           No hay términos configurados. Configúralos en <strong>Configuración</strong> para que el paciente pueda aceptarlos.
                         </p>
                       </div>
@@ -1076,7 +1076,7 @@ const PatientsPage = () => {
                       </span>
                     </div>
                     {needsReconsent && (
-                      <p className="text-xs text-amber-700 bg-amber-50 border border-amber-100 rounded-lg px-3 py-2 flex items-start gap-2">
+                      <p className={`text-xs ${semanticAlertWarningClass} flex items-start gap-2 !py-2`}>
                         <svg className="w-4 h-4 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                         </svg>
@@ -1089,9 +1089,9 @@ const PatientsPage = () => {
               </div>
 
               {graceError && (
-                <div className="bg-red-50 border border-red-200 rounded-lg p-3 sm:p-4 flex gap-3">
+                <div className={`${semanticAlertErrorClass} flex gap-3`}>
                   <svg
-                    className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5"
+                    className="w-5 h-5 text-semantic-error flex-shrink-0 mt-0.5"
                     fill="none"
                     viewBox="0 0 24 24"
                     stroke="currentColor"
@@ -1104,10 +1104,10 @@ const PatientsPage = () => {
                     />
                   </svg>
                   <div>
-                    <p className="text-sm font-semibold text-red-800">
+                    <p className="text-sm font-semibold">
                       No puedes crear nuevos pacientes en este momento
                     </p>
-                    <p className="mt-1 text-sm text-red-700">
+                    <p className="mt-1 text-sm">
                       {graceError}
                     </p>
                   </div>

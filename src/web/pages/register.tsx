@@ -5,6 +5,7 @@ import { AuthPublicToolbar } from "../components/auth/auth-public-toolbar";
 import { CaptchaWidget, type CaptchaProvider } from "../components/captcha-widget";
 import { api } from "../lib/api-client";
 import { authPage as ap } from "../lib/auth-page-styles";
+import { semanticRuleOkTextClass } from "../lib/form-field-classes";
 
 type PublicConfig = {
   officialDomain?: string | null;
@@ -177,8 +178,8 @@ const Register = () => {
         {brandingPanel}
       <div className={ap.formColumnScroll}>
         <AuthPublicToolbar />
-        <div className="flex-1 flex justify-center p-8 pt-2 pb-12">
-            <div className="w-full max-w-md text-center">
+        <div className={ap.formScrollArea}>
+          <div className={`${ap.formScrollInner} text-center`}>
               <div className="mb-6 text-5xl" aria-hidden>
                 {emailVerificationSkipped ? "✓" : "✉️"}
               </div>
@@ -213,8 +214,8 @@ const Register = () => {
 
       <div className={ap.formColumnScroll}>
         <AuthPublicToolbar />
-        <div className="flex-1 flex justify-center p-8 pt-2 pb-12">
-          <div className="w-full max-w-md">
+        <div className={ap.formScrollArea}>
+          <div className={ap.formScrollInner}>
             <div className="lg:hidden text-center mb-8">
               <h1 className={ap.mobileLogo}>
                 Podo<span className="font-bold">Admin</span>
@@ -338,11 +339,11 @@ const Register = () => {
                   </div>
                   {password.length > 0 && (
                     <ul className="mt-2 text-xs text-brand-muted space-y-1">
-                      <li className={pwdRules.minLength ? "text-green-700 dark:text-green-400" : ""}>• {t.auth.passwordMinLength}</li>
-                      <li className={pwdRules.uppercase ? "text-green-700 dark:text-green-400" : ""}>• {t.auth.passwordUppercase}</li>
-                      <li className={pwdRules.lowercase ? "text-green-700 dark:text-green-400" : ""}>• {t.auth.passwordLowercase}</li>
-                      <li className={pwdRules.number ? "text-green-700 dark:text-green-400" : ""}>• {t.auth.passwordNumber}</li>
-                      <li className={pwdRules.special ? "text-green-700 dark:text-green-400" : ""}>• {t.auth.passwordSpecial}</li>
+                      <li className={pwdRules.minLength ? semanticRuleOkTextClass : ""}>• {t.auth.passwordMinLength}</li>
+                      <li className={pwdRules.uppercase ? semanticRuleOkTextClass : ""}>• {t.auth.passwordUppercase}</li>
+                      <li className={pwdRules.lowercase ? semanticRuleOkTextClass : ""}>• {t.auth.passwordLowercase}</li>
+                      <li className={pwdRules.number ? semanticRuleOkTextClass : ""}>• {t.auth.passwordNumber}</li>
+                      <li className={pwdRules.special ? semanticRuleOkTextClass : ""}>• {t.auth.passwordSpecial}</li>
                     </ul>
                   )}
                 </div>

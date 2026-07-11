@@ -189,14 +189,21 @@ export function resolveAvatarForClient(
 export function resolveLogoForClient(
   stored: string | null | undefined,
   scope: 'clinic' | 'professional',
-  id: string
+  id: string,
+  cacheVersion?: string | number | null
 ): string | null {
   if (!stored) return null;
   if (stored.startsWith('data:')) return stored;
   if (isR2Reference(stored)) {
     const key = r2KeyFromReference(stored);
-    const proxy = scope === 'clinic' ? clinicLogoFilePath(id) : professionalLogoFilePath(id);
-    return resolvePublicR2Url(key, proxy);
+    let url = resolvePublicR2Url(
+      key,
+      scope === 'clinic' ? clinicLogoFilePath(id) : professionalLogoFilePath(id)
+    );
+    if (cacheVersion != null && String(cacheVersion).length > 0) {
+      url += `${url.includes('?') ? '&' : '?'}v=${encodeURIComponent(String(cacheVersion))}`;
+    }
+    return url;
   }
   return stored;
 }

@@ -66,14 +66,19 @@ import { Router } from "wouter";
 import { getThemeSettings } from "@/lib/ui-preferences";
 import { applyPaletteStyles } from "@/lib/palette-preferences";
 import { initSentry } from "@/lib/sentry";
+import { ErrorBoundary } from "@/components/error-boundary";
 import "./styles.css";
 import App from "./app.tsx";
 import { LanguageProvider } from "./contexts/language-context";
 
 // Aplicar tema y paleta guardados antes del primer render (evita flash)
-const { mode } = getThemeSettings();
-document.documentElement.classList.toggle("dark", mode === "dark");
-applyPaletteStyles();
+try {
+  const { mode } = getThemeSettings();
+  document.documentElement.classList.toggle("dark", mode === "dark");
+  applyPaletteStyles();
+} catch (e) {
+  console.warn("No se pudo aplicar tema/paleta guardados:", e);
+}
 
 /** Elimina service workers y cachés PWA heredados (sin modo offline). */
 async function removeLegacyOfflineSupport() {
@@ -89,22 +94,42 @@ async function removeLegacyOfflineSupport() {
   }
 }
 
-async function bootstrap() {
-  // No bloquear el primer render si Sentry/config tarda (worker arrancando).
-  await Promise.race([
-    initSentry(),
-    new Promise<void>((resolve) => setTimeout(resolve, 2500)),
-  ]);
-  await removeLegacyOfflineSupport();
-  createRoot(document.getElementById("root")!).render(
+function mountApp() {
+  const rootEl = document.getElementById("root");
+  if (!rootEl) return;
+  createRoot(rootEl).render(
     <StrictMode>
-      <LanguageProvider>
-        <Router>
-          <App />
-        </Router>
-      </LanguageProvider>
+      <ErrorBoundary>
+        <LanguageProvider>
+          <Router>
+            <App />
+          </Router>
+        </LanguageProvider>
+      </ErrorBoundary>
     </StrictMode>,
   );
 }
 
-bootstrap();
+async function bootstrap() {
+  // No bloquear el primer render si Sentry/config tarda (worker arrancando).
+  try {
+    await Promise.race([
+      initSentry(),
+      new Promise<void>((resolve) => setTimeout(resolve, 2500)),
+    ]);
+  } catch (e) {
+    console.warn("initSentry falló:", e);
+  }
+
+  mountApp();
+
+  // Limpieza PWA heredada en segundo plano (unregister puede colgarse en algunos navegadores).
+  void removeLegacyOfflineSupport().catch((e) => {
+    console.warn("removeLegacyOfflineSupport:", e);
+  });
+}
+
+bootstrap().catch((e) => {
+  console.error("bootstrap falló, montando app de todos modos:", e);
+  mountApp();
+});

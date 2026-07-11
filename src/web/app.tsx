@@ -5,6 +5,7 @@ import { AuthProvider, useAuth, getPostLoginPath, hasActiveSystemAccess, isAllow
 import { NotificationsProvider } from "./contexts/notifications-context";
 import { ClinicalLayoutProvider } from "./contexts/clinical-layout-context";
 import { WorkspaceWatermarkProvider } from "./contexts/workspace-watermark-context";
+import { DashboardLogoProvider } from "./contexts/dashboard-logo-context";
 import Login from "./pages/login";
 import Register from "./pages/register";
 import VerifyEmail from "./pages/verify-email";
@@ -118,9 +119,11 @@ function App() {
         <NotificationsProvider>
           <ClinicalLayoutProvider>
             <WorkspaceWatermarkProvider>
+              <DashboardLogoProvider>
               <ErrorBoundary>
                 <AppRoutes />
               </ErrorBoundary>
+              </DashboardLogoProvider>
             </WorkspaceWatermarkProvider>
           </ClinicalLayoutProvider>
         </NotificationsProvider>

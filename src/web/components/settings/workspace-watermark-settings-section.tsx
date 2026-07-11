@@ -6,6 +6,11 @@ import {
 } from "../../types/workspace-watermark";
 import { saveWorkspaceWatermark, useWorkspaceWatermark } from "../../hooks/use-workspace-watermark";
 import { compressImageForLogo } from "../../lib/image-compress";
+import {
+  formErrorClass,
+  formSuccessClass,
+  semanticDestructiveTextClass,
+} from "../../lib/form-field-classes";
 
 const MAX_FILE_BYTES = 2 * 1024 * 1024;
 
@@ -179,7 +184,7 @@ export function WorkspaceWatermarkSettingsSection() {
                         setPreview(null);
                         patch({ image: null, enabled: false });
                       }}
-                      className="block text-xs text-red-600 hover:underline"
+                      className={`text-xs ${semanticDestructiveTextClass} hover:underline`}
                     >
                       Quitar imagen
                     </button>
@@ -294,8 +299,8 @@ export function WorkspaceWatermarkSettingsSection() {
             {saving ? "Guardando…" : "Guardar marca de agua"}
         </button>
 
-      {message && <p className="text-sm text-blue-700 dark:text-blue-300">{message}</p>}
-      {error && <p className="text-sm text-red-600">{error}</p>}
+      {message && <p className={formSuccessClass}>{message}</p>}
+      {error && <p className={formErrorClass}>{error}</p>}
     </div>
   );
 }

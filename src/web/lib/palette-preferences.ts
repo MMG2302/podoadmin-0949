@@ -16,13 +16,14 @@ const SWATCHES_KEY = "podoadmin_palette_swatches";
 const SECTIONS_KEY = "podoadmin_palette_sections";
 const STYLE_ID = "podoadmin-palette";
 
-export type PaletteSectionId = "brand" | "semantic";
+export type PaletteSectionId = "brand" | "semantic" | "whatsapp";
 
 export type PaletteSectionsState = Record<PaletteSectionId, boolean>;
 
 const DEFAULT_PALETTE_SECTIONS: PaletteSectionsState = {
   brand: true,
   semantic: true,
+  whatsapp: true,
 };
 
 const safeStorage = {
@@ -51,6 +52,7 @@ function modeToCssVars(mode: PaletteMode): string {
   lines.push(`--brand-ink-fg: ${contrastForeground(mode.primary)};`);
   lines.push(`--brand-sidebar-active-bg: ${mode.surface};`);
   lines.push(`--brand-sidebar-active-fg: ${contrastForeground(mode.surface)};`);
+  lines.push(`--whatsapp-fg: ${contrastForeground(mode.whatsapp)};`);
   return lines.join("\n  ");
 }
 
@@ -64,9 +66,10 @@ export function applyPaletteStyles(settings?: PaletteSettings): void {
   if (!el) {
     el = document.createElement("style");
     el.id = STYLE_ID;
-    document.head.appendChild(el);
   }
   el.textContent = buildPaletteStylesheet(palette);
+  // Debe ir al final del <head> para ganar en cascada sobre styles.css (:root / .dark).
+  document.head.appendChild(el);
 }
 
 export function getPaletteSettings(): PaletteSettings {
@@ -80,9 +83,10 @@ export function getPaletteSettings(): PaletteSettings {
 }
 
 export function savePaletteSettings(settings: PaletteSettings): void {
-  safeStorage.setItem(PALETTE_KEY, JSON.stringify(settings));
-  applyPaletteStyles(settings);
-  window.dispatchEvent(new CustomEvent("palette:updated", { detail: settings }));
+  const normalized = normalizePaletteSettings(settings);
+  safeStorage.setItem(PALETTE_KEY, JSON.stringify(normalized));
+  applyPaletteStyles(normalized);
+  window.dispatchEvent(new CustomEvent("palette:updated", { detail: normalized }));
 }
 
 export function getPaletteSectionsState(): PaletteSectionsState {
@@ -94,6 +98,8 @@ export function getPaletteSectionsState(): PaletteSectionsState {
       brand: typeof parsed.brand === "boolean" ? parsed.brand : DEFAULT_PALETTE_SECTIONS.brand,
       semantic:
         typeof parsed.semantic === "boolean" ? parsed.semantic : DEFAULT_PALETTE_SECTIONS.semantic,
+      whatsapp:
+        typeof parsed.whatsapp === "boolean" ? parsed.whatsapp : DEFAULT_PALETTE_SECTIONS.whatsapp,
     };
   } catch {
     return { ...DEFAULT_PALETTE_SECTIONS };

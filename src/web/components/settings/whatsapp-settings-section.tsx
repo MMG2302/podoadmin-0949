@@ -2,6 +2,12 @@ import { useCallback, useEffect, useState } from "react";
 import { api } from "../../lib/api-client";
 import { useLanguage } from "../../contexts/language-context";
 import type { Translations } from "../../i18n/translations";
+import {
+  formWarningClass,
+  semanticAlertErrorClass,
+  semanticAlertSuccessClass,
+  semanticDestructiveTextClass,
+} from "../../lib/form-field-classes";
 import { WhatsAppSetupGuide } from "./whatsapp-setup-guide";
 
 type WhatsAppTranslations = Translations["whatsapp"];
@@ -311,7 +317,7 @@ export function WhatsAppSettingsSection() {
       ? "text-semantic-success"
       : config?.status === "error"
         ? "text-semantic-error"
-        : "text-amber-600 dark:text-amber-400";
+        : "text-semantic-warning";
 
   return (
     <div className="bg-brand-surface rounded-xl border border-brand-border p-6">
@@ -341,10 +347,10 @@ export function WhatsAppSettingsSection() {
       )}
 
       {error && (
-        <div className="mb-4 p-3 rounded-lg bg-red-50 dark:bg-red-900/20 text-semantic-error text-sm">{error}</div>
+        <div className={`mb-4 ${semanticAlertErrorClass} !p-3`}>{error}</div>
       )}
       {success && (
-        <div className="mb-4 p-3 rounded-lg bg-green-50 dark:bg-green-900/20 text-semantic-success text-sm">{success}</div>
+        <div className={`mb-4 ${semanticAlertSuccessClass} !p-3`}>{success}</div>
       )}
 
       <form onSubmit={handleSave} className="space-y-4">
@@ -446,7 +452,7 @@ export function WhatsAppSettingsSection() {
                 })}
               </div>
               {!form.day5 && !form.day2 && !form.day1 && (
-                <p className="text-xs text-amber-600 dark:text-amber-400 mt-2">{w.reminderDaysRequired}</p>
+                <p className={`${formWarningClass} !text-xs mt-2`}>{w.reminderDaysRequired}</p>
               )}
             </div>
 
@@ -572,7 +578,7 @@ export function WhatsAppSettingsSection() {
                 type="button"
                 onClick={handleDisconnect}
                 disabled={saving}
-                className="px-5 py-2.5 text-red-600 border border-semantic-error/30 rounded-lg font-medium disabled:opacity-50"
+                className={`px-5 py-2.5 border border-semantic-error/30 rounded-lg font-medium disabled:opacity-50 ${semanticDestructiveTextClass}`}
               >
                 {w.disconnect}
               </button>

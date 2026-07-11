@@ -10,14 +10,16 @@ type CountrySelectProps = {
   onChange: (code: TenantCountryCode) => void;
   className?: string;
   id?: string;
+  disabled?: boolean;
 };
 
-export function CountrySelect({ value, onChange, className, id }: CountrySelectProps) {
+export function CountrySelect({ value, onChange, className, id, disabled }: CountrySelectProps) {
   const resolved = resolveTenantCountryCode(value);
   return (
     <select
       id={id}
       value={resolved}
+      disabled={disabled}
       onChange={(e) => onChange(resolveTenantCountryCode(e.target.value))}
       className={
         className ??

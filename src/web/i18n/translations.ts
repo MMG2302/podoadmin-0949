@@ -435,6 +435,7 @@ export interface Translations {
     pendingPatient: string;
     pendingShort: string;
     appointment: string;
+    session: string;
     scheduled: string;
     completed: string;
     draft: string;
@@ -543,11 +544,13 @@ export interface Translations {
     paletteHint: string;
     paletteGroupBrand: string;
     paletteGroupSemantic: string;
+    paletteGroupWhatsapp: string;
     changeColor: string;
     resetPaletteMode: string;
     resetPaletteAll: string;
     palettePreviewBrand: string;
     palettePreviewSemantic: string;
+    palettePreviewWhatsapp: string;
     palettePreviewMessages: {
       error: string;
       warning: string;
@@ -579,7 +582,11 @@ export interface Translations {
       | "success"
       | "successBg"
       | "info"
-      | "infoBg",
+      | "infoBg"
+      | "whatsapp"
+      | "whatsappBg"
+      | "whatsappBorder"
+      | "whatsappMuted",
       string
     >;
   };
@@ -1124,6 +1131,7 @@ export const translations: Record<Language, Translations> = {
       pendingPatient: "Paciente pendiente",
       pendingShort: "Pendiente",
       appointment: "Cita",
+      session: "Sesión",
       scheduled: "Cita programada",
       completed: "Completada",
       draft: "Borrador",
@@ -1181,7 +1189,7 @@ export const translations: Record<Language, Translations> = {
       errorDeleteFailed: "No se pudo eliminar la cita.",
       downloadIcs: "Descargar .ics",
       sendWhatsApp: "WhatsApp Web",
-      exportIcsHint: "Descarga las citas del día en formato calendario (.ics) para iOS o Android",
+      exportIcsHint: "Descarga las citas programadas del día en .ics (solo citas con hora; no incluye sesiones clínicas)",
       exportWaHint: "Descarga el .ics y abre WhatsApp. Si el podólogo tiene móvil en su perfil, se abre el chat directo; si no, eliges el contacto manualmente. Adjunta el .ics.",
       exportSelectPodiatrist: "Selecciona un podólogo en el filtro para exportar la agenda.",
       exportNoAppointments: "No hay citas programadas este día.",
@@ -1228,11 +1236,13 @@ export const translations: Record<Language, Translations> = {
       paletteHint: "Personaliza los colores de cada zona de la interfaz. Puedes definir paletas distintas para modo claro y oscuro.",
       paletteGroupBrand: "Marca e interfaz",
       paletteGroupSemantic: "Estados semánticos",
+      paletteGroupWhatsapp: "WhatsApp Web",
       changeColor: "Cambiar",
       resetPaletteMode: "Restablecer este modo",
       resetPaletteAll: "Restablecer todo",
       palettePreviewBrand: "Vista previa — interfaz",
       palettePreviewSemantic: "Vista previa — estados semánticos",
+      palettePreviewWhatsapp: "Vista previa — WhatsApp Web",
       palettePreviewMessages: {
         error: "No se pudo guardar el registro.",
         warning: "Revisa los datos antes de continuar.",
@@ -1265,6 +1275,10 @@ export const translations: Record<Language, Translations> = {
         successBg: "Éxito (fondo)",
         info: "Info (texto)",
         infoBg: "Info (fondo)",
+        whatsapp: "Botón WhatsApp",
+        whatsappBg: "Panel (fondo)",
+        whatsappBorder: "Panel (borde)",
+        whatsappMuted: "Panel (texto secundario)",
       },
     },
     support: {
@@ -1961,6 +1975,7 @@ export const translations: Record<Language, Translations> = {
       pendingPatient: "Pending patient",
       pendingShort: "Pending",
       appointment: "Appointment",
+      session: "Session",
       scheduled: "Scheduled appointment",
       completed: "Completed",
       draft: "Draft",
@@ -2018,7 +2033,7 @@ export const translations: Record<Language, Translations> = {
       errorDeleteFailed: "Could not delete the appointment.",
       downloadIcs: "Download .ics",
       sendWhatsApp: "WhatsApp Web",
-      exportIcsHint: "Download the day's appointments as a calendar file (.ics) for iOS or Android",
+      exportIcsHint: "Download scheduled appointments for the day as .ics (appointments with time only; clinical sessions are not included)",
       exportWaHint: "Downloads the .ics and opens WhatsApp. If the podiatrist has a mobile on their profile, the chat opens directly; otherwise pick the contact manually. Attach the .ics.",
       exportSelectPodiatrist: "Select a podiatrist in the filter to export the schedule.",
       exportNoAppointments: "No scheduled appointments for this day.",
@@ -2065,11 +2080,13 @@ export const translations: Record<Language, Translations> = {
       paletteHint: "Customize colors for each area of the interface. You can set different palettes for light and dark mode.",
       paletteGroupBrand: "Brand & UI",
       paletteGroupSemantic: "Semantic states",
+      paletteGroupWhatsapp: "WhatsApp Web",
       changeColor: "Change",
       resetPaletteMode: "Reset this mode",
       resetPaletteAll: "Reset all",
       palettePreviewBrand: "Preview — interface",
       palettePreviewSemantic: "Preview — semantic states",
+      palettePreviewWhatsapp: "Preview — WhatsApp Web",
       palettePreviewMessages: {
         error: "Could not save the record.",
         warning: "Review the data before continuing.",
@@ -2102,6 +2119,10 @@ export const translations: Record<Language, Translations> = {
         successBg: "Success (background)",
         info: "Info (text)",
         infoBg: "Info (background)",
+        whatsapp: "WhatsApp button",
+        whatsappBg: "Panel (background)",
+        whatsappBorder: "Panel (border)",
+        whatsappMuted: "Panel (secondary text)",
       },
     },
     support: {
@@ -2791,6 +2812,7 @@ export const translations: Record<Language, Translations> = {
       pendingPatient: "Paciente pendente",
       pendingShort: "Pendente",
       appointment: "Consulta",
+      session: "Sessão",
       scheduled: "Consulta agendada",
       completed: "Concluída",
       draft: "Rascunho",
@@ -2848,7 +2870,7 @@ export const translations: Record<Language, Translations> = {
       errorDeleteFailed: "Não foi possível eliminar a consulta.",
       downloadIcs: "Descarregar .ics",
       sendWhatsApp: "WhatsApp Web",
-      exportIcsHint: "Descarrega as consultas do dia em formato calendário (.ics) para iOS ou Android",
+      exportIcsHint: "Descarrega as consultas agendadas do dia em .ics (só consultas com hora; não inclui sessões clínicas)",
       exportWaHint: "Descarrega o .ics e abre o WhatsApp. Se o podologista tiver telemóvel no perfil, abre o chat direto; senão escolhe o contacto manualmente. Anexe o .ics.",
       exportSelectPodiatrist: "Selecione um podologista no filtro para exportar a agenda.",
       exportNoAppointments: "Não há consultas agendadas neste dia.",
@@ -2895,11 +2917,13 @@ export const translations: Record<Language, Translations> = {
       paletteHint: "Personalize as cores de cada área da interface. Paletas distintas para modo claro e escuro.",
       paletteGroupBrand: "Marca e interface",
       paletteGroupSemantic: "Estados semânticos",
+      paletteGroupWhatsapp: "WhatsApp Web",
       changeColor: "Alterar",
       resetPaletteMode: "Restaurar este modo",
       resetPaletteAll: "Restaurar tudo",
       palettePreviewBrand: "Prévia — interface",
       palettePreviewSemantic: "Prévia — estados semânticos",
+      palettePreviewWhatsapp: "Prévia — WhatsApp Web",
       palettePreviewMessages: {
         error: "Não foi possível salvar o registro.",
         warning: "Revise os dados antes de continuar.",
@@ -2932,6 +2956,10 @@ export const translations: Record<Language, Translations> = {
         successBg: "Sucesso (fundo)",
         info: "Info (texto)",
         infoBg: "Info (fundo)",
+        whatsapp: "Botão WhatsApp",
+        whatsappBg: "Painel (fundo)",
+        whatsappBorder: "Painel (borda)",
+        whatsappMuted: "Painel (texto secundário)",
       },
     },
     support: {
@@ -3598,6 +3626,7 @@ export const translations: Record<Language, Translations> = {
       pendingPatient: "Patient en attente",
       pendingShort: "En attente",
       appointment: "Rendez-vous",
+      session: "Séance",
       scheduled: "Rendez-vous programmé",
       completed: "Terminée",
       draft: "Brouillon",
@@ -3655,7 +3684,7 @@ export const translations: Record<Language, Translations> = {
       errorDeleteFailed: "Impossible de supprimer le rendez-vous.",
       downloadIcs: "Télécharger .ics",
       sendWhatsApp: "WhatsApp Web",
-      exportIcsHint: "Télécharge les rendez-vous du jour au format calendrier (.ics) pour iOS ou Android",
+      exportIcsHint: "Télécharge les rendez-vous programmés du jour en .ics (rendez-vous avec heure uniquement ; pas les séances cliniques)",
       exportWaHint: "Télécharge le .ics et ouvre WhatsApp. Si le podologue a un mobile sur son profil, le chat s'ouvre directement ; sinon choisissez le contact manuellement. Joignez le .ics.",
       exportSelectPodiatrist: "Sélectionnez un podologue dans le filtre pour exporter l'agenda.",
       exportNoAppointments: "Aucun rendez-vous programmé ce jour.",
@@ -3702,11 +3731,13 @@ export const translations: Record<Language, Translations> = {
       paletteHint: "Personnalisez les couleurs de chaque zone. Palettes distinctes pour les modes clair et sombre.",
       paletteGroupBrand: "Marque et interface",
       paletteGroupSemantic: "États sémantiques",
+      paletteGroupWhatsapp: "WhatsApp Web",
       changeColor: "Modifier",
       resetPaletteMode: "Réinitialiser ce mode",
       resetPaletteAll: "Tout réinitialiser",
       palettePreviewBrand: "Aperçu — interface",
       palettePreviewSemantic: "Aperçu — états sémantiques",
+      palettePreviewWhatsapp: "Aperçu — WhatsApp Web",
       palettePreviewMessages: {
         error: "Impossible d'enregistrer.",
         warning: "Vérifiez les données avant de continuer.",
@@ -3739,6 +3770,10 @@ export const translations: Record<Language, Translations> = {
         successBg: "Succès (fond)",
         info: "Info (texte)",
         infoBg: "Info (fond)",
+        whatsapp: "Bouton WhatsApp",
+        whatsappBg: "Panneau (fond)",
+        whatsappBorder: "Panneau (bordure)",
+        whatsappMuted: "Panneau (texte secondaire)",
       },
     },
     support: {

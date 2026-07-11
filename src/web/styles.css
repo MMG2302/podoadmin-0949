@@ -67,6 +67,11 @@
   --color-semantic-success-bg: var(--semantic-success-bg);
   --color-semantic-info: var(--semantic-info);
   --color-semantic-info-bg: var(--semantic-info-bg);
+  --color-whatsapp: var(--whatsapp);
+  --color-whatsapp-fg: var(--whatsapp-fg);
+  --color-whatsapp-bg: var(--whatsapp-bg);
+  --color-whatsapp-border: var(--whatsapp-border);
+  --color-whatsapp-muted: var(--whatsapp-muted);
 }
 
 :root {
@@ -122,6 +127,11 @@
   --semantic-success-bg: #f0fdf4;
   --semantic-info: #2563eb;
   --semantic-info-bg: #eff6ff;
+  --whatsapp: #25d366;
+  --whatsapp-fg: #ffffff;
+  --whatsapp-bg: #ecfdf5;
+  --whatsapp-border: #a7f3d0;
+  --whatsapp-muted: #065f46;
 }
 
 .dark {
@@ -175,6 +185,11 @@
   --semantic-success-bg: #14532d;
   --semantic-info: #93c5fd;
   --semantic-info-bg: #1e3a5f;
+  --whatsapp: #25d366;
+  --whatsapp-fg: #ffffff;
+  --whatsapp-bg: #022c22;
+  --whatsapp-border: #064e3b;
+  --whatsapp-muted: #a7f3d0;
 }
 
 @layer base {

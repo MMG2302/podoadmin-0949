@@ -15,6 +15,20 @@ import {
   saveWhatsAppWebTemplate,
 } from "../lib/whatsapp-web-link";
 import { useTenantCountry } from "../hooks/use-tenant-country";
+import {
+  formErrorClass,
+  semanticAlertErrorClass,
+  semanticAlertSuccessClass,
+  semanticChipErrorClass,
+  semanticChipSuccessClass,
+  semanticChipWarningClass,
+  whatsappButtonClass,
+  whatsappInputBorderClass,
+  whatsappListClass,
+  whatsappMutedTextClass,
+  whatsappOutlineButtonClass,
+  whatsappPanelClass,
+} from "../lib/form-field-classes";
 
 type WhatsAppMessageRow = {
   id: string;
@@ -263,17 +277,17 @@ export default function WhatsAppMessagesPage() {
     setTimeout(() => setSuccess(null), 4000);
   };
 
-  const statusClass = (status: string) => {
-    if (status === "sent" || status === "delivered" || status === "read") return "bg-green-100 text-green-700";
-    if (status === "failed") return "bg-red-100 text-red-700";
-    return "bg-amber-100 text-amber-700";
+  const getStatusBadgeClass = (status: string) => {
+    if (status === "sent" || status === "delivered" || status === "read") return semanticChipSuccessClass;
+    if (status === "failed") return semanticChipErrorClass;
+    return semanticChipWarningClass;
   };
 
   if (!canViewWhatsAppWeb) {
     return (
       <MainLayout title="Mensajes WhatsApp">
         <div className="max-w-2xl p-6 bg-brand-surface rounded-xl border border-brand-border">
-          <p className="text-sm text-red-600">No tienes permisos para ver esta sección.</p>
+          <p className={formErrorClass}>No tienes permisos para ver esta sección.</p>
         </div>
       </MainLayout>
     );
@@ -282,13 +296,13 @@ export default function WhatsAppMessagesPage() {
   return (
     <MainLayout title="Mensajes WhatsApp">
       <div className="max-w-5xl space-y-6">
-        <div className="bg-emerald-50 dark:bg-emerald-950/30 rounded-xl border border-emerald-200 dark:border-emerald-900/50 p-6">
+        <div className={whatsappPanelClass}>
           <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-4">
             <div>
               <h3 className="text-lg font-semibold text-brand-ink">
                 Recordatorios por WhatsApp Web
               </h3>
-              <p className="text-sm text-emerald-900/80 dark:text-emerald-100/80 mt-1 max-w-2xl">
+              <p className={`text-sm mt-1 max-w-2xl opacity-90 ${whatsappMutedTextClass}`}>
                 Sin configurar la API de Meta. Abre WhatsApp Web o la app con el mensaje ya escrito para cada
                 paciente. Tú envías el mensaje manualmente desde tu número.
               </p>
@@ -297,7 +311,7 @@ export default function WhatsAppMessagesPage() {
               href="https://web.whatsapp.com"
               target="_blank"
               rel="noopener noreferrer"
-              className="shrink-0 inline-flex items-center justify-center px-4 py-2 rounded-lg bg-[#25D366] text-white text-sm font-medium hover:opacity-90"
+              className={`shrink-0 ${whatsappButtonClass}`}
             >
               Abrir WhatsApp Web
             </a>
@@ -311,7 +325,7 @@ export default function WhatsAppMessagesPage() {
               value={webTemplate}
               onChange={(e) => setWebTemplate(e.target.value)}
               rows={5}
-              className="w-full px-4 py-2.5 border border-emerald-200 dark:border-emerald-900/60 rounded-lg bg-brand-surface text-sm"
+              className={`w-full px-4 py-2.5 ${whatsappInputBorderClass} bg-brand-surface text-sm`}
             />
             <p className="text-xs text-brand-muted">
               Variables:{" "}
@@ -325,12 +339,12 @@ export default function WhatsAppMessagesPage() {
                 value={webExtraNote}
                 onChange={(e) => setWebExtraNote(e.target.value.slice(0, 500))}
                 placeholder="Nota extra para todos los envíos de hoy (opcional)"
-                className="flex-1 px-4 py-2.5 border border-emerald-200 dark:border-emerald-900/60 rounded-lg bg-brand-surface text-sm"
+                className={`flex-1 px-4 py-2.5 ${whatsappInputBorderClass} bg-brand-surface text-sm`}
               />
               <button
                 type="button"
                 onClick={saveWebTemplate}
-                className="px-4 py-2.5 border border-emerald-300 dark:border-emerald-800 rounded-lg text-sm font-medium hover:bg-emerald-100/60 dark:hover:bg-emerald-900/30"
+                className={`px-4 py-2.5 ${whatsappOutlineButtonClass} font-medium`}
               >
                 {templateSaved ? "Guardado" : "Guardar mensaje"}
               </button>
@@ -348,7 +362,7 @@ export default function WhatsAppMessagesPage() {
               No hay citas programadas para mañana.
             </p>
           ) : (
-            <ul className="divide-y divide-emerald-100 dark:divide-emerald-900/40 bg-brand-surface rounded-lg border border-emerald-100 dark:border-emerald-900/40 overflow-hidden">
+            <ul className={whatsappListClass}>
               {tomorrowAppointments.map((row) => (
                 <li
                   key={row.id}
@@ -365,7 +379,7 @@ export default function WhatsAppMessagesPage() {
                     type="button"
                     onClick={() => openWhatsAppForRow(row)}
                     disabled={!row.waPhone}
-                    className="shrink-0 inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-[#25D366] text-white text-sm font-medium disabled:opacity-40 disabled:cursor-not-allowed hover:opacity-90"
+                    className={`shrink-0 gap-2 ${whatsappButtonClass}`}
                   >
                     <span aria-hidden>💬</span>
                     Enviar por WhatsApp
@@ -429,8 +443,8 @@ export default function WhatsAppMessagesPage() {
                   Requiere API Meta configurada en Ajustes → WhatsApp.
                 </p>
 
-                {error && <div className="mb-3 p-3 rounded-lg bg-red-50 text-red-700 text-sm">{error}</div>}
-                {success && <div className="mb-3 p-3 rounded-lg bg-green-50 text-green-700 text-sm">{success}</div>}
+                {error && <div className={`mb-3 ${semanticAlertErrorClass}`}>{error}</div>}
+                {success && <div className={`mb-3 ${semanticAlertSuccessClass}`}>{success}</div>}
 
                 <div className="flex flex-col gap-3">
                   <div className="flex flex-col md:flex-row gap-3">
@@ -538,7 +552,7 @@ export default function WhatsAppMessagesPage() {
                           <td className="py-2 pr-4">{m.patientName || "—"}</td>
                           <td className="py-2 pr-4">{m.patientPhone || "—"}</td>
                           <td className="py-2 pr-4">
-                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${statusClass(m.status)}`}>
+                            <span className={getStatusBadgeClass(m.status)}>
                               {m.status}
                             </span>
                           </td>

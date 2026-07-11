@@ -197,6 +197,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
     void verifyAuth();
 
+    const loadingSafety = setTimeout(() => {
+      setIsLoading(false);
+    }, AUTH_VERIFY_TIMEOUT_MS + 3_000);
+
     const handleLogout = () => {
       setUser(null);
       localStorage.removeItem("podoadmin_token");
@@ -204,7 +208,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     };
 
     window.addEventListener("auth:logout", handleLogout);
-    return () => window.removeEventListener("auth:logout", handleLogout);
+    return () => {
+      clearTimeout(loadingSafety);
+      window.removeEventListener("auth:logout", handleLogout);
+    };
   }, []);
 
   const login = async (email: string, password: string, captchaToken?: string | null) => {

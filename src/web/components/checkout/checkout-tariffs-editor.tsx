@@ -16,8 +16,22 @@ export function CheckoutTariffsEditor({ podiatristId, canEdit }: CheckoutTariffs
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [open, setOpen] = useState(false);
+  /** Texto libre mientras el usuario escribe; evita reformatear a .toFixed(2) en cada tecla. */
+  const [editingAmounts, setEditingAmounts] = useState<Record<string, string>>({});
 
   const rows = draft ?? tariffs;
+
+  const formatAmountDisplay = (amountCents: number) =>
+    amountCents > 0 ? (amountCents / 100).toFixed(2) : "";
+
+  const sanitizeAmountInput = (value: string) => value.replace(/[^\d.,]/g, "");
+
+  const flushEditingAmount = (row: CheckoutQuickTariff): CheckoutQuickTariff => {
+    const text = editingAmounts[row.id];
+    if (text === undefined) return row;
+    const cents = parseAmountToCents(text);
+    return { ...row, amountCents: cents ?? 0 };
+  };
 
   const updateRow = (index: number, patch: Partial<CheckoutQuickTariff>) => {
     setDraft((prev) => {
@@ -48,7 +62,8 @@ export function CheckoutTariffsEditor({ podiatristId, canEdit }: CheckoutTariffs
 
   const handleSave = async () => {
     setSaving(true);
-    const normalized = rows.map((row) => ({
+    const flushedRows = rows.map(flushEditingAmount);
+    const normalized = flushedRows.map((row) => ({
       ...row,
       amountCents: row.amountCents > 0 ? row.amountCents : 0,
     }));
@@ -56,6 +71,7 @@ export function CheckoutTariffsEditor({ podiatristId, canEdit }: CheckoutTariffs
     setSaving(false);
     if (ok) {
       setDraft(null);
+      setEditingAmounts({});
       setSaved(true);
     }
   };
@@ -100,10 +116,35 @@ export function CheckoutTariffsEditor({ podiatristId, canEdit }: CheckoutTariffs
                   type="text"
                   inputMode="decimal"
                   disabled={!canEdit}
-                  value={row.amountCents > 0 ? (row.amountCents / 100).toFixed(2) : ""}
+                  value={
+                    editingAmounts[row.id] !== undefined
+                      ? editingAmounts[row.id]
+                      : formatAmountDisplay(row.amountCents)
+                  }
+                  onFocus={() => {
+                    setEditingAmounts((prev) => ({
+                      ...prev,
+                      [row.id]:
+                        prev[row.id] ?? formatAmountDisplay(row.amountCents),
+                    }));
+                  }}
                   onChange={(e) => {
-                    const cents = parseAmountToCents(e.target.value);
+                    const text = sanitizeAmountInput(e.target.value);
+                    setEditingAmounts((prev) => ({ ...prev, [row.id]: text }));
+                    const cents = parseAmountToCents(text);
                     updateRow(index, { amountCents: cents ?? 0 });
+                  }}
+                  onBlur={() => {
+                    const text = editingAmounts[row.id];
+                    if (text !== undefined) {
+                      const cents = parseAmountToCents(text);
+                      updateRow(index, { amountCents: cents ?? 0 });
+                    }
+                    setEditingAmounts((prev) => {
+                      const next = { ...prev };
+                      delete next[row.id];
+                      return next;
+                    });
                   }}
                   placeholder="0.00"
                   className="w-28 px-3 py-2 text-sm bg-brand-surface border border-brand-border rounded-lg"

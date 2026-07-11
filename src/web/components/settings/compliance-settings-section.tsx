@@ -3,6 +3,10 @@ import { Link } from "wouter";
 import { useLanguage } from "../../contexts/language-context";
 import { useAuth } from "../../contexts/auth-context";
 import { api } from "../../lib/api-client";
+import {
+  formSuccessClass,
+  semanticAlertWarningClass,
+} from "../../lib/form-field-classes";
 
 type LegalHold = {
   id: string;
@@ -110,15 +114,15 @@ export function ComplianceSettingsSection() {
           type="button"
           onClick={() => void requestDeletion()}
           disabled={deletionLoading}
-          className="px-4 py-2 border border-red-300 dark:border-red-800 text-semantic-error rounded-lg text-sm font-medium disabled:opacity-50"
+          className="px-4 py-2 border border-semantic-error/30 text-semantic-error rounded-lg text-sm font-medium disabled:opacity-50"
         >
           {deletionLoading ? t.common.loading : c.deletionButton}
         </button>
-        {deletionMsg && <p className="text-sm text-green-700 dark:text-green-400">{deletionMsg}</p>}
+        {deletionMsg && <p className={formSuccessClass}>{deletionMsg}</p>}
       </div>
 
-      <div className="rounded-lg border border-semantic-warning/30 bg-semantic-warning-bg p-4">
-        <h3 className="font-medium text-amber-950 dark:text-amber-100">{c.retentionTitle}</h3>
+      <div className={`${semanticAlertWarningClass} !p-4`}>
+        <h3 className="font-medium text-semantic-warning">{c.retentionTitle}</h3>
         <p className="text-sm text-semantic-warning mt-1">{c.retentionNote}</p>
       </div>
 
@@ -165,7 +169,7 @@ export function ComplianceSettingsSection() {
               {c.holdCreate}
             </button>
           </form>
-          {holdMsg && <p className="text-sm text-green-700 dark:text-green-400">{holdMsg}</p>}
+          {holdMsg && <p className={formSuccessClass}>{holdMsg}</p>}
           {holds.length === 0 ? (
             <p className="text-sm text-brand-muted">{c.holdsEmpty}</p>
           ) : (

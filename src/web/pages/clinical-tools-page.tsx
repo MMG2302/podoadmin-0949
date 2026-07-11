@@ -6,6 +6,11 @@ import { usePermissions } from "../hooks/use-permissions";
 import { useClinicalLayout } from "../hooks/use-clinical-layout";
 import { api } from "../lib/api-client";
 import {
+  semanticAlertErrorClass,
+  semanticAlertSuccessClass,
+  semanticDestructiveTextClass,
+} from "../lib/form-field-classes";
+import {
   countIncludedTemplateSections,
   createTemplateSectionLayoutFromGlobal,
   DEFAULT_TEMPLATE_FIELDS,
@@ -275,12 +280,12 @@ const ClinicalToolsPage = () => {
         Define historiales clínicos predefinidos (callosidad, uña encarnada, etc.) para cargarlos al abrir una sesión.
       </p>
       {message && (
-        <div className="mb-4 p-3 rounded-lg text-sm border bg-green-50 text-green-800 border-green-200 dark:bg-green-950/40 dark:text-green-300 dark:border-green-800">
+        <div className={`mb-4 ${semanticAlertSuccessClass}`}>
           {message}
         </div>
       )}
       {errorMessage && (
-        <div className="mb-4 p-3 rounded-lg text-sm border bg-red-50 text-red-800 border-red-200 dark:bg-red-950/40 dark:text-red-300 dark:border-red-800">
+        <div className={`mb-4 ${semanticAlertErrorClass}`}>
           {errorMessage}
         </div>
       )}
@@ -403,7 +408,7 @@ const ClinicalToolsPage = () => {
                       type="button"
                       onClick={() => deleteTemplate(t)}
                       disabled={deletingId === t.id}
-                      className="px-3 py-1.5 text-sm text-semantic-error border border-red-200 dark:border-red-900/60 rounded-lg hover:bg-red-50 dark:hover:bg-red-950/40 disabled:opacity-50"
+                      className={`px-3 py-1.5 text-sm border border-semantic-error/30 rounded-lg disabled:opacity-50 ${semanticDestructiveTextClass}`}
                     >
                       {deletingId === t.id ? "Eliminando…" : "Eliminar"}
                     </button>

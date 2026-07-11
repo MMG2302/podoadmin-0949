@@ -1,4 +1,4 @@
-/** Tokens de paleta personalizable (marca + semánticos). */
+/** Tokens de paleta personalizable (marca + semánticos + WhatsApp). */
 
 export type PaletteTokenId =
   | "sidebar"
@@ -15,7 +15,11 @@ export type PaletteTokenId =
   | "success"
   | "successBg"
   | "info"
-  | "infoBg";
+  | "infoBg"
+  | "whatsapp"
+  | "whatsappBg"
+  | "whatsappBorder"
+  | "whatsappMuted";
 
 export type PaletteMode = Record<PaletteTokenId, string>;
 
@@ -41,6 +45,10 @@ export const PALETTE_TOKEN_CSS_VAR: Record<PaletteTokenId, string> = {
   successBg: "--semantic-success-bg",
   info: "--semantic-info",
   infoBg: "--semantic-info-bg",
+  whatsapp: "--whatsapp",
+  whatsappBg: "--whatsapp-bg",
+  whatsappBorder: "--whatsapp-border",
+  whatsappMuted: "--whatsapp-muted",
 };
 
 export const PALETTE_TOKEN_IDS = Object.keys(PALETTE_TOKEN_CSS_VAR) as PaletteTokenId[];
@@ -61,6 +69,10 @@ export const DEFAULT_PALETTE_LIGHT: PaletteMode = {
   successBg: "#f0fdf4",
   info: "#2563eb",
   infoBg: "#eff6ff",
+  whatsapp: "#25d366",
+  whatsappBg: "#ecfdf5",
+  whatsappBorder: "#a7f3d0",
+  whatsappMuted: "#065f46",
 };
 
 export const DEFAULT_PALETTE_DARK: PaletteMode = {
@@ -79,6 +91,10 @@ export const DEFAULT_PALETTE_DARK: PaletteMode = {
   successBg: "#14532d",
   info: "#93c5fd",
   infoBg: "#1e3a5f",
+  whatsapp: "#25d366",
+  whatsappBg: "#022c22",
+  whatsappBorder: "#064e3b",
+  whatsappMuted: "#a7f3d0",
 };
 
 export const DEFAULT_PALETTE_SETTINGS: PaletteSettings = {

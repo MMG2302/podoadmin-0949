@@ -11,6 +11,47 @@ import {
   semanticAlertInfoClass,
 } from "../lib/form-field-classes";
 import type { Patient } from "../types/clinical";
+import { SimpleBarChart } from "../components/checkout/simple-bar-chart";
+
+type PatientSegment = "new" | "recurrent" | "recovered";
+
+const SEGMENT_LABELS: Record<PatientSegment, string> = {
+  new: "Nuevos",
+  recurrent: "Recurrentes",
+  recovered: "Recuperados",
+};
+
+const AGE_RANGE_OPTIONS = [
+  { id: "all", label: "Todas las edades" },
+  { id: "0-17", label: "0-17 años", ageMin: 0, ageMax: 17 },
+  { id: "18-35", label: "18-35 años", ageMin: 18, ageMax: 35 },
+  { id: "36-55", label: "36-55 años", ageMin: 36, ageMax: 55 },
+  { id: "56+", label: "56+ años", ageMin: 56, ageMax: 130 },
+] as const;
+
+type DemographicsSummary = {
+  new: number;
+  recurrent: number;
+  recovered: number;
+  total: number;
+  withAge: number;
+  ageBuckets: Array<{ label: string; min: number; max: number; count: number }>;
+};
+
+type AppointmentMetrics = {
+  periodDays: number;
+  fromDate: string;
+  toDate: string;
+  attendedPerDay: Array<{ date: string; count: number }>;
+  totals: {
+    attended: number;
+    noShow: number;
+    cancelled: number;
+    scheduled: number;
+    cancellationRate: number;
+    noShowRate: number;
+  };
+};
 
 interface PodiatristStats {
   user: User;
@@ -168,6 +209,11 @@ const ClinicPage = () => {
     licenses: Record<string, string | null>;
   } | null>(null);
   const [debouncedPatientSearch, setDebouncedPatientSearch] = useState("");
+  const [segmentFilter, setSegmentFilter] = useState<"all" | PatientSegment>("all");
+  const [ageRangeFilter, setAgeRangeFilter] = useState<(typeof AGE_RANGE_OPTIONS)[number]["id"]>("all");
+  const [demographicsSummary, setDemographicsSummary] = useState<DemographicsSummary | null>(null);
+  const [appointmentMetrics, setAppointmentMetrics] = useState<AppointmentMetrics | null>(null);
+  const [metricsPodiatristFilter, setMetricsPodiatristFilter] = useState<string>("all");
   const [activeTab, setActiveTab] = useState<"overview" | "podiatrists" | "patients" | "receptionists">("overview");
   const [podiatristFilter, setPodiatristFilter] = useState<string>("all");
   const [patientSearch, setPatientSearch] = useState("");
@@ -190,6 +236,19 @@ const ClinicPage = () => {
     return () => clearTimeout(timer);
   }, [patientSearch]);
 
+  const patientListFilters = useMemo(() => {
+    const filters: Record<string, string | undefined> = {};
+    if (debouncedPatientSearch) filters.q = debouncedPatientSearch;
+    if (podiatristFilter !== "all") filters.createdBy = podiatristFilter;
+    if (segmentFilter !== "all") filters.segment = segmentFilter;
+    const ageRange = AGE_RANGE_OPTIONS.find((o) => o.id === ageRangeFilter);
+    if (ageRange && ageRange.id !== "all" && "ageMin" in ageRange) {
+      filters.ageMin = String(ageRange.ageMin);
+      filters.ageMax = String(ageRange.ageMax);
+    }
+    return filters;
+  }, [debouncedPatientSearch, podiatristFilter, segmentFilter, ageRangeFilter]);
+
   const {
     items: clinicPatientsList,
     isLoading: patientsLoading,
@@ -197,7 +256,7 @@ const ClinicPage = () => {
   } = useClinicalListPage<Patient>({
     path: "/patients",
     listKey: "patients",
-    filters: { q: debouncedPatientSearch },
+    filters: patientListFilters,
   });
 
   // Get podiatrists in this clinic
@@ -232,9 +291,44 @@ const ClinicPage = () => {
     void loadClinicStats();
   }, [loadClinicStats]);
 
+  const loadDemographicsSummary = useCallback(async () => {
+    const params = new URLSearchParams();
+    if (podiatristFilter !== "all") params.set("createdBy", podiatristFilter);
+    const query = params.toString();
+    const r = await api.get<{ success?: boolean; demographics?: DemographicsSummary }>(
+      `/patients/demographics-summary${query ? `?${query}` : ""}`
+    );
+    if (r.success && r.data?.demographics) {
+      setDemographicsSummary(r.data.demographics);
+    }
+  }, [podiatristFilter]);
+
+  const loadAppointmentMetrics = useCallback(async () => {
+    const params = new URLSearchParams({ days: "30" });
+    if (metricsPodiatristFilter !== "all") params.set("podiatristId", metricsPodiatristFilter);
+    const r = await api.get<{ success?: boolean; metrics?: AppointmentMetrics }>(
+      `/clinical-dashboard/appointment-metrics?${params.toString()}`
+    );
+    if (r.success && r.data?.metrics) {
+      setAppointmentMetrics(r.data.metrics);
+    }
+  }, [metricsPodiatristFilter]);
+
+  useEffect(() => {
+    void loadDemographicsSummary();
+  }, [loadDemographicsSummary]);
+
+  useEffect(() => {
+    if (activeTab === "overview") {
+      void loadAppointmentMetrics();
+    }
+  }, [activeTab, loadAppointmentMetrics]);
+
   useRefreshOnFocus(() => {
     void loadClinicStats();
     void reloadPatients();
+    void loadDemographicsSummary();
+    if (activeTab === "overview") void loadAppointmentMetrics();
   });
 
   // Cargar límite de podólogos de la clínica
@@ -269,10 +363,14 @@ const ClinicPage = () => {
       }));
   }, [clinicPatientsList, clinicPodiatrists, clinicPodiatristIds]);
 
-  const filteredPatients = patientsWithPodiatrist.filter((p) => {
-    const matchesPodiatrist = podiatristFilter === "all" || p.createdBy === podiatristFilter;
-    return matchesPodiatrist;
-  });
+  const filteredPatients = patientsWithPodiatrist;
+
+  const segmentBadgeClass = (segment?: PatientSegment) => {
+    if (segment === "new") return "bg-blue-50 text-blue-700";
+    if (segment === "recovered") return "bg-violet-50 text-violet-700";
+    if (segment === "recurrent") return "bg-emerald-50 text-emerald-700";
+    return "bg-gray-100 text-gray-600";
+  };
 
   const totals = useMemo(
     () =>
@@ -530,6 +628,64 @@ const ClinicPage = () => {
               />
             </div>
 
+            {/* Agenda metrics */}
+            <div className="bg-white rounded-xl border border-gray-100 p-6 space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                <div>
+                  <h3 className="text-lg font-semibold text-brand-ink">Agenda (últimos 30 días)</h3>
+                  <p className="text-sm text-gray-500">Pacientes atendidos, no-show y cancelaciones registradas en el calendario</p>
+                </div>
+                <select
+                  value={metricsPodiatristFilter}
+                  onChange={(e) => setMetricsPodiatristFilter(e.target.value)}
+                  className="px-3 py-2 rounded-lg border border-gray-200 text-sm"
+                >
+                  <option value="all">Todos los podólogos</option>
+                  {clinicPodiatrists.map((pod) => (
+                    <option key={pod.id} value={pod.id}>{pod.name}</option>
+                  ))}
+                </select>
+              </div>
+
+              {appointmentMetrics ? (
+                <>
+                  <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                    <div className="rounded-lg border border-gray-100 p-4">
+                      <p className="text-xs text-gray-500">Atendidos</p>
+                      <p className="text-2xl font-semibold text-brand-ink">{appointmentMetrics.totals.attended}</p>
+                    </div>
+                    <div className="rounded-lg border border-gray-100 p-4">
+                      <p className="text-xs text-gray-500">No asistieron</p>
+                      <p className="text-2xl font-semibold text-brand-ink">{appointmentMetrics.totals.noShow}</p>
+                      <p className="text-xs text-gray-400">{appointmentMetrics.totals.noShowRate}% del total resuelto</p>
+                    </div>
+                    <div className="rounded-lg border border-gray-100 p-4">
+                      <p className="text-xs text-gray-500">Canceladas</p>
+                      <p className="text-2xl font-semibold text-brand-ink">{appointmentMetrics.totals.cancelled}</p>
+                      <p className="text-xs text-gray-400">Tasa cancelación: {appointmentMetrics.totals.cancellationRate}%</p>
+                    </div>
+                    <div className="rounded-lg border border-gray-100 p-4">
+                      <p className="text-xs text-gray-500">Pendientes</p>
+                      <p className="text-2xl font-semibold text-brand-ink">{appointmentMetrics.totals.scheduled}</p>
+                    </div>
+                  </div>
+
+                  <div>
+                    <p className="text-sm font-medium text-brand-ink mb-2">Atendidos por día</p>
+                    <SimpleBarChart
+                      data={appointmentMetrics.attendedPerDay.map((d) => ({
+                        label: new Date(`${d.date}T12:00:00`).toLocaleDateString("es-ES", { day: "numeric", month: "short" }),
+                        value: d.count,
+                      }))}
+                      height={140}
+                    />
+                  </div>
+                </>
+              ) : (
+                <p className="text-sm text-gray-500">Cargando métricas de agenda…</p>
+              )}
+            </div>
+
             {/* Podiatrist Activity */}
             <div className="bg-white rounded-xl border border-gray-100 p-6">
               <h3 className="text-lg font-semibold text-brand-ink mb-4">Actividad por podólogo</h3>
@@ -638,6 +794,31 @@ const ClinicPage = () => {
         {/* Patients Tab */}
         {activeTab === "patients" && (
           <div className="space-y-4">
+            {/* Demographics index */}
+            {demographicsSummary && (
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                {(["new", "recurrent", "recovered"] as PatientSegment[]).map((segment) => (
+                  <button
+                    key={segment}
+                    type="button"
+                    onClick={() => setSegmentFilter(segmentFilter === segment ? "all" : segment)}
+                    className={`rounded-xl border p-4 text-left transition-colors ${
+                      segmentFilter === segment
+                        ? "border-brand-ink bg-brand-canvas"
+                        : "border-gray-100 bg-white hover:border-gray-200"
+                    }`}
+                  >
+                    <p className="text-xs text-gray-500">{SEGMENT_LABELS[segment]}</p>
+                    <p className="text-2xl font-semibold text-brand-ink">{demographicsSummary[segment]}</p>
+                  </button>
+                ))}
+                <div className="rounded-xl border border-gray-100 bg-white p-4">
+                  <p className="text-xs text-gray-500">Total indexados</p>
+                  <p className="text-2xl font-semibold text-brand-ink">{demographicsSummary.total}</p>
+                </div>
+              </div>
+            )}
+
             {/* Filters */}
             <div className="flex flex-col sm:flex-row gap-3">
               <input
@@ -657,7 +838,37 @@ const ClinicPage = () => {
                   <option key={pod.id} value={pod.id}>{pod.name}</option>
                 ))}
               </select>
+              <select
+                value={ageRangeFilter}
+                onChange={(e) => setAgeRangeFilter(e.target.value as (typeof AGE_RANGE_OPTIONS)[number]["id"])}
+                className="px-4 py-2 rounded-lg border border-gray-200 focus:border-brand-ink focus:ring-1 focus:ring-brand-ink outline-none transition-colors text-sm"
+              >
+                {AGE_RANGE_OPTIONS.map((opt) => (
+                  <option key={opt.id} value={opt.id}>{opt.label}</option>
+                ))}
+              </select>
             </div>
+
+            {(segmentFilter !== "all" || ageRangeFilter !== "all") && (
+              <div className="flex flex-wrap items-center gap-2">
+                {segmentFilter !== "all" && (
+                  <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${segmentBadgeClass(segmentFilter)}`}>
+                    {SEGMENT_LABELS[segmentFilter]}
+                    <button type="button" className="ml-1" onClick={() => setSegmentFilter("all")}>×</button>
+                  </span>
+                )}
+                {ageRangeFilter !== "all" && (
+                  <span className="px-2.5 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-700">
+                    {AGE_RANGE_OPTIONS.find((o) => o.id === ageRangeFilter)?.label}
+                    <button type="button" className="ml-1" onClick={() => setAgeRangeFilter("all")}>×</button>
+                  </span>
+                )}
+              </div>
+            )}
+
+            {patientsLoading && (
+              <p className="text-sm text-gray-500">Cargando pacientes…</p>
+            )}
 
             {/* Patients Table */}
             <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
@@ -668,6 +879,8 @@ const ClinicPage = () => {
                       <th className="text-left px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Paciente</th>
                       <th className="text-left px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Email</th>
                       <th className="text-left px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Teléfono</th>
+                      <th className="text-left px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Edad</th>
+                      <th className="text-left px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Segmento</th>
                       <th className="text-left px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Podólogo asignado</th>
                       <th className="text-left px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Última sesión</th>
                       <th className="text-right px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Acciones</th>
@@ -683,6 +896,18 @@ const ClinicPage = () => {
                         </td>
                         <td className="px-6 py-4 text-sm text-gray-600">{patient.email}</td>
                         <td className="px-6 py-4 text-sm text-gray-600">{patient.phone}</td>
+                        <td className="px-6 py-4 text-sm text-gray-600">
+                          {patient.ageYears != null ? `${patient.ageYears} años` : "—"}
+                        </td>
+                        <td className="px-6 py-4">
+                          {patient.patientSegment ? (
+                            <span className={`px-2.5 py-1 text-xs font-medium rounded-full ${segmentBadgeClass(patient.patientSegment)}`}>
+                              {SEGMENT_LABELS[patient.patientSegment]}
+                            </span>
+                          ) : (
+                            "—"
+                          )}
+                        </td>
                         <td className="px-6 py-4">
                           <span className="px-2.5 py-1 bg-gray-100 text-gray-700 text-xs font-medium rounded-full">
                             {patient.podiatristName}

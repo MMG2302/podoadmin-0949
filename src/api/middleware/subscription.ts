@@ -19,7 +19,7 @@ export const requireActiveSubscription = createMiddleware(async (c, next) => {
       {
         error: 'access_not_granted',
         message: access.message ?? 'Tu acceso no está activo. Completa el pago o contacta al administrador.',
-        billingPath: '/billing',
+        billingPath: '/settings?tab=billing',
       },
       402
     );

@@ -346,9 +346,9 @@ subscriptionsRoutes.post('/stripe/checkout', async (c) => {
 
     priceId: quote.stripePriceId,
 
-    successUrl: `${base}/billing?success=1`,
+    successUrl: `${base}/settings?tab=billing&success=1`,
 
-    cancelUrl: `${base}/billing?cancelled=1`,
+    cancelUrl: `${base}/settings?tab=billing&cancelled=1`,
 
     metadata: {
 
@@ -438,7 +438,7 @@ subscriptionsRoutes.post('/stripe/portal', async (c) => {
 
   }
 
-  const portal = await createBillingPortalSession(subRow.stripeCustomerId, `${getAppBaseUrl()}/billing`);
+  const portal = await createBillingPortalSession(subRow.stripeCustomerId, `${getAppBaseUrl()}/settings?tab=billing`);
 
   return c.json({ success: true, url: portal.url });
 

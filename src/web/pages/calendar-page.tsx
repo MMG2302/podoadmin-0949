@@ -27,6 +27,23 @@ import {
 import { useTenantCountry } from "../hooks/use-tenant-country";
 import { hydrateReceptionistUser } from "../lib/receptionist-assignments";
 import type { ClinicalSession, Patient, Appointment } from "../types/clinical";
+import {
+  CalendarDayTimeGrid,
+  CalendarWeekTimeGrid,
+  PodiatristColorLegend,
+  type CalendarTimedBlock,
+  type CalendarUntimedBlock,
+} from "../components/calendar/calendar-time-grid";
+import {
+  clampEventToGrid,
+  getPodiatristColorCollisions,
+  getPodiatristStyle,
+  parseIsoToMinutes,
+  parseTimeToMinutes,
+  podiatristInitials,
+  sortPodiatristsByName,
+  DEFAULT_APPOINTMENT_STYLE,
+} from "../lib/calendar-time-grid";
 
 type ViewMode = "month" | "week" | "day";
 
@@ -467,6 +484,117 @@ const isSelected = (date: Date) => {
     return `${appointment.patient.firstName} ${appointment.patient.lastName?.charAt(0)}.`;
   };
 
+  const sortedClinicPodiatrists = useMemo(
+    () => sortPodiatristsByName(clinicPodiatrists),
+    [clinicPodiatrists]
+  );
+
+  const orderedPodiatristIds = useMemo(
+    () => sortedClinicPodiatrists.map((p) => p.id),
+    [sortedClinicPodiatrists]
+  );
+
+  const podiatristColorCollisions = useMemo(
+    () => getPodiatristColorCollisions(orderedPodiatristIds),
+    [orderedPodiatristIds]
+  );
+
+  const colorByPodiatrist = useMemo(
+    () =>
+      (isClinicAdmin || isReceptionist) &&
+      podiatristFilter === "all" &&
+      clinicPodiatrists.length > 1,
+    [isClinicAdmin, isReceptionist, podiatristFilter, clinicPodiatrists.length]
+  );
+
+  const podiatristBadge = (podiatristId: string, name: string): string | undefined => {
+    if (!colorByPodiatrist || !podiatristColorCollisions.has(podiatristId)) return undefined;
+    return podiatristInitials(name);
+  };
+
+  const canEditAppointment = (appt: AppointmentWithDetails) =>
+    isClinicAdmin ||
+    (isPodiatrist && appt.podiatristId === user?.id) ||
+    (isReceptionist && user?.assignedPodiatristIds?.includes(appt.podiatristId));
+
+  const podiatristLegend = colorByPodiatrist ? (
+    <PodiatristColorLegend
+      podiatrists={sortedClinicPodiatrists}
+      orderedPodiatristIds={orderedPodiatristIds}
+      colorCollisionIds={podiatristColorCollisions}
+    />
+  ) : null;
+
+  const buildTimedBlocksForDate = (date: Date): CalendarTimedBlock[] => {
+    const blocks: CalendarTimedBlock[] = [];
+
+    for (const appt of getAppointmentsForDate(date)) {
+      const minutes = parseTimeToMinutes(appt.time);
+      if (minutes == null) continue;
+      const clamped = clampEventToGrid(minutes, appt.duration || 30);
+      if (!clamped) continue;
+      const editable = canEditAppointment(appt);
+      blocks.push({
+        id: appt.id,
+        kind: "appointment",
+        startMinutes: clamped.startMinutes,
+        durationMinutes: clamped.durationMinutes,
+        podiatristId: appt.podiatristId,
+        title: getPatientDisplayName(appt),
+        subtitle: colorByPodiatrist ? appt.podiatristName : undefined,
+        meta: appt.time,
+        badge: podiatristBadge(appt.podiatristId, appt.podiatristName),
+        canEdit: editable,
+        onClick: editable ? () => openEditAppointmentForm(appt) : undefined,
+      });
+    }
+
+    for (const session of getSessionsForDate(date)) {
+      const minutes = parseIsoToMinutes(session.sessionDate);
+      if (minutes == null) continue;
+      const clamped = clampEventToGrid(minutes, 30);
+      if (!clamped) continue;
+      const podName = getPodiatristName(session.createdBy);
+      blocks.push({
+        id: session.id,
+        kind: "session",
+        startMinutes: clamped.startMinutes,
+        durationMinutes: clamped.durationMinutes,
+        podiatristId: session.createdBy,
+        title: `${session.patient?.firstName ?? ""} ${session.patient?.lastName ?? ""}`.trim(),
+        subtitle: colorByPodiatrist ? podName : getSessionStatusLabel(session.status),
+        meta: t.calendar.session,
+        badge: podiatristBadge(session.createdBy, podName),
+        href: `/sessions?id=${session.id}`,
+      });
+    }
+
+    return blocks;
+  };
+
+  const buildUntimedBlocksForDate = (date: Date): CalendarUntimedBlock[] => {
+    const blocks: CalendarUntimedBlock[] = [];
+    for (const session of getSessionsForDate(date)) {
+      if (parseIsoToMinutes(session.sessionDate) != null) continue;
+      const podName = getPodiatristName(session.createdBy);
+      blocks.push({
+        id: session.id,
+        kind: "session",
+        podiatristId: session.createdBy,
+        title: `${session.patient?.firstName ?? ""} ${session.patient?.lastName ?? ""}`.trim(),
+        subtitle: colorByPodiatrist ? podName : t.calendar.session,
+        badge: podiatristBadge(session.createdBy, podName),
+        href: `/sessions?id=${session.id}`,
+      });
+    }
+    return blocks;
+  };
+
+  const appointmentChipStyle = (podiatristId: string) => {
+    if (!colorByPodiatrist) return DEFAULT_APPOINTMENT_STYLE;
+    return getPodiatristStyle(podiatristId, orderedPodiatristIds);
+  };
+
   // Appointment form handlers
   const openNewAppointmentForm = (date?: Date) => {
     setEditingAppointment(null);
@@ -609,17 +737,44 @@ const isSelected = (date: Date) => {
   };
 
   const handleCancelAppointment = async (appointment: Appointment) => {
-    if (!confirm(t.calendar.confirmDeleteAppointment)) return;
-    const res = await api.delete<{ success?: boolean; message?: string }>(`/appointments/${appointment.id}`);
+    if (!confirm(t.calendar.confirmCancelAppointment)) return;
+    const res = await api.put<{ success?: boolean; appointment?: Appointment; message?: string }>(
+      `/appointments/${appointment.id}`,
+      { status: 'cancelled' }
+    );
     if (!res.success) {
       alert(res.data?.message || res.error || t.calendar.errorDeleteFailed);
       return;
     }
-    setAllAppointments((prev) => prev.filter((a) => a.id !== appointment.id));
+    const updated = res.data?.appointment;
+    if (updated) {
+      setAllAppointments((prev) => prev.map((a) => (a.id === updated.id ? updated : a)));
+    }
+    setEditingAppointment(null);
+    setShowAppointmentForm(false);
     setRefreshTrigger((prev) => prev + 1);
   };
 
-  // Pacientes del formulario de cita: select corto o búsqueda indexada si hay muchos
+  const handleMarkNoShow = async (appointment: Appointment) => {
+    if (!confirm('¿Marcar esta cita como no asistió (no-show)?')) return;
+    const res = await api.put<{ success?: boolean; appointment?: Appointment; message?: string }>(
+      `/appointments/${appointment.id}`,
+      { status: 'no_show' }
+    );
+    if (!res.success) {
+      alert(res.data?.message || res.error || t.calendar.errorDeleteFailed);
+      return;
+    }
+    const updated = res.data?.appointment;
+    if (updated) {
+      setAllAppointments((prev) => prev.map((a) => (a.id === updated.id ? updated : a)));
+    }
+    setEditingAppointment(null);
+    setShowAppointmentForm(false);
+    setRefreshTrigger((prev) => prev + 1);
+  };
+
+  // Pacientes del formulario de cita
   const filterPatientsForClinic = useCallback(
     (patients: Patient[]) => {
       if (isClinicAdmin || isReceptionist) {
@@ -834,7 +989,7 @@ const isSelected = (date: Date) => {
                     className="px-3 py-2 text-sm border border-brand-border rounded-lg bg-brand-surface text-brand-ink focus:border-brand-ink focus:ring-1 focus:ring-brand-ink outline-none"
                   >
                     <option value="all">{t.calendar.allPodiatrists}</option>
-                    {clinicPodiatrists.map(p => (
+                    {sortedClinicPodiatrists.map(p => (
                       <option key={p.id} value={p.id}>{p.name}</option>
                     ))}
                   </select>
@@ -969,19 +1124,33 @@ const isSelected = (date: Date) => {
                         
                         {/* Session/Appointment indicators */}
                         <div className="space-y-1">
-                          {appointments.slice(0, 2).map((appt) => (
+                          {appointments.slice(0, 2).map((appt) => {
+                            const chipStyle = appointmentChipStyle(appt.podiatristId);
+                            const badge = podiatristBadge(appt.podiatristId, appt.podiatristName);
+                            return (
                             <div
                               key={appt.id}
-                              className="text-xs px-1.5 py-0.5 rounded truncate bg-blue-50 border border-blue-200 text-blue-700"
-                              title={`${t.calendar.appointment} · ${appt.time}`}
+                              className={`text-xs px-1.5 py-0.5 rounded truncate border flex items-center gap-1 ${chipStyle.bg} ${chipStyle.border} ${chipStyle.text}`}
+                              title={`${t.calendar.appointment} · ${appt.time}${colorByPodiatrist ? ` · ${appt.podiatristName}` : ""}`}
                             >
-                              <span className="font-semibold uppercase tracking-wide text-[10px] opacity-80">
-                                {t.calendar.appointment}
-                              </span>{" "}
-                              <span className="font-medium">{appt.time}</span>{" "}
-                              {getPatientDisplayNameShort(appt)}
+                              {badge && (
+                                <span className="inline-flex items-center justify-center min-w-[1rem] h-4 px-0.5 rounded text-[8px] font-bold bg-brand-ink/10 border border-current/20 shrink-0">
+                                  {badge}
+                                </span>
+                              )}
+                              <span className="truncate min-w-0">
+                                <span className="font-semibold uppercase tracking-wide text-[10px] opacity-80">
+                                  {t.calendar.appointment}
+                                </span>{" "}
+                                <span className="font-medium">{appt.time}</span>{" "}
+                                {colorByPodiatrist && !badge && (
+                                  <span className="opacity-75">{appt.podiatristName.split(" ")[0]} · </span>
+                                )}
+                                {getPatientDisplayNameShort(appt)}
+                              </span>
                             </div>
-                          ))}
+                            );
+                          })}
                           {sessions.slice(0, Math.max(0, 3 - appointments.length)).map((session) => (
                             <div
                               key={session.id}
@@ -1007,113 +1176,55 @@ const isSelected = (date: Date) => {
               </>
             )}
 
-            {/* Week View */}
+            {/* Week View — rejilla horaria */}
             {viewMode === "week" && (
-              <>
-                {/* Day headers - min-w para scroll horizontal en móvil */}
-                <div className="grid grid-cols-7 min-w-[400px] border-b border-gray-100">
-                  {getWeekGrid().map((date, index) => (
-                    <div
-                      key={index}
-                      onClick={() => setSelectedDate(date)}
-                      className={`py-3 text-center cursor-pointer hover:bg-gray-50 transition-colors ${
-                        isSelected(date) ? "bg-blue-50" : ""
-                      }`}
-                    >
-                      <div className="text-sm text-gray-500">{dayNames[index]}</div>
-                      <div className={`text-lg font-semibold mt-1 ${
-                        isToday(date) 
-                          ? "text-brand-ink-fg bg-brand-ink rounded-full w-8 h-8 flex items-center justify-center mx-auto" 
-                          : "text-brand-ink"
-                      }`}>
-                        {date.getDate()}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-
-                {/* Sessions/appointments grid */}
-                <div className="grid grid-cols-7 min-w-[400px] min-h-[400px]">
-                  {getWeekGrid().map((date, index) => {
-                    const sessions = getSessionsForDate(date);
-                    const appointments = getAppointmentsForDate(date);
-                    return (
-                      <div
-                        key={index}
-                        className={`border-r border-gray-50 p-2 ${
-                          isSelected(date) ? "bg-blue-50/50" : ""
-                        }`}
-                      >
-                        <div className="space-y-2">
-                          {appointments.map((appt) => {
-                            // Los podólogos solo pueden editar sus propias citas, los clinic admins pueden editar todas
-                            const canEdit = isClinicAdmin || (isPodiatrist && appt.podiatristId === user?.id) || (isReceptionist && user?.assignedPodiatristIds?.includes(appt.podiatristId));
-                            return (
-                            <div
-                              key={appt.id}
-                              onClick={() => canEdit && openEditAppointmentForm(appt)}
-                              className={`p-2 rounded-lg border transition-shadow bg-blue-50 border-blue-200 text-blue-700 ${canEdit ? "cursor-pointer hover:shadow-sm" : "cursor-default"}`}
-                            >
-                              <p className="text-xs font-semibold">{appt.time}</p>
-                              <p className="text-xs truncate">
-                                {getPatientDisplayName(appt)}
-                              </p>
-                              <div className="flex items-center gap-1 mt-0.5">
-                                <p className="text-[10px] font-semibold uppercase tracking-wide opacity-80">
-                                  {t.calendar.appointment}
-                                </p>
-                                {!appt.patientId && (
-                                  <span className="text-[9px] text-orange-600 bg-orange-100 px-1 py-0.5 rounded">{t.calendar.pendingShort}</span>
-                                )}
-                              </div>
-                            </div>
-                            );
-                          })}
-                          {sessions.map((session) => (
-                          <Link key={session.id} href={`/sessions?id=${session.id}`}>
-                              <div className={`p-2 rounded-lg border cursor-pointer hover:shadow-sm transition-shadow ${getStatusBg(session.status)}`}>
-                                <p className="text-xs font-medium truncate">
-                                  {session.patient?.firstName} {session.patient?.lastName}
-                                </p>
-                                <p className="text-[10px] mt-0.5">
-                                  <span className="font-semibold uppercase tracking-wide opacity-80">
-                                    {t.calendar.session}
-                                  </span>
-                                  <span className="opacity-70"> · {getSessionStatusLabel(session.status)}</span>
-                                </p>
-                              </div>
-                            </Link>
-                          ))}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </>
+              <CalendarWeekTimeGrid
+                days={getWeekGrid().map((date, index) => ({
+                  date,
+                  dayLabel: dayNames[index],
+                  isToday: isToday(date),
+                  isSelected: isSelected(date),
+                  onSelect: () => setSelectedDate(date),
+                }))}
+                getTimedBlocks={buildTimedBlocksForDate}
+                getUntimedBlocks={buildUntimedBlocksForDate}
+                colorByPodiatrist={colorByPodiatrist}
+                orderedPodiatristIds={orderedPodiatristIds}
+                legend={podiatristLegend}
+              />
             )}
 
-            {/* Day View */}
+            {/* Day View — rejilla horaria */}
             {viewMode === "day" && (
-              <div className="p-6">
-                <div className="flex items-center gap-4 mb-6">
-                  <div className={`w-16 h-16 rounded-xl flex flex-col items-center justify-center ${
-                    isToday(currentDate) ? "bg-brand-ink text-brand-ink-fg" : "bg-brand-canvas text-brand-ink"
-                  }`}>
+              <div className="p-4 sm:p-6">
+                <div className="flex flex-wrap items-center gap-4 mb-4">
+                  <div
+                    className={`w-16 h-16 rounded-xl flex flex-col items-center justify-center shrink-0 ${
+                      isToday(currentDate) ? "bg-brand-ink text-brand-ink-fg" : "bg-brand-canvas text-brand-ink"
+                    }`}
+                  >
                     <span className="text-2xl font-semibold">{currentDate.getDate()}</span>
-                    <span className="text-xs uppercase">{currentDate.toLocaleDateString("es-ES", { weekday: "short" })}</span>
+                    <span className="text-xs uppercase">
+                      {currentDate.toLocaleDateString(locale, { weekday: "short" })}
+                    </span>
                   </div>
-                  <div>
-                    <h3 className="text-xl font-semibold text-brand-ink">
-                      {getSessionsForDate(currentDate).length + getAppointmentsForDate(currentDate).length} {t.calendar.events}
+                  <div className="min-w-0 flex-1">
+                    <h3 className="text-lg sm:text-xl font-semibold text-brand-ink">
+                      {getSessionsForDate(currentDate).length + getAppointmentsForDate(currentDate).length}{" "}
+                      {t.calendar.events}
                     </h3>
-                    <p className="text-sm text-gray-500">
-                      {currentDate.toLocaleDateString(locale, { weekday: "long", day: "numeric", month: "long" })}
+                    <p className="text-sm text-brand-muted">
+                      {currentDate.toLocaleDateString(locale, {
+                        weekday: "long",
+                        day: "numeric",
+                        month: "long",
+                      })}
                     </p>
                   </div>
                   {(isClinicAdmin || isPodiatrist || isReceptionist) && (
                     <button
                       onClick={() => openNewAppointmentForm(currentDate)}
-                      className="ml-auto px-4 py-2 bg-brand-ink text-brand-ink-fg rounded-lg hover:bg-brand-ink-hover transition-colors font-medium flex items-center gap-2 text-sm"
+                      className="px-4 py-2 bg-brand-ink text-brand-ink-fg rounded-lg hover:bg-brand-ink-hover transition-colors font-medium flex items-center gap-2 text-sm min-h-[44px]"
                     >
                       <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
@@ -1123,101 +1234,24 @@ const isSelected = (date: Date) => {
                   )}
                 </div>
 
-                <div className="space-y-3">
-                  {getAppointmentsForDate(currentDate).length === 0 && getSessionsForDate(currentDate).length === 0 ? (
-                    <div className="text-center py-12 text-gray-500">
-                      <svg className="w-12 h-12 mx-auto text-gray-300 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                      </svg>
-                      <p>{t.calendar.noEventsForDay}</p>
-                    </div>
-                  ) : (
-                    <>
-                      {/* Appointments first */}
-                      {getAppointmentsForDate(currentDate).map((appt) => (
-                        <div
-                          key={appt.id}
-                          className="flex items-center gap-4 p-4 bg-blue-50 rounded-xl border border-blue-100"
-                        >
-                          <div className="w-1.5 h-12 rounded-full bg-blue-500" />
-                          <div className="flex-1">
-                            <div className="flex items-center gap-2">
-                              <span className="text-sm font-semibold text-blue-700">{appt.time}</span>
-                              <span className="text-xs text-blue-600 bg-blue-100 px-2 py-0.5 rounded font-medium">
-                                {t.calendar.appointment}
-                              </span>
-                              {!appt.patientId && (
-                                <span className="text-xs text-orange-600 bg-orange-100 px-2 py-0.5 rounded">{t.calendar.pendingPatient}</span>
-                              )}
-                            </div>
-                            <p className="font-medium text-brand-ink">
-                              {getPatientDisplayName(appt)}
-                            </p>
-                            {!appt.patientId && appt.pendingPatientPhone && (
-                              <p className="text-xs text-gray-500">
-                                Tel: {appt.pendingPatientPhone}
-                              </p>
-                            )}
-                            <p className="text-sm text-gray-500">
-                              Podólogo: {appt.podiatristName} • {appt.duration} min
-                            </p>
-                            {appt.notes && (
-                              <p className="text-sm text-gray-400 mt-1">{appt.notes}</p>
-                            )}
-                          </div>
-                          {(isClinicAdmin || isPodiatrist || isReceptionist) && (
-                            <div className="flex gap-2">
-                              <button
-                                onClick={() => openEditAppointmentForm(appt)}
-                                className="p-2 hover:bg-blue-100 rounded-lg transition-colors"
-                                title={t.calendar.edit}
-                              >
-                                <svg className="w-5 h-5 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                                </svg>
-                              </button>
-                              <button
-                                onClick={() => handleCancelAppointment(appt)}
-                                className="p-2 hover:bg-red-100 rounded-lg transition-colors"
-                                title="Cancelar"
-                              >
-                                <svg className="w-5 h-5 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                                </svg>
-                              </button>
-                            </div>
-                          )}
-                        </div>
-                      ))}
-                      {/* Then sessions */}
-                      {getSessionsForDate(currentDate).map((session) => (
-                        <Link key={session.id} href={`/sessions?id=${session.id}`}>
-                          <div className="flex items-center gap-4 p-4 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors cursor-pointer">
-                            <div className={`w-1.5 h-12 rounded-full ${getStatusColor(session.status)}`} />
-                            <div className="flex-1">
-                              <div className="flex items-center gap-2 flex-wrap">
-                                <p className="font-medium text-brand-ink">
-                                  {session.patient?.firstName} {session.patient?.lastName}
-                                </p>
-                                <span className="text-xs font-medium px-2 py-0.5 rounded bg-gray-200 text-gray-700">
-                                  {t.calendar.session}
-                                </span>
-                              </div>
-                              <p className="text-sm text-gray-500">
-                                {session.diagnosis || t.calendar.noDiagnosis}
-                              </p>
-                            </div>
-                            <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                              session.status === "completed" ? "bg-green-100 text-green-700" : "bg-yellow-100 text-yellow-700"
-                            }`}>
-                              {session.status === "completed" ? t.calendar.completed : t.calendar.draft}
-                            </span>
-                          </div>
-                        </Link>
-                      ))}
-                    </>
-                  )}
-                </div>
+                {getAppointmentsForDate(currentDate).length === 0 &&
+                getSessionsForDate(currentDate).length === 0 ? (
+                  <div className="text-center py-12 text-brand-muted">
+                    <svg className="w-12 h-12 mx-auto text-brand-border mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                    </svg>
+                    <p>{t.calendar.noEventsForDay}</p>
+                  </div>
+                ) : (
+                  <CalendarDayTimeGrid
+                    date={currentDate}
+                    timedBlocks={buildTimedBlocksForDate(currentDate)}
+                    untimedBlocks={buildUntimedBlocksForDate(currentDate)}
+                    colorByPodiatrist={colorByPodiatrist}
+                    orderedPodiatristIds={orderedPodiatristIds}
+                    legend={podiatristLegend}
+                  />
+                )}
               </div>
             )}
           </div>
@@ -1714,19 +1748,23 @@ const isSelected = (date: Date) => {
 
           <AppModalFooter>
             <div className="flex flex-col-reverse sm:flex-row gap-3">
-              {editingAppointment && editingAppointment.status !== "cancelled" && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (confirm(t.calendar.confirmCancelAppointment)) {
-                      handleCancelAppointment(editingAppointment);
-                      closeAppointmentForm();
-                    }
-                  }}
-                  className="px-4 py-2.5 border border-red-200 text-red-700 rounded-lg hover:bg-red-50 transition-colors font-medium dark:border-red-900 dark:text-red-300 dark:hover:bg-red-950/40"
-                >
-                  {t.calendar.cancelAppointmentButton}
-                </button>
+              {editingAppointment && editingAppointment.status !== "cancelled" && editingAppointment.status !== "no_show" && (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => void handleMarkNoShow(editingAppointment)}
+                    className="px-4 py-2.5 border border-amber-200 text-amber-800 rounded-lg hover:bg-amber-50 transition-colors font-medium dark:border-amber-900 dark:text-amber-300 dark:hover:bg-amber-950/40"
+                  >
+                    No asistió
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => void handleCancelAppointment(editingAppointment)}
+                    className="px-4 py-2.5 border border-red-200 text-red-700 rounded-lg hover:bg-red-50 transition-colors font-medium dark:border-red-900 dark:text-red-300 dark:hover:bg-red-950/40"
+                  >
+                    {t.calendar.cancelAppointmentButton}
+                  </button>
+                </>
               )}
               <div className="flex flex-1 gap-3 sm:justify-end">
                 <button

@@ -14,6 +14,7 @@ import {
   openHtmlForPrint,
   openHtmlInNewTab,
 } from "../../lib/podiatry-history-print";
+import { getPrintPreferences } from "../../lib/print-preferences-client";
 
 type ClinicalHistoriesExportResponse = {
   success?: boolean;
@@ -77,16 +78,20 @@ export function ClinicalHistoriesDownloadSection() {
     if (options?.embedLogo && clinicLogo) {
       clinicLogo = (await embedImageAsDataUri(clinicLogo)) ?? clinicLogo;
     }
-    const inputs = buildPodiatryPrintInputsFromBundle({
-      patients: bundle.patients,
-      sessions: bundle.sessions,
-      clinicLogo,
-      clinic: bundle.clinic,
-      professional: bundle.professional,
-      podiatristName: bundle.podiatristName,
-      podiatristLicense: bundle.podiatristLicense,
-      layout,
-    });
+    const preferences = await getPrintPreferences();
+    const inputs = buildPodiatryPrintInputsFromBundle(
+      {
+        patients: bundle.patients,
+        sessions: bundle.sessions,
+        clinicLogo,
+        clinic: bundle.clinic,
+        professional: bundle.professional,
+        podiatristName: bundle.podiatristName,
+        podiatristLicense: bundle.podiatristLicense,
+        layout,
+      },
+      { preferences }
+    );
     return buildCombinedPodiatryHistoriesPrintHtml(inputs, {
       podiatristName: bundle.podiatristName,
       exportedAt: bundle.exportedAt,

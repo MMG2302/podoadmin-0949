@@ -64,6 +64,8 @@ export function mapDbPatient(row: DbPatient): Patient {
     address: row.address ?? '',
     city: row.city ?? '',
     postalCode: row.postalCode ?? '',
+    weightKg: row.weightKg ?? null,
+    heightCm: row.heightCm ?? null,
     medicalHistory,
     consent,
     createdAt: row.createdAt,
@@ -85,6 +87,8 @@ export function mapDbSession(row: DbSession): ClinicalSession {
     nextAppointmentDate?: string | null;
     followUpNotes?: string | null;
     appointmentReason?: string | null;
+    patientWeightKg?: string | null;
+    patientHeightCm?: string | null;
     status?: ClinicalSession['status'];
     completedAt?: string | null;
     creditReservedAt?: string | null;
@@ -132,6 +136,8 @@ export function mapDbSession(row: DbSession): ClinicalSession {
     nextAppointmentDate: extra.nextAppointmentDate ?? null,
     followUpNotes: extra.followUpNotes ?? null,
     appointmentReason: (extra.appointmentReason as ClinicalSession['appointmentReason']) ?? null,
+    patientWeightKg: extra.patientWeightKg ?? null,
+    patientHeightCm: extra.patientHeightCm ?? null,
     footType: normalizePodiatryFootType(extra.footType),
     archType: normalizePodiatryArchType(extra.archType),
     sweatDisorders: normalizeSweatDisorders(extra.sweatDisorders),
@@ -140,6 +146,57 @@ export function mapDbSession(row: DbSession): ClinicalSession {
     digitalAlterations: normalizeDigitalAlterations(extra.digitalAlterations),
     onychopathies: normalizeOnychopathies(extra.onychopathies),
     customSections: normalizeCustomSections(extra.customSections),
+  };
+}
+
+/** Mapeo ligero para listados (sin normalizar examen podológico completo). */
+export function mapDbSessionSummary(row: DbSession): ClinicalSession {
+  type NotesSummary = {
+    diagnosis?: string;
+    status?: ClinicalSession['status'];
+    nextAppointmentDate?: string | null;
+  };
+
+  let extra: NotesSummary = {};
+  if (row.notes) {
+    try {
+      const parsed = JSON.parse(row.notes) as NotesSummary | string;
+      if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+        extra = parsed;
+      }
+    } catch {
+      // notes como texto plano
+    }
+  }
+
+  const status: ClinicalSession['status'] = extra.status ?? 'draft';
+
+  return {
+    id: row.id,
+    patientId: row.patientId,
+    sessionDate: row.sessionDate,
+    status,
+    clinicalNotes: '',
+    anamnesis: '',
+    physicalExamination: '',
+    diagnosis: extra.diagnosis ?? row.diagnosis ?? '',
+    treatmentPlan: '',
+    images: [],
+    createdAt: row.createdAt,
+    updatedAt: row.updatedAt,
+    completedAt: status === 'completed' ? row.updatedAt : null,
+    createdBy: row.createdBy,
+    nextAppointmentDate: extra.nextAppointmentDate ?? null,
+    followUpNotes: null,
+    appointmentReason: null,
+    footType: null,
+    archType: null,
+    sweatDisorders: [],
+    limbAssessment: [],
+    helomas: [],
+    digitalAlterations: [],
+    onychopathies: [],
+    customSections: {},
   };
 }
 

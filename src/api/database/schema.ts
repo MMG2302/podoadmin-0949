@@ -20,6 +20,8 @@ export const patients = sqliteTable('patients', {
   address: text('address'),
   city: text('city'),
   postalCode: text('postal_code'),
+  weightKg: text('weight_kg'),
+  heightCm: text('height_cm'),
   clinicalAlertsJson: text('clinical_alerts_json').notNull().default('[]'),
   medicalHistory: text('medical_history').notNull(), // JSON string
   consent: text('consent').notNull(), // JSON string
@@ -151,6 +153,8 @@ export const clinics = sqliteTable('clinics', {
   dashboardLogoEnabled: integer('dashboard_logo_enabled', { mode: 'boolean' }).notNull().default(false),
   dashboardLogoJson: text('dashboard_logo_json'),
   checkoutTariffsJson: text('checkout_tariffs_json'),
+  checkoutAnalyticsJson: text('checkout_analytics_json'),
+  printPreferencesJson: text('print_preferences_json'),
   createdAt: text('created_at').notNull(),
 });
 
@@ -322,6 +326,8 @@ export const professionalInfo = sqliteTable('professional_info', {
   dashboardLogoEnabled: integer('dashboard_logo_enabled', { mode: 'boolean' }).notNull().default(false),
   dashboardLogoJson: text('dashboard_logo_json'),
   checkoutTariffsJson: text('checkout_tariffs_json'),
+  checkoutAnalyticsJson: text('checkout_analytics_json'),
+  printPreferencesJson: text('print_preferences_json'),
   infoUpdatedAt: text('info_updated_at'),
 });
 
@@ -617,6 +623,7 @@ export const checkoutHandoffs = sqliteTable('checkout_handoffs', {
   createdBy: text('created_by').notNull(),
   paidAt: text('paid_at'),
   paidBy: text('paid_by'),
+  paymentMethod: text('payment_method'),
   createdAt: text('created_at').notNull(),
   updatedAt: text('updated_at').notNull(),
 });

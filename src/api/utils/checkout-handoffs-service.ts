@@ -199,6 +199,7 @@ export function mapCheckoutHandoffRow(row: typeof checkoutHandoffs.$inferSelect)
     createdBy: row.createdBy,
     paidAt: row.paidAt ?? null,
     paidBy: row.paidBy ?? null,
+    paymentMethod: (row.paymentMethod as 'cash' | 'card' | 'transfer' | 'other' | null) ?? null,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
   };

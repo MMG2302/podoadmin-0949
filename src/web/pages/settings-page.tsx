@@ -11,7 +11,9 @@ import { WhatsAppSettingsSection } from "../components/settings/whatsapp-setting
 import { ComplianceSettingsSection } from "../components/settings/compliance-settings-section";
 import { ClinicalHistoriesDownloadSection } from "../components/settings/clinical-histories-download-section";
 import { SettingsTabBar, type SettingsTabId } from "../components/settings/settings-tab-bar";
+import { BillingSettingsSection } from "../components/settings/billing-settings-section";
 import { ClinicalLayoutSettingsSection } from "../components/settings/clinical-layout-settings-section";
+import { PrintSettingsSection } from "../components/settings/print-settings-section";
 import { WorkspaceWatermarkSettingsSection } from "../components/settings/workspace-watermark-settings-section";
 import { ColorPaletteSettingsSection } from "../components/settings/color-palette-settings-section";
 import { SidebarNavSettingsSection } from "../components/settings/sidebar-nav-settings-section";
@@ -90,13 +92,47 @@ const SettingsPage = () => {
     !!isPodiatristWithClinic ||
     !!isPodiatristIndependent;
 
-  const [activeTab, setActiveTab] = useState<SettingsTabId>("general");
+  const showBillingTab =
+    user?.role === "clinic_admin" || user?.role === "podiatrist";
+
+  const parseTabFromUrl = (): SettingsTabId => {
+    if (typeof window === "undefined") return "general";
+    const tab = new URLSearchParams(window.location.search).get("tab");
+    if (
+      tab === "general" ||
+      tab === "clinical" ||
+      tab === "integrations" ||
+      tab === "clinic" ||
+      tab === "billing"
+    ) {
+      return tab;
+    }
+    return "general";
+  };
+
+  const [activeTab, setActiveTab] = useState<SettingsTabId>(parseTabFromUrl);
+
+  const handleTabChange = useCallback((tab: SettingsTabId) => {
+    setActiveTab(tab);
+    const params = new URLSearchParams(window.location.search);
+    if (tab === "general") {
+      params.delete("tab");
+    } else {
+      params.set("tab", tab);
+    }
+    const query = params.toString();
+    const next = query ? `/settings?${query}` : "/settings";
+    window.history.replaceState(null, "", next);
+  }, []);
 
   useEffect(() => {
     if (!showClinicalTab && activeTab === "clinical") {
       setActiveTab("general");
     }
-  }, [showClinicalTab, activeTab]);
+    if (!showBillingTab && activeTab === "billing") {
+      setActiveTab("general");
+    }
+  }, [showClinicalTab, showBillingTab, activeTab]);
   
   const [userClinic, setUserClinic] = useState<Clinic | null>(null);
   const [saved, setSaved] = useState(false);
@@ -792,16 +828,24 @@ const SettingsPage = () => {
       <div className={`${activeTab === "clinical" ? "max-w-5xl" : "max-w-2xl"} space-y-8`}>
         <SettingsTabBar
           active={activeTab}
-          onChange={setActiveTab}
+          onChange={handleTabChange}
           tabs={[
             { id: "general", label: "General" },
             { id: "clinical", label: "Historia clínica", visible: showClinicalTab },
             { id: "integrations", label: "Integraciones", visible: canConfigureWhatsApp },
             { id: "clinic", label: "Clínica", visible: showClinicTab },
+            { id: "billing", label: t.nav.billing ?? "Facturación", visible: showBillingTab },
           ]}
         />
 
-        {activeTab === "clinical" && showClinicalTab && <ClinicalLayoutSettingsSection />}
+        {activeTab === "billing" && showBillingTab && <BillingSettingsSection />}
+
+        {activeTab === "clinical" && showClinicalTab && (
+          <div className="space-y-8">
+            <ClinicalLayoutSettingsSection />
+            <PrintSettingsSection />
+          </div>
+        )}
 
         {activeTab === "integrations" && canConfigureWhatsApp && <WhatsAppSettingsSection />}
 

@@ -66,7 +66,7 @@ function mapDbToAppointment(row: DbAppointment) {
     time: row.sessionTime,
     duration,
     notes: notesText,
-    status: row.status as 'scheduled' | 'confirmed' | 'cancelled' | 'completed',
+    status: row.status as 'scheduled' | 'confirmed' | 'cancelled' | 'completed' | 'no_show',
     createdBy: row.createdBy,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,

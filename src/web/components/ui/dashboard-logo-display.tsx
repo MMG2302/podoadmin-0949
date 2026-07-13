@@ -1,4 +1,5 @@
 import { cn } from "@/lib/utils";
+import { useAuthenticatedImageSrc } from "@/hooks/use-authenticated-image-src";
 import {
   dashboardLogoImageStyle,
   dashboardLogoLayout,
@@ -22,6 +23,7 @@ export function DashboardLogoDisplay({
   preview = false,
 }: DashboardLogoDisplayProps) {
   const { baseHeight, baseWidthPercent, outerMinHeight } = dashboardLogoLayout(config);
+  const { resolvedSrc, failed, loading, onError, onLoad } = useAuthenticatedImageSrc(logoUrl);
 
   return (
     <div
@@ -40,14 +42,22 @@ export function DashboardLogoDisplay({
             height: baseHeight,
           }}
         >
-          <img
-            key={`${config.size}-${config.zoom}-${config.positionX}-${config.positionY}-${config.opacity}`}
-            src={logoUrl}
-            alt={alt}
-            className="absolute select-none origin-center"
-            style={dashboardLogoImageStyle(config)}
-            draggable={false}
-          />
+          {resolvedSrc && !failed ? (
+            <img
+              src={resolvedSrc}
+              alt={alt}
+              onLoad={onLoad}
+              onError={onError}
+              className="absolute select-none origin-center"
+              style={dashboardLogoImageStyle(config)}
+              draggable={false}
+            />
+          ) : loading && !failed ? (
+            <div
+              className="absolute inset-0 animate-pulse rounded-lg bg-brand-canvas"
+              aria-hidden
+            />
+          ) : null}
         </div>
       </div>
     </div>

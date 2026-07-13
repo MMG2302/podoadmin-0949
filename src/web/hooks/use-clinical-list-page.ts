@@ -5,6 +5,7 @@ import { registerClinicalListInvalidator } from '../lib/clinical-list-cache';
 type PaginationMeta = { hasMore?: boolean; limit?: number; offset?: number };
 
 const DEFAULT_PAGE_SIZE = 50;
+const FETCH_TIMEOUT_MS = 25_000;
 
 function buildQueryString(
   filters: Record<string, string | undefined>,
@@ -18,6 +19,21 @@ function buildQueryString(
     if (value !== undefined && value !== '') params.set(key, value);
   }
   return `?${params.toString()}`;
+}
+
+function withTimeout<T>(promise: Promise<T>, ms: number, message: string): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const timer = window.setTimeout(() => reject(new Error(message)), ms);
+    promise
+      .then((value) => {
+        window.clearTimeout(timer);
+        resolve(value);
+      })
+      .catch((err) => {
+        window.clearTimeout(timer);
+        reject(err);
+      });
+  });
 }
 
 export function useClinicalListPage<T>(config: {
@@ -43,8 +59,8 @@ export function useClinicalListPage<T>(config: {
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const offsetRef = useRef(0);
+  const generationRef = useRef(0);
   const filtersKey = JSON.stringify(filters);
-  const parsedFilters = JSON.parse(filtersKey) as Record<string, string | undefined>;
 
   const fetchPage = useCallback(
     async (reset: boolean) => {
@@ -52,10 +68,14 @@ export function useClinicalListPage<T>(config: {
         setItems([]);
         setHasMore(false);
         setIsLoading(false);
+        setIsLoadingMore(false);
         return;
       }
 
+      const generation = ++generationRef.current;
+      const parsedFilters = JSON.parse(filtersKey) as Record<string, string | undefined>;
       const offset = reset ? 0 : offsetRef.current;
+
       if (reset) {
         setIsLoading(true);
         setError(null);
@@ -65,11 +85,17 @@ export function useClinicalListPage<T>(config: {
 
       try {
         const query = buildQueryString(parsedFilters, pageSize, offset);
-        const res = await api.get<{
-          success?: boolean;
-          pagination?: PaginationMeta;
-          error?: string;
-        } & Record<string, unknown>>(`${path}${query}`);
+        const res = await withTimeout(
+          api.get<{
+            success?: boolean;
+            pagination?: PaginationMeta;
+            error?: string;
+          } & Record<string, unknown>>(`${path}${query}`),
+          FETCH_TIMEOUT_MS,
+          'La solicitud tardó demasiado. Comprueba la conexión e inténtalo de nuevo.'
+        );
+
+        if (generation !== generationRef.current) return;
 
         if (!res.success) {
           throw new Error(res.error || errorMessage);
@@ -88,14 +114,17 @@ export function useClinicalListPage<T>(config: {
         setHasMore(nextHasMore);
         offsetRef.current = nextOffset;
       } catch (err) {
+        if (generation !== generationRef.current) return;
         setError(err instanceof Error ? err.message : errorMessage);
         if (reset) {
           setItems([]);
           setHasMore(false);
         }
       } finally {
-        setIsLoading(false);
-        setIsLoadingMore(false);
+        if (generation === generationRef.current) {
+          setIsLoading(false);
+          setIsLoadingMore(false);
+        }
       }
     },
     [enabled, path, listKey, pageSize, filtersKey, errorMessage]

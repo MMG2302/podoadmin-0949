@@ -1,4 +1,5 @@
 import type { User } from "../contexts/auth-context";
+import { BILLING_SETTINGS_PATH } from "./billing-settings-path";
 
 /** Rutas clínicas que requieren pago acreditado o habilitación super_admin. */
 export const CLINICAL_APP_PATHS = [
@@ -12,7 +13,7 @@ export const CLINICAL_APP_PATHS = [
   "/clinical-tools",
 ] as const;
 
-/** Rutas permitidas sin acceso de pago (facturación, ajustes, soporte). */
+/** Rutas permitidas sin acceso de pago (facturación en ajustes, soporte). */
 export const ACCESS_WITHOUT_PAYMENT_PATHS = [
   "/billing",
   "/settings",
@@ -39,7 +40,7 @@ export function getPostLoginPath(user: User): string {
   if (user.mustChangePassword) return "/change-password";
   if (!hasActiveSystemAccess(user)) {
     if (user.role === "clinic_admin" || (user.role === "podiatrist" && !user.clinicId)) {
-      return "/billing";
+      return BILLING_SETTINGS_PATH;
     }
     return "/support";
   }

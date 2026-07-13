@@ -18,6 +18,29 @@ import { useClinicalListPage } from "../hooks/use-clinical-list-page";
 import { fetchPatientById } from "../hooks/use-patient-picker";
 import { invalidateClinicalListCache } from "../lib/clinical-list-cache";
 import { ClinicalListError, ClinicalListLoading } from "../components/clinical/clinical-list-states";
+
+type PatientSegment = "new" | "recurrent" | "recovered";
+
+const SEGMENT_LABELS: Record<PatientSegment, string> = {
+  new: "Nuevos",
+  recurrent: "Recurrentes",
+  recovered: "Recuperados",
+};
+
+const AGE_RANGE_OPTIONS = [
+  { id: "all", label: "Todas las edades" },
+  { id: "0-17", label: "0-17 años", ageMin: 0, ageMax: 17 },
+  { id: "18-35", label: "18-35 años", ageMin: 18, ageMax: 35 },
+  { id: "36-55", label: "36-55 años", ageMin: 36, ageMax: 55 },
+  { id: "56+", label: "56+ años", ageMin: 56, ageMax: 130 },
+] as const;
+
+type DemographicsSummary = {
+  new: number;
+  recurrent: number;
+  recovered: number;
+  total: number;
+};
 import { AppModal, AppModalBody, AppModalFooter, AppModalHeader } from "../components/ui/app-modal";
 import { isPatientFieldEnabled } from "../types/clinical-layout";
 import { createDefaultMedicalHistory, normalizeMedicalHistory } from "../types/medical-history";
@@ -95,11 +118,39 @@ const PatientsPage = () => {
   
   const [searchQuery, setSearchQuery] = useState("");
   const [debouncedQ, setDebouncedQ] = useState("");
+  const [segmentFilter, setSegmentFilter] = useState<"all" | PatientSegment>("all");
+  const [ageRangeFilter, setAgeRangeFilter] = useState<(typeof AGE_RANGE_OPTIONS)[number]["id"]>("all");
+  const [demographicsSummary, setDemographicsSummary] = useState<DemographicsSummary | null>(null);
 
   useEffect(() => {
-    const timer = setTimeout(() => setDebouncedQ(searchQuery.trim()), 350);
+    const trimmed = searchQuery.trim();
+    if (!trimmed) {
+      setDebouncedQ("");
+      return;
+    }
+    const timer = setTimeout(() => setDebouncedQ(trimmed), 300);
     return () => clearTimeout(timer);
   }, [searchQuery]);
+
+  const patientFilters = useMemo(() => {
+    const filters: Record<string, string | undefined> = {};
+    if (debouncedQ) filters.q = debouncedQ;
+    if (segmentFilter !== "all") filters.segment = segmentFilter;
+    const ageRange = AGE_RANGE_OPTIONS.find((o) => o.id === ageRangeFilter);
+    if (ageRange && ageRange.id !== "all" && "ageMin" in ageRange) {
+      filters.ageMin = String(ageRange.ageMin);
+      filters.ageMax = String(ageRange.ageMax);
+    }
+    return filters;
+  }, [debouncedQ, segmentFilter, ageRangeFilter]);
+
+  useEffect(() => {
+    void api.get<{ success?: boolean; demographics?: DemographicsSummary }>("/patients/demographics-summary").then((r) => {
+      if (r.success && r.data?.demographics) {
+        setDemographicsSummary(r.data.demographics);
+      }
+    });
+  }, []);
 
   const {
     items: patients,
@@ -112,7 +163,7 @@ const PatientsPage = () => {
   } = useClinicalListPage<Patient>({
     path: "/patients",
     listKey: "patients",
-    filters: debouncedQ ? { q: debouncedQ } : {},
+    filters: patientFilters,
   });
   const [showForm, setShowForm] = useState(false);
   const [editingPatient, setEditingPatient] = useState<Patient | null>(null);
@@ -1191,6 +1242,36 @@ const PatientsPage = () => {
           )}
         </div>
 
+        {demographicsSummary && (
+          <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+            <div className="flex flex-wrap gap-2">
+              {(["new", "recurrent", "recovered"] as PatientSegment[]).map((segment) => (
+                <button
+                  key={segment}
+                  type="button"
+                  onClick={() => setSegmentFilter(segmentFilter === segment ? "all" : segment)}
+                  className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${
+                    segmentFilter === segment
+                      ? "border-brand-ink bg-brand-canvas text-brand-ink"
+                      : "border-brand-border bg-brand-surface text-brand-muted hover:text-brand-ink"
+                  }`}
+                >
+                  {SEGMENT_LABELS[segment]} ({demographicsSummary[segment]})
+                </button>
+              ))}
+            </div>
+            <select
+              value={ageRangeFilter}
+              onChange={(e) => setAgeRangeFilter(e.target.value as (typeof AGE_RANGE_OPTIONS)[number]["id"])}
+              className="px-3 py-2 rounded-lg border border-brand-border bg-brand-surface text-sm"
+            >
+              {AGE_RANGE_OPTIONS.map((opt) => (
+                <option key={opt.id} value={opt.id}>{opt.label}</option>
+              ))}
+            </select>
+          </div>
+        )}
+
         {/* Patient List */}
         {clinicalListError && (
           <ClinicalListError message={clinicalListError} onRetry={() => void reloadClinicalLists()} />
@@ -1296,6 +1377,8 @@ const PatientsPage = () => {
                       <th className="text-left px-6 py-4 text-sm font-semibold text-brand-ink">Paciente</th>
                       <th className="text-left px-6 py-4 text-sm font-semibold text-brand-ink">{t.patients.email}</th>
                       <th className="text-left px-6 py-4 text-sm font-semibold text-brand-ink">{t.patients.phone}</th>
+                      <th className="text-left px-6 py-4 text-sm font-semibold text-brand-ink">Edad</th>
+                      <th className="text-left px-6 py-4 text-sm font-semibold text-brand-ink">Segmento</th>
                       <th className="text-left px-6 py-4 text-sm font-semibold text-brand-ink">{t.patients.totalSessions}</th>
                       <th className="text-right px-6 py-4 text-sm font-semibold text-brand-ink">{t.common.actions}</th>
                     </tr>
@@ -1322,6 +1405,12 @@ const PatientsPage = () => {
                         </td>
                         <td className="px-6 py-4 text-sm text-brand-muted">{patient.email}</td>
                         <td className="px-6 py-4 text-sm text-brand-muted">{formatPhoneDisplay(patient.phone, tenantCountry)}</td>
+                        <td className="px-6 py-4 text-sm text-brand-muted">
+                          {patient.ageYears != null ? `${patient.ageYears} años` : "—"}
+                        </td>
+                        <td className="px-6 py-4 text-sm text-brand-muted">
+                          {patient.patientSegment ? SEGMENT_LABELS[patient.patientSegment] : "—"}
+                        </td>
                         <td className="px-6 py-4 text-sm text-brand-muted">
                           {sessionCountByPatient[patient.id] ?? 0}
                         </td>

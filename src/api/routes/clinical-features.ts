@@ -36,6 +36,10 @@ import {
   resolveDashboardLogoForUser,
   saveDashboardLogoForUser,
 } from '../utils/dashboard-logo';
+import {
+  resolvePrintPreferencesForUser,
+  savePrintPreferencesForUser,
+} from '../utils/print-preferences';
 import { validateLogoPayload } from '../utils/logo-upload';
 
 const clinicalRoutes = new Hono();
@@ -688,6 +692,66 @@ clinicalRoutes.put('/dashboard-logo', requireClinicalLayoutEdit(), async (c) => 
     canEdit: resolved.canEdit,
     scope: resolved.scope,
     scopeId: resolved.scopeId,
+  });
+});
+
+// --- Preferencias de impresión (historia clínica + recetas) ---
+clinicalRoutes.get('/print-preferences', requireClinicalLayoutRead(), async (c) => {
+  const user = c.get('user')!;
+  const resolved = await resolvePrintPreferencesForUser(user);
+  return c.json({
+    success: true,
+    config: resolved.config,
+    scope: resolved.scope,
+    scopeId: resolved.scopeId,
+    canEdit: resolved.canEdit,
+  });
+});
+
+const printPreferencesSchema = z.object({
+  config: z.object({
+    headerAlign: z.enum(['left', 'center']),
+    monochrome: z.boolean(),
+    footerText: z.string().max(300),
+    showGeneratedByFooter: z.boolean(),
+    history: z.object({
+      showLogo: z.boolean(),
+      showLegalData: z.boolean(),
+      evolutionRows: z.number().int().min(5).max(100),
+      includePhotos: z.boolean(),
+      compact: z.boolean(),
+      orientation: z.enum(['portrait', 'landscape']),
+    }),
+    prescription: z.object({
+      showLogo: z.boolean(),
+      showWeight: z.boolean(),
+      showHeight: z.boolean(),
+      showNextVisit: z.boolean(),
+      showNotes: z.boolean(),
+      showSignatureCedula: z.boolean(),
+      compact: z.boolean(),
+      folioPosition: z.enum(["inline", "bar"]),
+      orientation: z.enum(['portrait', 'landscape']),
+    }),
+  }),
+});
+
+clinicalRoutes.put('/print-preferences', requireClinicalLayoutEdit(), async (c) => {
+  const user = c.get('user')!;
+  const parsed = printPreferencesSchema.safeParse(await c.req.json().catch(() => ({})));
+  if (!parsed.success) return c.json({ error: 'Datos inválidos', issues: parsed.error.flatten() }, 400);
+
+  const result = await savePrintPreferencesForUser(user, parsed.data.config);
+  if (!result.ok) {
+    return c.json({ error: 'forbidden', message: result.error }, 403);
+  }
+
+  const resolved = await resolvePrintPreferencesForUser(user);
+  return c.json({
+    success: true,
+    config: resolved.config,
+    scope: resolved.scope,
+    canEdit: resolved.canEdit,
   });
 });
 

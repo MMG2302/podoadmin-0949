@@ -7,6 +7,7 @@ import { AnimatedThemeToggler } from "../ui/animated-theme-toggler";
 import { Dock, DockIcon } from "../ui/dock";
 import { getSidebarSettings, saveSidebarSettings } from "../../lib/ui-preferences";
 import { useAuth, getPostLoginPath, hasActiveSystemAccess } from "../../contexts/auth-context";
+import { isBillingSettingsView, BILLING_SETTINGS_PATH } from "../../lib/billing-settings-path";
 import { useMainWorkspaceWatermark } from "../../hooks/use-main-workspace-watermark";
 import { LocationAnnouncementBanner } from "../location-announcement-banner";
 import { semanticAlertWarningClass } from "../../lib/form-field-classes";
@@ -181,7 +182,7 @@ export const MainLayout = ({ children, title }: MainLayoutProps) => {
             </div>
           )}
           <main className="relative z-[1] flex-1 min-h-0 overflow-y-auto overflow-x-hidden p-3 sm:p-4 md:p-6 lg:p-8 pb-safe bg-transparent">
-          {pendingAccess && !location.startsWith("/billing") && !location.startsWith("/support") && (
+          {pendingAccess && !isBillingSettingsView(location) && !location.startsWith("/support") && (
             <div className={`mb-4 ${semanticAlertWarningClass} !p-3 flex flex-wrap items-center justify-between gap-2`}>
               <span>
                 Tu acceso clínico está pendiente. Activa el pago en Facturación o espera a que un administrador habilite tu cuenta.
@@ -195,13 +196,13 @@ export const MainLayout = ({ children, title }: MainLayoutProps) => {
               </button>
             </div>
           )}
-          {subscriptionBanner && !location.startsWith("/billing") && (
+          {subscriptionBanner && !isBillingSettingsView(location) && (
             <div className={`mb-4 ${semanticAlertWarningClass} !p-3 flex flex-wrap items-center justify-between gap-2`}>
               <span>Tu suscripción no está activa. Renueva para seguir usando la plataforma.</span>
               <button
                 type="button"
                 className="px-3 py-1 bg-brand-ink text-brand-ink-fg rounded-lg text-xs font-medium"
-                onClick={() => setLocation("/billing")}
+                onClick={() => setLocation(BILLING_SETTINGS_PATH)}
               >
                 Ir a facturación
               </button>

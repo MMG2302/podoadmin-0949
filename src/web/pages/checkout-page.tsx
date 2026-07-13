@@ -16,6 +16,13 @@ import { CheckoutTariffsEditor } from "../components/checkout/checkout-tariffs-e
 
 import { QuickTariffChips } from "../components/checkout/quick-tariff-chips";
 
+import { CheckoutAnalyticsPanel } from "../components/checkout/checkout-analytics-panel";
+import { CheckoutViewTabs } from "../components/checkout/checkout-view-tabs";
+
+import { MarkPaidDialog } from "../components/checkout/mark-paid-dialog";
+
+import type { CheckoutViewMode, CheckoutPaymentMethod } from "../types/checkout-analytics";
+
 import {
 
   type CheckoutHandoff,
@@ -166,7 +173,7 @@ const CheckoutPage = () => {
 
   const { t } = useLanguage();
 
-  const { user } = useAuth();
+  const { user, users, ensureVisibleUsers } = useAuth();
 
   const { isReceptionist, isPodiatrist, isClinicAdmin, hasPermission } = usePermissions();
 
@@ -183,10 +190,13 @@ const CheckoutPage = () => {
   const [requestingId, setRequestingId] = useState<string | null>(null);
 
   const [requestSentId, setRequestSentId] = useState<string | null>(null);
+  const [viewMode, setViewMode] = useState<CheckoutViewMode>("operations");
+  const [markPaidTarget, setMarkPaidTarget] = useState<CheckoutHandoff | null>(null);
 
 
 
   const canAccess = hasPermission("view_checkout_handoffs");
+  const showAnalytics = isPodiatrist || isClinicAdmin;
 
   const tariffPodiatristId =
 
@@ -235,63 +245,87 @@ const CheckoutPage = () => {
 
 
   useEffect(() => {
+    if (isClinicAdmin || isReceptionist) {
+      void ensureVisibleUsers();
+    }
+  }, [isClinicAdmin, isReceptionist, ensureVisibleUsers]);
+
+  useEffect(() => {
+    if (!canAccess) return;
 
     setLoading(true);
-
     void loadHandoffs();
+
+    if (viewMode !== "operations") return;
 
     const interval = setInterval(() => {
       if (!document.hidden) void loadHandoffs();
-    }, 5000);
+    }, 10000);
 
     return () => clearInterval(interval);
-
-  }, [loadHandoffs]);
-
+  }, [loadHandoffs, canAccess, viewMode]);
 
 
-  const podiatristOptions = useMemo(() => {
 
+  const handoffPodiatristOptions = useMemo(() => {
     const map = new Map<string, string>();
-
     for (const h of handoffs) {
-
       if (!map.has(h.podiatristId)) {
-
         map.set(h.podiatristId, h.podiatristName || h.podiatristId);
-
       }
-
     }
-
     return [...map.entries()].map(([id, name]) => ({ id, name }));
-
   }, [handoffs]);
 
+  const clinicPodiatristOptions = useMemo(() => {
+    if (!user?.clinicId) return [];
+    return users
+      .filter((u) => u.role === "podiatrist" && u.clinicId === user.clinicId)
+      .map((u) => ({ id: u.id, name: u.name }))
+      .sort((a, b) => a.name.localeCompare(b.name, "es"));
+  }, [user?.clinicId, users]);
 
+  /** Lista de doctores para filtrar: clínica completa (admin) o los que aparecen en cobros (recepción). */
+  const doctorFilterOptions = useMemo(() => {
+    if (isClinicAdmin && clinicPodiatristOptions.length > 0) {
+      return clinicPodiatristOptions;
+    }
+    if (isReceptionist && user?.assignedPodiatristIds?.length) {
+      const assigned = users
+        .filter((u) => user.assignedPodiatristIds!.includes(u.id))
+        .map((u) => ({ id: u.id, name: u.name }))
+        .sort((a, b) => a.name.localeCompare(b.name, "es"));
+      if (assigned.length > 0) return assigned;
+    }
+    return handoffPodiatristOptions;
+  }, [
+    isClinicAdmin,
+    isReceptionist,
+    clinicPodiatristOptions,
+    handoffPodiatristOptions,
+    users,
+    user?.assignedPodiatristIds,
+  ]);
 
-  const showPodiatristFilter = (isReceptionist || isClinicAdmin) && podiatristOptions.length > 1;
+  const analyticsPodiatristId =
+    isClinicAdmin && podiatristFilter !== "all" ? podiatristFilter : undefined;
+
+  const showPodiatristFilter =
+    (isClinicAdmin || isReceptionist) && doctorFilterOptions.length > 0;
 
   const canEditTariffs = isPodiatrist || isClinicAdmin;
 
 
 
-  const handleMarkPaid = async (handoff: CheckoutHandoff) => {
-
-    if (!confirm(t.checkout.confirmPaid.replace("{patient}", handoff.patientName || ""))) return;
-
+  const handleMarkPaid = async (handoff: CheckoutHandoff, paymentMethod: CheckoutPaymentMethod) => {
     setMarkingId(handoff.id);
-
     const res = await api.patch<{ success: boolean }>(`/checkout-handoffs/${handoff.id}`, {
-
       status: "paid",
-
+      paymentMethod,
     });
-
     setMarkingId(null);
-
+    setMarkPaidTarget(null);
     if (res.success && res.data?.success) void loadHandoffs();
-
   };
 
 
@@ -380,12 +414,51 @@ const CheckoutPage = () => {
 
     <MainLayout title={t.checkout.title}>
 
-      <div className="space-y-6 max-w-3xl">
+      <div className={`space-y-6 ${showAnalytics && viewMode !== "operations" ? "max-w-5xl" : "max-w-3xl"}`}>
 
         <p className="text-sm text-brand-muted">{subtitle}</p>
 
+        {showAnalytics && (
+          <CheckoutViewTabs view={viewMode} onViewChange={setViewMode} />
+        )}
 
+        {isClinicAdmin && showPodiatristFilter && (
+          <div className="flex flex-wrap items-center gap-2">
+            <label htmlFor="checkout-doctor-filter" className="text-sm text-brand-muted shrink-0">
+              Ver datos de:
+            </label>
+            <select
+              id="checkout-doctor-filter"
+              value={podiatristFilter}
+              onChange={(e) => setPodiatristFilter(e.target.value)}
+              className="flex-1 min-w-[180px] max-w-md px-3 py-2 text-sm bg-brand-surface border border-brand-border rounded-lg text-brand-ink min-h-[44px]"
+            >
+              <option value="all">Toda la clínica</option>
+              {doctorFilterOptions.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.name}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
 
+        {showAnalytics && viewMode !== "operations" && (
+          <CheckoutAnalyticsPanel
+            view={viewMode}
+            isClinicAdmin={isClinicAdmin}
+            analyticsPodiatristId={analyticsPodiatristId}
+            podiatristFilterLabel={
+              analyticsPodiatristId
+                ? doctorFilterOptions.find((p) => p.id === analyticsPodiatristId)?.name
+                : undefined
+            }
+            onSelectPodiatrist={isClinicAdmin ? setPodiatristFilter : undefined}
+          />
+        )}
+
+        {(viewMode === "operations" || !showAnalytics) && (
+        <>
         {canEditTariffs && (
 
           <CheckoutTariffsEditor
@@ -452,7 +525,7 @@ const CheckoutPage = () => {
 
 
 
-          {showPodiatristFilter && (
+          {!isClinicAdmin && showPodiatristFilter && (
 
             <select
 
@@ -460,13 +533,13 @@ const CheckoutPage = () => {
 
               onChange={(e) => setPodiatristFilter(e.target.value)}
 
-              className="px-3 py-2 text-sm bg-brand-surface border border-brand-border rounded-lg text-brand-ink"
+              className="px-3 py-2 text-sm bg-brand-surface border border-brand-border rounded-lg text-brand-ink min-h-[44px]"
 
             >
 
               <option value="all">{t.checkout.allPodiatrists}</option>
 
-              {podiatristOptions.map((p) => (
+              {doctorFilterOptions.map((p) => (
 
                 <option key={p.id} value={p.id}>
 
@@ -632,7 +705,7 @@ const CheckoutPage = () => {
 
                           type="button"
 
-                          onClick={() => void handleMarkPaid(handoff)}
+                          onClick={() => setMarkPaidTarget(handoff)}
 
                           disabled={markingId === handoff.id}
 
@@ -689,6 +762,19 @@ const CheckoutPage = () => {
           </ul>
 
         )}
+
+        </>
+        )}
+
+        <MarkPaidDialog
+          patientName={markPaidTarget?.patientName || markPaidTarget?.patientId || ""}
+          open={markPaidTarget != null}
+          busy={markingId != null}
+          onConfirm={(method) => {
+            if (markPaidTarget) void handleMarkPaid(markPaidTarget, method);
+          }}
+          onCancel={() => setMarkPaidTarget(null)}
+        />
 
       </div>
 

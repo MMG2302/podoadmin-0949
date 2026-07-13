@@ -1,6 +1,12 @@
 import type { ClinicalSession, Patient } from "../types/clinical";
 import type { ClinicalLayoutConfig, CustomSectionsData } from "../types/clinical-layout";
 import {
+  DEFAULT_PRINT_PREFERENCES,
+  printPageSizeCss,
+  printPageWidthCss,
+  type PrintPreferencesConfig,
+} from "../types/print-preferences";
+import {
   createDefaultClinicalLayout,
   getCustomSections,
   getSectionLabel,
@@ -68,6 +74,8 @@ export type PodiatryHistoryPrintInput = {
   layout?: ClinicalLayoutConfig;
   /** Por defecto 10 filas en evolución; exportación masiva puede usar más. */
   maxEvolutionRows?: number;
+  /** Preferencias de impresión (logo, datos legales, pie, monocromo…). */
+  preferences?: PrintPreferencesConfig;
 };
 
 const esc = (value: unknown): string =>
@@ -145,6 +153,13 @@ export async function embedImageAsDataUri(src: string | null | undefined): Promi
   } catch {
     return null;
   }
+}
+
+/** Incrusta el logo como data URI para que aparezca en la primera impresión. */
+export async function preparePrintLogo(logo: string | null | undefined): Promise<string | undefined> {
+  if (!logo?.trim()) return undefined;
+  const embedded = await embedImageAsDataUri(logo);
+  return embedded ?? resolvePrintAssetUrl(logo) ?? undefined;
 }
 
 function resolveSessionImageSrc(img: unknown): string | null {
@@ -397,7 +412,6 @@ const PRINT_STYLES = `
   .break-ok { break-inside: auto; page-break-inside: auto; }
   @media print {
     body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-    @page { size: A4; margin: 4mm; }
     .document { padding: 0; width: auto; }
   }
 `;
@@ -447,6 +461,7 @@ export function buildPodiatryHistoryDocumentInner(input: PodiatryHistoryPrintInp
     layout: inputLayout,
   } = input;
 
+  const prefs = input.preferences ?? DEFAULT_PRINT_PREFERENCES;
   const layout = inputLayout ?? createDefaultClinicalLayout();
   const printOn = (id: Parameters<typeof isSectionActive>[1]) => isSectionActive(layout, id, "print");
 
@@ -513,7 +528,7 @@ export function buildPodiatryHistoryDocumentInner(input: PodiatryHistoryPrintInp
             </div>`
       : "";
 
-  const evolutionLimit = input.maxEvolutionRows ?? 10;
+  const evolutionLimit = input.maxEvolutionRows ?? prefs.history.evolutionRows;
   const evolutionRows = sessions
     .slice(0, evolutionLimit)
     .map(
@@ -544,7 +559,7 @@ export function buildPodiatryHistoryDocumentInner(input: PodiatryHistoryPrintInp
   const showDiagnosis = printOn("diagnosis");
   const showTreatment = printOn("treatment_plan");
   const showClinicalNotes = printOn("clinical_notes");
-  const showPhotos = printOn("session_images");
+  const showPhotos = printOn("session_images") && prefs.history.includePhotos;
 
   const morphologySection = morphologyPrint
     ? `<div class="section grid-2 section-tight">
@@ -601,7 +616,15 @@ export function buildPodiatryHistoryDocumentInner(input: PodiatryHistoryPrintInp
           </div>`
     : "";
 
-  const resolvedClinicLogo = resolvePrintAssetUrl(clinicLogo ?? null);
+  const resolvedClinicLogo = prefs.history.showLogo ? resolvePrintAssetUrl(clinicLogo ?? null) : null;
+  const legalDataBlock = prefs.history.showLegalData
+    ? `<div class="meta">
+          ${clinicLicense ? `<span><strong>Reg. Sanitario:</strong> ${esc(clinicLicense)} · </span>` : ""}
+          ${clinic?.rfc ? `<span><strong>RFC:</strong> ${esc(clinic.rfc)} · </span>` : ""}
+          ${clinic?.clues ? `<span><strong>CLUES:</strong> ${esc(clinic.clues)} · </span>` : ""}
+          ${clinic?.cofeprisRegistration ? `<span><strong>COFEPRIS:</strong> ${esc(clinic.cofeprisRegistration)}</span>` : ""}
+        </div>`
+    : "";
 
   const headerBlock = `
     <header class="head">
@@ -609,12 +632,7 @@ export function buildPodiatryHistoryDocumentInner(input: PodiatryHistoryPrintInp
       <div style="flex:1">
         <h1>${esc(clinicName)}</h1>
         ${podiatristLicense ? `<div class="meta"><strong>Lic./Cédula:</strong> ${esc(podiatristLicense)}</div>` : ""}
-        <div class="meta">
-          ${clinicLicense ? `<span><strong>Reg. Sanitario:</strong> ${esc(clinicLicense)} · </span>` : ""}
-          ${clinic?.rfc ? `<span><strong>RFC:</strong> ${esc(clinic.rfc)} · </span>` : ""}
-          ${clinic?.clues ? `<span><strong>CLUES:</strong> ${esc(clinic.clues)} · </span>` : ""}
-          ${clinic?.cofeprisRegistration ? `<span><strong>COFEPRIS:</strong> ${esc(clinic.cofeprisRegistration)}</span>` : ""}
-        </div>
+        ${legalDataBlock}
         <div class="meta">
           ${clinicPhone ? `${esc(clinicPhone)} · ` : ""}${clinicEmail ? esc(clinicEmail) : ""}
           ${clinicAddress ? `<br />${esc(clinicAddress)}` : ""}
@@ -694,23 +712,89 @@ export function buildPodiatryHistoryDocumentInner(input: PodiatryHistoryPrintInp
               ${evolutionRows || `<tr><td colspan="6">Sin sesiones registradas.</td></tr>`}
             </table>
             <p class="footer-note">
-              PodoAdmin · ${esc(new Date().toLocaleString("es-ES"))} ·
+              ${prefs.showGeneratedByFooter ? `PodoAdmin · ${esc(new Date().toLocaleString("es-ES"))} · ` : ""}
               ${esc(String(sessions.length))} sesión(es) · Última: ${esc(fmtDateLong(latestSession?.sessionDate || null))}
             </p>
+            ${prefs.footerText.trim() ? `<p class="footer-note" style="white-space:pre-wrap">${esc(prefs.footerText.trim())}</p>` : ""}
           </div>
         </div>
   `;
 }
 
+/** CSS adicional según preferencias (monocromo, alineación, orientación, compacto). */
+function buildPrintStyleOverride(prefs: PrintPreferencesConfig): string {
+  const parts: string[] = [];
+  const pageW = printPageWidthCss(prefs.history.orientation);
+  const historyCompact = prefs.history.compact;
+  const pageMargin = historyCompact ? "3mm 4mm" : "4mm 6mm";
+
+  parts.push(`@page { size: ${printPageSizeCss(prefs.history.orientation)}; margin: ${pageMargin}; }`);
+  parts.push(`@media print {
+    @page { size: ${printPageSizeCss(prefs.history.orientation)}; margin: ${pageMargin}; }
+    html, body { width: ${pageW}; max-width: ${pageW}; }
+    .document { width: ${pageW}; max-width: ${pageW}; padding: 0; }
+  }`);
+
+  if (historyCompact) {
+    parts.push(
+      `body{font-size:9px;line-height:1.22;}`,
+      `.document{padding:2mm 4mm;}`,
+      `.head{padding-bottom:2px;margin-bottom:2px;gap:5px;}`,
+      `.head img{max-height:32px;max-width:88px;}`,
+      `.head h1{font-size:13px;}`,
+      `.meta{font-size:7.5px;}`,
+      `.folio{font-size:8px;padding:1px 4px;margin-top:2px;}`,
+      `h2{font-size:8.5px;margin:2px 0 1px;}`,
+      `.section{margin-bottom:1px;}`,
+      `table{font-size:8px;}`,
+      `th,td{padding:1px 2px;}`,
+      `.block{font-size:8px;padding:2px 3px;}`,
+      `.grid-2,.grid-2-wide-left,.grid-patient,.grid-3{gap:2px;}`,
+      `.muted{font-size:7.5px;}`,
+      `.diagram-row{gap:2px;margin:0 0 1px;}`,
+      `.diagram-item{padding:1px;}`,
+      `.diagram-item figcaption{font-size:6px;}`,
+      `.diagram-svg-tall{height:58px;}`,
+      `.foot-types .diagram-svg-tall{height:62px;}`,
+      `.arch-types .diagram-svg-tall{height:60px;}`,
+      `.diagram-svg-wide{max-height:72px;}`,
+      `.diagram-box{padding:2px;}`,
+      `.diagram-hint,.diagram-detected{font-size:6.5px;}`,
+      `.photos-grid{grid-template-columns:repeat(5,1fr);gap:2px;}`,
+      `.photo-card img{height:40px;}`,
+      `.photo-card figcaption{font-size:6px;}`,
+      `.footer-note{font-size:6.5px;margin-top:2px;}`,
+      `.si-no{width:14px;}`,
+      `.export-cover{padding:4px 6px;font-size:8px;margin-bottom:4mm;}`
+    );
+  }
+
+  if (prefs.monochrome) {
+    parts.push(
+      `:root{--ink:#1a1a1a;--muted:#555;--line:#cfcfcf;--panel:#f2f2f2;--brand-ring:#cfcfcf;}`,
+      `.head img,.photo-card img{filter:grayscale(100%);}`
+    );
+  }
+  if (prefs.headerAlign === "center") {
+    parts.push(
+      `.head{justify-content:center;text-align:center;}`,
+      `.head>div{flex:0 1 auto !important;}`,
+      `.head .folio{display:inline-block;}`
+    );
+  }
+  return parts.join("\n");
+}
+
 export function buildPodiatryHistoryPrintHtml(input: PodiatryHistoryPrintInput): string {
   const title = `Historia Podológica - ${input.patient.firstName} ${input.patient.lastName}`;
   const inner = buildPodiatryHistoryDocumentInner(input);
+  const override = buildPrintStyleOverride(input.preferences ?? DEFAULT_PRINT_PREFERENCES);
   return `<!DOCTYPE html>
     <html lang="es">
       <head>
         <meta charset="UTF-8" />
         <title>${esc(title)}</title>
-        <style>${PRINT_STYLES}</style>
+        <style>${PRINT_STYLES}${override}</style>
       </head>
       <body>${inner}</body>
     </html>`;
@@ -729,12 +813,13 @@ export function buildCombinedPodiatryHistoriesPrintHtml(
       ? `<div class="export-cover"><strong>Exportación PodoAdmin</strong> · ${esc(exportedLabel)} · <strong>${inputs.length}</strong> paciente(s). Abra este archivo en el navegador y use <em>Imprimir → Guardar como PDF</em>.</div>`
       : "";
   const docs = inputs.map((item) => buildPodiatryHistoryDocumentInner(item)).join("");
+  const override = buildPrintStyleOverride(inputs[0]?.preferences ?? DEFAULT_PRINT_PREFERENCES);
   return `<!DOCTYPE html>
     <html lang="es">
       <head>
         <meta charset="UTF-8" />
         <title>${esc(title)}</title>
-        <style>${PRINT_STYLES}</style>
+        <style>${PRINT_STYLES}${override}</style>
       </head>
       <body>${cover}${docs}</body>
     </html>`;
@@ -794,27 +879,37 @@ export function openHtmlForPrint(html: string): boolean {
     printWindow.print();
   };
 
-  const imgs = Array.from(printWindow.document.images);
-  if (imgs.length === 0) {
-    triggerPrint();
-    return true;
-  }
+  const waitForImages = () => {
+    const imgs = Array.from(printWindow.document.images);
+    if (imgs.length === 0) {
+      triggerPrint();
+      return;
+    }
 
-  let pending = imgs.length;
-  const onReady = () => {
-    pending -= 1;
-    if (pending <= 0) triggerPrint();
+    let pending = imgs.length;
+    const onReady = () => {
+      pending -= 1;
+      if (pending <= 0) triggerPrint();
+    };
+
+    for (const img of imgs) {
+      if (img.complete && img.naturalWidth > 0) onReady();
+      else {
+        img.addEventListener("load", onReady, { once: true });
+        img.addEventListener("error", onReady, { once: true });
+      }
+    }
+
+    window.setTimeout(triggerPrint, 8000);
   };
 
-  for (const img of imgs) {
-    if (img.complete) onReady();
-    else {
-      img.addEventListener("load", onReady, { once: true });
-      img.addEventListener("error", onReady, { once: true });
-    }
+  if (printWindow.document.readyState === "complete") {
+    waitForImages();
+  } else {
+    printWindow.addEventListener("load", waitForImages, { once: true });
+    window.setTimeout(waitForImages, 150);
   }
 
-  window.setTimeout(triggerPrint, 4000);
   return true;
 }
 
@@ -836,9 +931,11 @@ export type PodiatryHistoriesBundleForPrint = {
 /** Convierte el bundle de la API en entradas para impresión (un documento por paciente). */
 export function buildPodiatryPrintInputsFromBundle(
   bundle: PodiatryHistoriesBundleForPrint,
-  options?: { maxEvolutionRows?: number }
+  options?: { maxEvolutionRows?: number; preferences?: PrintPreferencesConfig }
 ): PodiatryHistoryPrintInput[] {
-  const maxEvolutionRows = options?.maxEvolutionRows ?? 50;
+  const preferences = options?.preferences;
+  const maxEvolutionRows =
+    options?.maxEvolutionRows ?? preferences?.history.evolutionRows ?? 50;
   return bundle.patients.map((patient) => {
     const patientSessions = bundle.sessions
       .filter((s) => s.patientId === patient.id)
@@ -854,6 +951,7 @@ export function buildPodiatryPrintInputsFromBundle(
       podiatristLicense: bundle.podiatristLicense,
       layout: bundle.layout,
       maxEvolutionRows,
+      preferences,
     };
   });
 }

@@ -12,7 +12,7 @@ export function buildHtmlCspMetaContent(): string {
       'https://www.gstatic.com',
     ].join(' '),
     "style-src 'self' 'unsafe-inline'",
-    "img-src 'self' data: https:",
+    "img-src 'self' data: blob: https:",
     "font-src 'self' data:",
     [
       "connect-src 'self'",

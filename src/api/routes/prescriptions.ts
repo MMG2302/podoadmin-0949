@@ -16,14 +16,14 @@ const prescriptionsRoutes = new Hono();
 prescriptionsRoutes.use('*', requireAuth, requireActiveSubscription);
 
 const createSchema = z.object({
-  sessionId: z.string().uuid(),
+  sessionId: z.string().min(1).max(128),
   prescriptionText: z.string().min(1).max(10000),
   medications: z.string().max(5000).optional(),
   nextVisitDate: z.string().max(32).optional().nullable(),
   notes: z.string().max(5000).optional(),
   patientName: z.string().min(1).max(200),
-  patientDob: z.string().min(1).max(32),
-  patientDni: z.string().min(1).max(64),
+  patientDob: z.string().max(32).optional().nullable(),
+  patientDni: z.string().max(64).optional().nullable(),
   patientAgeYears: z.number().int().min(0).max(130).optional().nullable(),
   patientWeightKg: z.string().max(16).optional().nullable(),
   patientHeightCm: z.string().max(16).optional().nullable(),
@@ -145,8 +145,8 @@ prescriptionsRoutes.post(
       sessionId,
       patientId: session.patientId,
       patientName: data.patientName,
-      patientDob: data.patientDob,
-      patientDni: data.patientDni,
+      patientDob: data.patientDob?.trim() || '—',
+      patientDni: data.patientDni?.trim() || '—',
       podiatristId: user.userId,
       podiatristName: data.podiatristName,
       podiatristLicense: data.podiatristLicense ?? null,

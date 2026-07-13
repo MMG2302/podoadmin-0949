@@ -1,3 +1,5 @@
+import { useAuthenticatedImageSrc } from "../../hooks/use-authenticated-image-src";
+
 type UserAvatarSize = "sm" | "md" | "lg";
 
 const SIZE_CLASS: Record<UserAvatarSize, { box: string; text: string }> = {
@@ -24,15 +26,25 @@ export function UserAvatar({
 }: UserAvatarProps) {
   const initial = (name ?? "").trim().charAt(0).toUpperCase() || "?";
   const { box, text } = SIZE_CLASS[size];
+  const { resolvedSrc, failed, loading, onError, onLoad } = useAuthenticatedImageSrc(avatarUrl);
 
-  if (avatarUrl) {
+  if (avatarUrl && resolvedSrc && !failed) {
     return (
-      <img
-        key={avatarUrl}
-        src={avatarUrl}
-        alt=""
-        className={`${box} rounded-full object-cover flex-shrink-0 ${className}`}
-      />
+      <>
+        {loading ? (
+          <div
+            className={`${box} rounded-full flex-shrink-0 animate-pulse bg-white/20 ${className}`}
+            aria-hidden
+          />
+        ) : null}
+        <img
+          src={resolvedSrc}
+          alt=""
+          onLoad={onLoad}
+          onError={onError}
+          className={`${box} rounded-full object-cover flex-shrink-0 ${loading ? "hidden" : ""} ${className}`}
+        />
+      </>
     );
   }
 

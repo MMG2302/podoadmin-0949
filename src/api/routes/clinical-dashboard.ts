@@ -5,6 +5,8 @@ import { requireActiveSubscription } from '../middleware/subscription';
 import { database } from '../database';
 import { clinicalSessions, patients, createdUsers, professionalLicenses } from '../database/schema';
 import { mergeScopeWhere, resolveClinicalListScope } from '../utils/clinical-list-scope';
+import { fetchAppointmentMetrics } from '../utils/clinic-appointment-metrics';
+import { sanitizePathParam } from '../utils/sanitization';
 
 const clinicalDashboardRoutes = new Hono();
 
@@ -159,6 +161,43 @@ clinicalDashboardRoutes.get('/clinic-stats', async (c) => {
   );
 
   return c.json({ success: true, totals, podiatristStats, licenses });
+});
+
+clinicalDashboardRoutes.get('/appointment-metrics', async (c) => {
+  const user = c.get('user')!;
+  const scope = await resolveClinicalListScope(user);
+  if (scope.mode === 'none') {
+    return c.json({
+      success: true,
+      metrics: {
+        periodDays: 30,
+        fromDate: '',
+        toDate: '',
+        attendedPerDay: [],
+        totals: {
+          attended: 0,
+          noShow: 0,
+          cancelled: 0,
+          scheduled: 0,
+          cancellationRate: 0,
+          noShowRate: 0,
+        },
+      },
+    });
+  }
+
+  const daysRaw = c.req.query('days');
+  const days = daysRaw ? Number.parseInt(daysRaw, 10) : 30;
+  const podiatristId = sanitizePathParam(c.req.query('podiatristId') ?? '', 128) || undefined;
+
+  const metrics = await fetchAppointmentMetrics({
+    scope,
+    clinicId: user.clinicId,
+    podiatristUserId: podiatristId,
+    days: Number.isNaN(days) ? 30 : days,
+  });
+
+  return c.json({ success: true, metrics });
 });
 
 export default clinicalDashboardRoutes;

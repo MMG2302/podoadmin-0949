@@ -69,27 +69,27 @@ export function CheckoutHandoffModal({
 
 
   const handleSkip = async () => {
-
     setSaving(true);
-
-    await api.post("/checkout-handoffs", {
-
-      patientId,
-
-      sessionId,
-
-      amountCents: 0,
-
-      currency: "MXN",
-
-    });
-
-    setSaving(false);
-
-    reset();
-
-    onClose();
-
+    setError(null);
+    try {
+      const res = await api.post<{ success: boolean; error?: string; message?: string }>(
+        "/checkout-handoffs",
+        {
+          patientId,
+          sessionId,
+          amountCents: 0,
+          currency: "MXN",
+        }
+      );
+      if (res.success && res.data?.success) {
+        reset();
+        onClose();
+        return;
+      }
+      setError(res.message || res.data?.error || t.checkout.saveFailed);
+    } finally {
+      setSaving(false);
+    }
   };
 
 
@@ -119,53 +119,37 @@ export function CheckoutHandoffModal({
 
 
     setSaving(true);
-
     setError(null);
 
+    try {
+      const res = await api.post<{ success: boolean; error?: string; message?: string }>(
+        "/checkout-handoffs",
+        {
+          patientId,
+          sessionId,
+          amountCents,
+          currency: "MXN",
+          notes: notes.trim() || undefined,
+        }
+      );
 
-
-    const res = await api.post<{ success: boolean; error?: string; message?: string }>(
-
-      "/checkout-handoffs",
-
-      {
-
-        patientId,
-
-        sessionId,
-
-        amountCents,
-
-        currency: "MXN",
-
-        notes: notes.trim() || undefined,
-
+      if (res.success && res.data?.success) {
+        reset();
+        onSuccess?.();
+        onClose();
+        return;
       }
 
-    );
-
-
-
-    setSaving(false);
-
-
-
-    if (res.success && res.data?.success) {
-
-      reset();
-
-      onSuccess?.();
-
-      onClose();
-
-      return;
-
+      setError(
+        res.message ||
+          res.data?.error ||
+          (res.httpStatus === 500
+            ? "Error del servidor. Si acabas de actualizar el proyecto, ejecuta npm run db:migrate y reinicia npm run dev."
+            : t.checkout.saveFailed)
+      );
+    } finally {
+      setSaving(false);
     }
-
-
-
-    setError(res.message || res.data?.error || t.checkout.saveFailed);
-
   };
 
 
@@ -307,39 +291,24 @@ export function CheckoutHandoffModal({
       </AppModalBody>
 
       <AppModalFooter>
-
-        <button
-
-          type="button"
-
-          onClick={() => void handleSkip()}
-
-          disabled={saving}
-
-          className="flex-1 py-2.5 bg-brand-canvas text-brand-ink rounded-lg font-medium hover:bg-brand-border/30 transition-colors disabled:opacity-50"
-
-        >
-
-          {t.checkout.skipForNow}
-
-        </button>
-
-        <button
-
-          type="button"
-
-          onClick={handleSubmit}
-
-          disabled={saving}
-
-          className="flex-1 py-2.5 bg-brand-ink text-brand-ink-fg rounded-lg font-medium hover:bg-brand-ink-hover transition-colors disabled:opacity-50"
-
-        >
-
-          {saving ? t.checkout.saving : t.checkout.sendToReception}
-
-        </button>
-
+        <div className="flex flex-col-reverse sm:flex-row gap-3 sm:justify-end">
+          <button
+            type="button"
+            onClick={() => void handleSkip()}
+            disabled={saving}
+            className="flex-1 sm:flex-none min-w-[9rem] px-4 py-2.5 border border-brand-border bg-brand-canvas text-brand-ink rounded-lg font-medium hover:bg-brand-border/20 transition-colors disabled:opacity-50"
+          >
+            {t.checkout.skipForNow}
+          </button>
+          <button
+            type="button"
+            onClick={handleSubmit}
+            disabled={saving}
+            className="flex-1 sm:flex-none min-w-[9rem] px-4 py-2.5 bg-brand-ink text-brand-ink-fg rounded-lg font-medium hover:bg-brand-ink-hover transition-colors disabled:opacity-50 shadow-sm"
+          >
+            {saving ? t.checkout.saving : t.checkout.sendToReception}
+          </button>
+        </div>
       </AppModalFooter>
 
     </AppModal>

@@ -22,6 +22,14 @@ import { resolveClinicalListScope, mergeScopeWhere } from '../utils/clinical-lis
 import { buildPatientSearchCondition, mergeAnd } from '../utils/clinical-list-search';
 import { parsePaginationQuery, buildPaginationMeta } from '../utils/pagination';
 import { generateNextPatientFolio } from '../utils/patient-folio';
+import {
+  buildDemographicsSummary,
+  computeAgeYears,
+  computePatientSegment,
+  fetchSessionStatsByPatientIds,
+  patientMatchesDemographicsFilters,
+  type PatientSegment,
+} from '../utils/patient-demographics';
 import { createDefaultMedicalHistory, normalizeMedicalHistory } from '../../web/types/medical-history';
 import { getR2Bucket } from '../utils/r2-media';
 import { purgePatientMediaR2 } from '../utils/r2-purge';
@@ -72,11 +80,51 @@ function mapDbPatient(row: DbPatient) {
     address: row.address ?? '',
     city: row.city ?? '',
     postalCode: row.postalCode ?? '',
+    weightKg: row.weightKg ?? null,
+    heightCm: row.heightCm ?? null,
     medicalHistory,
     consent,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
     createdBy: row.createdBy,
+  };
+}
+
+/** Mapeo ligero para listados (sin historial médico ni alertas). */
+function mapDbPatientListItem(row: {
+  id: string;
+  folio: string;
+  firstName: string;
+  lastName: string;
+  dateOfBirth: string;
+  gender: string;
+  idNumber: string;
+  phone: string;
+  email: string | null;
+  createdAt: string;
+  updatedAt: string;
+  createdBy: string;
+  clinicId?: string | null;
+}) {
+  return {
+    id: row.id,
+    folio: row.folio,
+    firstName: row.firstName,
+    lastName: row.lastName,
+    dateOfBirth: row.dateOfBirth,
+    gender: row.gender,
+    idNumber: row.idNumber,
+    phone: row.phone,
+    email: row.email ?? '',
+    address: '',
+    city: '',
+    postalCode: '',
+    medicalHistory: createDefaultMedicalHistory(),
+    consent: { given: false, date: null },
+    createdAt: row.createdAt,
+    updatedAt: row.updatedAt,
+    createdBy: row.createdBy,
+    clinicId: row.clinicId ?? null,
   };
 }
 
@@ -87,6 +135,56 @@ async function generateFolio(clinicId?: string | null): Promise<string> {
 
 // Todas las rutas de pacientes requieren autenticación
 patientsRoutes.use('*', requireAuth);
+
+/**
+ * GET /api/patients/demographics-summary
+ * Conteos por segmento y rangos de edad (ámbito del usuario).
+ */
+patientsRoutes.get(
+  '/demographics-summary',
+  requirePermission('view_patients'),
+  async (c) => {
+    try {
+      const user = c.get('user')!;
+      if (isClinicAdminWithoutClinic(user)) {
+        return c.json(
+          { error: 'Acceso denegado', message: 'Cuenta de administrador de clínica sin clínica asignada' },
+          403
+        );
+      }
+
+      const createdBy = sanitizePathParam(c.req.query('createdBy') ?? '', 128) || undefined;
+
+      const scope = await resolveClinicalListScope(user);
+      const scopeWhere = mergeScopeWhere(scope, {
+        createdBy: patientsTable.createdBy,
+        clinicId: patientsTable.clinicId,
+      });
+      let where = scopeWhere;
+      if (createdBy) {
+        where = mergeAnd(where, eq(patientsTable.createdBy, createdBy));
+      }
+
+      let query = database
+        .select({
+          id: patientsTable.id,
+          dateOfBirth: patientsTable.dateOfBirth,
+        })
+        .from(patientsTable)
+        .$dynamic();
+      if (where) query = query.where(where);
+      const scopedPatients = await query;
+
+      const sessionStats = await fetchSessionStatsByPatientIds(scopedPatients.map((p) => p.id));
+      const summary = buildDemographicsSummary(scopedPatients, sessionStats);
+
+      return c.json({ success: true, demographics: summary });
+    } catch (error) {
+      console.error('Error obteniendo demografía de pacientes:', error);
+      return c.json({ error: 'Error interno', message: 'Error al obtener demografía' }, 500);
+    }
+  }
+);
 
 /**
  * POST /api/patients/:patientId/reassign
@@ -233,6 +331,12 @@ patientsRoutes.get(
       });
       const searchQ = queryResult.data.q;
       const idsRaw = queryResult.data.ids;
+      const createdByFilter = queryResult.data.createdBy?.trim() || undefined;
+      const segmentFilter = queryResult.data.segment as PatientSegment | undefined;
+      const ageMin = queryResult.data.ageMin;
+      const ageMax = queryResult.data.ageMax;
+      const hasDemographicsFilter =
+        Boolean(segmentFilter) || ageMin !== undefined || ageMax !== undefined;
 
       const scope = await resolveClinicalListScope(user);
       const scopeWhere = mergeScopeWhere(scope, {
@@ -248,52 +352,99 @@ patientsRoutes.get(
           .slice(0, 100);
         if (ids.length > 0) idsWhere = inArray(patientsTable.id, ids);
       }
-      const where = mergeAnd(scopeWhere, buildPatientSearchCondition(searchQ ?? ''), idsWhere);
-
-      let query = database.select().from(patientsTable).$dynamic();
-      if (where) query = query.where(where);
-      const rows = await query
-        .orderBy(patientsTable.updatedAt)
-        .limit(pagination.limit)
-        .offset(pagination.offset);
-
-      const patientIds = rows.map((r) => r.id);
-      const sessionCountByPatient = new Map<string, number>();
-      const lastSessionByPatient = new Map<string, string>();
-      if (patientIds.length > 0) {
-        const countRows = await database
-          .select({
-            patientId: sessionsTable.patientId,
-            count: sql<number>`count(*)`,
-          })
-          .from(sessionsTable)
-          .where(inArray(sessionsTable.patientId, patientIds))
-          .groupBy(sessionsTable.patientId);
-        for (const row of countRows) {
-          sessionCountByPatient.set(row.patientId, Number(row.count));
-        }
-        const lastRows = await database
-          .select({
-            patientId: sessionsTable.patientId,
-            lastSession: sql<string>`max(${sessionsTable.sessionDate})`,
-          })
-          .from(sessionsTable)
-          .where(inArray(sessionsTable.patientId, patientIds))
-          .groupBy(sessionsTable.patientId);
-        for (const row of lastRows) {
-          if (row.lastSession) lastSessionByPatient.set(row.patientId, row.lastSession);
-        }
+      let where = mergeAnd(scopeWhere, buildPatientSearchCondition(searchQ ?? ''), idsWhere);
+      if (createdByFilter) {
+        where = mergeAnd(where, eq(patientsTable.createdBy, createdByFilter));
       }
 
-      const patients = rows.map((row) => ({
-        ...mapDbPatient(row),
-        sessionCount: sessionCountByPatient.get(row.id) ?? 0,
-        lastSessionDate: lastSessionByPatient.get(row.id) ?? null,
-      }));
+      const listSelect = {
+        id: patientsTable.id,
+        folio: patientsTable.folio,
+        firstName: patientsTable.firstName,
+        lastName: patientsTable.lastName,
+        dateOfBirth: patientsTable.dateOfBirth,
+        gender: patientsTable.gender,
+        idNumber: patientsTable.idNumber,
+        phone: patientsTable.phone,
+        email: patientsTable.email,
+        createdAt: patientsTable.createdAt,
+        updatedAt: patientsTable.updatedAt,
+        createdBy: patientsTable.createdBy,
+        clinicId: patientsTable.clinicId,
+      };
+
+      let rows: Array<{
+        id: string;
+        folio: string;
+        firstName: string;
+        lastName: string;
+        dateOfBirth: string;
+        gender: string;
+        idNumber: string;
+        phone: string;
+        email: string | null;
+        createdAt: string;
+        updatedAt: string;
+        createdBy: string;
+        clinicId: string | null;
+      }>;
+      let hasMore = false;
+
+      if (hasDemographicsFilter) {
+        let allQuery = database.select(listSelect).from(patientsTable).$dynamic();
+        if (where) allQuery = allQuery.where(where);
+        const allRows = await allQuery.orderBy(patientsTable.updatedAt);
+        const allIds = allRows.map((r) => r.id);
+        const allSessionStats = await fetchSessionStatsByPatientIds(allIds);
+        const filtered = allRows.filter((row) =>
+          patientMatchesDemographicsFilters(row.dateOfBirth, allSessionStats.get(row.id) ?? {
+            sessionCount: 0,
+            lastSessionDate: null,
+            previousSessionDate: null,
+          }, { segment: segmentFilter, ageMin, ageMax })
+        );
+        rows = filtered.slice(pagination.offset, pagination.offset + pagination.limit);
+        hasMore = pagination.offset + pagination.limit < filtered.length;
+      } else {
+        let query = database.select(listSelect).from(patientsTable).$dynamic();
+        if (where) query = query.where(where);
+        rows = await query
+          .orderBy(patientsTable.updatedAt)
+          .limit(pagination.limit)
+          .offset(pagination.offset);
+        hasMore = rows.length >= pagination.limit;
+      }
+
+      const patientIds = rows.map((r) => r.id);
+      const sessionStats = await fetchSessionStatsByPatientIds(patientIds);
+
+      const patients = rows.map((row) => {
+        const stats = sessionStats.get(row.id) ?? {
+          sessionCount: 0,
+          lastSessionDate: null,
+          previousSessionDate: null,
+        };
+        return {
+          ...mapDbPatientListItem(row),
+          sessionCount: stats.sessionCount,
+          lastSessionDate: stats.lastSessionDate,
+          previousSessionDate: stats.previousSessionDate,
+          ageYears: computeAgeYears(row.dateOfBirth),
+          patientSegment: computePatientSegment(
+            stats.sessionCount,
+            stats.lastSessionDate,
+            stats.previousSessionDate
+          ),
+        };
+      });
       return c.json({
         success: true,
         patients,
-        pagination: buildPaginationMeta(pagination, rows.length),
+        pagination: {
+          limit: pagination.limit,
+          offset: pagination.offset,
+          hasMore,
+        },
       });
     } catch (error) {
       console.error('Error obteniendo pacientes:', error);
@@ -494,6 +645,8 @@ patientsRoutes.post(
         address: body.address || null,
         city: body.city || null,
         postalCode: body.postalCode || null,
+        weightKg: body.weightKg?.trim() || null,
+        heightCm: body.heightCm?.trim() || null,
         medicalHistory,
         consent,
         createdAt: now,
@@ -647,6 +800,8 @@ patientsRoutes.put(
       if (body.address !== undefined) updateData.address = body.address || null;
       if (body.city !== undefined) updateData.city = body.city || null;
       if (body.postalCode !== undefined) updateData.postalCode = body.postalCode || null;
+      if (body.weightKg !== undefined) updateData.weightKg = body.weightKg?.trim() || null;
+      if (body.heightCm !== undefined) updateData.heightCm = body.heightCm?.trim() || null;
       if (body.medicalHistory !== undefined) {
         updateData.medicalHistory = JSON.stringify(normalizeMedicalHistory(body.medicalHistory));
       }

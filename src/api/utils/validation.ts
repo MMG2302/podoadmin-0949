@@ -153,6 +153,8 @@ export const createPatientSchema = z.object({
     .max(20, 'Código postal demasiado largo')
     .transform((val) => escapeHtml(val))
     .optional(),
+  weightKg: z.string().max(16).optional().nullable(),
+  heightCm: z.string().max(16).optional().nullable(),
   curp: z
     .union([z.string(), z.literal(''), z.undefined()])
     .transform((val) => {
@@ -333,6 +335,10 @@ export const clinicalListPaginationSchema = z.object({
 export const patientsListQuerySchema = clinicalListPaginationSchema.extend({
   q: z.string().max(100).optional(),
   ids: z.string().max(2000).optional(),
+  createdBy: z.string().max(128).optional(),
+  segment: z.enum(['new', 'recurrent', 'recovered']).optional(),
+  ageMin: z.coerce.number().int().min(0).max(130).optional(),
+  ageMax: z.coerce.number().int().min(0).max(130).optional(),
 });
 
 /** Query: listado de sesiones */
@@ -474,6 +480,8 @@ const sessionFieldsSchema = {
   nextAppointmentDate: z.string().max(32).optional().nullable(),
   followUpNotes: z.string().max(5000).optional().nullable(),
   appointmentReason: z.string().max(2000).optional().nullable(),
+  patientWeightKg: z.string().max(16).optional().nullable(),
+  patientHeightCm: z.string().max(16).optional().nullable(),
   footType: z.enum(['egyptian', 'roman', 'greek', 'germanic', 'celtic']).optional().nullable(),
   archType: z.enum(['flat', 'normal', 'cavus']).optional().nullable(),
   sweatDisorders: z
@@ -584,7 +592,11 @@ export const createAppointmentSchema = z.object({
   pendingPatientPhone: z.string().max(50).optional(),
 });
 
-export const updateAppointmentSchema = createAppointmentSchema.partial();
+export const updateAppointmentSchema = createAppointmentSchema
+  .extend({
+    status: z.enum(['scheduled', 'confirmed', 'completed', 'cancelled', 'no_show']).optional(),
+  })
+  .partial();
 
 /**
  * Valida parámetros de query string (Hono c.req.query()).

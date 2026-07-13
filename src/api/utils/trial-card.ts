@@ -56,7 +56,7 @@ export async function startTrialCardSetup(
 ): Promise<{ ok: boolean; url?: string; message?: string }> {
   if (!isStripeConfigured()) {
     if (process.env.NODE_ENV !== 'production' && process.env.TRIAL_MOCK_CARD === '1') {
-      return { ok: true, url: `${getAppBaseUrl()}/billing?trial_card_mock=1` };
+      return { ok: true, url: `${getAppBaseUrl()}/settings?tab=billing&trial_card_mock=1` };
     }
     return { ok: false, message: 'Stripe no configurado.' };
   }
@@ -83,8 +83,8 @@ export async function startTrialCardSetup(
   const session = await createSetupCheckoutSession({
     customerId,
     customerEmail: email,
-    successUrl: `${base}/billing?trial_card=success&session_id={CHECKOUT_SESSION_ID}`,
-    cancelUrl: `${base}/billing?trial_card=cancelled`,
+    successUrl: `${base}/settings?tab=billing&trial_card=success&session_id={CHECKOUT_SESSION_ID}`,
+    cancelUrl: `${base}/settings?tab=billing&trial_card=cancelled`,
     metadata: { userId, purpose: 'trial_card_verification' },
   });
 

@@ -44,7 +44,7 @@ import {
   finalizeOnychopathies,
   finalizeSweatDisorders,
 } from '../../web/types/podiatry';
-import { mapDbSession } from '../utils/clinical-maps';
+import { mapDbSession, mapDbSessionSummary } from '../utils/clinical-maps';
 
 const DEFAULT_MAX_SESSION_IMAGES = 10;
 /** Máximo de imágenes por sesión. Configurable con SESSION_IMAGE_MAX_COUNT (modo ligero). */
@@ -93,6 +93,8 @@ function buildNotesPayload(session: ClinicalSession): string {
     nextAppointmentDate: session.nextAppointmentDate,
     followUpNotes: session.followUpNotes,
     appointmentReason: session.appointmentReason,
+    patientWeightKg: session.patientWeightKg,
+    patientHeightCm: session.patientHeightCm,
     footType: session.footType,
     archType: session.archType,
     sweatDisorders: session.sweatDisorders,
@@ -110,6 +112,24 @@ function buildNotesPayload(session: ClinicalSession): string {
     throw new Error('notes_stored_too_large');
   }
   return json;
+}
+
+async function syncPatientVitalsFromSession(
+  patientId: string,
+  weight?: string | null,
+  height?: string | null
+): Promise<void> {
+  const weightTrimmed = weight?.trim() || null;
+  const heightTrimmed = height?.trim() || null;
+  if (!weightTrimmed && !heightTrimmed) return;
+
+  const update: Partial<typeof patientsTable.$inferInsert> = {
+    updatedAt: new Date().toISOString(),
+  };
+  if (weightTrimmed) update.weightKg = weightTrimmed;
+  if (heightTrimmed) update.heightCm = heightTrimmed;
+
+  await database.update(patientsTable).set(update).where(eq(patientsTable.id, patientId));
 }
 
 function sessionSaveErrorResponse(error: unknown) {
@@ -210,8 +230,7 @@ sessionsRoutes.get(
         .offset(pagination.offset);
 
       const sessions = rows.map(({ session, patientFirstName, patientLastName }) => ({
-        ...mapDbSession(session),
-        images: [] as string[],
+        ...mapDbSessionSummary(session),
         patientName: `${patientFirstName} ${patientLastName}`.trim(),
       }));
       return c.json({
@@ -485,6 +504,8 @@ sessionsRoutes.post(
         nextAppointmentDate: body.nextAppointmentDate || null,
         followUpNotes: body.followUpNotes || null,
         appointmentReason: body.appointmentReason || null,
+        patientWeightKg: body.patientWeightKg?.trim() || null,
+        patientHeightCm: body.patientHeightCm?.trim() || null,
         footType: body.footType ?? null,
         archType: body.archType ?? null,
         sweatDisorders: finalizeSweatDisorders(normalizeSweatDisorders(body.sweatDisorders)),
@@ -525,6 +546,12 @@ sessionsRoutes.post(
         completedAt: session.completedAt,
         updatedAtIso: session.updatedAt,
       });
+
+      await syncPatientVitalsFromSession(
+        session.patientId,
+        session.patientWeightKg,
+        session.patientHeightCm
+      );
 
       return c.json({ success: true, session: { ...session, images: resolvedImages } }, 201);
     } catch (error) {
@@ -704,6 +731,14 @@ sessionsRoutes.put(
           body.appointmentReason !== undefined
             ? body.appointmentReason
             : existingSession.appointmentReason,
+        patientWeightKg:
+          body.patientWeightKg !== undefined
+            ? body.patientWeightKg?.trim() || null
+            : existingSession.patientWeightKg,
+        patientHeightCm:
+          body.patientHeightCm !== undefined
+            ? body.patientHeightCm?.trim() || null
+            : existingSession.patientHeightCm,
         footType:
           body.footType !== undefined ? body.footType ?? null : existingSession.footType,
         archType:
@@ -764,6 +799,12 @@ sessionsRoutes.put(
         completedAt: updatedSession.completedAt,
         updatedAtIso: updatedSession.updatedAt,
       });
+
+      await syncPatientVitalsFromSession(
+        updatedSession.patientId,
+        updatedSession.patientWeightKg,
+        updatedSession.patientHeightCm
+      );
 
       return c.json({ success: true, session: { ...updatedSession, images: resolvedImages } });
     } catch (error) {

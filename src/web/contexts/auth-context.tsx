@@ -235,6 +235,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         } as User);
         setUser(userData);
         localStorage.setItem("podoadmin_user", JSON.stringify(userData));
+        setIsLoading(false);
         refreshReceptionistAssignmentsInBackground(userData, (hydrated) => {
           setUser(hydrated);
           localStorage.setItem("podoadmin_user", JSON.stringify(hydrated));

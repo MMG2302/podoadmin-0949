@@ -45,6 +45,12 @@ export interface Patient {
   /** Conteo de sesiones (listado paginado) */
   sessionCount?: number;
   lastSessionDate?: string | null;
+  previousSessionDate?: string | null;
+  ageYears?: number | null;
+  patientSegment?: 'new' | 'recurrent' | 'recovered';
+  /** Último peso/estatura conocidos (kg / cm) */
+  weightKg?: string | null;
+  heightCm?: string | null;
 }
 
 export interface Appointment {
@@ -115,6 +121,10 @@ export interface ClinicalSession {
   nextAppointmentDate: string | null;
   followUpNotes: string | null;
   appointmentReason: AppointmentReason | null;
+  /** Peso del paciente en esta visita (kg) */
+  patientWeightKg?: string | null;
+  /** Estatura del paciente en esta visita (cm) */
+  patientHeightCm?: string | null;
   /** Nombre del paciente (listado paginado) */
   patientName?: string;
 }

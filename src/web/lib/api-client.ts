@@ -144,6 +144,11 @@ function isWorkerUnavailable(status: number, rawText: string, contentType: strin
   if (contentType?.includes("text/html")) {
     return true;
   }
+  // Errores JSON del API (p. ej. 500 con cuerpo JSON) no son caídas del worker.
+  const trimmedStart = rawText.trimStart();
+  if (trimmedStart.startsWith("{") || trimmedStart.startsWith("[")) {
+    return false;
+  }
   return status >= 500 && status <= 599;
 }
 
@@ -300,7 +305,7 @@ export async function apiRequest<T = any>(
     if (response.status === 402 && (data.error === 'subscription_inactive' || data.error === 'access_not_granted')) {
       window.dispatchEvent(
         new CustomEvent('subscription:inactive', {
-          detail: { billingPath: data.billingPath || '/billing' },
+          detail: { billingPath: data.billingPath || '/settings?tab=billing' },
         })
       );
     }

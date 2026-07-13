@@ -29,6 +29,13 @@ import {
   normalizeCheckoutTariffs,
 } from '../utils/checkout-tariffs';
 import { logAuditEvent } from '../utils/audit-log';
+import {
+  getCheckoutAnalytics,
+  getCheckoutAnalyticsPrefs,
+  saveCheckoutAnalyticsPrefs,
+  resolveCheckoutAnalyticsScope,
+  type CheckoutAnalyticsPeriod,
+} from '../utils/checkout-analytics-service';
 import { getClientIP } from '../utils/ip-tracking';
 import { getSafeUserAgent } from '../utils/request-headers';
 
@@ -53,6 +60,18 @@ const updateSchema = z.object({
   amountCents: z.number().int().min(0).optional(),
   notes: z.string().max(500).optional(),
   status: z.enum(['awaiting_amount', 'ready_for_payment', 'paid', 'cancelled']).optional(),
+  paymentMethod: z.enum(['cash', 'card', 'transfer', 'other']).optional(),
+});
+
+const analyticsQuerySchema = z.object({
+  period: z.enum(['day', 'week', 'month', 'year']).optional(),
+  podiatristId: z.string().optional(),
+});
+
+const analyticsPrefsSchema = z.object({
+  monthlyGoalCents: z.number().int().min(0).optional(),
+  monthlyExpensesCents: z.number().int().min(0).optional(),
+  defaultMarginPercent: z.number().int().min(0).max(100).optional(),
 });
 
 const listQuerySchema = z.object({
@@ -133,6 +152,120 @@ checkoutHandoffsRoutes.put('/tariffs', requirePermission('manage_checkout_handof
   }
 
   return c.json({ success: true, scope: result.scope, tariffs: result.tariffs });
+});
+
+/** GET /checkout-handoffs/analytics */
+checkoutHandoffsRoutes.get('/analytics', async (c) => {
+  const user = c.get('user')!;
+  if (user.role !== 'podiatrist' && user.role !== 'clinic_admin') {
+    return c.json({ success: false, error: 'No autorizado para ver analíticas de cobro' }, 403);
+  }
+
+  const parsed = analyticsQuerySchema.safeParse({
+    period: c.req.query('period') ?? 'month',
+    podiatristId: c.req.query('podiatristId'),
+  });
+  if (!parsed.success) {
+    return c.json({ success: false, error: 'Parámetros inválidos' }, 400);
+  }
+
+  const scope = await resolveCheckoutAnalyticsScope(user, parsed.data.podiatristId);
+  if ('error' in scope) {
+    return c.json({ success: false, error: scope.error }, scope.status);
+  }
+
+  const analytics = await getCheckoutAnalytics(
+    scope,
+    (parsed.data.period ?? 'month') as CheckoutAnalyticsPeriod
+  );
+  return c.json({ success: true, analytics });
+});
+
+/** GET /checkout-handoffs/analytics-preferences */
+checkoutHandoffsRoutes.get('/analytics-preferences', async (c) => {
+  const user = c.get('user')!;
+  const podiatristId = c.req.query('podiatristId')?.trim();
+
+  if (user.role === 'podiatrist') {
+    const preferences = await getCheckoutAnalyticsPrefs({
+      kind: 'podiatrist',
+      podiatristId: user.userId,
+    });
+    return c.json({ success: true, preferences, editable: true, scopeLabel: 'Mi consulta' });
+  }
+
+  if (user.role === 'clinic_admin') {
+    if (!user.clinicId) {
+      return c.json({ success: false, error: 'Sin clínica asignada' }, 400);
+    }
+    if (podiatristId) {
+      const scope = await resolveCheckoutAnalyticsScope(user, podiatristId);
+      if ('error' in scope || scope.kind !== 'podiatrist') {
+        return c.json({ success: false, error: 'No autorizado' }, 403);
+      }
+      const preferences = await getCheckoutAnalyticsPrefs({
+        kind: 'podiatrist',
+        podiatristId: scope.podiatristId,
+      });
+      return c.json({
+        success: true,
+        preferences,
+        editable: false,
+        scopeLabel: scope.label,
+      });
+    }
+    const preferences = await getCheckoutAnalyticsPrefs({
+      kind: 'clinic',
+      clinicId: user.clinicId,
+    });
+    return c.json({
+      success: true,
+      preferences,
+      editable: true,
+      scopeLabel: 'Toda la clínica',
+    });
+  }
+
+  return c.json({ success: false, error: 'No autorizado' }, 403);
+});
+
+/** PUT /checkout-handoffs/analytics-preferences */
+checkoutHandoffsRoutes.put('/analytics-preferences', requirePermission('manage_checkout_handoffs'), async (c) => {
+  const user = c.get('user')!;
+  const body = await c.req.json().catch(() => ({}));
+  const parsed = analyticsPrefsSchema.safeParse(body);
+  if (!parsed.success) {
+    return c.json({ success: false, error: 'Datos inválidos' }, 400);
+  }
+
+  const podiatristId = (body as { podiatristId?: string }).podiatristId?.trim();
+
+  if (user.role === 'podiatrist') {
+    const preferences = await saveCheckoutAnalyticsPrefs(
+      { kind: 'podiatrist', podiatristId: user.userId },
+      parsed.data
+    );
+    return c.json({ success: true, preferences });
+  }
+
+  if (user.role === 'clinic_admin') {
+    if (!user.clinicId) {
+      return c.json({ success: false, error: 'Sin clínica asignada' }, 400);
+    }
+    if (podiatristId) {
+      return c.json(
+        { success: false, error: 'El admin de clínica solo edita metas de toda la clínica' },
+        403
+      );
+    }
+    const preferences = await saveCheckoutAnalyticsPrefs(
+      { kind: 'clinic', clinicId: user.clinicId },
+      parsed.data
+    );
+    return c.json({ success: true, preferences });
+  }
+
+  return c.json({ success: false, error: 'No autorizado' }, 403);
 });
 
 /** POST /checkout-handoffs/:id/request-amount */
@@ -427,6 +560,9 @@ checkoutHandoffsRoutes.patch('/:id', requirePermission('manage_checkout_handoffs
   if (nextStatus === 'paid') {
     updatePayload.paidAt = now;
     updatePayload.paidBy = user.userId;
+    if (parsed.data.paymentMethod) {
+      updatePayload.paymentMethod = parsed.data.paymentMethod;
+    }
   }
 
   await database.update(checkoutHandoffs).set(updatePayload).where(eq(checkoutHandoffs.id, id));

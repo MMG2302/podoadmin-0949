@@ -18,6 +18,7 @@ export interface CheckoutHandoff {
   createdBy: string;
   paidAt: string | null;
   paidBy: string | null;
+  paymentMethod?: "cash" | "card" | "transfer" | "other" | null;
   createdAt: string;
   updatedAt: string;
   patientName?: string;

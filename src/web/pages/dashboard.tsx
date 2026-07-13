@@ -387,13 +387,14 @@ const Dashboard = () => {
       {isClinicAdmin && <Route path="/whatsapp-messages" component={WhatsAppMessagesPage} />}
       {isClinicAdmin && <Route path="/whatsapp-campaigns" component={WhatsAppCampaignsPage} />}
       {isClinicAdmin && <Route path="/clinical-tools" component={ClinicalToolsPage} />}
-      {isClinicAdmin && <Route path="/billing" component={BillingPage} />}
       
       {/* Podiatrist routes */}
       {isPodiatrist && <Route path="/whatsapp-messages" component={WhatsAppMessagesPage} />}
       {isPodiatrist && <Route path="/whatsapp-campaigns" component={WhatsAppCampaignsPage} />}
       {isPodiatrist && <Route path="/clinical-tools" component={ClinicalToolsPage} />}
-      {isPodiatrist && <Route path="/billing" component={BillingPage} />}
+
+      {/* Redirección legacy /billing → Configuración → Facturación */}
+      {user && <Route path="/billing" component={BillingPage} />}
 
       {/* Recepción: mensajes WhatsApp Web (+ API si el podólogo lo asignó) */}
       {isReceptionist && hasPermission("view_whatsapp_web") && (

@@ -69,7 +69,7 @@ type DashboardLogoContextValue = DashboardLogoApiData & {
 const DashboardLogoContext = createContext<DashboardLogoContextValue | undefined>(undefined);
 
 export function DashboardLogoProvider({ children }: { children: ReactNode }) {
-  const { user } = useAuth();
+  const { user, isLoading: authLoading } = useAuth();
   const [state, setState] = useState<DashboardLogoApiData>(DEFAULT_API);
   const [loading, setLoading] = useState(false);
 
@@ -105,6 +105,9 @@ export function DashboardLogoProvider({ children }: { children: ReactNode }) {
   );
 
   useEffect(() => {
+    if (authLoading || !user?.id) return;
+    const clinicalRoles = ["clinic_admin", "podiatrist", "receptionist"];
+    if (!clinicalRoles.includes(user.role)) return;
     void reload(true);
     const onUpdate = () => {
       invalidateDashboardLogoCache();
@@ -116,7 +119,7 @@ export function DashboardLogoProvider({ children }: { children: ReactNode }) {
       window.removeEventListener("dashboard-logo:updated", onUpdate);
       window.removeEventListener("clinic-logo:updated", onUpdate);
     };
-  }, [reload]);
+  }, [reload, authLoading, user?.id, user?.role]);
 
   return (
     <DashboardLogoContext.Provider value={{ ...state, loading, reload, applyData }}>

@@ -105,7 +105,7 @@ const ResetPassword = () => {
             <p>
               {t.auth.contactToVerifyRecovery}{" "}
               <a
-                href={`mailto:${supportEmail || "soporte@podoadmin.com"}?subject=${encodeURIComponent("Verificación de identidad - Recuperación de contraseña")}`}
+                href={`mailto:${supportEmail || "soporte@podoadmin.com"}?subject=${encodeURIComponent(t.auth.recoveryVerifySubject)}`}
                 className="font-medium text-brand-ink hover:underline"
               >
                 {supportEmail || "soporte@podoadmin.com"}
@@ -193,7 +193,7 @@ const ResetPassword = () => {
                   <p>
                     {t.auth.contactToVerifyRecovery}{" "}
                     <a
-                      href={`mailto:${supportEmail || "soporte@podoadmin.com"}?subject=${encodeURIComponent("Verificación de identidad - Recuperación de contraseña")}`}
+                      href={`mailto:${supportEmail || "soporte@podoadmin.com"}?subject=${encodeURIComponent(t.auth.recoveryVerifySubject)}`}
                       className="font-medium text-brand-ink hover:underline"
                     >
                       {supportEmail || "soporte@podoadmin.com"}
@@ -226,7 +226,7 @@ const ResetPassword = () => {
                         type="button"
                         onClick={() => setShowNewPassword((v) => !v)}
                         className="absolute inset-y-0 right-0 flex items-center px-3 text-gray-500 hover:text-brand-ink dark:hover:text-white"
-                        aria-label={showNewPassword ? "Ocultar contraseña" : "Mostrar contraseña"}
+                        aria-label={showNewPassword ? t.common.hidePassword : t.common.showPassword}
                       >
                         {showNewPassword ? (
                           <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -291,7 +291,7 @@ const ResetPassword = () => {
                         type="button"
                         onClick={() => setShowConfirmPassword((v) => !v)}
                         className="absolute inset-y-0 right-0 flex items-center px-3 text-gray-500 hover:text-brand-ink dark:hover:text-white"
-                        aria-label={showConfirmPassword ? "Ocultar contraseña" : "Mostrar contraseña"}
+                        aria-label={showConfirmPassword ? t.common.hidePassword : t.common.showPassword}
                       >
                         {showConfirmPassword ? (
                           <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">

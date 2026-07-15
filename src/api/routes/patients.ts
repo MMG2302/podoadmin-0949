@@ -26,13 +26,18 @@ import {
   buildDemographicsSummary,
   computeAgeYears,
   computePatientSegment,
+  daysSinceLastSession,
   fetchSessionStatsByPatientIds,
+  isPatientInactive,
   patientMatchesDemographicsFilters,
+  type PatientInactiveFilter,
   type PatientSegment,
 } from '../utils/patient-demographics';
 import { createDefaultMedicalHistory, normalizeMedicalHistory } from '../../web/types/medical-history';
 import { getR2Bucket } from '../utils/r2-media';
 import { purgePatientMediaR2 } from '../utils/r2-purge';
+import { listAccessiblePodiatristIds } from '../utils/checkout-handoffs-service';
+import { fetchPatientLtvMap, parsePatientLtvPeriod } from '../utils/patient-ltv';
 
 const patientsRoutes = new Hono();
 
@@ -335,8 +340,17 @@ patientsRoutes.get(
       const segmentFilter = queryResult.data.segment as PatientSegment | undefined;
       const ageMin = queryResult.data.ageMin;
       const ageMax = queryResult.data.ageMax;
+      const inactiveFilter = queryResult.data.inactive as PatientInactiveFilter | undefined;
+      const minVisits = queryResult.data.minVisits;
+      const maxVisits = queryResult.data.maxVisits;
+      const ltvPeriod = parsePatientLtvPeriod(queryResult.data.ltvPeriod);
       const hasDemographicsFilter =
-        Boolean(segmentFilter) || ageMin !== undefined || ageMax !== undefined;
+        Boolean(segmentFilter) ||
+        ageMin !== undefined ||
+        ageMax !== undefined ||
+        Boolean(inactiveFilter) ||
+        minVisits !== undefined ||
+        maxVisits !== undefined;
 
       const scope = await resolveClinicalListScope(user);
       const scopeWhere = mergeScopeWhere(scope, {
@@ -401,7 +415,14 @@ patientsRoutes.get(
             sessionCount: 0,
             lastSessionDate: null,
             previousSessionDate: null,
-          }, { segment: segmentFilter, ageMin, ageMax })
+          }, {
+            segment: segmentFilter,
+            ageMin,
+            ageMax,
+            inactive: inactiveFilter,
+            minVisits,
+            maxVisits,
+          })
         );
         rows = filtered.slice(pagination.offset, pagination.offset + pagination.limit);
         hasMore = pagination.offset + pagination.limit < filtered.length;
@@ -417,6 +438,12 @@ patientsRoutes.get(
 
       const patientIds = rows.map((r) => r.id);
       const sessionStats = await fetchSessionStatsByPatientIds(patientIds);
+      const allowedPodiatristIds = await listAccessiblePodiatristIds(user);
+      const ltvMap = await fetchPatientLtvMap({
+        patientIds,
+        period: ltvPeriod,
+        allowedPodiatristIds,
+      });
 
       const patients = rows.map((row) => {
         const stats = sessionStats.get(row.id) ?? {
@@ -424,22 +451,30 @@ patientsRoutes.get(
           lastSessionDate: null,
           previousSessionDate: null,
         };
+        const daysInactive = daysSinceLastSession(stats.lastSessionDate);
+        const ltv = ltvMap.get(row.id) ?? { ltvCents: 0, ltvPaidCount: 0 };
         return {
           ...mapDbPatientListItem(row),
           sessionCount: stats.sessionCount,
           lastSessionDate: stats.lastSessionDate,
           previousSessionDate: stats.previousSessionDate,
+          daysSinceLastSession: daysInactive,
+          inactive3m: isPatientInactive(stats, 90),
+          inactive6m: isPatientInactive(stats, 180),
           ageYears: computeAgeYears(row.dateOfBirth),
           patientSegment: computePatientSegment(
             stats.sessionCount,
             stats.lastSessionDate,
             stats.previousSessionDate
           ),
+          ltvCents: ltv.ltvCents,
+          ltvPaidCount: ltv.ltvPaidCount,
         };
       });
       return c.json({
         success: true,
         patients,
+        ltvPeriod,
         pagination: {
           limit: pagination.limit,
           offset: pagination.offset,

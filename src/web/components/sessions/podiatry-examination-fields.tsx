@@ -35,6 +35,14 @@ import {
   formTableHeadClass,
   formTableRowBorderClass,
 } from "../../lib/form-field-classes";
+import { useLanguage } from "../../contexts/language-context";
+import {
+  getDigitalLabel,
+  getHelomaLabel,
+  getLimbLabel,
+  getOnychopathyLabel,
+  getSweatLabel,
+} from "../../i18n/clinical-labels";
 
 const inputClass = formFieldClassXs;
 
@@ -113,8 +121,6 @@ function SectionShell({
   );
 }
 
-const SI_NO_HINT = "Marque SI solo si está presente. Sin marcar se asume NO.";
-
 function PresentCell({
   name,
   present,
@@ -160,6 +166,11 @@ function PresentReadCells({ present }: { present: boolean | null }) {
 }
 
 export function PodiatryExaminationFields({ value, onChange, readOnly = false, disabled = false, visibleBlocks }: Props) {
+  const { t } = useLanguage();
+  const exam = t.podiatry.exam;
+  const dash = exam.dash;
+  const siNoHint = exam.siNoHint;
+
   const patch = (partial: Partial<PodiatryExaminationValue>) =>
     onChange({ ...value, ...partial });
 
@@ -187,14 +198,14 @@ export function PodiatryExaminationFields({ value, onChange, readOnly = false, d
       )}
 
       {showSweat && (
-      <SectionShell title="Patología del sudor" hint={SI_NO_HINT}>
+      <SectionShell title={exam.sweatTitle} hint={siNoHint}>
         <table className={formTableClass}>
           <thead className={formTableHeadClass}>
             <tr>
-              <th className="text-left p-2">Trastorno</th>
-              <th className="p-2 w-14">SI</th>
-              <th className="p-2 w-14">NO</th>
-              <th className="p-2">Obs.</th>
+              <th className="text-left p-2">{exam.disorder}</th>
+              <th className="p-2 w-14">{exam.yes}</th>
+              <th className="p-2 w-14">{exam.no}</th>
+              <th className="p-2">{exam.obs}</th>
             </tr>
           </thead>
           <tbody>
@@ -202,7 +213,7 @@ export function PodiatryExaminationFields({ value, onChange, readOnly = false, d
               const row = value.sweatDisorders.find((r) => r.id === o.id)!;
               return (
                 <tr key={o.id} className={formTableRowBorderClass}>
-                  <td className="p-2 font-medium">{o.label}</td>
+                  <td className="p-2 font-medium">{getSweatLabel(t, o.id)}</td>
                   {readOnly ? (
                     <PresentReadCells present={row.present} />
                   ) : (
@@ -221,7 +232,7 @@ export function PodiatryExaminationFields({ value, onChange, readOnly = false, d
                   )}
                   <td className="p-2">
                     {readOnly ? (
-                      <span className="text-brand-muted">{row.notes || "—"}</span>
+                      <span className="text-brand-muted">{row.notes || dash}</span>
                     ) : (
                       <input
                         disabled={disabled}
@@ -246,25 +257,25 @@ export function PodiatryExaminationFields({ value, onChange, readOnly = false, d
       )}
 
       {showLimb && (
-      <SectionShell title="Valoración pie y pierna" hint={SI_NO_HINT}>
+      <SectionShell title={exam.limbTitle} hint={siNoHint}>
         <table className={formTableClass}>
           <thead className={formTableHeadClass}>
             <tr>
-              <th className="text-left p-2">Signo</th>
+              <th className="text-left p-2">{exam.sign}</th>
               <th className="p-2" colSpan={2}>
-                Izq.
+                {exam.left}
               </th>
               <th className="p-2" colSpan={2}>
-                Der.
+                {exam.right}
               </th>
-              <th className="p-2">Obs.</th>
+              <th className="p-2">{exam.obs}</th>
             </tr>
             <tr>
               <th></th>
-              <th className="p-1">SI</th>
-              <th className="p-1">NO</th>
-              <th className="p-1">SI</th>
-              <th className="p-1">NO</th>
+              <th className="p-1">{exam.yes}</th>
+              <th className="p-1">{exam.no}</th>
+              <th className="p-1">{exam.yes}</th>
+              <th className="p-1">{exam.no}</th>
               <th></th>
             </tr>
           </thead>
@@ -277,10 +288,10 @@ export function PodiatryExaminationFields({ value, onChange, readOnly = false, d
                     r.id === o.id ? { ...r, [side]: v } : r
                   ),
                 });
-              const sideRead = (v: boolean | null) => (v === true ? "SI" : "NO");
+              const sideRead = (v: boolean | null) => (v === true ? exam.yes : exam.no);
               return (
                 <tr key={o.id} className={formTableRowBorderClass}>
-                  <td className="p-2 font-medium">{o.label}</td>
+                  <td className="p-2 font-medium">{getLimbLabel(t, o.id)}</td>
                   {readOnly ? (
                     <>
                       <td className="p-2 text-center" colSpan={2}>
@@ -308,7 +319,7 @@ export function PodiatryExaminationFields({ value, onChange, readOnly = false, d
                   )}
                   <td className="p-2">
                     {readOnly ? (
-                      row.notes || "—"
+                      row.notes || dash
                     ) : (
                       <input
                         disabled={disabled}
@@ -333,16 +344,16 @@ export function PodiatryExaminationFields({ value, onChange, readOnly = false, d
       )}
 
       {showHelomas && (
-      <SectionShell title="Helomas / hiperqueratosis" hint={`${SI_NO_HINT} Indique localización si aplica.`}>
+      <SectionShell title={exam.helomasTitle} hint={`${siNoHint} ${exam.helomasHint}`}>
         <table className={formTableClass}>
           <thead className={formTableHeadClass}>
             <tr>
-              <th className="text-left p-2">Tipo</th>
-              <th className="p-2 w-14">SI</th>
-              <th className="p-2 w-14">NO</th>
-              <th className="p-2">Izq.</th>
-              <th className="p-2">Der.</th>
-              <th className="p-2">Obs.</th>
+              <th className="text-left p-2">{exam.type}</th>
+              <th className="p-2 w-14">{exam.yes}</th>
+              <th className="p-2 w-14">{exam.no}</th>
+              <th className="p-2">{exam.left}</th>
+              <th className="p-2">{exam.right}</th>
+              <th className="p-2">{exam.obs}</th>
             </tr>
           </thead>
           <tbody>
@@ -350,7 +361,7 @@ export function PodiatryExaminationFields({ value, onChange, readOnly = false, d
               const row = value.helomas.find((r) => r.id === o.id)!;
               return (
                 <tr key={o.id} className={formTableRowBorderClass}>
-                  <td className="p-2 font-medium">{o.label}</td>
+                  <td className="p-2 font-medium">{getHelomaLabel(t, o.id)}</td>
                   {readOnly ? (
                     <PresentReadCells present={row.present} />
                   ) : (
@@ -369,7 +380,7 @@ export function PodiatryExaminationFields({ value, onChange, readOnly = false, d
                   )}
                   <td className="p-2">
                     {readOnly ? (
-                      row.locationLeft || "—"
+                      row.locationLeft || dash
                     ) : (
                       <input
                         disabled={disabled}
@@ -387,7 +398,7 @@ export function PodiatryExaminationFields({ value, onChange, readOnly = false, d
                   </td>
                   <td className="p-2">
                     {readOnly ? (
-                      row.locationRight || "—"
+                      row.locationRight || dash
                     ) : (
                       <input
                         disabled={disabled}
@@ -405,7 +416,7 @@ export function PodiatryExaminationFields({ value, onChange, readOnly = false, d
                   </td>
                   <td className="p-2">
                     {readOnly ? (
-                      row.notes || "—"
+                      row.notes || dash
                     ) : (
                       <input
                         disabled={disabled}
@@ -430,15 +441,15 @@ export function PodiatryExaminationFields({ value, onChange, readOnly = false, d
       )}
 
       {showDigital && (
-      <SectionShell title="Alteraciones digitales" hint={SI_NO_HINT}>
+      <SectionShell title={exam.digitalTitle} hint={siNoHint}>
         <table className={formTableClass}>
           <thead className={formTableHeadClass}>
             <tr>
-              <th className="text-left p-2">Alteración</th>
-              <th className="p-2 w-14">SI</th>
-              <th className="p-2 w-14">NO</th>
-              <th className="p-2">Izq.</th>
-              <th className="p-2">Der.</th>
+              <th className="text-left p-2">{exam.alteration}</th>
+              <th className="p-2 w-14">{exam.yes}</th>
+              <th className="p-2 w-14">{exam.no}</th>
+              <th className="p-2">{exam.left}</th>
+              <th className="p-2">{exam.right}</th>
             </tr>
           </thead>
           <tbody>
@@ -446,7 +457,7 @@ export function PodiatryExaminationFields({ value, onChange, readOnly = false, d
               const row = value.digitalAlterations.find((r) => r.id === o.id)!;
               return (
                 <tr key={o.id} className={formTableRowBorderClass}>
-                  <td className="p-2 font-medium">{o.label}</td>
+                  <td className="p-2 font-medium">{getDigitalLabel(t, o.id)}</td>
                   {readOnly ? (
                     <PresentReadCells present={row.present} />
                   ) : (
@@ -465,7 +476,7 @@ export function PodiatryExaminationFields({ value, onChange, readOnly = false, d
                   )}
                   <td className="p-2">
                     {readOnly ? (
-                      row.locationLeft || "—"
+                      row.locationLeft || dash
                     ) : (
                       <input
                         disabled={disabled}
@@ -483,7 +494,7 @@ export function PodiatryExaminationFields({ value, onChange, readOnly = false, d
                   </td>
                   <td className="p-2">
                     {readOnly ? (
-                      row.locationRight || "—"
+                      row.locationRight || dash
                     ) : (
                       <input
                         disabled={disabled}
@@ -509,17 +520,17 @@ export function PodiatryExaminationFields({ value, onChange, readOnly = false, d
 
       {showOnychopathies && (
       <SectionShell
-        title="Onicopatías"
-        hint={`${SI_NO_HINT} En impresión solo salen hallazgos positivos; aquí se muestra el registro completo.`}
+        title={exam.onychopathiesTitle}
+        hint={`${siNoHint} ${exam.onychopathiesHint}`}
       >
         <table className={formTableClass}>
           <thead className={formTableHeadClass}>
             <tr>
-              <th className="text-left p-2">Onicopatía</th>
-              <th className="p-2 w-14">SI</th>
-              <th className="p-2 w-14">NO</th>
-              <th className="p-2">Dedos izq.</th>
-              <th className="p-2">Dedos der.</th>
+              <th className="text-left p-2">{exam.onychopathy}</th>
+              <th className="p-2 w-14">{exam.yes}</th>
+              <th className="p-2 w-14">{exam.no}</th>
+              <th className="p-2">{exam.toesLeft}</th>
+              <th className="p-2">{exam.toesRight}</th>
             </tr>
           </thead>
           <tbody>
@@ -527,7 +538,7 @@ export function PodiatryExaminationFields({ value, onChange, readOnly = false, d
               const row = value.onychopathies.find((r) => r.id === o.id)!;
               return (
                 <tr key={o.id} className={formTableRowBorderClass}>
-                  <td className="p-2 font-medium">{o.label}</td>
+                  <td className="p-2 font-medium">{getOnychopathyLabel(t, o.id)}</td>
                   {readOnly ? (
                     <PresentReadCells present={row.present} />
                   ) : (
@@ -546,7 +557,7 @@ export function PodiatryExaminationFields({ value, onChange, readOnly = false, d
                   )}
                   <td className="p-2">
                     {readOnly ? (
-                      row.toesLeft || "—"
+                      row.toesLeft || dash
                     ) : (
                       <input
                         disabled={disabled}
@@ -565,7 +576,7 @@ export function PodiatryExaminationFields({ value, onChange, readOnly = false, d
                   </td>
                   <td className="p-2">
                     {readOnly ? (
-                      row.toesRight || "—"
+                      row.toesRight || dash
                     ) : (
                       <input
                         disabled={disabled}

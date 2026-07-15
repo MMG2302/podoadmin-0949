@@ -116,9 +116,9 @@ const Login = () => {
         window.location.href = data.url;
         return;
       }
-      setError("Google no está configurado en este entorno");
+      setError(t.auth.googleNotConfigured);
     } catch {
-      setError("No se pudo conectar con Google");
+      setError(t.auth.googleConnectFailed);
     }
     setIsLoading(false);
   };
@@ -342,7 +342,7 @@ const Login = () => {
                     type="button"
                     onClick={() => setShowPassword((v) => !v)}
                     className="absolute inset-y-0 right-0 flex items-center px-3 text-brand-muted hover:text-brand-ink dark:hover:text-white"
-                    aria-label={showPassword ? "Ocultar contraseña" : "Mostrar contraseña"}
+                    aria-label={showPassword ? t.common.hidePassword : t.common.showPassword}
                   >
                     {showPassword ? (
                       <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">

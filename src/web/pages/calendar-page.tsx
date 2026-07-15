@@ -27,6 +27,8 @@ import {
 import { useTenantCountry } from "../hooks/use-tenant-country";
 import { hydrateReceptionistUser } from "../lib/receptionist-assignments";
 import type { ClinicalSession, Patient, Appointment } from "../types/clinical";
+import type { AgendaSettings } from "../types/agenda";
+import { isAppointmentOutsideAgendaHours } from "../lib/agenda-hours";
 import {
   CalendarDayTimeGrid,
   CalendarWeekTimeGrid,
@@ -120,6 +122,8 @@ const CalendarPage = () => {
   const [editingAppointment, setEditingAppointment] = useState<Appointment | null>(null);
   const [isSubmittingAppointment, setIsSubmittingAppointment] = useState(false);
   const [appointmentSubmitError, setAppointmentSubmitError] = useState("");
+  const [appointmentAgendaSettings, setAppointmentAgendaSettings] = useState<AgendaSettings | null>(null);
+  const [appointmentAgendaWarning, setAppointmentAgendaWarning] = useState<string | null>(null);
   const [agendaExportBusy, setAgendaExportBusy] = useState(false);
   const [agendaMetrics, setAgendaMetrics] = useState<{
     scheduled: number;
@@ -127,6 +131,8 @@ const CalendarPage = () => {
     completed: number;
     noShowRate: number;
     completionRate: number;
+    demandByWeekday?: Array<{ label: string; count: number }>;
+    totals?: { demand?: number };
   } | null>(null);
   const [waitlist, setWaitlist] = useState<
     Array<{
@@ -156,7 +162,7 @@ const CalendarPage = () => {
     const from = formatLocalDateString(rangeStart);
     const to = formatLocalDateString(rangeEnd);
 
-    const [sessRes, aptRes, metricsRes, waitRes] = await Promise.all([
+    const [sessRes, aptRes, metricsRes, waitRes, demandRes] = await Promise.all([
       api.get<{ success?: boolean; sessions?: ClinicalSession[] }>(
         `/sessions?from=${from}&to=${to}&limit=500`
       ),
@@ -165,6 +171,13 @@ const CalendarPage = () => {
       ),
       api.get<{ success?: boolean; metrics?: typeof agendaMetrics }>("/clinical/appointments/metrics"),
       api.get<{ success?: boolean; waitlist?: typeof waitlist }>("/clinical/waitlist"),
+      api.get<{
+        success?: boolean;
+        metrics?: {
+          demandByWeekday?: Array<{ label: string; count: number }>;
+          totals?: { demand?: number };
+        };
+      }>("/clinical-dashboard/appointment-metrics?days=30"),
     ]);
 
     const sess = sessRes.success && Array.isArray(sessRes.data?.sessions) ? sessRes.data.sessions : [];
@@ -191,7 +204,15 @@ const CalendarPage = () => {
       setAllPatients([]);
     }
 
-    if (metricsRes.success && metricsRes.data?.metrics) setAgendaMetrics(metricsRes.data.metrics);
+    if (metricsRes.success && metricsRes.data?.metrics) {
+      const base = metricsRes.data.metrics;
+      const demand = demandRes.success ? demandRes.data?.metrics : undefined;
+      setAgendaMetrics({
+        ...base,
+        demandByWeekday: demand?.demandByWeekday,
+        totals: demand?.totals,
+      });
+    }
     if (waitRes.success && waitRes.data?.waitlist) setWaitlist(waitRes.data.waitlist);
   }, [user?.id, currentDate, viewMode]);
 
@@ -212,10 +233,10 @@ const CalendarPage = () => {
   };
 
   const checkInLabel = (s?: string) => {
-    if (s === "waiting") return "En espera";
-    if (s === "in_room") return "En consulta";
-    if (s === "seen") return "Atendido";
-    return "Sin check-in";
+    if (s === "waiting") return t.calendar.checkInWaiting;
+    if (s === "in_room") return t.calendar.checkInInConsult;
+    if (s === "seen") return t.calendar.checkInDone;
+    return t.calendar.checkInNone;
   };
 
   useEffect(() => {
@@ -632,8 +653,61 @@ const isSelected = (date: Date) => {
     setEditingAppointment(null);
     setAppointmentForm(emptyAppointmentForm);
     setAppointmentSubmitError("");
+    setAppointmentAgendaSettings(null);
+    setAppointmentAgendaWarning(null);
     setAppointmentPatientMode("registered");
   };
+
+  /** Carga horario laboral del podólogo seleccionado en el formulario. */
+  useEffect(() => {
+    if (!showAppointmentForm) return;
+    const podId =
+      appointmentForm.podiatristId ||
+      (isPodiatrist && !isClinicAdmin ? user?.id : undefined);
+    if (!podId) {
+      setAppointmentAgendaSettings(null);
+      return;
+    }
+    let cancelled = false;
+    void api
+      .get<{ success?: boolean; settings?: AgendaSettings }>(
+        `/clinical-dashboard/agenda-settings?podiatristId=${encodeURIComponent(podId)}`
+      )
+      .then((res) => {
+        if (cancelled) return;
+        if (res.success && res.data?.settings) {
+          setAppointmentAgendaSettings(res.data.settings);
+        } else {
+          setAppointmentAgendaSettings(null);
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    showAppointmentForm,
+    appointmentForm.podiatristId,
+    isPodiatrist,
+    isClinicAdmin,
+    user?.id,
+  ]);
+
+  useEffect(() => {
+    if (!appointmentAgendaSettings || !appointmentForm.time) {
+      setAppointmentAgendaWarning(null);
+      return;
+    }
+    const hit = isAppointmentOutsideAgendaHours(
+      appointmentAgendaSettings,
+      appointmentForm.time,
+      appointmentForm.duration || 30
+    );
+    setAppointmentAgendaWarning(hit?.message ?? null);
+  }, [
+    appointmentAgendaSettings,
+    appointmentForm.time,
+    appointmentForm.duration,
+  ]);
 
   const isPendingPatientMode = appointmentPatientMode === "pending";
 
@@ -644,6 +718,11 @@ const isSelected = (date: Date) => {
     if ((res.data as { code?: string })?.code === "APPOINTMENT_OVERLAP") return true;
     const msg = (res.data as { message?: string })?.message || res.message || "";
     return /solapa|overlap|horario no disponible|chevauche|sobrepõe/i.test(msg);
+  };
+
+  const isAgendaHoursError = (res: { data?: { code?: string; message?: string }; message?: string }) => {
+    const code = (res.data as { code?: string })?.code;
+    return code === "AGENDA_OUTSIDE_HOURS" || code === "AGENDA_OVERTIME_LIMIT";
   };
 
   const handleAppointmentSubmit = async (e: React.FormEvent) => {
@@ -664,6 +743,13 @@ const isSelected = (date: Date) => {
         setAppointmentSubmitError(t.calendar.errorPendingPatientRequired);
         return;
       }
+    }
+
+    if (appointmentAgendaWarning && (isPodiatrist || isClinicAdmin) && !isReceptionist) {
+      const proceed = window.confirm(
+        `${appointmentAgendaWarning}\n\n${t.calendar.confirmSaveAnyway}`
+      );
+      if (!proceed) return;
     }
 
     const selectedPodiatrist = clinicPodiatrists.find((p) => p.id === appointmentForm.podiatristId);
@@ -688,14 +774,21 @@ const isSelected = (date: Date) => {
     setIsSubmittingAppointment(true);
     try {
       if (editingAppointment) {
-        const previousPodiatristId = editingAppointment.podiatristId;
-        const newPodiatristId = appointmentForm.podiatristId;
-
-        const res = await api.put<{ success?: boolean; appointment?: Appointment; message?: string; code?: string }>(`/appointments/${editingAppointment.id}`, body);
+        const res = await api.put<{
+          success?: boolean;
+          appointment?: Appointment;
+          message?: string;
+          code?: string;
+          agendaWarning?: { message: string };
+        }>(`/appointments/${editingAppointment.id}`, body);
         if (!res.success) {
           const errMsg = isOverlapError(res)
             ? t.calendar.errorOverlap
-            : (res.message || res.error || (res.data as { message?: string })?.message || t.calendar.errorUpdateFailed);
+            : isAgendaHoursError(res)
+              ? (res.data as { message?: string })?.message ||
+                res.message ||
+                t.calendar.outsideHoursBlocked
+              : (res.message || res.error || (res.data as { message?: string })?.message || t.calendar.errorUpdateFailed);
           setAppointmentSubmitError(errMsg);
           return;
         }
@@ -706,14 +799,25 @@ const isSelected = (date: Date) => {
         setShowAppointmentForm(false);
         setAppointmentForm(emptyAppointmentForm);
         setEditingAppointment(null);
+        setAppointmentAgendaSettings(null);
+        setAppointmentAgendaWarning(null);
         setRefreshTrigger((prev) => prev + 1);
-        // Notificación al podólogo: la envía el servidor al reasignar la cita (PUT /appointments)
       } else {
-        const res = await api.post<{ success?: boolean; appointment?: Appointment; message?: string; code?: string }>("/appointments", body);
+        const res = await api.post<{
+          success?: boolean;
+          appointment?: Appointment;
+          message?: string;
+          code?: string;
+          agendaWarning?: { message: string };
+        }>("/appointments", body);
         if (!res.success) {
           const errMsg = isOverlapError(res)
             ? t.calendar.errorOverlap
-            : (res.message || res.error || (res.data as { message?: string })?.message || t.calendar.errorCreateFailed);
+            : isAgendaHoursError(res)
+              ? (res.data as { message?: string })?.message ||
+                res.message ||
+                t.calendar.outsideHoursBlocked
+              : (res.message || res.error || (res.data as { message?: string })?.message || t.calendar.errorCreateFailed);
           setAppointmentSubmitError(errMsg);
           return;
         }
@@ -724,9 +828,9 @@ const isSelected = (date: Date) => {
         setShowAppointmentForm(false);
         setAppointmentForm(emptyAppointmentForm);
         setEditingAppointment(null);
+        setAppointmentAgendaSettings(null);
+        setAppointmentAgendaWarning(null);
         setRefreshTrigger((prev) => prev + 1);
-
-        // Notificación al podólogo: la envía el servidor al crear la cita (POST /appointments)
       }
     } catch (err) {
       const msg = err instanceof Error ? err.message : t.calendar.errorSaveFailed;
@@ -756,7 +860,7 @@ const isSelected = (date: Date) => {
   };
 
   const handleMarkNoShow = async (appointment: Appointment) => {
-    if (!confirm('¿Marcar esta cita como no asistió (no-show)?')) return;
+    if (!confirm(t.calendar.confirmMarkNoShow)) return;
     const res = await api.put<{ success?: boolean; appointment?: Appointment; message?: string }>(
       `/appointments/${appointment.id}`,
       { status: 'no_show' }
@@ -871,12 +975,16 @@ const isSelected = (date: Date) => {
         return;
       }
       const preview = previewRes.data;
-      const message = buildAgendaWhatsAppMessage(preview, {
-        header: t.calendar.exportWaHeader,
-        line: t.calendar.exportWaLine,
-        emptyDay: t.calendar.exportNoAppointments,
-        attachHint: t.calendar.exportWaAttachHint,
-      });
+      const message = buildAgendaWhatsAppMessage(
+        preview,
+        {
+          header: t.calendar.exportWaHeader,
+          line: t.calendar.exportWaLine,
+          emptyDay: t.calendar.exportNoAppointments,
+          attachHint: t.calendar.exportWaAttachHint,
+        },
+        locale
+      );
       const icsRes = await downloadAgendaIcs(date, podiatristId);
       if (!icsRes.ok) {
         alert(icsRes.message);
@@ -1016,36 +1124,57 @@ const isSelected = (date: Date) => {
           </div>
 
           {agendaMetrics && (
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
+            <div className="space-y-4 mb-4">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
               <div className="bg-brand-surface rounded-xl border border-brand-border p-3">
-                <p className="text-xs text-brand-muted">Programadas</p>
+                <p className="text-xs text-brand-muted">{t.calendar.scheduledMetric}</p>
                 <p className="text-xl font-semibold text-brand-ink">{agendaMetrics.scheduled}</p>
               </div>
               <div className="bg-brand-surface rounded-xl border border-brand-border p-3">
-                <p className="text-xs text-brand-muted">Completadas</p>
+                <p className="text-xs text-brand-muted">{t.calendar.completedMetric}</p>
                 <p className="text-xl font-semibold text-brand-ink">{agendaMetrics.completed}</p>
                 <p className="text-[10px] text-gray-400 dark:text-gray-500">{agendaMetrics.completionRate}%</p>
               </div>
               <div className="bg-brand-surface rounded-xl border border-brand-border p-3">
-                <p className="text-xs text-brand-muted">No-show</p>
+                <p className="text-xs text-brand-muted">{t.calendar.noShow}</p>
                 <p className="text-xl font-semibold text-brand-ink">{agendaMetrics.noShow}</p>
                 <p className="text-[10px] text-gray-400 dark:text-gray-500">{agendaMetrics.noShowRate}%</p>
               </div>
               <div className="bg-brand-surface rounded-xl border border-brand-border p-3">
-                <p className="text-xs text-brand-muted">Lista de espera</p>
+                <p className="text-xs text-brand-muted">{t.calendar.waitlist}</p>
                 <p className="text-xl font-semibold text-brand-ink">{waitlist.length}</p>
               </div>
+            </div>
+            {agendaMetrics && (
+              <div className="bg-brand-surface rounded-xl border border-brand-border p-4">
+                <p className="text-sm font-semibold text-brand-ink mb-1">{t.calendar.agendaDemandTitle}</p>
+                <p className="text-xs text-brand-muted mb-2">
+                  {t.calendar.agendaDemandDemandTotal.replace(
+                    "{n}",
+                    String(agendaMetrics.totals?.demand ?? 0)
+                  )}
+                </p>
+                <Link
+                  href="/checkout"
+                  className="text-sm font-medium text-brand-ink underline-offset-2 hover:underline"
+                >
+                  {t.calendar.goToCheckoutAgendaLong}
+                </Link>
+              </div>
+            )}
             </div>
           )}
 
           {waitlist.length > 0 && (
             <div className="bg-amber-50 border border-amber-100 rounded-xl p-4 mb-4">
-              <h3 className="text-sm font-semibold text-amber-900 mb-2">Lista de espera</h3>
+              <h3 className="text-sm font-semibold text-amber-900 mb-2">{t.calendar.waitlist}</h3>
               <ul className="space-y-1 text-sm text-amber-900">
                 {waitlist.slice(0, 5).map((w) => (
                   <li key={w.id}>
-                    {w.pendingPatientName || "Paciente"} · {w.pendingPatientPhone || "sin tel."}
-                    {w.preferredDate ? ` · pref. ${w.preferredDate}` : ""}
+                    {w.pendingPatientName || t.calendar.patientLabel} · {w.pendingPatientPhone || t.calendar.noPhoneShort}
+                    {w.preferredDate
+                      ? ` · ${t.calendar.preferredDateShort.replace("{date}", w.preferredDate)}`
+                      : ""}
                   </li>
                 ))}
               </ul>
@@ -1313,16 +1442,18 @@ const isSelected = (date: Date) => {
                           {appt.time} - {getPatientDisplayName(appt)}
                         </span>
                         {!appt.patientId && (
-                          <span className="text-[10px] text-orange-600 bg-orange-100 px-1.5 py-0.5 rounded">Pendiente</span>
+                          <span className="text-[10px] text-orange-600 bg-orange-100 px-1.5 py-0.5 rounded">
+                            {t.calendar.pendingBadge}
+                          </span>
                         )}
                       </div>
                       {!appt.patientId && appt.pendingPatientPhone && (
                         <p className="text-xs text-gray-500">
-                          Tel: {appt.pendingPatientPhone}
+                          {t.calendar.tel} {appt.pendingPatientPhone}
                         </p>
                       )}
                       <p className="text-xs text-gray-500">
-                        Podólogo: {appt.podiatristName}
+                        {t.calendar.podiatristLabel} {appt.podiatristName}
                       </p>
                       {(isClinicAdmin || isReceptionist || isPodiatrist) && (
                         <select
@@ -1381,7 +1512,7 @@ const isSelected = (date: Date) => {
           {(isClinicAdmin || isPodiatrist) && upcomingAppointments.length > 0 && (
             <div className="bg-brand-surface rounded-xl border border-brand-border p-4">
               <h3 className="font-semibold text-brand-ink mb-4">
-                Próximas citas
+                {t.calendar.upcomingAppointments}
               </h3>
               
               <div className="space-y-3">
@@ -1399,7 +1530,7 @@ const isSelected = (date: Date) => {
                         {new Date(appt.date).getDate()}
                       </span>
                       <span className="text-[8px] text-blue-500 uppercase">
-                        {new Date(appt.date).toLocaleDateString("es-ES", { month: "short" })}
+                        {new Date(appt.date).toLocaleDateString(locale, { month: "short" })}
                       </span>
                     </div>
                     <div className="flex-1 min-w-0">
@@ -1468,7 +1599,7 @@ const isSelected = (date: Date) => {
                 })}
                 {upcomingSessions.length > 5 && (
                   <p className="text-xs text-center text-gray-500">
-                    +{upcomingSessions.length - 5} más
+                    +{upcomingSessions.length - 5} {t.calendar.more}
                   </p>
                 )}
               </div>
@@ -1739,6 +1870,20 @@ const isSelected = (date: Date) => {
               />
             </section>
 
+            {appointmentAgendaWarning && (
+              <div
+                className={`rounded-lg border px-3 py-2 text-sm ${
+                  isReceptionist
+                    ? "border-semantic-error/40 bg-semantic-error-bg/40 text-semantic-error"
+                    : "border-amber-200 bg-amber-50 text-amber-900"
+                }`}
+              >
+                {isReceptionist
+                  ? `${appointmentAgendaWarning} ${t.calendar.outsideHoursReceptionistNote}`
+                  : `${appointmentAgendaWarning} ${t.calendar.outsideHoursContinueNote}`}
+              </div>
+            )}
+
             {appointmentSubmitError && (
               <div className="p-3 rounded-lg bg-red-50 border border-red-200 text-red-800 text-sm dark:bg-red-950/40 dark:border-red-900 dark:text-red-200">
                 {appointmentSubmitError}
@@ -1755,7 +1900,7 @@ const isSelected = (date: Date) => {
                     onClick={() => void handleMarkNoShow(editingAppointment)}
                     className="px-4 py-2.5 border border-amber-200 text-amber-800 rounded-lg hover:bg-amber-50 transition-colors font-medium dark:border-amber-900 dark:text-amber-300 dark:hover:bg-amber-950/40"
                   >
-                    No asistió
+                    {t.calendar.markNoShow}
                   </button>
                   <button
                     type="button"

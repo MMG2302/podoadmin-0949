@@ -1,4 +1,5 @@
 import { useEffect, useRef } from "react";
+import { useLanguage } from "../contexts/language-context";
 
 export type CaptchaProvider = "turnstile" | "hcaptcha" | "recaptcha";
 
@@ -61,7 +62,7 @@ function loadScript(src: string, id: string): Promise<void> {
     script.async = true;
     script.defer = true;
     script.onload = () => resolve();
-    script.onerror = () => reject(new Error(`No se pudo cargar ${src}`));
+    script.onerror = () => reject(new Error(`Failed to load ${src}`));
     document.head.appendChild(script);
   });
 }
@@ -87,6 +88,7 @@ async function ensureCaptchaScript(provider: CaptchaProvider): Promise<void> {
  * Widget CAPTCHA según proveedor configurado en el backend (Turnstile, hCaptcha, reCAPTCHA).
  */
 export function CaptchaWidget({ provider, siteKey, onToken, className }: CaptchaWidgetProps) {
+  const { t } = useLanguage();
   const containerRef = useRef<HTMLDivElement>(null);
   const widgetIdRef = useRef<string | number | null>(null);
   const onTokenRef = useRef(onToken);
@@ -149,7 +151,7 @@ export function CaptchaWidget({ provider, siteKey, onToken, className }: Captcha
           renderWidget();
         }
       } catch (err) {
-        console.error("Error cargando CAPTCHA:", err);
+        console.error("CAPTCHA load error:", err);
         onTokenRef.current(null);
       }
     };
@@ -175,5 +177,5 @@ export function CaptchaWidget({ provider, siteKey, onToken, className }: Captcha
     };
   }, [provider, siteKey]);
 
-  return <div ref={containerRef} className={className} aria-label="CAPTCHA" />;
+  return <div ref={containerRef} className={className} aria-label={t.common.captcha} />;
 }

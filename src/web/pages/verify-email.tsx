@@ -18,16 +18,16 @@ const VerifyEmail = () => {
   const [user, setUser] = useState<{ id: string; email: string; name: string } | null>(null);
 
   useEffect(() => {
-    // Obtener token de la URL
     const urlParams = new URLSearchParams(window.location.search);
     const tokenParam = urlParams.get("token");
-    
+
     if (tokenParam) {
       setToken(tokenParam);
-      verifyEmail(tokenParam);
+      void verifyEmail(tokenParam);
     } else {
-      setError("No se proporcionó un token de verificación");
+      setError(t.auth.verifyEmailMissingToken);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- run once on mount with current language
   }, []);
 
   const verifyEmail = async (emailToken: string) => {
@@ -48,16 +48,15 @@ const VerifyEmail = () => {
         if (response.data?.user) {
           setUser(response.data.user);
         }
-        // Redirigir al login después de 3 segundos
         setTimeout(() => {
           setLocation("/login");
         }, 3000);
       } else {
-        setError(response.error || response.message || "Error al verificar el email");
+        setError(response.error || response.message || t.auth.verifyEmailFailed);
       }
-    } catch (err: any) {
-      console.error("Error verificando email:", err);
-      setError("Error de conexión con el servidor");
+    } catch (err: unknown) {
+      console.error("Error verifying email:", err);
+      setError(t.auth.serverConnectionError);
     } finally {
       setIsVerifying(false);
     }
@@ -151,7 +150,7 @@ const VerifyEmail = () => {
                     </div>
                   )}
                   <p className="text-sm text-gray-500">
-                    Redirigiendo al login...
+                    {t.auth.resetPasswordRedirecting}
                   </p>
                 </div>
               </div>

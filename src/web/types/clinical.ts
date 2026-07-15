@@ -46,8 +46,14 @@ export interface Patient {
   sessionCount?: number;
   lastSessionDate?: string | null;
   previousSessionDate?: string | null;
+  daysSinceLastSession?: number | null;
+  inactive3m?: boolean;
+  inactive6m?: boolean;
   ageYears?: number | null;
   patientSegment?: 'new' | 'recurrent' | 'recovered';
+  /** LTV = suma cobrada (checkout pagado) en el periodo solicitado */
+  ltvCents?: number;
+  ltvPaidCount?: number;
   /** Último peso/estatura conocidos (kg / cm) */
   weightKg?: string | null;
   heightCm?: string | null;

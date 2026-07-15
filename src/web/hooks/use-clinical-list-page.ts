@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { api } from '../lib/api-client';
 import { registerClinicalListInvalidator } from '../lib/clinical-list-cache';
+import { useLanguage } from '../contexts/language-context';
 
 type PaginationMeta = { hasMore?: boolean; limit?: number; offset?: number };
 
@@ -44,14 +45,16 @@ export function useClinicalListPage<T>(config: {
   enabled?: boolean;
   errorMessage?: string;
 }) {
+  const { t } = useLanguage();
   const {
     path,
     listKey,
     pageSize = DEFAULT_PAGE_SIZE,
     filters = {},
     enabled = true,
-    errorMessage = 'Error al cargar datos',
+    errorMessage = t.clinicalList.loadFailed,
   } = config;
+  const timeoutMessage = t.clinicalList.requestTimeout;
 
   const [items, setItems] = useState<T[]>([]);
   const [hasMore, setHasMore] = useState(false);
@@ -92,7 +95,7 @@ export function useClinicalListPage<T>(config: {
             error?: string;
           } & Record<string, unknown>>(`${path}${query}`),
           FETCH_TIMEOUT_MS,
-          'La solicitud tardó demasiado. Comprueba la conexión e inténtalo de nuevo.'
+          timeoutMessage
         );
 
         if (generation !== generationRef.current) return;
@@ -127,7 +130,7 @@ export function useClinicalListPage<T>(config: {
         }
       }
     },
-    [enabled, path, listKey, pageSize, filtersKey, errorMessage]
+    [enabled, path, listKey, pageSize, filtersKey, errorMessage, timeoutMessage]
   );
 
   const reload = useCallback(() => {

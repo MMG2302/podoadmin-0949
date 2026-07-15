@@ -2,9 +2,11 @@ import {
   semanticAlertErrorClass,
   semanticDestructiveTextClass,
 } from "../../lib/form-field-classes";
+import { useLanguage } from "../../contexts/language-context";
 
 /** Indicador de carga para listas clínicas (pacientes / sesiones). */
-export function ClinicalListLoading({ label = "Cargando…" }: { label?: string }) {
+export function ClinicalListLoading({ label }: { label?: string }) {
+  const { t } = useLanguage();
   return (
     <div className="bg-brand-surface rounded-xl border border-brand-border p-12 text-center">
       <svg
@@ -21,7 +23,7 @@ export function ClinicalListLoading({ label = "Cargando…" }: { label?: string 
           d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
         />
       </svg>
-      <p className="text-sm text-brand-muted">{label}</p>
+      <p className="text-sm text-brand-muted">{label ?? t.clinicalList.loading}</p>
     </div>
   );
 }
@@ -33,6 +35,7 @@ export function ClinicalListError({
   message: string;
   onRetry?: () => void;
 }) {
+  const { t } = useLanguage();
   return (
     <div className={`${semanticAlertErrorClass} !p-6 text-center rounded-xl`}>
       <p className="mb-3">{message}</p>
@@ -42,7 +45,7 @@ export function ClinicalListError({
           onClick={onRetry}
           className={`px-4 py-2 text-sm font-medium bg-brand-surface border border-semantic-error/30 rounded-lg ${semanticDestructiveTextClass}`}
         >
-          Reintentar
+          {t.clinicalList.retry}
         </button>
       )}
     </div>

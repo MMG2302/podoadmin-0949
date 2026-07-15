@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { useLanguage } from "../../contexts/language-context";
 import {
   CALENDAR_START_HOUR,
   CALENDAR_GRID_HEIGHT_PX,
@@ -137,10 +138,13 @@ function UntimedList({ items, colorByPodiatrist, orderedPodiatristIds }: {
   colorByPodiatrist: boolean;
   orderedPodiatristIds: string[];
 }) {
+  const { t } = useLanguage();
   if (items.length === 0) return null;
   return (
     <div className="border-b border-brand-border bg-brand-canvas/60 px-2 py-1.5 space-y-1">
-      <p className="text-[10px] font-medium text-brand-muted uppercase tracking-wide">Sin hora</p>
+      <p className="text-[10px] font-medium text-brand-muted uppercase tracking-wide">
+        {t.calendarGrid.noTime}
+      </p>
       {items.map((item) => {
         const style = resolveStyle(item.podiatristId, colorByPodiatrist, orderedPodiatristIds);
         const inner = (
@@ -258,13 +262,16 @@ export function PodiatristColorLegend({
   orderedPodiatristIds: string[];
   colorCollisionIds?: Set<string>;
 }) {
+  const { t } = useLanguage();
   if (podiatrists.length < 2) return null;
   const sorted = sortPodiatristsByName(podiatrists);
   const showInitials = colorCollisionIds && colorCollisionIds.size > 0;
 
   return (
     <div className="flex flex-wrap items-center gap-x-4 gap-y-2 px-3 py-2 border-b border-brand-border bg-brand-canvas/50 text-sm">
-      <span className="text-xs font-medium text-brand-muted shrink-0">Podólogos:</span>
+      <span className="text-xs font-medium text-brand-muted shrink-0">
+        {t.calendarGrid.podiatristsLegend}
+      </span>
       {sorted.map((p) => {
         const style = getPodiatristStyle(p.id, orderedPodiatristIds);
         const needsBadge = showInitials && colorCollisionIds!.has(p.id);
@@ -278,7 +285,7 @@ export function PodiatristColorLegend({
       })}
       {showInitials && (
         <span className="text-[10px] text-brand-muted w-full sm:w-auto">
-          Las iniciales indican doctores con el mismo color.
+          {t.calendarGrid.sameColorInitials}
         </span>
       )}
     </div>
@@ -366,6 +373,9 @@ export function CalendarDayTimeGrid({
   legend?: ReactNode;
   header?: ReactNode;
 }) {
+  const { t, language } = useLanguage();
+  const locale =
+    language === "en" ? "en-US" : language === "pt" ? "pt-PT" : language === "fr" ? "fr-FR" : "es-ES";
   return (
     <div>
       {header}
@@ -380,7 +390,7 @@ export function CalendarDayTimeGrid({
         />
       </div>
       <p className="sr-only">
-        Agenda del {date.toLocaleDateString("es-ES")}
+        {t.calendarGrid.agendaOf.replace("{date}", date.toLocaleDateString(locale))}
       </p>
     </div>
   );

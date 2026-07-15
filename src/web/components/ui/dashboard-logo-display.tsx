@@ -28,11 +28,11 @@ export function DashboardLogoDisplay({
   return (
     <div
       className={cn(
-        "relative w-full rounded-xl border border-brand-border bg-brand-surface",
+        "relative w-full h-full rounded-xl border border-brand-border bg-brand-surface",
         preview && "max-w-xs",
         className
       )}
-      style={{ minHeight: outerMinHeight }}
+      style={{ minHeight: Math.max(outerMinHeight, 180) }}
     >
       <div className="absolute inset-0 flex items-center justify-center overflow-hidden p-6">
         <div

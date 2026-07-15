@@ -9,6 +9,8 @@ export interface CheckoutAnalyticsSeriesPoint {
 
 export interface CheckoutAnalyticsComparisonPoint {
   label: string;
+  /** Etiqueta del periodo anterior emparejado (p. ej. mes previo). */
+  previousLabel: string;
   currentCents: number;
   previousCents: number;
 }
@@ -40,6 +42,13 @@ export interface CheckoutAnalytics {
       totalCents: number;
       visitCount: number;
       averageCents: number;
+    }[];
+    /** Ingresos/conteos por tipo de servicio (periodo seleccionado). */
+    salesByService: {
+      label: string;
+      totalCents: number;
+      count: number;
+      sharePercent: number;
     }[];
     salesByPodiatrist: {
       podiatristId: string;
@@ -107,8 +116,9 @@ export interface CheckoutAnalyticsPrefs {
   defaultMarginPercent: number;
 }
 
-export type CheckoutViewMode = "operations" | "sales" | "collections" | "profit";
+export type CheckoutViewMode = "operations" | "sales" | "collections" | "profit" | "agenda";
 
+/** @deprecated Prefer t.checkout.analytics.cash/card/… in UI; kept as Spanish fallback for legacy callers. */
 export const PAYMENT_METHOD_LABELS: Record<CheckoutPaymentMethod, string> = {
   cash: "Efectivo",
   card: "Tarjeta",

@@ -1,5 +1,6 @@
 import { createPortal } from "react-dom";
 import { useEffect, type ReactNode } from "react";
+import { useLanguage } from "../../contexts/language-context";
 
 const MAX_WIDTH_CLASS = {
   md: "max-w-md",
@@ -34,6 +35,8 @@ export function AppModal({
   panelClassName = "",
   panelId,
 }: AppModalProps) {
+  const { t } = useLanguage();
+
   useEffect(() => {
     if (!open) return;
     const prevOverflow = document.body.style.overflow;
@@ -62,7 +65,7 @@ export function AppModal({
       <button
         type="button"
         className="absolute inset-0 bg-black/50"
-        aria-label="Cerrar"
+        aria-label={t.common.close}
         onClick={onClose}
       />
       <div

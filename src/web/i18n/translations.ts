@@ -1,3 +1,10 @@
+import { clinicalSharedByLang, type ClinicalLayoutI18n, type PodiatryI18n, type ErrorBoundaryI18n, type ClinicalListI18n, type PatientsClinicalI18n, type SessionsClinicalI18n, type ClinicalToolsExtrasI18n, type CalendarGridI18n } from './clinical-i18n';
+import {
+  agendaAnalyticsByLang,
+  checkoutAnalyticsByLang,
+  type AgendaAnalyticsI18n,
+  type CheckoutAnalyticsI18n,
+} from './checkout-analytics-i18n';
 export type Language = "es" | "en" | "pt" | "fr";
 
 export interface Translations {
@@ -33,6 +40,15 @@ export interface Translations {
     details: string;
     view: string;
     download: string;
+    showPassword: string;
+    hidePassword: string;
+    showShort: string;
+    hideShort: string;
+    captcha: string;
+    seeAll: string;
+    seeAllShort: string;
+    viewMore: string;
+    go: string;
   };
   
   // Auth
@@ -149,6 +165,18 @@ export interface Translations {
     blockedUntil: string;
     retryIn: string;
     emailNotificationSent: string;
+    googleNotConfigured: string;
+    googleConnectFailed: string;
+    googleNoCode: string;
+    googleLoginError: string;
+    googleCompleting: string;
+    serverConnectionError: string;
+    connectionErrorShort: string;
+    changePasswordCurrentRequired: string;
+    changePasswordError: string;
+    verifyEmailMissingToken: string;
+    verifyEmailFailed: string;
+    recoveryVerifySubject: string;
   };
   
   // Terms and Conditions
@@ -284,6 +312,7 @@ export interface Translations {
     dashboard: string;
     patients: string;
     clinicalSessions: string;
+    clinicalTools: string;
     credits: string;
     settings: string;
     users: string;
@@ -292,6 +321,9 @@ export interface Translations {
     profile: string;
     clinicManagement: string;
     whatsappMessages: string;
+    whatsappCampaigns: string;
+    calendar: string;
+    securityMetrics: string;
     checkout: string;
   };
 
@@ -307,6 +339,7 @@ export interface Translations {
     emptyPaid: string;
     markPaid: string;
     confirmPaid: string;
+    confirmPaidTitle: string;
     paidAt: string;
     statusAwaiting: string;
     statusReady: string;
@@ -332,6 +365,33 @@ export interface Translations {
     tariffsSaved: string;
     addTariff: string;
     tariffLabelPlaceholder: string;
+    tariffAmountAria: string;
+    tariffDurationTitle: string;
+    tariffDurationAria: string;
+    tariffDurationPlaceholder: string;
+    serverMigrateHint: string;
+    views: {
+      operations: string;
+      sales: string;
+      collections: string;
+      profit: string;
+      agenda: string;
+    };
+    viewHintOperations: string;
+    viewHintAgenda: string;
+    viewHintCollections: string;
+    viewHintProfit: string;
+    viewHintClinicSales: string;
+    viewHintSales: string;
+    viewDataOf: string;
+    entireClinic: string;
+    myPractice: string;
+    podiatristFallback: string;
+    assignedPodiatrist: string;
+    podiatristLabel: string;
+    weekBucket: string;
+    analytics: CheckoutAnalyticsI18n;
+    agendaAnalytics: AgendaAnalyticsI18n;
   };
   
   // Dashboard
@@ -345,6 +405,40 @@ export interface Translations {
     recentActivity: string;
     upcomingAppointments: string;
     noRecentActivity: string;
+    patientFallback: string;
+    sessionCompletedActivity: string;
+    draftActivity: string;
+    podiatrists: string;
+    clinicAdmins: string;
+    sponsoredAnnouncements: string;
+    systemUsers: string;
+    assignedClinic: string;
+    assignedPodiatrists: string;
+    attendedAppointments: string;
+    agendaOccupancy: string;
+    salesThisMonth: string;
+    pendingCollections: string;
+    newPatients: string;
+    inactivePatients: string;
+    podiatristsCount: string;
+    last30Days: string;
+    relativeMinutesAgo: string;
+    relativeHoursAgo: string;
+    relativeYesterday: string;
+    relativeDaysAgo: string;
+    actions: {
+      addPatientDesc: string;
+      newSessionDesc: string;
+      calendarDesc: string;
+      settingsDesc: string;
+      clinicDesc: string;
+      patientsDesc: string;
+      sessionsDesc: string;
+      checkoutDesc: string;
+      usersDesc: string;
+      securityDesc: string;
+      sponsoredDesc: string;
+    };
   };
   
   // Patients
@@ -384,6 +478,42 @@ export interface Translations {
     viewHistory: string;
     lastVisit: string;
     totalSessions: string;
+    engagement: {
+      segmentNew: string;
+      segmentRecurrent: string;
+      segmentRecovered: string;
+      inactive3m: string;
+      inactive6m: string;
+      ageAll: string;
+      age0_17: string;
+      age18_35: string;
+      age36_55: string;
+      age56Plus: string;
+      ltvDay: string;
+      ltvWeek: string;
+      ltvMonth: string;
+      ltvYear: string;
+      ltvLifetime: string;
+      visitSingular: string;
+      visitPlural: string;
+      paymentSingular: string;
+      paymentPlural: string;
+      noSessions: string;
+      daysInactive: string;
+      daysWithoutVisit: string;
+      lastAgoDays: string;
+      minVisits: string;
+      maxVisits: string;
+      ltvLabel: string;
+      ltvPeriodAria: string;
+      agendaDemandTitle: string;
+      agendaDemandHint: string;
+      goToCheckoutAgenda: string;
+      tablePatient: string;
+      tableAge: string;
+      tableSegment: string;
+      yearsSuffix: string;
+    };
   };
   
   // Clinical Sessions
@@ -412,6 +542,29 @@ export interface Translations {
     creditReserved: string;
     sessionSaved: string;
     checkoutCompleteHint: string;
+    allStatuses: string;
+    loadingSessions: string;
+    createFirstSession: string;
+    followUp: {
+      overdueBanner: string;
+      upcomingBanner: string;
+      overdueChip: string;
+      upcomingChip: string;
+      sectionTitle: string;
+      nextAppointment: string;
+      noSpecificReason: string;
+    };
+    prescriptions: {
+      sectionTitle: string;
+      newPrescription: string;
+      create: string;
+      creating: string;
+    };
+    vitals: {
+      title: string;
+      weightKg: string;
+      heightCm: string;
+    };
   };
 
   // Calendar
@@ -502,6 +655,26 @@ export interface Translations {
     exportWaLine: string;
     exportWaAttachHint: string;
     exportWaInvalidPhone: string;
+    checkInWaiting: string;
+    checkInInConsult: string;
+    checkInDone: string;
+    checkInNone: string;
+    scheduledMetric: string;
+    completedMetric: string;
+    noShow: string;
+    waitlist: string;
+    agendaDemandTitle: string;
+    agendaDemandDemandTotal: string;
+    goToCheckoutAgendaLong: string;
+    pendingBadge: string;
+    confirmSaveAnyway: string;
+    outsideHoursBlocked: string;
+    confirmMarkNoShow: string;
+    markNoShow: string;
+    noPhoneShort: string;
+    preferredDateShort: string;
+    outsideHoursReceptionistNote: string;
+    outsideHoursContinueNote: string;
   };
   
   // Credits
@@ -563,6 +736,30 @@ export interface Translations {
       success: string;
       info: string;
     };
+    palettePreviewUi: {
+      brandShort: string;
+      home: string;
+      patients: string;
+      preview: string;
+      sampleCard: string;
+      secondaryText: string;
+      action: string;
+      button: string;
+    };
+    paletteWhatsappPreviewDesc: string;
+    paintColorPicker: {
+      ariaLabel: string;
+      basicColors: string;
+      customColors: string;
+      hideCustom: string;
+      defineCustom: string;
+      colorSolid: string;
+      hue: string;
+      sat: string;
+      lum: string;
+      addToCustom: string;
+      accept: string;
+    };
     navMenuTitle: string;
     navMenuHint: string;
     navMenuMinOne: string;
@@ -589,6 +786,451 @@ export interface Translations {
       | "whatsappMuted",
       string
     >;
+    tabs: {
+      profile: string;
+      clinicalHistory: string;
+      integrations: string;
+      clinic: string;
+      billing: string;
+    };
+    settingsScope: {
+      appliesClinic: string;
+      appliesIndependent: string;
+      appliesPractice: string;
+    };
+    watermark: {
+      title: string;
+      hint: string;
+      show: string;
+      customImage: string;
+      useProfessionalLogo: string;
+      logoHint: string;
+      loading: string;
+      imageTooLarge: string;
+      invalidFormat: string;
+      loadImageError: string;
+      saved: string;
+      saveFailed: string;
+      imageLabel: string;
+      noLogo: string;
+      noImage: string;
+      upload: string;
+      formatHint: string;
+      removeImage: string;
+      intensity: string;
+      intensityHint: string;
+      size: string;
+      zoom: string;
+      zoomHint: string;
+      positionX: string;
+      positionY: string;
+      left: string;
+      center: string;
+      right: string;
+      top: string;
+      bottom: string;
+      saving: string;
+      save: string;
+    };
+    billing: {
+      title: string;
+      subscriptionTitle: string;
+      independentPlan: string;
+      status: string;
+      trialPeriod: string;
+      trialEnd: string;
+      trialActive: string;
+      adminNoSub: string;
+      receptionistHint: string;
+      statusActive: string;
+      statusPastDue: string;
+      statusCancelled: string;
+      paymentReceived: string;
+      paymentCancelled: string;
+      cardVerified: string;
+      cardVerifyError: string;
+      cardMockVerified: string;
+      cardSetupError: string;
+      trialActivated: string;
+      trialActivateError: string;
+      checkoutError: string;
+      portalError: string;
+      activateTrialTitle: string;
+      activateTrialHint: string;
+      stepEmail: string;
+      emailVerifyHint: string;
+      stepCard: string;
+      verifyCard: string;
+      activateMonthTrial: string;
+      overLimit: string;
+      loading: string;
+      clinicPlan: string;
+      activePodiatrists: string;
+      stripeNotConfigured: string;
+      subscribe: string;
+      manageStripe: string;
+      clinicManagedByAdmin: string;
+    };
+    dashboardLogo: {
+      title: string;
+      loading: string;
+      saved: string;
+      saveFailed: string;
+      enabledByAdmin: string;
+      notShown: string;
+      hint: string;
+      show: string;
+      opacity: string;
+      size: string;
+      zoom: string;
+      zoomHint: string;
+      positionX: string;
+      positionY: string;
+      left: string;
+      center: string;
+      right: string;
+      top: string;
+      bottom: string;
+      saving: string;
+      save: string;
+    };
+    clinicalLayout: {
+      loadingDesigner: string;
+      title: string;
+      hint: string;
+      restoreDefault: string;
+      saveDesign: string;
+      addSection: string;
+      editSection: string;
+      previewForm: string;
+      newSectionDefault: string;
+      itemN: string;
+      columnN: string;
+      saved: string;
+      saveFailed: string;
+      restoreConfirm: string;
+      saving: string;
+      readOnlyHint: string;
+      sectionsCount: string;
+      sectionTitlePlaceholder: string;
+      titleLabel: string;
+      builtinTitleHint: string;
+      onPatientCard: string;
+      enabled: string;
+      inSession: string;
+      inPrint: string;
+      patientCardHelp: string;
+      printAntecedentsHelp: string;
+      enabledHelp: string;
+      inSessionHelp: string;
+      inPrintHelp: string;
+      deleteCustomSection: string;
+      selectSection: string;
+      systemField: string;
+      noSessionSections: string;
+      remove: string;
+      maxColumns: string;
+      checklistItems: string;
+      yesNoNaRows: string;
+      options: string;
+      yesNoNaHint: string;
+      addItem: string;
+      addRow: string;
+      addOption: string;
+      unit: string;
+      unitPlaceholder: string;
+      defaultUnit: string;
+      scaleMax: string;
+      conditionalPrompt: string;
+      conditionalPlaceholder: string;
+      tableColumns: string;
+      tableColumnsHint: string;
+      addColumn: string;
+      tableRows: string;
+    };
+    print: {
+      title: string;
+      hint: string;
+      preview: string;
+      loading: string;
+      saved: string;
+      saveFailed: string;
+      readOnlyHint: string;
+      generalTitle: string;
+      generalDesc: string;
+      headerAlign: string;
+      alignLeft: string;
+      alignCenter: string;
+      monochrome: string;
+      monochromeHint: string;
+      showGeneratedBy: string;
+      footerText: string;
+      footerPlaceholder: string;
+      historyTitle: string;
+      historyDesc: string;
+      showLogo: string;
+      showLegalData: string;
+      showLegalDataHint: string;
+      includePhotos: string;
+      includePhotosHint: string;
+      compact: string;
+      compactHistoryHint: string;
+      orientation: string;
+      portrait: string;
+      landscape: string;
+      orientationHistoryHint: string;
+      evolutionRows: string;
+      rxTitle: string;
+      rxDesc: string;
+      showWeight: string;
+      showHeight: string;
+      showNextVisit: string;
+      showNotes: string;
+      showSignatureCedula: string;
+      compactRxHint: string;
+      orientationRxHint: string;
+      folioPosition: string;
+      folioInline: string;
+      folioBar: string;
+      folioHint: string;
+      saving: string;
+      save: string;
+      reset: string;
+      previewSimHint: string;
+      tabHistory: string;
+      tabRx: string;
+      statusMonochrome: string;
+      statusHeaderCenter: string;
+      statusHeaderLeft: string;
+      statusEvolutionRows: string;
+      statusCompact: string;
+      statusFolioInline: string;
+      demoClinicName: string;
+      demoLicense: string;
+      demoLegal: string;
+      demoContact: string;
+      demoHistoryTitle: string;
+      demoPatientSection: string;
+      demoPatientCells: string[];
+      demoEvolutionSection: string;
+      demoColDate: string;
+      demoColDiagnosis: string;
+      demoColTreatment: string;
+      demoDiagnosis: string;
+      demoTreatment: string;
+      demoMoreRows: string;
+      demoPhotos: string;
+      demoFooter: string;
+      demoDoctor: string;
+      demoCedula: string;
+      demoTel: string;
+      demoFolio: string;
+      demoFolioBar: string;
+      demoPatientData: string;
+      demoName: string;
+      demoDni: string;
+      demoAge: string;
+      demoWeight: string;
+      demoHeight: string;
+      demoPrescription: string;
+      demoPrescriptionBody: string;
+      demoNextVisit: string;
+      demoNextVisitDate: string;
+      demoNotes: string;
+      demoNotesBody: string;
+      demoSignature: string;
+      logoPlaceholder: string;
+    };
+    profileAvatar: {
+      changeTitle: string;
+      invalidFormat: string;
+      tooLarge: string;
+      saveFailed: string;
+      processFailed: string;
+      removeFailed: string;
+      saving: string;
+      changePhoto: string;
+      uploadPhoto: string;
+      removePhoto: string;
+      hint: string;
+    };
+    profile: {
+      title: string;
+      name: string;
+      email: string;
+      readOnlyHint: string;
+    };
+    cooldown: {
+      logoPolicy: string;
+      logoBlocked: string;
+      clinicInfoPolicy: string;
+      clinicInfoBlocked: string;
+      professionalInfoPolicy: string;
+      professionalInfoBlocked: string;
+      profilePolicy: string;
+      clinicReadOnlyPolicy: string;
+      genericBlocked: string;
+    };
+    clinic: {
+      fallbackName: string;
+      errors: {
+        nameCodeRequired: string;
+        invalidWebsite: string;
+      };
+    };
+    consent: {
+      title: string;
+      sharedTitle: string;
+      sharedBody: string;
+      currentVersion: string;
+      empty: string;
+      editHint: string;
+      placeholder: string;
+      save: string;
+      saveError: string;
+    };
+    logo: {
+      empty: string;
+      previewAlt: string;
+      upload: string;
+      formatHint: string;
+      save: string;
+      remove: string;
+      errors: {
+        invalidFormat: string;
+        tooLarge: string;
+        processFailed: string;
+        cooldown: string;
+        saveFailed: string;
+      };
+    };
+    clinicLogo: {
+      title: string;
+      sharedTitle: string;
+      sharedBody: string;
+      alt: string;
+      uploadHint: string;
+    };
+    professionalLogo: {
+      title: string;
+      uploadHint: string;
+      alt: string;
+    };
+    adminLogo: {
+      title: string;
+      body: string;
+    };
+    assignedPodiatrists: {
+      title: string;
+      clinicHint: string;
+      independentHint: string;
+      emptyClinic: string;
+      save: string;
+      empty: string;
+    };
+    receptionist: {
+      title: string;
+      description: string;
+      status: {
+        blocked: string;
+        disabled: string;
+        active: string;
+      };
+      unblock: string;
+      block: string;
+      enable: string;
+      disable: string;
+      delete: string;
+      oneOnlyHint: string;
+      fields: {
+        name: string;
+        email: string;
+        initialPassword: string;
+      };
+      createdSuccess: string;
+      create: string;
+      createError: string;
+      confirmDelete: string;
+    };
+    clinicInfo: {
+      title: string;
+      subtitle: string;
+      setupBanner: string;
+      clinicName: string;
+      clinicNamePlaceholder: string;
+      clinicCode: string;
+      clinicCodePlaceholder: string;
+      clinicCodeHint: string;
+      country: string;
+      countryHint: string;
+      phone: string;
+      email: string;
+      emailPlaceholder: string;
+      address: string;
+      addressPlaceholder: string;
+      city: string;
+      cityPlaceholder: string;
+      postalCode: string;
+      postalCodePlaceholder: string;
+      licenseNumber: string;
+      licensePlaceholder: string;
+      website: string;
+      websitePlaceholder: string;
+      legalName: string;
+      rfc: string;
+      clues: string;
+      cofepris: string;
+      readOnlyTitle: string;
+      readOnlyBody: string;
+      labels: {
+        name: string;
+        phone: string;
+        email: string;
+        address: string;
+        license: string;
+        consent: string;
+        web: string;
+      };
+      viewDocument: string;
+    };
+    practice: {
+      title: string;
+      subtitle: string;
+      professionalName: string;
+      namePlaceholder: string;
+      country: string;
+      countryHint: string;
+      emailPlaceholder: string;
+      sanitaryRegistry: string;
+      cedula: string;
+      cedulaPlaceholder: string;
+    };
+    credentials: {
+      title: string;
+      subtitle: string;
+      contactPhoneTitle: string;
+      contactPhoneHint: string;
+      country: string;
+      mobile: string;
+      savePhone: string;
+      registryNumber: string;
+      registryPlaceholder: string;
+      save: string;
+      clinicInfoTitle: string;
+      clinicInfoBody: string;
+      clinicName: string;
+    };
+    common: {
+      saved: string;
+      readOnly: string;
+      saveInfo: string;
+      emDash: string;
+      ellipsis: string;
+    };
+    errors: {
+      connectionSave: string;
+    };
+    supportSenderLabel: string;
   };
 
   // Contact PodoAdmin / Support (2-way messaging)
@@ -613,6 +1255,27 @@ export interface Translations {
     reopenConversation: string;
     from: string;
     sent: string;
+  };
+
+  layout: {
+    brandFallback: string;
+    unlockSidebarVisible: string;
+    unlockSidebarHidden: string;
+    lockSidebarVisible: string;
+    toggleSidebarLock: string;
+    hideMenu: string;
+    showMenu: string;
+    pendingAccessBanner: string;
+    goToBilling: string;
+    goToSupport: string;
+    subscriptionInactiveBanner: string;
+    closeMenu: string;
+    sponsored: string;
+    closeAnnouncement: string;
+    promoCodeOnSite: string;
+    seeMore: string;
+    interested: string;
+    interestRegistered: string;
   };
 
   /** WhatsApp Business (configuración y mensajes) */
@@ -673,6 +1336,7 @@ export interface Translations {
     templateLanguageLabel: string;
     templateLanguagePlaceholder: string;
     integrationActive: string;
+    receptionistApiEnabled: string;
     save: string;
     saving: string;
     testConnection: string;
@@ -699,6 +1363,169 @@ export interface Translations {
     successTest: string;
     successTestWithPhone: string;
     successDisconnected: string;
+    campaigns: {
+      title: string;
+      pageHint: string;
+      webTitle: string;
+      webHint: string;
+      openWeb: string;
+      newDraft: string;
+      metaApiTitle: string;
+      metaApiHint: string;
+      denied: string;
+      patientsLoadError: string;
+      draftCreated: string;
+      createError: string;
+      sendConfirm: string;
+      apiSendResult: string;
+      apiSendError: string;
+      namePlaceholder: string;
+      messagePlaceholder: string;
+      variablesHint: string;
+      variablesList: string;
+      clinicOnlyFilter: string;
+      recipientsWithPhone: string;
+      recipientsMismatchHint: string;
+      patientsLoadFailed: string;
+      noPatientsYet: string;
+      saveDraft: string;
+      assistantTitle: string;
+      assistantPatientOf: string;
+      openWhatsApp: string;
+      assistantDone: string;
+      finish: string;
+      nextPatient: string;
+      draftsToSend: string;
+      loading: string;
+      recipientsCount: string;
+      sendAssistant: string;
+      hideList: string;
+      showList: string;
+      noValidRecipients: string;
+      noDrafts: string;
+      connected: string;
+      optional: string;
+      receptionistApiHint: string;
+      receptionistApiDisabled: string;
+      configureApiHint: string;
+      allCampaigns: string;
+      sentAt: string;
+      sending: string;
+      sendByApi: string;
+      noCampaigns: string;
+    };
+    messages: {
+      title: string;
+      webTitle: string;
+      webHint: string;
+      openWeb: string;
+      metaApiTitle: string;
+      metaApiHint: string;
+      historyTitle: string;
+      historyHint: string;
+      denied: string;
+      patientFallback: string;
+      defaultExtraNote: string;
+      noValidPhone: string;
+      selectAppointmentFirst: string;
+      reminderSendError: string;
+      reminderSent: string;
+      defaultMessage: string;
+      variablesHint: string;
+      variablesList: string;
+      extraNotePlaceholder: string;
+      saved: string;
+      saveMessage: string;
+      tomorrowAppointments: string;
+      loadingAppointments: string;
+      noTomorrowAppointments: string;
+      noPhone: string;
+      sendViaWhatsApp: string;
+      connected: string;
+      optional: string;
+      receptionistApiHint: string;
+      configLoadError: string;
+      connectedLabel: string;
+      apiStatusLabel: string;
+      templateLabel: string;
+      templateUndefined: string;
+      lastErrorLabel: string;
+      noErrors: string;
+      sendAutoReminder: string;
+      selectUpcomingAppointment: string;
+      sending: string;
+      sendByApi: string;
+      singleExtraNotePlaceholder: string;
+      lastApiSends: string;
+      refresh: string;
+      loadingHistory: string;
+      configureForHistory: string;
+      noApiSends: string;
+      colDate: string;
+      colPatient: string;
+      colPhone: string;
+      colStatus: string;
+      colNote: string;
+      emDash: string;
+      yes: string;
+      no: string;
+    };
+  };
+
+  clinicalTools: {
+    title: string;
+    denied: string;
+    tabTemplates: string;
+    tabInventory: string;
+    tabReferrals: string;
+    templatesHint: string;
+    newTemplate: string;
+    create: string;
+    creating: string;
+    category: string;
+    inventoryName: string;
+    unit: string;
+    add: string;
+    emptyInventory: string;
+    patientId: string;
+    referTo: string;
+    reason: string;
+    registerReferral: string;
+    emptyReferrals: string;
+    nameRequired: string;
+    templateCreated: string;
+    createFailed: string;
+    presetCreated: string;
+    templateUpdated: string;
+    saveFailed: string;
+    deleteConfirm: string;
+    templateDeleted: string;
+    deleteFailed: string;
+    invalidQuantity: string;
+    defaultUnit: string;
+    inventoryAdded: string;
+    genericError: string;
+    referralAdded: string;
+    namePlaceholder: string;
+    scopeLabel: string;
+    scopePersonal: string;
+    scopeClinic: string;
+    clinicAdminHint: string;
+    sectionsCount: string;
+    close: string;
+    edit: string;
+    deleting: string;
+    delete: string;
+    nameLabel: string;
+    shareWithClinic: string;
+    saving: string;
+    saveTemplate: string;
+    emptyTemplates: string;
+    quantityPlaceholder: string;
+    quantityAria: string;
+    patientPrefix: string;
+    scopeShared: string;
+    scopePersonalShort: string;
   };
 
   /** Estado del sistema / guía de incidencias (solo super_admin en UI) */
@@ -835,10 +1662,525 @@ export interface Translations {
     recipientRequired: string;
     fromAdmin: string;
   };
+  // Clinical shared UI (layout kinds, podiatry options, component strings)
+  clinicalLayout: ClinicalLayoutI18n;
+  podiatry: PodiatryI18n;
+  errorBoundary: ErrorBoundaryI18n;
+  clinicalList: ClinicalListI18n;
+  patientsClinical: PatientsClinicalI18n;
+  sessionsClinical: SessionsClinicalI18n;
+  clinicalToolsExtras: ClinicalToolsExtrasI18n;
+  calendarGrid: CalendarGridI18n;
+
+  // Users admin page
+  usersPage: {
+    fields: {
+      name: string;
+      email: string;
+      password: string;
+      role: string;
+      clinic: string;
+      clinicOptional: string;
+    };
+    create: {
+      title: string;
+      passwordHint: string;
+      clinicModeExisting: string;
+      clinicModeNew: string;
+      clinicModeNone: string;
+      newClinicHint: string;
+      podiatristLimit: string;
+      podiatristLimitPlaceholder: string;
+      podiatristLimitHint: string;
+      saving: string;
+      success: string;
+      partialClinicFail: string;
+      errors: {
+        nameRequired: string;
+        emailInvalid: string;
+        passwordMin: string;
+        clinicRequiredReceptionist: string;
+        clinicRequiredAdmin: string;
+        createFailed: string;
+      };
+    };
+    import: {
+      title: string;
+      description: string;
+      optionalColumnsSuperAdmin: string;
+      downloadTemplate: string;
+      selectFile: string;
+      defaultPassword: string;
+      optionalPlaceholder: string;
+      readyCount: string;
+      andMore: string;
+      resultsSummary: string;
+      created: string;
+      importing: string;
+      submit: string;
+      templateFilename: string;
+      errors: {
+        needRows: string;
+        missingColumns: string;
+        readFile: string;
+        invalidPassword: string;
+        unknown: string;
+        connection: string;
+      };
+    };
+    edit: {
+      title: string;
+      noClinic: string;
+      errors: {
+        updateFailed: string;
+      };
+    };
+    transfer: {
+      title: string;
+      subtitle: string;
+      successMessage: string;
+      error: string;
+      successTitle: string;
+      errorTitle: string;
+      sourceUser: string;
+      targetUser: string;
+      selectUser: string;
+      patientsCount: string;
+      warning: string;
+      transferring: string;
+      submit: string;
+    };
+    profile: {
+      loading: string;
+      patients: string;
+      sessions: string;
+      patientsHeading: string;
+      andMore: string;
+    };
+    status: {
+      banned: string;
+      blocked: string;
+      gracePeriod: string;
+      disabled: string;
+      pendingPayment: string;
+      active: string;
+    };
+    confirm: {
+      block: string;
+      unblock: string;
+      enable: string;
+      disable: string;
+      ban: string;
+      unban: string;
+      delete: string;
+      deletePermanent: string;
+    };
+    errors: {
+      approve: string;
+      reject: string;
+      block: string;
+      unblock: string;
+      enable: string;
+      disable: string;
+      ban: string;
+      unban: string;
+      delete: string;
+    };
+    actions: {
+      importCsv: string;
+      createUser: string;
+      transferHistory: string;
+      approve: string;
+      reject: string;
+      view: string;
+      edit: string;
+      ban: string;
+      unban: string;
+      block: string;
+      unblock: string;
+      enableAccount: string;
+      disableAccount: string;
+      delete: string;
+      viewProfile: string;
+      downloadJson: string;
+      manageAccount: string;
+    };
+    table: {
+      user: string;
+      email: string;
+      role: string;
+      status: string;
+      clinic: string;
+      limit: string;
+      data: string;
+      actions: string;
+      sortBy: string;
+      podiatristLimit: string;
+      dataSummary: string;
+      currentPodiatrists: string;
+      saveLimit: string;
+      clinicMissing: string;
+      patients: string;
+      sessions: string;
+    };
+    passwordReset: {
+      pendingTitle: string;
+      approved: string;
+      approveError: string;
+      rejectReasonPrompt: string;
+      rejected: string;
+      rejectError: string;
+      approvedModalTitle: string;
+      linkHint: string;
+      copied: string;
+      copyFailed: string;
+      copyLink: string;
+    };
+    regLists: {
+      title: string;
+      hint: string;
+      byCreator: string;
+      downloadCsv: string;
+      createdCount: string;
+      approved: string;
+      errorsPrefix: string;
+    };
+    cooldown: {
+      notApplicable: string;
+      scopeClinic: string;
+      scopeProfessional: string;
+      reasonPrompt: string;
+      confirm: string;
+      applied: string;
+      error: string;
+    };
+    export: {
+      failed: string;
+    };
+    menu: {
+      unbanAccount: string;
+      banAccount: string;
+      unblockAccount: string;
+      blockAccount: string;
+      enableAccount: string;
+      disableAccount: string;
+      authorizeCooldown: string;
+      deleteAccount: string;
+    };
+    searchPlaceholder: string;
+    allRoles: string;
+    loading: string;
+    empty: string;
+    selectPlaceholder: string;
+  };
+
+  // Clinic management page
+  clinic: {
+    title: string;
+    tabOverview: string;
+    tabPodiatrists: string;
+    tabPatients: string;
+    tabReceptionists: string;
+    statPodiatrists: string;
+    statTotalPatients: string;
+    statSessionsThisMonth: string;
+    vsPreviousMonth: string;
+    agendaTitle: string;
+    agendaSubtitle: string;
+    allPodiatrists: string;
+    attended: string;
+    noShow: string;
+    noShowRateOfResolved: string;
+    cancelled: string;
+    cancellationRate: string;
+    pending: string;
+    demandTitle: string;
+    demandHint: string;
+    openCheckoutAgenda: string;
+    attendedPerDay: string;
+    loadingAgendaMetrics: string;
+    activityByPodiatrist: string;
+    sessionsCount: string;
+    podiatristsLimit: string;
+    podiatristsNoLimit: string;
+    createPodiatrist: string;
+    colPodiatrist: string;
+    colEmail: string;
+    colLicense: string;
+    colPatients: string;
+    colSessionsMonth: string;
+    licenseNotRegistered: string;
+    noPodiatrists: string;
+    totalIndexed: string;
+    searchPatientPlaceholder: string;
+    activityAll: string;
+    visitsRangeChip: string;
+    loadingPatients: string;
+    colPhone: string;
+    colVisits: string;
+    colAssignedPodiatrist: string;
+    colLastSession: string;
+    colActions: string;
+    reassign: string;
+    noPatientsFound: string;
+    receptionistsHint: string;
+    receptionistsActive: string;
+    createReceptionist: string;
+    colName: string;
+    colAssignedPodiatrists: string;
+    unassigned: string;
+    podiatristsAction: string;
+    unblock: string;
+    block: string;
+    enable: string;
+    disable: string;
+    noReceptionists: string;
+    reassignTitle: string;
+    reassignUseCase: string;
+    currentPodiatrist: string;
+    newPodiatrist: string;
+    selectPodiatrist: string;
+    unknownPodiatrist: string;
+    createPodiatristSubtitle: string;
+    initialPasswordMin8: string;
+    createReceptionistSubtitle: string;
+    initialPassword: string;
+    assignedPodiatristsTitle: string;
+    noPodiatristsInClinic: string;
+    confirmDeleteReceptionist: string;
+    maxActiveReceptionists: string;
+    emailTaken: string;
+    createReceptionistError: string;
+    saveAssignmentError: string;
+    createPodiatristError: string;
+    passwordMin8: string;
+  };
+
+  // Audit log (admin)
+  auditLog: {
+    title: string;
+    actionLabels: {
+      LOGIN_SUCCESS: string;
+      LOGIN_FAILED: string;
+      LOGOUT: string;
+      PASSWORD_CHANGED: string;
+      PASSWORD_RESET_REJECTED: string;
+      PASSWORD_RESET_APPROVED: string;
+      PASSWORD_RESET_COMPLETED: string;
+      PASSWORD_RESET_REQUESTED: string;
+      CREATE: string;
+      CREATE_USER: string;
+      UPDATE: string;
+      DELETE: string;
+      DELETE_USER: string;
+      COMPLETE: string;
+      EXPORT: string;
+      PRINT: string;
+      UPDATE_DRAFT: string;
+      REASSIGN: string;
+      TRANSFER: string;
+      ADD_CREDITS: string;
+      SUBTRACT_CREDITS: string;
+      ADMIN_CREDIT_ADJUSTMENT: string;
+      ALERT_MULTIPLE_PRINT_VIOLATIONS: string;
+      PRINT_VIOLATION_FORM: string;
+    };
+    entityLabels: {
+      authentication: string;
+      session: string;
+      patient: string;
+      prescription: string;
+      reassignment: string;
+      credit: string;
+      user: string;
+      user_data: string;
+      clinic: string;
+      professional_info: string;
+      professional_credentials: string;
+      logo: string;
+      message: string;
+      clinical_history: string;
+      receptionist: string;
+      registration_list: string;
+      support_conversation: string;
+    };
+    filters: {
+      title: string;
+      clear: string;
+      search: string;
+      allActions: string;
+      allTypes: string;
+      allUsers: string;
+      from: string;
+      to: string;
+    };
+    empty: {
+      title: string;
+      description: string;
+    };
+    totalRecords: string;
+    actionTypes: string;
+    entityTypes: string;
+    activeUsers: string;
+    topUsers: string;
+    recordsCount: string;
+    ofTotal: string;
+    fullDetails: string;
+    userLinkedHint: string;
+    userLabel: string;
+    userIdLabel: string;
+    logIdLabel: string;
+    resourceIdLabel: string;
+    pageOf: string;
+    summaries: {
+      loginSuccess: string;
+      loginSuccessEmail: string;
+      with2fa: string;
+      without2fa: string;
+      logout: string;
+      passwordChanged: string;
+      loginFailed: string;
+      loginFailedEmail: string;
+      passwordResetRejected: string;
+      passwordResetApproved: string;
+      passwordResetCompleted: string;
+      passwordResetRequested: string;
+      patientPrefix: string;
+      userPrefix: string;
+      clinicPrefix: string;
+    };
+  };
+
+  // Security metrics (super_admin)
+  securityMetrics: {
+    title: string;
+    subtitle: string;
+    last24h: string;
+    last7days: string;
+    last30days: string;
+    refresh: string;
+    loadError: string;
+    criticalEvents: string;
+    failedLogins: string;
+    unreadAlerts: string;
+    summaryByType: string;
+    loading: string;
+    noEventsInPeriod: string;
+    activeAlerts: string;
+    noSystemAlerts: string;
+    recentAccessGeo: string;
+    date: string;
+    event: string;
+    userRole: string;
+    ip: string;
+    location: string;
+    noAccessYet: string;
+    loginOk: string;
+    loginFailed: string;
+    recentFailedLogins: string;
+    emailDetail: string;
+    noRecentRecords: string;
+    attemptNumber: string;
+    metricLabels: {
+      failed_login: string;
+      successful_login: string;
+      twoFaFailed: string;
+      captcha_failed: string;
+      suspicious_activity: string;
+    };
+  };
+
+  // Support page admin extras
+  supportPage: {
+    title: string;
+    adminSubtitle: string;
+    tabMessages: string;
+    tabLists: string;
+    conversations: string;
+    noConversations: string;
+    selectConversation: string;
+    supportAgent: string;
+    registrationLists: string;
+    newList: string;
+    newListNamePlaceholder: string;
+    listsEmptyHint: string;
+    deleteList: string;
+    deleteListConfirm: string;
+    createListError: string;
+    defaultListName: string;
+    invalidEmail: string;
+    downloadCsv: string;
+    markPaidToExport: string;
+    submitForApproval: string;
+    addEntry: string;
+    namePlaceholder: string;
+    emailPlaceholder: string;
+    roleIndependent: string;
+    roleClinicAdmin: string;
+    podiatristLimitLabel: string;
+    podiatristLimitPlaceholder: string;
+    add: string;
+    clinicAdminLimitHint: string;
+    noEntries: string;
+    paid: string;
+    unpaid: string;
+    pendingPayment: string;
+    paidSection: string;
+    selectOrCreateList: string;
+    statusDraft: string;
+    statusPending: string;
+    statusApproved: string;
+    statusRejected: string;
+    limitPodiatrists: string;
+  };
+
+  // Sponsored announcements admin
+  sponsoredAnnouncements: {
+    title: string;
+    heading: string;
+    subtitle: string;
+    newCampaign: string;
+    formTitle: string;
+    existingAdvertiser: string;
+    newAdvertiserOption: string;
+    advertiserName: string;
+    advertiserNamePlaceholder: string;
+    titlePlaceholder: string;
+    bodyPlaceholder: string;
+    countryPlaceholder: string;
+    statePlaceholder: string;
+    audienceEstimate: string;
+    externalUrlPlaceholder: string;
+    promoCodePlaceholder: string;
+    createDraft: string;
+    campaigns: string;
+    loading: string;
+    noCampaigns: string;
+    advertiserCode: string;
+    activate: string;
+    pause: string;
+    createAdvertiserError: string;
+    selectOrCreateAdvertiser: string;
+    createCampaignError: string;
+    statusError: string;
+    statusActive: string;
+    statusDraft: string;
+    statusPaused: string;
+    defaultCta: string;
+  };
+
 }
 
 export const translations: Record<Language, Translations> = {
   es: {
+    clinicalLayout: clinicalSharedByLang.es.clinicalLayout,
+    podiatry: clinicalSharedByLang.es.podiatry,
+    errorBoundary: clinicalSharedByLang.es.errorBoundary,
+    clinicalList: clinicalSharedByLang.es.clinicalList,
+    patientsClinical: clinicalSharedByLang.es.patientsClinical,
+    sessionsClinical: clinicalSharedByLang.es.sessionsClinical,
+    clinicalToolsExtras: clinicalSharedByLang.es.clinicalToolsExtras,
+    calendarGrid: clinicalSharedByLang.es.calendarGrid,
     common: {
       loading: "Cargando...",
       save: "Guardar",
@@ -870,6 +2212,15 @@ export const translations: Record<Language, Translations> = {
       details: "Detalles",
       view: "Ver",
       download: "Descargar",
+      showPassword: "Mostrar contraseña",
+      hidePassword: "Ocultar contraseña",
+      showShort: "Mostrar",
+      hideShort: "Ocultar",
+      captcha: "CAPTCHA",
+      seeAll: "Ver todos",
+      seeAllShort: "Ver todo",
+      viewMore: "Ver más",
+      go: "Ir",
     },
     auth: {
       login: "Iniciar sesión",
@@ -886,6 +2237,8 @@ export const translations: Record<Language, Translations> = {
       loggingIn: "Iniciando sesión...",
       invalidCredentials: "Credenciales inválidas",
       loginError: "Error al iniciar sesión",
+      tooManyAttempts: "Demasiados intentos",
+      accountTemporarilyBlocked: "Cuenta temporalmente bloqueada",
       testCredentials: "Credenciales de prueba",
       superAdmin: "Super Administrador",
       podiatrist: "Podólogo",
@@ -983,11 +2336,24 @@ export const translations: Record<Language, Translations> = {
       blockedUntil: "Bloqueado hasta:",
       retryIn: "Puedes intentar nuevamente en:",
       emailNotificationSent: "Se ha enviado una notificación por email sobre estos intentos.",
+      googleNotConfigured: "Google no está configurado en este entorno",
+      googleConnectFailed: "No se pudo conectar con Google",
+      googleNoCode: "No se recibió código de Google",
+      googleLoginError: "Error al iniciar sesión con Google",
+      googleCompleting: "Completando inicio de sesión con Google…",
+      serverConnectionError: "Error de conexión con el servidor",
+      connectionErrorShort: "Error de conexión",
+      changePasswordCurrentRequired: "Introduce tu contraseña actual.",
+      changePasswordError: "Error al cambiar la contraseña",
+      verifyEmailMissingToken: "No se proporcionó un token de verificación",
+      verifyEmailFailed: "Error al verificar el email",
+      recoveryVerifySubject: "Verificación de identidad - Recuperación de contraseña",
     },
     nav: {
       dashboard: "Panel principal",
       patients: "Pacientes",
       clinicalSessions: "Sesiones clínicas",
+      clinicalTools: "Herramientas clínicas",
       credits: "Créditos",
       settings: "Configuración",
       users: "Usuarios",
@@ -996,6 +2362,9 @@ export const translations: Record<Language, Translations> = {
       profile: "Perfil",
       clinicManagement: "Gestión de Clínica",
       whatsappMessages: "Mensajes WhatsApp",
+      whatsappCampaigns: "Campañas WhatsApp",
+      calendar: "Calendario",
+      securityMetrics: "Métricas de seguridad",
       checkout: "Cobros",
     },
     checkout: {
@@ -1010,6 +2379,7 @@ export const translations: Record<Language, Translations> = {
       emptyPaid: "No hay cobros registrados en esta pestaña.",
       markPaid: "Marcar cobrado",
       confirmPaid: "¿Confirmas que {patient} ya pagó?",
+      confirmPaidTitle: "Confirmar cobro",
       paidAt: "Cobrado a las",
       statusAwaiting: "Sin importe",
       statusReady: "Listo para cobrar",
@@ -1034,7 +2404,34 @@ export const translations: Record<Language, Translations> = {
       saveTariffs: "Guardar tarifas",
       tariffsSaved: "Tarifas guardadas",
       addTariff: "Añadir tarifa",
-      tariffLabelPlaceholder: "Nombre (ej. Consulta)",
+            tariffLabelPlaceholder: "Nombre (ej. Consulta)",
+      tariffAmountAria: "Importe",
+      tariffDurationTitle: "Duración pauta (minutos)",
+      tariffDurationAria: "Duración en minutos",
+      tariffDurationPlaceholder: "min",
+      serverMigrateHint: "Error del servidor. Si acabas de actualizar el proyecto, ejecuta npm run db:migrate y reinicia npm run dev.",
+views: {
+        operations: "Operaciones",
+        sales: "Ventas",
+        collections: "Cobros",
+        profit: "Rentabilidad",
+        agenda: "Agenda",
+      },
+      viewHintOperations: "Cola de cobros pendientes y completados.",
+      viewHintAgenda: "Ocupación, demanda, horario y cierre diario de caja.",
+      viewHintCollections: "Cobrado vs pendiente, métodos de pago y cuentas por cobrar.",
+      viewHintProfit: "Metas, gastos y margen estimado.",
+      viewHintClinicSales: "Ventas agregadas de toda la clínica.",
+      viewHintSales: "Ingresos, ticket medio y desglose por servicio.",
+      viewDataOf: "Datos de",
+      entireClinic: "Toda la clínica",
+      myPractice: "Mi consulta",
+      podiatristFallback: "Podólogo",
+      assignedPodiatrist: "Podólogo asignado",
+      podiatristLabel: "Podólogo",
+      weekBucket: "S{n}",
+      analytics: checkoutAnalyticsByLang.es,
+      agendaAnalytics: agendaAnalyticsByLang.es,
     },
     dashboard: {
       title: "Panel principal",
@@ -1046,6 +2443,40 @@ export const translations: Record<Language, Translations> = {
       recentActivity: "Actividad reciente",
       upcomingAppointments: "Próximas citas",
       noRecentActivity: "No hay actividad reciente",
+      patientFallback: "Paciente",
+      sessionCompletedActivity: "Sesión completada",
+      draftActivity: "Borrador",
+      podiatrists: "Podólogos",
+      clinicAdmins: "Admins de clínica",
+      sponsoredAnnouncements: "Anuncios patrocinados",
+      systemUsers: "Usuarios del sistema",
+      assignedClinic: "Clínica asignada",
+      assignedPodiatrists: "Podólogos asignados",
+      attendedAppointments: "Citas atendidas",
+      agendaOccupancy: "Ocupación de agenda",
+      salesThisMonth: "Ventas del mes",
+      pendingCollections: "Cobros pendientes",
+      newPatients: "Pacientes nuevos",
+      inactivePatients: "Pacientes inactivos",
+      podiatristsCount: "Podólogos",
+      last30Days: "Últimos 30 días",
+      relativeMinutesAgo: "Hace menos de 1 hora",
+      relativeHoursAgo: "Hace {n} h",
+      relativeYesterday: "Ayer",
+      relativeDaysAgo: "Hace {n} días",
+      actions: {
+        addPatientDesc: "Registrar un nuevo paciente",
+        newSessionDesc: "Abrir una sesión clínica",
+        calendarDesc: "Ver y gestionar la agenda",
+        settingsDesc: "Configurar tu espacio de trabajo",
+        clinicDesc: "Gestionar podólogos, pacientes y recepción",
+        patientsDesc: "Consultar y filtrar pacientes",
+        sessionsDesc: "Revisar historial de sesiones",
+        checkoutDesc: "Cobros, ventas y agenda",
+        usersDesc: "Administrar usuarios de la plataforma",
+        securityDesc: "Métricas y alertas de seguridad",
+        sponsoredDesc: "Campañas geolocalizadas",
+      },
     },
     patients: {
       title: "Pacientes",
@@ -1083,6 +2514,42 @@ export const translations: Record<Language, Translations> = {
       viewHistory: "Ver historial",
       lastVisit: "Última visita",
       totalSessions: "Total de sesiones",
+      engagement: {
+        segmentNew: "Nuevos",
+        segmentRecurrent: "Recurrentes",
+        segmentRecovered: "Recuperados",
+        inactive3m: "Inactivos 3 meses",
+        inactive6m: "Inactivos 6 meses",
+        ageAll: "Todas las edades",
+        age0_17: "0–17 años",
+        age18_35: "18–35 años",
+        age36_55: "36–55 años",
+        age56Plus: "56+ años",
+        ltvDay: "Día",
+        ltvWeek: "Semana",
+        ltvMonth: "Mes",
+        ltvYear: "Año",
+        ltvLifetime: "Histórico",
+        visitSingular: "visita",
+        visitPlural: "visitas",
+        paymentSingular: "cobro",
+        paymentPlural: "cobros",
+        noSessions: "Sin sesiones",
+        daysInactive: "{n} días inactivo",
+        daysWithoutVisit: "{n} días sin visita",
+        lastAgoDays: "Última hace {n} días",
+        minVisits: "Mín. visitas",
+        maxVisits: "Máx. visitas",
+        ltvLabel: "LTV",
+        ltvPeriodAria: "Periodo de valor de vida del paciente",
+        agendaDemandTitle: "Demanda de agenda",
+        agendaDemandHint: "Revisa horas pico, ocupación y cierre diario en Cobros → Agenda.",
+        goToCheckoutAgenda: "Ir a Cobros → Agenda",
+        tablePatient: "Paciente",
+        tableAge: "Edad",
+        tableSegment: "Segmento",
+        yearsSuffix: "años",
+      },
     },
     sessions: {
       title: "Sesiones clínicas",
@@ -1110,6 +2577,29 @@ export const translations: Record<Language, Translations> = {
       sessionSaved: "Sesión guardada",
       checkoutCompleteHint:
         "El cobro a recepción solo aparece al pulsar Completar (paciente que sale de consulta). Guardar borrador solo guarda sin cerrar la visita.",
+      allStatuses: "Todas",
+      loadingSessions: "Cargando sesiones…",
+      createFirstSession: "Crea tu primera sesión clínica",
+      followUp: {
+        overdueBanner: "Citas atrasadas",
+        upcomingBanner: "Próximas citas (7 días)",
+        overdueChip: "Atrasada",
+        upcomingChip: "Próxima",
+        sectionTitle: "Seguimiento",
+        nextAppointment: "Próxima cita",
+        noSpecificReason: "Sin motivo específico",
+      },
+      prescriptions: {
+        sectionTitle: "Recetas / Prescripciones",
+        newPrescription: "Nueva receta",
+        create: "Crear",
+        creating: "Creando…",
+      },
+      vitals: {
+        title: "Signos vitales",
+        weightKg: "Peso (kg)",
+        heightCm: "Altura (cm)",
+      },
     },
     calendar: {
       title: "Calendario",
@@ -1198,6 +2688,26 @@ export const translations: Record<Language, Translations> = {
       exportWaLine: "• {{hora}} — {{paciente}} ({{duracion}} min) · {{telefono}}",
       exportWaAttachHint: "📎 Se ha descargado el archivo agenda-.ics — adjúntalo en WhatsApp para importar al calendario del móvil.",
       exportWaInvalidPhone: "El teléfono del podólogo no es válido para WhatsApp. Abre WhatsApp manualmente y pega el mensaje.",
+      checkInWaiting: "En espera",
+      checkInInConsult: "En consulta",
+      checkInDone: "Atendido",
+      checkInNone: "Sin check-in",
+      scheduledMetric: "Programadas",
+      completedMetric: "Completadas",
+      noShow: "No asistió",
+      waitlist: "Lista de espera",
+      agendaDemandTitle: "Demanda de agenda",
+      agendaDemandDemandTotal: "Demanda total: {n}",
+      goToCheckoutAgendaLong: "Ver analítica de agenda en cobros",
+      pendingBadge: "Pendiente",
+      confirmSaveAnyway: "¿Deseas guardar la cita de todas formas?",
+      outsideHoursBlocked: "Fuera de horario: la cita no se guardará. Recepción no puede registrar citas fuera del horario permitido.",
+      confirmMarkNoShow: "¿Marcar esta cita como no asistió (no-show)?",
+      markNoShow: "No asistió",
+      noPhoneShort: "sin tel.",
+      preferredDateShort: "pref. {date}",
+      outsideHoursReceptionistNote: "No se guardará la cita: recepción no puede registrar citas fuera de horario.",
+      outsideHoursContinueNote: "Puedes continuar; se pedirá confirmación al guardar.",
     },
     credits: {
       title: "Créditos",
@@ -1249,11 +2759,35 @@ export const translations: Record<Language, Translations> = {
         success: "Cambios guardados correctamente.",
         info: "La sesión expira en 5 minutos.",
       },
-      palettePreviewLabels: {
+            palettePreviewLabels: {
         error: "Error",
         warning: "Advertencia",
         success: "Éxito",
         info: "Info",
+      },
+      palettePreviewUi: {
+        brandShort: "Podo",
+        home: "Inicio",
+        patients: "Pacientes",
+        preview: "Vista previa",
+        sampleCard: "Tarjeta de ejemplo",
+        secondaryText: "Texto secundario",
+        action: "Acción",
+        button: "Botón",
+      },
+      paletteWhatsappPreviewDesc: "Envía mensajes manualmente desde tu número.",
+      paintColorPicker: {
+        ariaLabel: "Selector de color",
+        basicColors: "Colores básicos:",
+        customColors: "Colores personalizados:",
+        hideCustom: "« Ocultar colores personalizados",
+        defineCustom: "Definir colores personalizados »",
+        colorSolid: "Color | Sólido",
+        hue: "Matiz",
+        sat: "Sat.",
+        lum: "Lum.",
+        addToCustom: "Agregar a personalizados",
+        accept: "Aceptar",
       },
       navMenuTitle: "Menú lateral",
       navMenuHint: "Elige qué secciones aparecen en el menú de navegación. Los cambios se aplican al instante en este dispositivo.",
@@ -1280,6 +2814,451 @@ export const translations: Record<Language, Translations> = {
         whatsappBorder: "Panel (borde)",
         whatsappMuted: "Panel (texto secundario)",
       },
+      tabs: {
+        profile: "Perfil",
+        clinicalHistory: "Historia clínica",
+        integrations: "Integraciones",
+        clinic: "Clínica",
+        billing: "Facturación",
+      },
+      settingsScope: {
+        appliesClinic: "Aplica a toda la clínica.",
+        appliesIndependent: "Aplica a tu consultorio independiente.",
+        appliesPractice: "Aplica a tu consultorio.",
+      },
+      watermark: {
+        title: "Marca de agua del fondo",
+        hint: "Imagen sutil en el área principal. Ajusta tamaño, posición e intensidad.",
+        show: "Mostrar marca de agua en el fondo",
+        customImage: "Imagen personalizada",
+        useProfessionalLogo: "Usar logo profesional",
+        logoHint: "Si eliges el logo profesional o de clínica, se usa el configurado en esta página.",
+        loading: "Cargando marca de agua…",
+        imageTooLarge: "La imagen no puede superar 2 MB.",
+        invalidFormat: "Formato no válido. Use PNG, JPG o WebP (máx. 2 MB).",
+        loadImageError: "Error al cargar imagen.",
+        saved: "Marca de agua guardada.",
+        saveFailed: "Error al guardar.",
+        imageLabel: "Imagen",
+        noLogo: "Sin logo configurado",
+        noImage: "Sin imagen",
+        upload: "Subir imagen",
+        formatHint: "JPEG, PNG o WebP · máx. 2 MB",
+        removeImage: "Quitar imagen",
+        intensity: "Intensidad ({pct}%)",
+        intensityHint: "6–10% suele verse bien como marca de agua sutil.",
+        size: "Tamaño ({pct}% del panel)",
+        zoom: "Zoom ({pct}%)",
+        zoomHint: "Sube el zoom (200% o más) para cubrir toda el área visible. Combina con posición centrada.",
+        positionX: "Posición horizontal ({pct}%)",
+        positionY: "Posición vertical ({pct}%)",
+        left: "Izquierda",
+        center: "Centro",
+        right: "Derecha",
+        top: "Arriba",
+        bottom: "Abajo",
+        saving: "Guardando…",
+        save: "Guardar marca de agua",
+      },
+      billing: {
+        title: "Facturación",
+        subscriptionTitle: "Suscripción PodoAdmin",
+        independentPlan: "Plan podólogo independiente",
+        status: "Estado",
+        trialPeriod: "Periodo de prueba",
+        trialEnd: "Fin del periodo de prueba",
+        trialActive: "Periodo de prueba de 1 mes activo. Disfruta del acceso completo hasta {date}",
+        adminNoSub: "Los administradores de plataforma no requieren suscripción.",
+        receptionistHint: "La suscripción de la clínica la gestiona el administrador de la clínica.",
+        statusActive: "Activa",
+        statusPastDue: "Pago pendiente",
+        statusCancelled: "Cancelada",
+        paymentReceived: "Pago recibido. La suscripción se activará en unos segundos.",
+        paymentCancelled: "Pago cancelado. Puedes intentarlo de nuevo cuando quieras.",
+        cardVerified: "Tarjeta verificada correctamente.",
+        cardVerifyError: "Error al verificar la tarjeta.",
+        cardMockVerified: "Tarjeta mock verificada (solo desarrollo).",
+        cardSetupError: "No se pudo iniciar verificación de tarjeta.",
+        trialActivated: "Periodo de prueba activado.",
+        trialActivateError: "No se pudo activar la prueba.",
+        checkoutError: "No se pudo iniciar el pago.",
+        portalError: "No se pudo abrir el portal de facturación.",
+        activateTrialTitle: "Activar prueba gratuita (1 mes)",
+        activateTrialHint: "Verifica tu correo y tarjeta. Una cuenta, una tarjeta y una conexión (IP) solo pueden usarse una vez para la prueba.",
+        stepEmail: "1. Correo verificado",
+        emailVerifyHint: "Revisa tu bandeja de entrada{email} y confirma el enlace de verificación. Si no lo recibiste, cierra sesión y vuelve a solicitarlo al registrarte.",
+        stepCard: "2. Tarjeta",
+        verifyCard: "Verificar tarjeta (sin cobro hoy)",
+        activateMonthTrial: "Activar prueba de 1 mes",
+        overLimit: "Tu clínica tiene {count} podólogos activos, por encima del plan en línea (hasta {limit}). Contacta a PodoAdmin para ampliar tu capacidad y la facturación.",
+        loading: "Cargando…",
+        clinicPlan: "Plan clínica",
+        activePodiatrists: "Podólogos activos:",
+        stripeNotConfigured: "Stripe no está configurado. Define STRIPE_PRICE_CLINIC_MONTHLY_STANDARD y STRIPE_PRICE_INDEPENDENT_MONTHLY en el servidor.",
+        subscribe: "Suscribirse — ${amount} USD/mes",
+        manageStripe: "Gestionar facturación en Stripe",
+        clinicManagedByAdmin: "La suscripción de tu clínica la gestiona el administrador de la clínica.",
+      },
+      dashboardLogo: {
+        title: "Logo en el panel",
+        loading: "Cargando opciones del dashboard…",
+        saved: "Configuración del logo en dashboard guardada.",
+        saveFailed: "Error al guardar.",
+        enabledByAdmin: "El administrador de la clínica ha activado la visualización del logo en el dashboard.",
+        notShown: "El logo no se muestra en el dashboard.",
+        hint: "Tarjeta en la pantalla principal. Ajusta tamaño, posición e intensidad.",
+        show: "Mostrar logo en el dashboard",
+        opacity: "Opacidad ({pct}%)",
+        size: "Tamaño ({pct}% del área de la tarjeta)",
+        zoom: "Zoom ({pct}%)",
+        zoomHint: "Amplía o reduce el logo dentro del área. La tarjeta crece para evitar recortes.",
+        positionX: "Posición horizontal ({pct}%)",
+        positionY: "Posición vertical ({pct}%)",
+        left: "Izquierda",
+        center: "Centro",
+        right: "Derecha",
+        top: "Arriba",
+        bottom: "Abajo",
+        saving: "Guardando…",
+        save: "Guardar logo en dashboard",
+      },
+            clinicalLayout: {
+        loadingDesigner: "Cargando diseñador…",
+        title: "Diseñador de historia clínica",
+        hint: "Activa o desactiva bloques para sesiones e impresión. Añade secciones personalizadas según tu flujo clínico.",
+        restoreDefault: "Restaurar predeterminado",
+        saveDesign: "Guardar diseño",
+        addSection: "Añadir sección",
+        editSection: "Editar sección",
+        previewForm: "Vista previa — formulario de sesión",
+        newSectionDefault: "Nueva sección",
+        itemN: "Ítem {n}",
+        columnN: "Columna {n}",
+        saved: "Diseño guardado correctamente.",
+        saveFailed: "Error al guardar.",
+        restoreConfirm: "¿Restaurar todas las secciones al diseño predeterminado? Se perderán las personalizadas.",
+        saving: "Guardando…",
+        readOnlyHint: "Solo lectura: el administrador de la clínica configura el diseño compartido.",
+        sectionsCount: "Secciones ({count})",
+        sectionTitlePlaceholder: "Título de la sección",
+        titleLabel: "Título",
+        builtinTitleHint: "Puedes personalizar el título visible en sesión e impresión.",
+        onPatientCard: "En ficha paciente",
+        enabled: "Activa",
+        inSession: "En sesión",
+        inPrint: "En impresión",
+        patientCardHelp: "muestra u oculta el campo al crear, editar o ver un paciente.",
+        printAntecedentsHelp: "incluye los antecedentes en la historia clínica podológica impresa.",
+        enabledHelp: "incluye o excluye la sección del flujo clínico.",
+        inSessionHelp: "visible al crear o editar una sesión.",
+        inPrintHelp: "incluida en el historial imprimible (solo contenido con datos).",
+        deleteCustomSection: "Eliminar sección personalizada",
+        selectSection: "Selecciona una sección de la lista",
+        systemField: "Campo del sistema",
+        noSessionSections: "Ninguna sección visible en sesión.",
+        remove: "Quitar",
+        maxColumns: "Máximo {count} columnas.",
+        checklistItems: "Ítems del checklist",
+        yesNoNaRows: "Filas SI / NO / N/A",
+        options: "Opciones",
+        yesNoNaHint: "Cada fila será una pregunta en la sesión.",
+        addItem: "+ Añadir ítem",
+        addRow: "+ Añadir fila",
+        addOption: "+ Añadir opción",
+        unit: "Unidad",
+        unitPlaceholder: "min, ml, mm, %…",
+        defaultUnit: "unidad",
+        scaleMax: "Escala máxima",
+        conditionalPrompt: "Pregunta SI/NO",
+        conditionalPlaceholder: "¿Hubo complicación?",
+        tableColumns: "Columnas de la tabla",
+        tableColumnsHint: "Nombre de cada columna (p. ej. producto, cantidad, lote).",
+        addColumn: "+ Añadir columna",
+        tableRows: "Filas en sesión",
+      },
+      print: {
+        title: "Configuración de impresiones",
+        hint: "Ajusta cómo se ven la historia clínica y las recetas al imprimir o guardar como PDF.",
+        preview: "Vista previa",
+        loading: "Cargando preferencias de impresión…",
+        saved: "Preferencias de impresión guardadas.",
+        saveFailed: "No se pudo guardar.",
+        readOnlyHint: "Solo el administrador de la clínica puede cambiar estas opciones. Se muestran en modo lectura.",
+        generalTitle: "General",
+        generalDesc: "Se aplica a ambos documentos.",
+        headerAlign: "Alineación de la cabecera",
+        alignLeft: "Izquierda",
+        alignCenter: "Centrada",
+        monochrome: "Imprimir en blanco y negro",
+        monochromeHint: "Escala de grises, ideal para ahorrar tinta.",
+        showGeneratedBy: "Mostrar \"Generado por PodoAdmin\" en el pie",
+        footerText: "Texto de pie de página personalizado",
+        footerPlaceholder: "Ej. Horario de atención, aviso legal, redes sociales…",
+        historyTitle: "Historia clínica",
+        historyDesc: "Documento completo del paciente.",
+        showLogo: "Mostrar logo en la cabecera",
+        showLegalData: "Mostrar datos legales",
+        showLegalDataHint: "RFC, CLUES, COFEPRIS y registro sanitario.",
+        includePhotos: "Incluir fotografías clínicas",
+        includePhotosHint: "Requiere que el bloque de imágenes esté activo en el diseñador.",
+        compact: "Diseño compacto",
+        compactHistoryHint: "Menos márgenes, tipografía y diagramas más pequeños para ahorrar páginas.",
+        orientation: "Orientación de página",
+        portrait: "Vertical",
+        landscape: "Horizontal",
+        orientationHistoryHint: "Recomendado: vertical para historias clínicas.",
+        evolutionRows: "Filas de evolución clínica a imprimir",
+        rxTitle: "Recetas",
+        rxDesc: "Formato de las recetas / prescripciones.",
+        showWeight: "Mostrar peso del paciente",
+        showHeight: "Mostrar estatura del paciente",
+        showNextVisit: "Mostrar próxima visita",
+        showNotes: "Mostrar notas adicionales",
+        showSignatureCedula: "Mostrar cédula/registro en la firma",
+        compactRxHint: "Menos márgenes y tipografía más pequeña para ocupar menos espacio.",
+        orientationRxHint: "Recomendado: horizontal para recetas.",
+        folioPosition: "Posición del folio",
+        folioInline: "En cabecera (recomendado)",
+        folioBar: "Barra destacada",
+        folioHint: "El folio en cabecera ahorra una línea completa y suele caber en una sola página.",
+        saving: "Guardando…",
+        save: "Guardar preferencias",
+        reset: "Restablecer valores por defecto",
+        previewSimHint: "Simulación aproximada; el documento final usa los datos reales del paciente.",
+        tabHistory: "Historia clínica",
+        tabRx: "Receta",
+        statusMonochrome: "Modo blanco y negro activo · ",
+        statusHeaderCenter: "Cabecera centrada",
+        statusHeaderLeft: "Cabecera alineada a la izquierda",
+        statusEvolutionRows: " · {count} filas de evolución",
+        statusCompact: " · diseño compacto",
+        statusFolioInline: " · folio en cabecera",
+        demoClinicName: "Clínica Podológica Demo",
+        demoLicense: "Lic./Cédula: 12345678",
+        demoLegal: "RFC: XAXX010101000 · CLUES: DFSSA000001",
+        demoContact: "555 123 4567 · demo@clinica.com",
+        demoHistoryTitle: "HISTORIA CLÍNICA PODOLÓGICA · Folio: PREMIUM-001",
+        demoPatientSection: "I. Datos del paciente",
+        demoPatientCells: ["Nombre: Laura M.", "DNI: INE-884422", "Tel: 555…", "Nac: 12/03/1985"],
+        demoEvolutionSection: "IV. Evolución clínica",
+        demoColDate: "Fecha",
+        demoColDiagnosis: "Diagnóstico",
+        demoColTreatment: "Tratamiento",
+        demoDiagnosis: "Onicocriptosis",
+        demoTreatment: "Desbridamiento",
+        demoMoreRows: "+ {count} filas más…",
+        demoPhotos: "Fotografías",
+        demoFooter: "PodoAdmin · vista previa",
+        demoDoctor: "Dr. Podólogo Demo",
+        demoCedula: "Cédula: 12345678",
+        demoTel: "Tel: 555 123 4567",
+        demoFolio: "Folio:",
+        demoFolioBar: "FOLIO RECETA:",
+        demoPatientData: "DATOS DEL PACIENTE",
+        demoName: "Nombre: Laura M.",
+        demoDni: "DNI: INE-884422",
+        demoAge: "Edad: 41 años",
+        demoWeight: "Peso: 72.5 kg",
+        demoHeight: "Estatura: 165 cm",
+        demoPrescription: "Prescripción / Indicaciones",
+        demoPrescriptionBody: "Aplicar crema antimicótica 2 veces al día durante 14 días.",
+        demoNextVisit: "Próxima visita",
+        demoNextVisitDate: "viernes, 15 de agosto de 2026",
+        demoNotes: "Notas adicionales",
+        demoNotesBody: "Evitar calzado cerrado.",
+        demoSignature: "Firma del profesional",
+        logoPlaceholder: "LOGO",
+      },
+      profileAvatar: {
+        changeTitle: "Cambiar foto de perfil",
+        invalidFormat: "Formato no válido. Use PNG, JPG o WebP.",
+        tooLarge: "La imagen no puede superar 2 MB.",
+        saveFailed: "No se pudo guardar la foto.",
+        processFailed: "No se pudo procesar la imagen.",
+        removeFailed: "No se pudo quitar la foto.",
+        saving: "Guardando…",
+        changePhoto: "Cambiar foto",
+        uploadPhoto: "Subir foto",
+        removePhoto: "Quitar foto",
+        hint: "JPG, PNG o WebP. Máx. 2 MB. Se muestra en el menú lateral.",
+      },
+      profile: {
+        title: "Perfil de usuario",
+        name: "Nombre",
+        email: "Email",
+        readOnlyHint: "Los datos del perfil no pueden editarse aquí. Contacte con el administrador si necesita realizar cambios.",
+      },
+      cooldown: {
+        logoPolicy: "Tras guardar, el logo queda fijo durante 15 días. Pasado ese período podrás subirlo o cambiarlo de nuevo.",
+        logoBlocked: "El logo solo puede modificarse cada 15 días.",
+        clinicInfoPolicy: "Tras guardar, los datos de la clínica quedan fijos durante 15 días. Pasado ese período podrás modificarlos de nuevo.",
+        clinicInfoBlocked: "Los datos solo pueden modificarse cada 15 días.",
+        professionalInfoPolicy: "Tras guardar, estos datos quedan fijos durante 15 días. Pasado ese período podrás modificarlos de nuevo.",
+        professionalInfoBlocked: "Los datos solo pueden modificarse cada 15 días.",
+        profilePolicy: "Nombre y correo electrónico solo pueden modificarse por un administrador. Tras cada cambio deben transcurrir 15 días antes de una nueva modificación.",
+        clinicReadOnlyPolicy: "La información de la clínica la gestiona tu administrador. Tras cada cambio deben transcurrir 15 días antes de una nueva modificación.",
+        genericBlocked: "Los datos solo pueden modificarse cada 15 días.",
+      },
+      clinic: {
+        fallbackName: "Clínica {id}",
+        errors: {
+          nameCodeRequired: "Nombre y código de la clínica son obligatorios.",
+          invalidWebsite: "La URL del sitio web no es válida. Por favor, verifica que esté correctamente configurada.",
+        },
+      },
+      consent: {
+        title: "Consentimiento informado",
+        sharedTitle: "Texto compartido de la clínica",
+        sharedBody: "Este texto lo gestiona el administrador de la clínica y se usa en el consentimiento de pacientes.",
+        currentVersion: "Versión actual: {version}",
+        empty: "Sin texto configurado.",
+        editHint: "Puedes editar el texto; cada guardado incrementa la versión.",
+        placeholder: "Redacta aquí los términos y el consentimiento informado que el paciente debe aceptar.",
+        save: "Guardar consentimiento",
+        saveError: "Error al guardar el consentimiento.",
+      },
+      logo: {
+        empty: "Sin logo",
+        previewAlt: "Vista previa",
+        upload: "Subir imagen",
+        formatHint: "PNG, JPG o WebP · máx. 2MB",
+        save: "Guardar logo",
+        remove: "Quitar logo",
+        errors: {
+          invalidFormat: "Formato no válido. Use PNG, JPG o WebP (máx. 2MB).",
+          tooLarge: "El archivo es demasiado grande. Máximo 2MB.",
+          processFailed: "No se pudo procesar la imagen.",
+          cooldown: "El logo solo puede modificarse cada 15 días.",
+          saveFailed: "No se pudo guardar el logo. Inténtalo de nuevo.",
+        },
+      },
+      clinicLogo: {
+        title: "Logo de la clínica",
+        sharedTitle: "Logo compartido de la clínica",
+        sharedBody: "Este logo lo ven todos los profesionales de la clínica en documentos e impresión.",
+        alt: "Logo de clínica",
+        uploadHint: "Sube el logo que identificará a tu clínica en la aplicación y documentos.",
+      },
+      professionalLogo: {
+        title: "Logo profesional",
+        uploadHint: "Logo personal para documentos e impresión cuando no hay logo de clínica.",
+        alt: "Logo profesional",
+      },
+      adminLogo: {
+        title: "Logo de clínica",
+        body: "Los logos de clínica son gestionados por los administradores de cada clínica. Como {role}, no necesitas un logo personal.",
+      },
+      assignedPodiatrists: {
+        title: "Podólogos asignados",
+        clinicHint: "Podólogos de tu clínica a los que puedes dar servicio. Marca o desmarca para gestionar citas y pacientes de cada uno.",
+        independentHint: "Podólogo que te asignó. Puedes crear pacientes y gestionar su calendario.",
+        emptyClinic: "No hay podólogos en tu clínica.",
+        save: "Guardar asignación",
+        empty: "Sin podólogo asignado.",
+      },
+      receptionist: {
+        title: "Recepcionista",
+        description: "Crea y gestiona la recepcionista vinculada a tu cuenta o clínica.",
+        status: {
+          blocked: "Bloqueada",
+          disabled: "Deshabilitada",
+          active: "Activa",
+        },
+        unblock: "Desbloquear",
+        block: "Bloquear",
+        enable: "Habilitar",
+        disable: "Deshabilitar",
+        delete: "Eliminar",
+        oneOnlyHint: "Solo puedes tener una recepcionista vinculada. Elimínala para crear otra.",
+        fields: {
+          name: "Nombre",
+          email: "Email",
+          initialPassword: "Contraseña inicial",
+        },
+        createdSuccess: "Recepcionista creada correctamente.",
+        create: "Crear recepcionista",
+        createError: "Error al crear recepcionista",
+        confirmDelete: "¿Eliminar a esta recepcionista? Esta acción no se puede deshacer.",
+      },
+      clinicInfo: {
+        title: "Información de la Clínica",
+        subtitle: "Datos de contacto y fiscales de tu clínica.",
+        setupBanner: "Completa los datos de tu clínica. Mientras el nombre sea provisional o falten contacto y dirección, aparecerán avisos.",
+        clinicName: "Nombre de la clínica *",
+        clinicNamePlaceholder: "Mi Clínica Podológica",
+        clinicCode: "Código (para folios) *",
+        clinicCodePlaceholder: "MICP",
+        clinicCodeHint: "Máx. 8 caracteres. Se usa en folios (ej: MICP-2025-001)",
+        country: "País (prefijo telefónico)",
+        countryHint: "Define el prefijo por defecto para teléfonos de la clínica.",
+        phone: "Teléfono",
+        email: "Email",
+        emailPlaceholder: "clinica@ejemplo.com",
+        address: "Dirección",
+        addressPlaceholder: "Calle Gran Vía, 45, 2º Izquierda",
+        city: "Ciudad",
+        cityPlaceholder: "Madrid",
+        postalCode: "Código Postal",
+        postalCodePlaceholder: "28013",
+        licenseNumber: "Nº Licencia/Registro",
+        licensePlaceholder: "CS-28/2024-POD-001",
+        website: "Sitio Web (opcional)",
+        websitePlaceholder: "https://www.miclinica.com",
+        legalName: "Razón social (NOM)",
+        rfc: "RFC",
+        clues: "CLUES",
+        cofepris: "Registro COFEPRIS",
+        readOnlyTitle: "Detalles de tu clínica",
+        readOnlyBody: "Solo lectura. Tu administrador de clínica gestiona estos datos.",
+        labels: {
+          name: "Nombre:",
+          phone: "Teléfono:",
+          email: "Email:",
+          address: "Dirección:",
+          license: "Licencia:",
+          consent: "Consentimiento:",
+          web: "Web:",
+        },
+        viewDocument: "Ver documento",
+      },
+      practice: {
+        title: "Información del Consultorio",
+        subtitle: "Datos de tu práctica profesional independiente.",
+        professionalName: "Nombre profesional",
+        namePlaceholder: "Dr. Juan Pérez García",
+        country: "País (prefijo telefónico)",
+        countryHint: "Prefijo por defecto para tu consulta.",
+        emailPlaceholder: "consulta@ejemplo.com",
+        sanitaryRegistry: "Registro sanitario",
+        cedula: "Cédula profesional",
+        cedulaPlaceholder: "12345678",
+      },
+      credentials: {
+        title: "Credenciales profesionales",
+        subtitle: "Teléfono de contacto y número de registro profesional.",
+        contactPhoneTitle: "Teléfono de contacto",
+        contactPhoneHint: "Visible para pacientes y en documentos cuando corresponda.",
+        country: "País",
+        mobile: "Móvil",
+        savePhone: "Guardar teléfono",
+        registryNumber: "Nº de registro profesional",
+        registryPlaceholder: "REG-2024-001",
+        save: "Guardar credenciales",
+        clinicInfoTitle: "Información de la clínica",
+        clinicInfoBody: "Como miembro de una clínica, estos datos los gestiona el administrador.",
+        clinicName: "Nombre de la clínica",
+      },
+      common: {
+        saved: "Guardado",
+        readOnly: "Solo lectura",
+        saveInfo: "Guardar información",
+        emDash: "—",
+        ellipsis: "...",
+      },
+      errors: {
+        connectionSave: "Error de conexión al guardar.",
+      },
+      supportSenderLabel: "PodoAdmin",
     },
     support: {
       title: "Contactar PodoAdmin",
@@ -1302,6 +3281,26 @@ export const translations: Record<Language, Translations> = {
       reopenConversation: "Reabrir conversación",
       from: "De",
       sent: "Enviado",
+    },
+    layout: {
+      brandFallback: "PodoAdmin",
+      unlockSidebarVisible: "Desbloquear (bloqueado visible)",
+      unlockSidebarHidden: "Desbloquear (bloqueado oculto)",
+      lockSidebarVisible: "Bloquear sidebar visible",
+      toggleSidebarLock: "Alternar bloqueo de sidebar",
+      hideMenu: "Ocultar menú",
+      showMenu: "Mostrar menú",
+      pendingAccessBanner: "Tu acceso clínico está pendiente. Activa el pago en Facturación o espera a que un administrador habilite tu cuenta.",
+      goToBilling: "Ir a facturación",
+      goToSupport: "Ir a soporte",
+      subscriptionInactiveBanner: "Tu suscripción no está activa. Renueva para seguir usando la plataforma.",
+      closeMenu: "Cerrar menú",
+      sponsored: "Patrocinado",
+      closeAnnouncement: "Cerrar anuncio",
+      promoCodeOnSite: "Código en la web del organizador:",
+      seeMore: "Ver más",
+      interested: "Me interesa",
+      interestRegistered: "Interés registrado ✓",
     },
     whatsapp: {
       title: "WhatsApp Business",
@@ -1363,7 +3362,8 @@ export const translations: Record<Language, Translations> = {
         "Se envía como 4.º parámetro de la plantilla en recordatorios automáticos y manuales (si no escribes otra nota al enviar). Máximo 500 caracteres.",
       templateLanguageLabel: "Idioma plantilla",
       templateLanguagePlaceholder: "es",
-      integrationActive: "Integración activa (envíos habilitados cuando el cron esté activo)",
+            integrationActive: "Integración activa (envíos habilitados cuando el cron esté activo)",
+      receptionistApiEnabled: "Permitir a recepción usar el envío automático por API Meta (recordatorios y historial).",
       save: "Guardar configuración",
       saving: "Guardando…",
       testConnection: "Probar conexión",
@@ -1393,6 +3393,168 @@ export const translations: Record<Language, Translations> = {
       successTest: "Conexión correcta con Meta.",
       successTestWithPhone: "Conexión correcta ({phone})",
       successDisconnected: "WhatsApp desconectado.",
+      campaigns: {
+        title: "Campañas WhatsApp",
+        pageHint: "Difunde mensajes a pacientes con teléfono. Puedes usar WhatsApp Web (manual, sin API) o el envío automático por API Meta si lo tienes configurado.",
+        webTitle: "Campañas por WhatsApp Web",
+        webHint: "Crea el borrador del mensaje y envíalo paciente a paciente con wa.me. Sin configurar Meta: tú pulsas Enviar en WhatsApp.",
+        openWeb: "Abrir WhatsApp Web",
+        newDraft: "Nueva campaña (borrador)",
+        metaApiTitle: "Envío automático por API Meta",
+        metaApiHint: "Requiere WhatsApp Business configurado en Ajustes. Puedes ignorar esta sección si solo usas WhatsApp Web.",
+        denied: "Sin permiso para campañas WhatsApp.",
+        patientsLoadError: "Error pacientes",
+        draftCreated: "Campaña creada en borrador",
+        createError: "Error al crear",
+        sendConfirm: "¿Enviar esta campaña por API Meta a todos los pacientes con teléfono?",
+        apiSendResult: "API: enviados {sent}, fallidos {failed}",
+        apiSendError: "Error al enviar por API",
+        namePlaceholder: "Nombre interno (ej. Promo verano)",
+        messagePlaceholder: "Mensaje con variables, ej:\nHola {{nombre}}, le informamos que...",
+        variablesHint: "Variables:",
+        variablesList: "{{nombre}} (nombre), {{apellido}} (apellido), {{nombre_completo}} (nombre completo)",
+        clinicOnlyFilter: "Solo pacientes de mi clínica",
+        recipientsWithPhone: "Destinatarios con teléfono válido:",
+        recipientsMismatchHint: "Hay {count} paciente(s) en tu listado; revisa que tengan teléfono con al menos 8 dígitos o desmarca «Solo pacientes de mi clínica».",
+        patientsLoadFailed: "No se pudieron cargar los pacientes. Comprueba permisos o recarga la página.",
+        noPatientsYet: "No hay pacientes en el listado todavía.",
+        saveDraft: "Guardar borrador",
+        assistantTitle: "Asistente de envío — {name}",
+        assistantPatientOf: "Paciente {current} de {total}:",
+        openWhatsApp: "Abrir WhatsApp",
+        assistantDone: "Asistente completado: {count} pacientes.",
+        finish: "Finalizar",
+        nextPatient: "Siguiente paciente",
+        draftsToSend: "Borradores para enviar",
+        loading: "Cargando…",
+        recipientsCount: "{count} destinatario(s) con WhatsApp",
+        sendAssistant: "Asistente de envío",
+        hideList: "Ocultar lista",
+        showList: "Ver lista",
+        noValidRecipients: "Sin destinatarios válidos.",
+        noDrafts: "No hay borradores. Crea una campaña arriba.",
+        connected: "(conectado)",
+        optional: "(opcional)",
+        receptionistApiHint: "Envío automático habilitado por tu podólogo.",
+        receptionistApiDisabled: "Tu podólogo aún no ha habilitado el envío automático por API Meta para recepción.",
+        configureApiHint: "Configura WhatsApp Business en Ajustes para enviar campañas por API Meta.",
+        allCampaigns: "Todas las campañas",
+        sentAt: "enviada {date}",
+        sending: "Enviando…",
+        sendByApi: "Enviar por API",
+        noCampaigns: "No hay campañas",
+      },
+      messages: {
+        title: "Mensajes WhatsApp",
+        webTitle: "Recordatorios por WhatsApp Web",
+        webHint: "Sin configurar la API de Meta. Abre WhatsApp Web o la app con el mensaje ya escrito; tú lo envías manualmente.",
+        openWeb: "Abrir WhatsApp Web",
+        metaApiTitle: "Envío automático con API Meta",
+        metaApiHint: "Requiere API Meta configurada en Ajustes → WhatsApp.",
+        historyTitle: "Historial (API automática)",
+        historyHint: "Registro de envíos automáticos por API Meta. Los recordatorios por WhatsApp Web no quedan registrados aquí.",
+        denied: "No tienes permisos para ver esta sección.",
+        patientFallback: "Paciente",
+        defaultExtraNote: "Por favor confirme su asistencia respondiendo a este mensaje.",
+        noValidPhone: "No hay teléfono válido para {name}.",
+        selectAppointmentFirst: "Selecciona una cita primero.",
+        reminderSendError: "No se pudo enviar el recordatorio.",
+        reminderSent: "Recordatorio enviado correctamente.",
+        defaultMessage: "Mensaje predeterminado",
+        variablesHint: "Variables:",
+        variablesList: "{{nombre}} (nombre), {{fecha}} (fecha), {{hora}} (hora), {{nota}} (nota)",
+        extraNotePlaceholder: "Nota extra para todos los envíos de hoy (opcional)",
+        saved: "Guardado",
+        saveMessage: "Guardar mensaje",
+        tomorrowAppointments: "Citas de mañana ({date})",
+        loadingAppointments: "Cargando citas…",
+        noTomorrowAppointments: "No hay citas programadas para mañana.",
+        noPhone: "Sin teléfono",
+        sendViaWhatsApp: "Enviar por WhatsApp",
+        connected: "(conectado)",
+        optional: "(opcional)",
+        receptionistApiHint: "Envío automático habilitado por tu podólogo. Los recordatorios se envían sin abrir WhatsApp Web.",
+        configLoadError: "No se pudo obtener el estado de WhatsApp.",
+        connectedLabel: "Conectado",
+        apiStatusLabel: "Estado API",
+        templateLabel: "Plantilla",
+        templateUndefined: "No definida",
+        lastErrorLabel: "Último error",
+        noErrors: "Sin errores",
+        sendAutoReminder: "Enviar recordatorio automático",
+        selectUpcomingAppointment: "Selecciona una cita próxima",
+        sending: "Enviando...",
+        sendByApi: "Enviar por API",
+        singleExtraNotePlaceholder: "Nota extra para este envío (opcional)",
+        lastApiSends: "Últimos envíos por API",
+        refresh: "Actualizar",
+        loadingHistory: "Cargando historial...",
+        configureForHistory: "Configura WhatsApp Business en Ajustes para usar el envío automático y ver el historial aquí.",
+        noApiSends: "Sin envíos por API. Los recordatorios por WhatsApp Web no quedan registrados aquí.",
+        colDate: "Fecha",
+        colPatient: "Paciente",
+        colPhone: "Teléfono",
+        colStatus: "Estado",
+        colNote: "Nota",
+        emDash: "—",
+        yes: "Sí",
+        no: "No",
+      },
+    },
+    clinicalTools: {
+      title: "Herramientas clínicas",
+      denied: "No tienes permiso para acceder a esta sección.",
+      tabTemplates: "Plantillas de sesión",
+      tabInventory: "Inventario",
+      tabReferrals: "Derivaciones",
+      templatesHint: "Define historiales clínicos predefinidos (callosidad, uña encarnada, etc.) para cargarlos al abrir una sesión.",
+      newTemplate: "Nueva plantilla",
+      create: "Crear",
+      creating: "Creando…",
+      category: "Categoría",
+      inventoryName: "Nombre del material",
+      unit: "Unidad",
+      add: "Añadir",
+      emptyInventory: "Sin material registrado",
+      patientId: "ID paciente",
+      referTo: "Derivar a",
+      reason: "Motivo",
+      registerReferral: "Registrar derivación",
+      emptyReferrals: "Sin derivaciones",
+      nameRequired: "Indica un nombre para la plantilla.",
+      templateCreated: "Plantilla creada. Edítala para elegir secciones y contenido.",
+      createFailed: "No se pudo crear la plantilla.",
+      presetCreated: "Plantilla «{name}» creada.",
+      templateUpdated: "Plantilla actualizada.",
+      saveFailed: "No se pudo guardar la plantilla.",
+      deleteConfirm: "¿Eliminar la plantilla «{name}»? Esta acción no se puede deshacer.",
+      templateDeleted: "Plantilla eliminada.",
+      deleteFailed: "No se pudo eliminar la plantilla.",
+      invalidQuantity: "Indique una cantidad válida (0 o más).",
+      defaultUnit: "unidad",
+      inventoryAdded: "Material registrado.",
+      genericError: "Error",
+      referralAdded: "Derivación registrada.",
+      namePlaceholder: "Nombre (ej. Callosidad 1er dedo)",
+      scopeLabel: "Alcance:",
+      scopePersonal: "Solo yo",
+      scopeClinic: "Consultorio (todos los podólogos)",
+      clinicAdminHint: "Como administrador de clínica, las plantillas se comparten con todo el consultorio.",
+      sectionsCount: "{count} secciones",
+      close: "Cerrar",
+      edit: "Editar",
+      deleting: "Eliminando…",
+      delete: "Eliminar",
+      nameLabel: "Nombre",
+      shareWithClinic: "Compartir con el consultorio",
+      saving: "Guardando…",
+      saveTemplate: "Guardar plantilla",
+      emptyTemplates: "Sin plantillas. Crea una vacía o usa los accesos rápidos de callosidad / uña encarnada.",
+      quantityPlaceholder: "Cantidad",
+      quantityAria: "Cantidad",
+      patientPrefix: "Paciente:",
+      scopeShared: "Consultorio",
+      scopePersonalShort: "Personal",
     },
     systemDiagnostics: {
       title: "Estado del sistema",
@@ -1519,6 +3681,292 @@ export const translations: Record<Language, Translations> = {
       subjectRequired: "El asunto es obligatorio",
       recipientRequired: "Selecciona al menos un destinatario",
       fromAdmin: "Mensaje del Administrador",
+    },
+
+    clinic: {
+      title: "Gestión de clínica",
+      tabOverview: "Resumen",
+      tabPodiatrists: "Podólogos",
+      tabPatients: "Pacientes",
+      tabReceptionists: "Recepcionistas",
+      statPodiatrists: "Podólogos",
+      statTotalPatients: "Total Pacientes",
+      statSessionsThisMonth: "Sesiones este mes",
+      vsPreviousMonth: "% vs. mes anterior",
+      agendaTitle: "Agenda (últimos 30 días)",
+      agendaSubtitle: "Pacientes atendidos, no-show y cancelaciones registradas en el calendario",
+      allPodiatrists: "Todos los podólogos",
+      attended: "Atendidos",
+      noShow: "No asistieron",
+      noShowRateOfResolved: "{n}% del total resuelto",
+      cancelled: "Canceladas",
+      cancellationRate: "Tasa cancelación: {n}%",
+      pending: "Pendientes",
+      demandTitle: "Demanda de agenda",
+      demandHint: "Total demanda (30 días): {n} citas. Detalle de horas pico, ocupación y cierre diario en Cobros → Agenda.",
+      openCheckoutAgenda: "Abrir Cobros → Agenda",
+      attendedPerDay: "Atendidos por día",
+      loadingAgendaMetrics: "Cargando métricas de agenda…",
+      activityByPodiatrist: "Actividad por podólogo",
+      sessionsCount: "{n} sesiones",
+      podiatristsLimit: "Podólogos: {current} de {limit} (límite definido por PodoAdmin)",
+      podiatristsNoLimit: "Podólogos de la clínica. Sin límite definido.",
+      createPodiatrist: "Crear podólogo",
+      colPodiatrist: "Podólogo",
+      colEmail: "Email",
+      colLicense: "Licencia",
+      colPatients: "Pacientes",
+      colSessionsMonth: "Sesiones (mes)",
+      licenseNotRegistered: "No registrada",
+      noPodiatrists: "No hay podólogos en esta clínica",
+      totalIndexed: "Total indexados",
+      searchPatientPlaceholder: "Buscar paciente (nombre, email, teléfono)...",
+      activityAll: "Actividad: todos",
+      visitsRangeChip: "Visitas {min}–{max}",
+      loadingPatients: "Cargando pacientes…",
+      colPhone: "Teléfono",
+      colVisits: "Visitas",
+      colAssignedPodiatrist: "Podólogo asignado",
+      colLastSession: "Última sesión",
+      colActions: "Acciones",
+      reassign: "Reasignar",
+      noPatientsFound: "No se encontraron pacientes",
+      receptionistsHint: "Las recepcionistas tienen acceso sin créditos a crear pacientes, crear y editar citas en el calendario de los podólogos que les asignes.",
+      receptionistsActive: "Activas: {active} / {max}. Deben cambiar la contraseña en el primer inicio de sesión.",
+      createReceptionist: "Crear recepcionista",
+      colName: "Nombre",
+      colAssignedPodiatrists: "Podólogos asignados",
+      unassigned: "Sin asignar",
+      podiatristsAction: "Podólogos",
+      unblock: "Desbloquear",
+      block: "Bloquear",
+      enable: "Habilitar",
+      disable: "Deshabilitar",
+      noReceptionists: "No hay recepcionistas. Crear una para que gestione citas y pacientes de los podólogos de la clínica.",
+      reassignTitle: "Reasignar paciente",
+      reassignUseCase: "Caso de uso: Cuando un podólogo no puede atender citas por ausencia o indisponibilidad, puede reasignar sus pacientes a otro profesional de la clínica.",
+      currentPodiatrist: "Podólogo actual",
+      newPodiatrist: "Nuevo podólogo asignado",
+      selectPodiatrist: "Seleccionar podólogo...",
+      unknownPodiatrist: "Desconocido",
+      createPodiatristSubtitle: "El nuevo podólogo será asignado a tu clínica.",
+      initialPasswordMin8: "Contraseña inicial (mín. 8 caracteres)",
+      createReceptionistSubtitle: "Se asignarán todos los podólogos de la clínica. Deberá cambiar la contraseña en su primer acceso.",
+      initialPassword: "Contraseña inicial",
+      assignedPodiatristsTitle: "Podólogos asignados",
+      noPodiatristsInClinic: "No hay podólogos en la clínica.",
+      confirmDeleteReceptionist: "¿Eliminar a la recepcionista {name} ({email})? Esta acción no se puede deshacer.",
+      maxActiveReceptionists: "Máximo {max} recepcionistas activas en la clínica.",
+      emailTaken: "Ya existe una cuenta con este correo electrónico",
+      createReceptionistError: "Error al crear recepcionista",
+      saveAssignmentError: "Error al guardar asignación",
+      createPodiatristError: "Error al crear podólogo",
+      passwordMin8: "La contraseña debe tener al menos 8 caracteres",
+    },
+    auditLog: {
+      title: "Registro de auditoría",
+      actionLabels: {
+        LOGIN_SUCCESS: "Inicio de sesión",
+        LOGIN_FAILED: "Inicio de sesión fallido",
+        LOGOUT: "Cierre de sesión",
+        PASSWORD_CHANGED: "Contraseña cambiada",
+        PASSWORD_RESET_REJECTED: "Restablecimiento de contraseña rechazado",
+        PASSWORD_RESET_APPROVED: "Restablecimiento de contraseña aprobado",
+        PASSWORD_RESET_COMPLETED: "Restablecimiento de contraseña completado",
+        PASSWORD_RESET_REQUESTED: "Solicitud de restablecimiento de contraseña",
+        CREATE: "Creación",
+        CREATE_USER: "Usuario creado",
+        UPDATE: "Actualización",
+        DELETE: "Eliminación",
+        DELETE_USER: "Usuario eliminado",
+        COMPLETE: "Completado",
+        EXPORT: "Exportación",
+        PRINT: "Impresión",
+        UPDATE_DRAFT: "Borrador actualizado",
+        REASSIGN: "Reasignación",
+        TRANSFER: "Transferencia",
+        ADD_CREDITS: "Créditos añadidos",
+        SUBTRACT_CREDITS: "Créditos restados",
+        ADMIN_CREDIT_ADJUSTMENT: "Ajuste de créditos (admin)",
+        ALERT_MULTIPLE_PRINT_VIOLATIONS: "Alerta: múltiples impresiones",
+        PRINT_VIOLATION_FORM: "Intento de impresión desde formulario",
+      },
+      entityLabels: {
+        authentication: "Autenticación",
+        session: "Sesión",
+        patient: "Paciente",
+        prescription: "Receta",
+        reassignment: "Reasignación",
+        credit: "Créditos",
+        user: "Usuario",
+        user_data: "Datos de usuario",
+        clinic: "Clínica",
+        professional_info: "Datos profesionales",
+        professional_credentials: "Credenciales",
+        logo: "Logo",
+        message: "Mensaje",
+        clinical_history: "Historial clínico",
+        receptionist: "Recepcionista",
+        registration_list: "Lista de registro",
+        support_conversation: "Conversación de soporte",
+      },
+      filters: {
+        title: "Filtros",
+        clear: "Limpiar filtros",
+        search: "Buscar...",
+        allActions: "Todas las acciones",
+        allTypes: "Todos los tipos",
+        allUsers: "Todos los usuarios",
+        from: "Desde",
+        to: "Hasta",
+      },
+      empty: {
+        title: "No hay registros",
+        description: "No se encontraron registros de auditoría con los filtros seleccionados",
+      },
+      totalRecords: "Total de registros",
+      actionTypes: "Tipos de acción",
+      entityTypes: "Tipos de entidad",
+      activeUsers: "Usuarios activos",
+      topUsers: "Usuarios más activos",
+      recordsCount: "{n} registros",
+      ofTotal: "(de {total} total)",
+      fullDetails: "Detalles completos",
+      userLinkedHint: "Cada registro está vinculado al usuario que realizó la acción. El Log ID identifica de forma única este evento.",
+      userLabel: "Usuario:",
+      userIdLabel: "ID de usuario:",
+      logIdLabel: "ID de registro (log):",
+      resourceIdLabel: "ID recurso:",
+      pageOf: "Página {current} de {total}",
+      summaries: {
+        loginSuccess: "Inicio de sesión correcto",
+        loginSuccessEmail: "Inicio de sesión correcto: {email}",
+        with2fa: "(2FA activado)",
+        without2fa: "(sin 2FA)",
+        logout: "Cierre de sesión.",
+        passwordChanged: "Contraseña cambiada por el usuario.",
+        loginFailed: "Intento de inicio de sesión fallido.",
+        loginFailedEmail: "Intento de inicio de sesión fallido: {email}",
+        passwordResetRejected: "Solicitud de restablecimiento de contraseña rechazada.",
+        passwordResetApproved: "Restablecimiento de contraseña aprobado por un administrador.",
+        passwordResetCompleted: "El usuario completó el restablecimiento de contraseña.",
+        passwordResetRequested: "Solicitud de restablecimiento de contraseña enviada.",
+        patientPrefix: "Paciente: {name}",
+        userPrefix: "Usuario: {name}",
+        clinicPrefix: "Clínica: {name}",
+      },
+    },
+    securityMetrics: {
+      title: "Métricas de seguridad",
+      subtitle: "Métricas de seguridad, alertas activas y eventos recientes",
+      last24h: "Últimas 24 h",
+      last7days: "Últimos 7 días",
+      last30days: "Últimos 30 días",
+      refresh: "Actualizar",
+      loadError: "No se pudieron cargar las métricas",
+      criticalEvents: "Eventos críticos",
+      failedLogins: "Logins fallidos",
+      unreadAlerts: "Alertas sin leer",
+      summaryByType: "Resumen por tipo",
+      loading: "Cargando...",
+      noEventsInPeriod: "Sin eventos en el periodo seleccionado.",
+      activeAlerts: "Alertas activas",
+      noSystemAlerts: "No hay alertas de sistema recientes.",
+      recentAccessGeo: "Accesos recientes (geolocalización)",
+      date: "Fecha",
+      event: "Evento",
+      userRole: "Usuario / rol",
+      ip: "IP",
+      location: "Ubicación",
+      noAccessYet: "Sin accesos registrados aún. Inicia sesión para generar datos.",
+      loginOk: "Login OK",
+      loginFailed: "Login fallido",
+      recentFailedLogins: "Últimos logins fallidos",
+      emailDetail: "Email / detalle",
+      noRecentRecords: "Sin registros recientes.",
+      attemptNumber: "Intento #{n}",
+      metricLabels: {
+        failed_login: "Logins fallidos",
+        successful_login: "Logins exitosos",
+        twoFaFailed: "2FA fallido",
+        captcha_failed: "CAPTCHA fallido",
+        suspicious_activity: "Actividad sospechosa",
+      },
+    },
+    supportPage: {
+      title: "Soporte",
+      adminSubtitle: "Mensajes de usuarios y listas de registro para aprobación.",
+      tabMessages: "Mensajes",
+      tabLists: "Crear listas",
+      conversations: "Conversaciones",
+      noConversations: "No hay conversaciones",
+      selectConversation: "Selecciona una conversación para ver los mensajes y responder.",
+      supportAgent: "Soporte",
+      registrationLists: "Listas de registro",
+      newList: "Nueva lista",
+      newListNamePlaceholder: "Nombre de la nueva lista...",
+      listsEmptyHint: "Crea listas de registros (cursos, eventos) y envíalas para que el administrador las apruebe e importe.",
+      deleteList: "Eliminar",
+      deleteListConfirm: "¿Seguro que quieres eliminar esta lista?",
+      createListError: "Error al crear la lista",
+      defaultListName: "Nueva lista",
+      invalidEmail: "Introduce un correo electrónico válido.",
+      downloadCsv: "Descargar CSV",
+      markPaidToExport: "Marca al menos un registro como pagado para exportar.",
+      submitForApproval: "Enviar para aprobación",
+      addEntry: "Añadir registro",
+      namePlaceholder: "Nombre",
+      emailPlaceholder: "Email",
+      roleIndependent: "Podólogo independiente",
+      roleClinicAdmin: "Admin de clínica",
+      podiatristLimitLabel: "Límite podólogos:",
+      podiatristLimitPlaceholder: "Ej: 5",
+      add: "Añadir",
+      clinicAdminLimitHint: "Los podólogos de la clínica estarán limitados a este número. Recepcionistas no cuentan en el límite.",
+      noEntries: "No hay registros en esta lista.",
+      paid: "Pagado",
+      unpaid: "No pagado",
+      pendingPayment: "Pendientes de pago ({n})",
+      paidSection: "Pagados (se exportan al CSV) ({n})",
+      selectOrCreateList: "Selecciona una lista o crea una nueva.",
+      statusDraft: "Borrador",
+      statusPending: "Pendiente",
+      statusApproved: "Aprobada",
+      statusRejected: "Rechazada",
+      limitPodiatrists: "Límite: {n} podólogos",
+    },
+    sponsoredAnnouncements: {
+      title: "Anuncios patrocinados",
+      heading: "Anuncios por estado / provincia",
+      subtitle: "Campañas pagadas por proveedores externos. Todos los usuarios en la zona ven banner y notificación.",
+      newCampaign: "Nueva campaña",
+      formTitle: "Nueva campaña",
+      existingAdvertiser: "Proveedor existente",
+      newAdvertiserOption: "— Nuevo proveedor —",
+      advertiserName: "Nombre del proveedor",
+      advertiserNamePlaceholder: "Ej: Instituto Podológico",
+      titlePlaceholder: "Título del anuncio",
+      bodyPlaceholder: "Descripción (curso, evento, etc.)",
+      countryPlaceholder: "País (MX)",
+      statePlaceholder: "Estado / provincia",
+      audienceEstimate: "≈ {n} usuarios en zona",
+      externalUrlPlaceholder: "URL del anunciante (su web)",
+      promoCodePlaceholder: "Código descuento en web del anunciante (opcional)",
+      createDraft: "Crear borrador",
+      campaigns: "Campañas",
+      loading: "Cargando...",
+      noCampaigns: "Sin campañas aún.",
+      advertiserCode: "Código anunciante:",
+      activate: "Activar",
+      pause: "Pausar",
+      createAdvertiserError: "No se pudo crear el proveedor",
+      selectOrCreateAdvertiser: "Selecciona o crea un proveedor",
+      createCampaignError: "Error al crear campaña",
+      statusError: "Error",
+      statusActive: "activa",
+      statusDraft: "borrador",
+      statusPaused: "pausada",
+      defaultCta: "Ver más",
     },
     terms: {
       title: "Términos y Condiciones",
@@ -1678,9 +4126,217 @@ export const translations: Record<Language, Translations> = {
       openedInTab: "Se abrió el historial en una pestaña nueva. Use Imprimir → Guardar como PDF.",
       invalidResponse: "La respuesta del servidor no incluye datos de pacientes válidos.",
     },
+    usersPage: {
+      fields: {
+        name: "Nombre",
+        email: "Email",
+        password: "Contraseña",
+        role: "Rol",
+        clinic: "Clínica",
+        clinicOptional: "Clínica (opcional)",
+      },
+      create: {
+        title: "Crear nuevo usuario",
+        passwordHint: "Mínimo 8 caracteres.",
+        clinicModeExisting: "Seleccionar clínica existente",
+        clinicModeNew: "Crear nueva clínica",
+        clinicModeNone: "Sin clínica (independiente)",
+        newClinicHint: "Se creará una clínica con datos provisionales. El administrador completará nombre, código, teléfono, dirección y el resto en Configuración.",
+        podiatristLimit: "Límite de podólogos (opcional)",
+        podiatristLimitPlaceholder: "Ej: 5",
+        podiatristLimitHint: "Los podólogos de la clínica estarán limitados a este número. Recepcionistas no cuentan.",
+        saving: "Creando...",
+        success: "Usuario creado correctamente.",
+        partialClinicFail: "Usuario creado, pero no se pudo crear la clínica. Configúrala después desde la edición del usuario.",
+        errors: {
+          nameRequired: "El nombre es obligatorio.",
+          emailInvalid: "Introduce un correo electrónico válido.",
+          passwordMin: "La contraseña debe tener al menos 8 caracteres.",
+          clinicRequiredReceptionist: "Selecciona una clínica para el recepcionista.",
+          clinicRequiredAdmin: "Selecciona una clínica existente o elige crear una nueva.",
+          createFailed: "No se pudo crear el usuario.",
+        },
+      },
+      import: {
+        title: "Importar usuarios (CSV)",
+        description: "Columnas obligatorias: nombre, email, password (o usa la contraseña por defecto), rol.",
+        optionalColumnsSuperAdmin: " Opcional: clinicMode (existing|new|none), clinicId (si existing), podiatrist_limit (solo clinic_admin).",
+        downloadTemplate: "Descargar plantilla",
+        selectFile: "Seleccionar archivo",
+        defaultPassword: "Contraseña por defecto (si falta en CSV)",
+        optionalPlaceholder: "Opcional",
+        readyCount: "{count} filas listas para importar",
+        andMore: "... y {count} más",
+        resultsSummary: "Resultado: {ok} ok, {fail} con error",
+        created: "✓ Creado",
+        importing: "Importando... ({done}/{total})",
+        submit: "Importar",
+        templateFilename: "plantilla_usuarios.csv",
+        errors: {
+          needRows: "El archivo debe tener al menos una fila de encabezado y una fila de datos.",
+          missingColumns: "Faltan columnas obligatorias: nombre, email, password, rol",
+          readFile: "Error al leer el archivo",
+          invalidPassword: "Contraseña inválida (mín. 8 caracteres)",
+          unknown: "Error desconocido",
+          connection: "Error de conexión",
+        },
+      },
+      edit: {
+        title: "Editar usuario",
+        noClinic: "Sin clínica",
+        errors: {
+          updateFailed: "No se pudo actualizar el usuario.",
+        },
+      },
+      transfer: {
+        title: "Transferir historial clínico",
+        subtitle: "Copiar todos los pacientes y sesiones de un usuario a otro",
+        successMessage: "Transferencia completada: {patients} pacientes, {sessions} sesiones.",
+        error: "Error al transferir los datos.",
+        successTitle: "¡Éxito!",
+        errorTitle: "Error",
+        sourceUser: "Usuario origen",
+        targetUser: "Usuario destino",
+        selectUser: "— Seleccionar —",
+        patientsCount: "{count} pacientes para transferir",
+        warning: "Los datos se copiarán al usuario destino. El origen conservará su historial. Esta acción no se puede deshacer fácilmente.",
+        transferring: "Transfiriendo...",
+        submit: "Transferir",
+      },
+      profile: {
+        loading: "Cargando datos clínicos...",
+        patients: "Pacientes",
+        sessions: "Sesiones",
+        patientsHeading: "Pacientes ({count})",
+        andMore: "...y {count} más",
+      },
+      status: {
+        banned: "Baneado",
+        blocked: "Bloqueado",
+        gracePeriod: "Periodo de gracia",
+        disabled: "Deshabilitado",
+        pendingPayment: "Pago pendiente",
+        active: "Activo",
+      },
+      confirm: {
+        block: "¿Bloquear a {name}? No podrá iniciar sesión hasta desbloquearlo.",
+        unblock: "¿Desbloquear a {name}?",
+        enable: "¿Habilitar la cuenta de {name}?",
+        disable: "¿Deshabilitar la cuenta de {name}? No podrá iniciar sesión.",
+        ban: "¿Banear a {name}? Esta es una acción grave.",
+        unban: "¿Quitar el baneo a {name}?",
+        delete: "¿Eliminar a {name}? Esta acción puede ser irreversible.",
+        deletePermanent: "¿Eliminar permanentemente a {name}? No se puede deshacer.",
+      },
+      errors: {
+        approve: "Error al aprobar",
+        reject: "Error al rechazar",
+        block: "No se pudo bloquear el usuario.",
+        unblock: "No se pudo desbloquear el usuario.",
+        enable: "No se pudo habilitar el usuario.",
+        disable: "No se pudo deshabilitar el usuario.",
+        ban: "No se pudo banear el usuario.",
+        unban: "No se pudo quitar el baneo.",
+        delete: "No se pudo eliminar el usuario.",
+      },
+      actions: {
+        importCsv: "Importar CSV",
+        createUser: "Crear usuario",
+        transferHistory: "Transferir historial",
+        approve: "Aprobar",
+        reject: "Rechazar",
+        view: "Ver",
+        edit: "Editar",
+        ban: "Banear",
+        unban: "Desbanear",
+        block: "Bloquear",
+        unblock: "Desbloquear",
+        enableAccount: "Habilitar cuenta",
+        disableAccount: "Deshabilitar cuenta",
+        delete: "Eliminar",
+        viewProfile: "Ver perfil",
+        downloadJson: "Descargar JSON",
+        manageAccount: "Gestionar cuenta",
+      },
+      table: {
+        user: "Usuario",
+        email: "Email",
+        role: "Rol",
+        status: "Estado",
+        clinic: "Clínica",
+        limit: "Límite",
+        data: "Datos",
+        actions: "Acciones",
+        sortBy: "Ordenar por",
+        podiatristLimit: "Límite podólogos",
+        dataSummary: "{patients} pacientes · {sessions} sesiones",
+        currentPodiatrists: "Actuales: {count}",
+        saveLimit: "Guardar",
+        clinicMissing: "Clínica no encontrada",
+        patients: "pacientes",
+        sessions: "sesiones",
+      },
+      passwordReset: {
+        pendingTitle: "Solicitudes de recuperación de contraseña",
+        approved: "Solicitud aprobada.",
+        approveError: "No se pudo aprobar la solicitud.",
+        rejectReasonPrompt: "Motivo del rechazo (opcional):",
+        rejected: "Solicitud rechazada.",
+        rejectError: "No se pudo rechazar la solicitud.",
+        approvedModalTitle: "Solicitud aprobada",
+        linkHint: "Se ha enviado el enlace al correo del usuario. Aquí tienes el enlace para que puedas reenviarlo personalmente (WhatsApp, etc.):",
+        copied: "Enlace copiado al portapapeles.",
+        copyFailed: "No se pudo copiar. Selecciona y copia el enlace manualmente.",
+        copyLink: "Copiar enlace",
+      },
+      regLists: {
+        title: "Listas de registro pendientes",
+        hint: "Aprueba o rechaza las listas enviadas por soporte.",
+        byCreator: "Por {name}",
+        downloadCsv: "CSV",
+        createdCount: "Se crearon {count} usuario(s).",
+        approved: "Lista aprobada.",
+        errorsPrefix: "Errores:",
+      },
+      cooldown: {
+        notApplicable: "N/A",
+        scopeClinic: "clínica",
+        scopeProfessional: "profesional",
+        reasonPrompt: "Motivo de la autorización (opcional):",
+        confirm: "¿Autorizar edición anticipada de {scope} para {name}?",
+        applied: "Autorización aplicada.",
+        error: "No se pudo aplicar la autorización.",
+      },
+      export: {
+        failed: "No se pudo exportar los datos del usuario.",
+      },
+      menu: {
+        unbanAccount: "Quitar baneo",
+        banAccount: "Banear cuenta",
+        unblockAccount: "Desbloquear cuenta",
+        blockAccount: "Bloquear cuenta",
+        enableAccount: "Habilitar cuenta",
+        disableAccount: "Deshabilitar cuenta",
+        authorizeCooldown: "Autorizar edición (cooldown)",
+        deleteAccount: "Eliminar cuenta",
+      },
+      searchPlaceholder: "Buscar usuarios...",
+      allRoles: "Todos los roles",
+      loading: "Cargando usuarios...",
+      empty: "No se encontraron usuarios.",
+      selectPlaceholder: "— Seleccionar —",
+    },
   },
   
   en: {
+    clinicalLayout: clinicalSharedByLang.en.clinicalLayout,
+    podiatry: clinicalSharedByLang.en.podiatry,
+    errorBoundary: clinicalSharedByLang.en.errorBoundary,
+    clinicalList: clinicalSharedByLang.en.clinicalList,
+    patientsClinical: clinicalSharedByLang.en.patientsClinical,
+    sessionsClinical: clinicalSharedByLang.en.sessionsClinical,
+    clinicalToolsExtras: clinicalSharedByLang.en.clinicalToolsExtras,
+    calendarGrid: clinicalSharedByLang.en.calendarGrid,
     common: {
       loading: "Loading...",
       save: "Save",
@@ -1712,6 +4368,15 @@ export const translations: Record<Language, Translations> = {
       details: "Details",
       view: "View",
       download: "Download",
+      showPassword: "Show password",
+      hidePassword: "Hide password",
+      showShort: "Show",
+      hideShort: "Hide",
+      captcha: "CAPTCHA",
+      seeAll: "See all",
+      seeAllShort: "See all",
+      viewMore: "View more",
+      go: "Go",
     },
     auth: {
       login: "Log in",
@@ -1827,11 +4492,24 @@ export const translations: Record<Language, Translations> = {
       blockedUntil: "Blocked until:",
       retryIn: "You can try again in:",
       emailNotificationSent: "An email notification has been sent about these attempts.",
+      googleNotConfigured: "Google is not configured in this environment",
+      googleConnectFailed: "Could not connect to Google",
+      googleNoCode: "No Google code was received",
+      googleLoginError: "Error signing in with Google",
+      googleCompleting: "Completing Google sign-in…",
+      serverConnectionError: "Server connection error",
+      connectionErrorShort: "Connection error",
+      changePasswordCurrentRequired: "Enter your current password.",
+      changePasswordError: "Error changing password",
+      verifyEmailMissingToken: "No verification token was provided",
+      verifyEmailFailed: "Error verifying email",
+      recoveryVerifySubject: "Identity verification - Password recovery",
     },
     nav: {
       dashboard: "Dashboard",
       patients: "Patients",
       clinicalSessions: "Clinical Sessions",
+      clinicalTools: "Clinical tools",
       credits: "Credits",
       settings: "Settings",
       users: "Users",
@@ -1840,6 +4518,9 @@ export const translations: Record<Language, Translations> = {
       profile: "Profile",
       clinicManagement: "Clinic Management",
       whatsappMessages: "WhatsApp Messages",
+      whatsappCampaigns: "WhatsApp Campaigns",
+      calendar: "Calendar",
+      securityMetrics: "Security metrics",
       checkout: "Checkout",
     },
     checkout: {
@@ -1854,6 +4535,7 @@ export const translations: Record<Language, Translations> = {
       emptyPaid: "No paid checkouts in this tab.",
       markPaid: "Mark as paid",
       confirmPaid: "Confirm that {patient} has paid?",
+      confirmPaidTitle: "Confirm payment",
       paidAt: "Paid at",
       statusAwaiting: "No amount",
       statusReady: "Ready to pay",
@@ -1878,7 +4560,34 @@ export const translations: Record<Language, Translations> = {
       saveTariffs: "Save rates",
       tariffsSaved: "Rates saved",
       addTariff: "Add rate",
-      tariffLabelPlaceholder: "Label (e.g. Consultation)",
+            tariffLabelPlaceholder: "Label (e.g. Consultation)",
+      tariffAmountAria: "Amount",
+      tariffDurationTitle: "Guideline duration (minutes)",
+      tariffDurationAria: "Duration in minutes",
+      tariffDurationPlaceholder: "min",
+      serverMigrateHint: "Server error. If you just updated the project, run npm run db:migrate and restart npm run dev.",
+views: {
+        operations: "Operations",
+        sales: "Sales",
+        collections: "Collections",
+        profit: "Profit",
+        agenda: "Agenda",
+      },
+      viewHintOperations: "Pending and completed payment queue.",
+      viewHintAgenda: "Occupancy, demand, schedule and daily cash close.",
+      viewHintCollections: "Paid vs pending, payment methods and receivables.",
+      viewHintProfit: "Goals, expenses and estimated margin.",
+      viewHintClinicSales: "Aggregated clinic-wide sales.",
+      viewHintSales: "Revenue, average ticket and service breakdown.",
+      viewDataOf: "Data for",
+      entireClinic: "Entire clinic",
+      myPractice: "My practice",
+      podiatristFallback: "Podiatrist",
+      assignedPodiatrist: "Assigned podiatrist",
+      podiatristLabel: "Podiatrist",
+      weekBucket: "W{n}",
+      analytics: checkoutAnalyticsByLang.en,
+      agendaAnalytics: agendaAnalyticsByLang.en,
     },
     dashboard: {
       title: "Dashboard",
@@ -1890,6 +4599,40 @@ export const translations: Record<Language, Translations> = {
       recentActivity: "Recent Activity",
       upcomingAppointments: "Upcoming Appointments",
       noRecentActivity: "No recent activity",
+      patientFallback: "Patient",
+      sessionCompletedActivity: "Session completed",
+      draftActivity: "Draft",
+      podiatrists: "Podiatrists",
+      clinicAdmins: "Clinic admins",
+      sponsoredAnnouncements: "Sponsored announcements",
+      systemUsers: "System users",
+      assignedClinic: "Assigned clinic",
+      assignedPodiatrists: "Assigned podiatrists",
+      attendedAppointments: "Appointments attended",
+      agendaOccupancy: "Agenda occupancy",
+      salesThisMonth: "Sales this month",
+      pendingCollections: "Pending collections",
+      newPatients: "New patients",
+      inactivePatients: "Inactive patients",
+      podiatristsCount: "Podiatrists",
+      last30Days: "Last 30 days",
+      relativeMinutesAgo: "Less than 1 hour ago",
+      relativeHoursAgo: "{n}h ago",
+      relativeYesterday: "Yesterday",
+      relativeDaysAgo: "{n} days ago",
+      actions: {
+        addPatientDesc: "Register a new patient",
+        newSessionDesc: "Start a clinical session",
+        calendarDesc: "View and manage the calendar",
+        settingsDesc: "Configure your workspace",
+        clinicDesc: "Manage podiatrists, patients and reception",
+        patientsDesc: "Browse and filter patients",
+        sessionsDesc: "Review session history",
+        checkoutDesc: "Collections, sales and agenda",
+        usersDesc: "Manage platform users",
+        securityDesc: "Security metrics and alerts",
+        sponsoredDesc: "Geolocated campaigns",
+      },
     },
     patients: {
       title: "Patients",
@@ -1927,6 +4670,42 @@ export const translations: Record<Language, Translations> = {
       viewHistory: "View History",
       lastVisit: "Last Visit",
       totalSessions: "Total Sessions",
+      engagement: {
+        segmentNew: "New",
+        segmentRecurrent: "Recurring",
+        segmentRecovered: "Recovered",
+        inactive3m: "Inactive 3 months",
+        inactive6m: "Inactive 6 months",
+        ageAll: "All ages",
+        age0_17: "0–17 years",
+        age18_35: "18–35 years",
+        age36_55: "36–55 years",
+        age56Plus: "56+ years",
+        ltvDay: "Day",
+        ltvWeek: "Week",
+        ltvMonth: "Month",
+        ltvYear: "Year",
+        ltvLifetime: "Lifetime",
+        visitSingular: "visit",
+        visitPlural: "visits",
+        paymentSingular: "payment",
+        paymentPlural: "payments",
+        noSessions: "No sessions",
+        daysInactive: "{n} days inactive",
+        daysWithoutVisit: "{n} days without a visit",
+        lastAgoDays: "Last {n} days ago",
+        minVisits: "Min visits",
+        maxVisits: "Max visits",
+        ltvLabel: "LTV",
+        ltvPeriodAria: "Patient lifetime value period",
+        agendaDemandTitle: "Agenda demand",
+        agendaDemandHint: "Review peak hours, occupancy and daily close in Checkout → Agenda.",
+        goToCheckoutAgenda: "Go to Checkout → Agenda",
+        tablePatient: "Patient",
+        tableAge: "Age",
+        tableSegment: "Segment",
+        yearsSuffix: "years",
+      },
     },
     sessions: {
       title: "Clinical Sessions",
@@ -1954,6 +4733,29 @@ export const translations: Record<Language, Translations> = {
       sessionSaved: "Session saved",
       checkoutCompleteHint:
         "Checkout for reception only appears when you tap Complete (patient leaving). Save draft only saves without closing the visit.",
+      allStatuses: "All",
+      loadingSessions: "Loading sessions…",
+      createFirstSession: "Create your first clinical session",
+      followUp: {
+        overdueBanner: "Overdue appointments",
+        upcomingBanner: "Upcoming appointments (7 days)",
+        overdueChip: "Overdue",
+        upcomingChip: "Upcoming",
+        sectionTitle: "Follow-up",
+        nextAppointment: "Next appointment",
+        noSpecificReason: "No specific reason",
+      },
+      prescriptions: {
+        sectionTitle: "Prescriptions",
+        newPrescription: "New prescription",
+        create: "Create",
+        creating: "Creating…",
+      },
+      vitals: {
+        title: "Vital signs",
+        weightKg: "Weight (kg)",
+        heightCm: "Height (cm)",
+      },
     },
     calendar: {
       title: "Calendar",
@@ -2042,6 +4844,26 @@ export const translations: Record<Language, Translations> = {
       exportWaLine: "• {{hora}} — {{paciente}} ({{duracion}} min) · {{telefono}}",
       exportWaAttachHint: "📎 The agenda-.ics file has been downloaded — attach it in WhatsApp to import to your mobile calendar.",
       exportWaInvalidPhone: "The podiatrist's phone is not valid for WhatsApp. Open WhatsApp manually and paste the message.",
+      checkInWaiting: "Waiting",
+      checkInInConsult: "In consult",
+      checkInDone: "Seen",
+      checkInNone: "No check-in",
+      scheduledMetric: "Scheduled",
+      completedMetric: "Completed",
+      noShow: "No-show",
+      waitlist: "Waitlist",
+      agendaDemandTitle: "Agenda demand",
+      agendaDemandDemandTotal: "Total demand: {n}",
+      goToCheckoutAgendaLong: "View agenda analytics in checkout",
+      pendingBadge: "Pending",
+      confirmSaveAnyway: "Do you want to save the appointment anyway?",
+      outsideHoursBlocked: "Outside hours: the appointment will not be saved. Reception cannot book appointments outside permitted hours.",
+      confirmMarkNoShow: "Mark this appointment as no-show?",
+      markNoShow: "No-show",
+      noPhoneShort: "no phone",
+      preferredDateShort: "pref. {date}",
+      outsideHoursReceptionistNote: "The appointment will not be saved: reception cannot book outside hours.",
+      outsideHoursContinueNote: "You can continue; confirmation will be requested on save.",
     },
     credits: {
       title: "Credits",
@@ -2093,11 +4915,35 @@ export const translations: Record<Language, Translations> = {
         success: "Changes saved successfully.",
         info: "Session expires in 5 minutes.",
       },
-      palettePreviewLabels: {
+            palettePreviewLabels: {
         error: "Error",
         warning: "Warning",
         success: "Success",
         info: "Info",
+      },
+      palettePreviewUi: {
+        brandShort: "Podo",
+        home: "Home",
+        patients: "Patients",
+        preview: "Preview",
+        sampleCard: "Sample card",
+        secondaryText: "Secondary text",
+        action: "Action",
+        button: "Button",
+      },
+      paletteWhatsappPreviewDesc: "Send messages manually from your number.",
+      paintColorPicker: {
+        ariaLabel: "Color picker",
+        basicColors: "Basic colors:",
+        customColors: "Custom colors:",
+        hideCustom: "« Hide custom colors",
+        defineCustom: "Define custom colors »",
+        colorSolid: "Color | Solid",
+        hue: "Hue",
+        sat: "Sat.",
+        lum: "Lum.",
+        addToCustom: "Add to custom",
+        accept: "OK",
       },
       navMenuTitle: "Sidebar menu",
       navMenuHint: "Choose which sections appear in the navigation menu. Changes apply instantly on this device.",
@@ -2124,6 +4970,451 @@ export const translations: Record<Language, Translations> = {
         whatsappBorder: "Panel (border)",
         whatsappMuted: "Panel (secondary text)",
       },
+      tabs: {
+        profile: "Profile",
+        clinicalHistory: "Clinical history",
+        integrations: "Integrations",
+        clinic: "Clinic",
+        billing: "Billing",
+      },
+      settingsScope: {
+        appliesClinic: "Applies to the whole clinic.",
+        appliesIndependent: "Applies to your independent practice.",
+        appliesPractice: "Applies to your practice.",
+      },
+      watermark: {
+        title: "Background watermark",
+        hint: "Subtle image in the main area. Adjust size, position and intensity.",
+        show: "Show background watermark",
+        customImage: "Custom image",
+        useProfessionalLogo: "Use professional logo",
+        logoHint: "If you choose the professional or clinic logo, the one configured on this page is used.",
+        loading: "Loading watermark…",
+        imageTooLarge: "The image cannot exceed 2 MB.",
+        invalidFormat: "Invalid format. Use PNG, JPG or WebP (max. 2 MB).",
+        loadImageError: "Error loading image.",
+        saved: "Watermark saved.",
+        saveFailed: "Error saving.",
+        imageLabel: "Image",
+        noLogo: "No logo configured",
+        noImage: "No image",
+        upload: "Upload image",
+        formatHint: "JPEG, PNG or WebP · max. 2 MB",
+        removeImage: "Remove image",
+        intensity: "Intensity ({pct}%)",
+        intensityHint: "6–10% usually looks good as a subtle watermark.",
+        size: "Size ({pct}% of panel)",
+        zoom: "Zoom ({pct}%)",
+        zoomHint: "Increase zoom (200%+) to cover the visible area. Combine with centered position.",
+        positionX: "Horizontal position ({pct}%)",
+        positionY: "Vertical position ({pct}%)",
+        left: "Left",
+        center: "Center",
+        right: "Right",
+        top: "Top",
+        bottom: "Bottom",
+        saving: "Saving…",
+        save: "Save watermark",
+      },
+      billing: {
+        title: "Billing",
+        subscriptionTitle: "PodoAdmin subscription",
+        independentPlan: "Independent podiatrist plan",
+        status: "Status",
+        trialPeriod: "Trial period",
+        trialEnd: "Trial end",
+        trialActive: "1-month trial active. Enjoy full access until {date}",
+        adminNoSub: "Platform administrators do not require a subscription.",
+        receptionistHint: "The clinic subscription is managed by the clinic administrator.",
+        statusActive: "Active",
+        statusPastDue: "Payment pending",
+        statusCancelled: "Cancelled",
+        paymentReceived: "Payment received. The subscription will activate in a few seconds.",
+        paymentCancelled: "Payment cancelled. You can try again whenever you want.",
+        cardVerified: "Card verified successfully.",
+        cardVerifyError: "Error verifying the card.",
+        cardMockVerified: "Mock card verified (development only).",
+        cardSetupError: "Could not start card verification.",
+        trialActivated: "Trial period activated.",
+        trialActivateError: "Could not activate the trial.",
+        checkoutError: "Could not start payment.",
+        portalError: "Could not open the billing portal.",
+        activateTrialTitle: "Activate free trial (1 month)",
+        activateTrialHint: "Verify your email and card. One account, one card and one connection (IP) can only be used once for the trial.",
+        stepEmail: "1. Email verified",
+        emailVerifyHint: "Check your inbox{email} and confirm the verification link. If you did not receive it, sign out and request it again when registering.",
+        stepCard: "2. Card",
+        verifyCard: "Verify card (no charge today)",
+        activateMonthTrial: "Activate 1-month trial",
+        overLimit: "Your clinic has {count} active podiatrists, above the online plan (up to {limit}). Contact PodoAdmin to increase capacity and billing.",
+        loading: "Loading…",
+        clinicPlan: "Clinic plan",
+        activePodiatrists: "Active podiatrists:",
+        stripeNotConfigured: "Stripe is not configured. Set STRIPE_PRICE_CLINIC_MONTHLY_STANDARD and STRIPE_PRICE_INDEPENDENT_MONTHLY on the server.",
+        subscribe: "Subscribe — ${amount} USD/month",
+        manageStripe: "Manage billing in Stripe",
+        clinicManagedByAdmin: "Your clinic subscription is managed by the clinic administrator.",
+      },
+      dashboardLogo: {
+        title: "Dashboard logo",
+        loading: "Loading dashboard options…",
+        saved: "Dashboard logo settings saved.",
+        saveFailed: "Error saving.",
+        enabledByAdmin: "The clinic administrator has enabled the logo on the dashboard.",
+        notShown: "The logo is not shown on the dashboard.",
+        hint: "Card on the home screen. Adjust size, position and intensity.",
+        show: "Show logo on the dashboard",
+        opacity: "Opacity ({pct}%)",
+        size: "Size ({pct}% of card area)",
+        zoom: "Zoom ({pct}%)",
+        zoomHint: "Enlarge or reduce the logo within the area. The card grows to avoid cropping.",
+        positionX: "Horizontal position ({pct}%)",
+        positionY: "Vertical position ({pct}%)",
+        left: "Left",
+        center: "Center",
+        right: "Right",
+        top: "Top",
+        bottom: "Bottom",
+        saving: "Saving…",
+        save: "Save dashboard logo",
+      },
+            clinicalLayout: {
+        loadingDesigner: "Loading designer…",
+        title: "Clinical history designer",
+        hint: "Enable or disable blocks for sessions and print. Add custom sections to match your clinical flow.",
+        restoreDefault: "Restore default",
+        saveDesign: "Save design",
+        addSection: "Add section",
+        editSection: "Edit section",
+        previewForm: "Preview — session form",
+        newSectionDefault: "New section",
+        itemN: "Item {n}",
+        columnN: "Column {n}",
+        saved: "Design saved successfully.",
+        saveFailed: "Error saving.",
+        restoreConfirm: "Restore all sections to the default design? Custom ones will be lost.",
+        saving: "Saving…",
+        readOnlyHint: "Read-only: the clinic administrator configures the shared design.",
+        sectionsCount: "Sections ({count})",
+        sectionTitlePlaceholder: "Section title",
+        titleLabel: "Title",
+        builtinTitleHint: "You can customize the title shown in session and print.",
+        onPatientCard: "On patient file",
+        enabled: "Enabled",
+        inSession: "In session",
+        inPrint: "In print",
+        patientCardHelp: "shows or hides the field when creating, editing or viewing a patient.",
+        printAntecedentsHelp: "includes antecedents in the printed podiatric clinical history.",
+        enabledHelp: "includes or excludes the section from the clinical flow.",
+        inSessionHelp: "visible when creating or editing a session.",
+        inPrintHelp: "included in the printable history (only sections with data).",
+        deleteCustomSection: "Delete custom section",
+        selectSection: "Select a section from the list",
+        systemField: "System field",
+        noSessionSections: "No sections visible in session.",
+        remove: "Remove",
+        maxColumns: "Maximum {count} columns.",
+        checklistItems: "Checklist items",
+        yesNoNaRows: "YES / NO / N/A rows",
+        options: "Options",
+        yesNoNaHint: "Each row will be a question in the session.",
+        addItem: "+ Add item",
+        addRow: "+ Add row",
+        addOption: "+ Add option",
+        unit: "Unit",
+        unitPlaceholder: "min, ml, mm, %…",
+        defaultUnit: "unit",
+        scaleMax: "Maximum scale",
+        conditionalPrompt: "YES/NO question",
+        conditionalPlaceholder: "Was there a complication?",
+        tableColumns: "Table columns",
+        tableColumnsHint: "Name each column (e.g. product, quantity, lot).",
+        addColumn: "+ Add column",
+        tableRows: "Rows in session",
+      },
+      print: {
+        title: "Print settings",
+        hint: "Adjust how clinical history and prescriptions look when printing or saving as PDF.",
+        preview: "Preview",
+        loading: "Loading print preferences…",
+        saved: "Print preferences saved.",
+        saveFailed: "Could not save.",
+        readOnlyHint: "Only the clinic administrator can change these options. Shown in read-only mode.",
+        generalTitle: "General",
+        generalDesc: "Applies to both documents.",
+        headerAlign: "Header alignment",
+        alignLeft: "Left",
+        alignCenter: "Centered",
+        monochrome: "Print in black and white",
+        monochromeHint: "Grayscale, ideal to save ink.",
+        showGeneratedBy: "Show \"Generated by PodoAdmin\" in the footer",
+        footerText: "Custom footer text",
+        footerPlaceholder: "E.g. Business hours, legal notice, social media…",
+        historyTitle: "Clinical history",
+        historyDesc: "Full patient document.",
+        showLogo: "Show logo in the header",
+        showLegalData: "Show legal data",
+        showLegalDataHint: "RFC, CLUES, COFEPRIS and sanitary registry.",
+        includePhotos: "Include clinical photographs",
+        includePhotosHint: "Requires the images block to be active in the designer.",
+        compact: "Compact layout",
+        compactHistoryHint: "Smaller margins, type and diagrams to save pages.",
+        orientation: "Page orientation",
+        portrait: "Portrait",
+        landscape: "Landscape",
+        orientationHistoryHint: "Recommended: portrait for clinical histories.",
+        evolutionRows: "Clinical evolution rows to print",
+        rxTitle: "Prescriptions",
+        rxDesc: "Prescription / script format.",
+        showWeight: "Show patient weight",
+        showHeight: "Show patient height",
+        showNextVisit: "Show next visit",
+        showNotes: "Show additional notes",
+        showSignatureCedula: "Show license/registry on signature",
+        compactRxHint: "Smaller margins and type to use less space.",
+        orientationRxHint: "Recommended: landscape for prescriptions.",
+        folioPosition: "Folio position",
+        folioInline: "In header (recommended)",
+        folioBar: "Highlighted bar",
+        folioHint: "Inline folio saves a full line and usually fits on one page.",
+        saving: "Saving…",
+        save: "Save preferences",
+        reset: "Restore defaults",
+        previewSimHint: "Approximate simulation; the final document uses real patient data.",
+        tabHistory: "Clinical history",
+        tabRx: "Prescription",
+        statusMonochrome: "Black and white mode on · ",
+        statusHeaderCenter: "Centered header",
+        statusHeaderLeft: "Left-aligned header",
+        statusEvolutionRows: " · {count} evolution rows",
+        statusCompact: " · compact layout",
+        statusFolioInline: " · folio in header",
+        demoClinicName: "Demo Podiatry Clinic",
+        demoLicense: "License: 12345678",
+        demoLegal: "RFC: XAXX010101000 · CLUES: DFSSA000001",
+        demoContact: "555 123 4567 · demo@clinic.com",
+        demoHistoryTitle: "PODIATRIC CLINICAL HISTORY · Folio: PREMIUM-001",
+        demoPatientSection: "I. Patient data",
+        demoPatientCells: ["Name: Laura M.", "ID: INE-884422", "Tel: 555…", "DOB: 12/03/1985"],
+        demoEvolutionSection: "IV. Clinical evolution",
+        demoColDate: "Date",
+        demoColDiagnosis: "Diagnosis",
+        demoColTreatment: "Treatment",
+        demoDiagnosis: "Onychocryptosis",
+        demoTreatment: "Debridement",
+        demoMoreRows: "+ {count} more rows…",
+        demoPhotos: "Photographs",
+        demoFooter: "PodoAdmin · preview",
+        demoDoctor: "Dr. Demo Podiatrist",
+        demoCedula: "License: 12345678",
+        demoTel: "Tel: 555 123 4567",
+        demoFolio: "Folio:",
+        demoFolioBar: "RX FOLIO:",
+        demoPatientData: "PATIENT DATA",
+        demoName: "Name: Laura M.",
+        demoDni: "ID: INE-884422",
+        demoAge: "Age: 41 years",
+        demoWeight: "Weight: 72.5 kg",
+        demoHeight: "Height: 165 cm",
+        demoPrescription: "Prescription / Instructions",
+        demoPrescriptionBody: "Apply antifungal cream twice daily for 14 days.",
+        demoNextVisit: "Next visit",
+        demoNextVisitDate: "Friday, August 15, 2026",
+        demoNotes: "Additional notes",
+        demoNotesBody: "Avoid closed footwear.",
+        demoSignature: "Professional signature",
+        logoPlaceholder: "LOGO",
+      },
+      profileAvatar: {
+        changeTitle: "Change profile photo",
+        invalidFormat: "Invalid format. Use PNG, JPG or WebP.",
+        tooLarge: "The image cannot exceed 2 MB.",
+        saveFailed: "Could not save the photo.",
+        processFailed: "Could not process the image.",
+        removeFailed: "Could not remove the photo.",
+        saving: "Saving…",
+        changePhoto: "Change photo",
+        uploadPhoto: "Upload photo",
+        removePhoto: "Remove photo",
+        hint: "JPG, PNG or WebP. Max. 2 MB. Shown in the side menu.",
+      },
+      profile: {
+        title: "User profile",
+        name: "Name",
+        email: "Email",
+        readOnlyHint: "Profile details cannot be edited here. Contact an administrator if you need changes.",
+      },
+      cooldown: {
+        logoPolicy: "After saving, the logo is locked for 15 days. After that period you can upload or change it again.",
+        logoBlocked: "The logo can only be changed every 15 days.",
+        clinicInfoPolicy: "After saving, clinic details are locked for 15 days. After that period you can edit them again.",
+        clinicInfoBlocked: "Details can only be changed every 15 days.",
+        professionalInfoPolicy: "After saving, these details are locked for 15 days. After that period you can edit them again.",
+        professionalInfoBlocked: "Details can only be changed every 15 days.",
+        profilePolicy: "Name and email can only be changed by an administrator. 15 days must pass between changes.",
+        clinicReadOnlyPolicy: "Clinic information is managed by your administrator. 15 days must pass between changes.",
+        genericBlocked: "Details can only be changed every 15 days.",
+      },
+      clinic: {
+        fallbackName: "Clinic {id}",
+        errors: {
+          nameCodeRequired: "Clinic name and code are required.",
+          invalidWebsite: "The website URL is not valid. Please check that it is configured correctly.",
+        },
+      },
+      consent: {
+        title: "Informed consent",
+        sharedTitle: "Shared clinic text",
+        sharedBody: "This text is managed by the clinic administrator and used for patient consent.",
+        currentVersion: "Current version: {version}",
+        empty: "No text configured.",
+        editHint: "You can edit the text; each save increments the version.",
+        placeholder: "Write the terms and informed consent the patient must accept.",
+        save: "Save consent",
+        saveError: "Error saving consent.",
+      },
+      logo: {
+        empty: "No logo",
+        previewAlt: "Preview",
+        upload: "Upload image",
+        formatHint: "PNG, JPG or WebP · max 2MB",
+        save: "Save logo",
+        remove: "Remove logo",
+        errors: {
+          invalidFormat: "Invalid format. Use PNG, JPG or WebP (max 2MB).",
+          tooLarge: "File is too large. Maximum 2MB.",
+          processFailed: "Could not process the image.",
+          cooldown: "The logo can only be changed every 15 days.",
+          saveFailed: "Could not save the logo. Please try again.",
+        },
+      },
+      clinicLogo: {
+        title: "Clinic logo",
+        sharedTitle: "Shared clinic logo",
+        sharedBody: "All clinic professionals see this logo on documents and printouts.",
+        alt: "Clinic logo",
+        uploadHint: "Upload the logo that identifies your clinic in the app and documents.",
+      },
+      professionalLogo: {
+        title: "Professional logo",
+        uploadHint: "Personal logo for documents and print when there is no clinic logo.",
+        alt: "Professional logo",
+      },
+      adminLogo: {
+        title: "Clinic logo",
+        body: "Clinic logos are managed by each clinic's administrators. As {role}, you do not need a personal logo.",
+      },
+      assignedPodiatrists: {
+        title: "Assigned podiatrists",
+        clinicHint: "Clinic podiatrists you can serve. Check or uncheck to manage appointments and patients for each.",
+        independentHint: "Podiatrist who assigned you. You can create patients and manage their calendar.",
+        emptyClinic: "No podiatrists in your clinic.",
+        save: "Save assignment",
+        empty: "No podiatrist assigned.",
+      },
+      receptionist: {
+        title: "Receptionist",
+        description: "Create and manage the receptionist linked to your account or clinic.",
+        status: {
+          blocked: "Blocked",
+          disabled: "Disabled",
+          active: "Active",
+        },
+        unblock: "Unblock",
+        block: "Block",
+        enable: "Enable",
+        disable: "Disable",
+        delete: "Delete",
+        oneOnlyHint: "You can only have one linked receptionist. Delete them to create another.",
+        fields: {
+          name: "Name",
+          email: "Email",
+          initialPassword: "Initial password",
+        },
+        createdSuccess: "Receptionist created successfully.",
+        create: "Create receptionist",
+        createError: "Error creating receptionist",
+        confirmDelete: "Delete this receptionist? This cannot be undone.",
+      },
+      clinicInfo: {
+        title: "Clinic information",
+        subtitle: "Contact and tax details for your clinic.",
+        setupBanner: "Complete your clinic details. While the name is provisional or contact and address are missing, warnings will appear.",
+        clinicName: "Clinic name *",
+        clinicNamePlaceholder: "My Podiatry Clinic",
+        clinicCode: "Code (for folios) *",
+        clinicCodePlaceholder: "MICP",
+        clinicCodeHint: "Max 8 characters. Used in folios (e.g. MICP-2025-001)",
+        country: "Country (phone prefix)",
+        countryHint: "Default prefix for clinic phone numbers.",
+        phone: "Phone",
+        email: "Email",
+        emailPlaceholder: "clinic@example.com",
+        address: "Address",
+        addressPlaceholder: "Main Street 45, 2nd floor",
+        city: "City",
+        cityPlaceholder: "Madrid",
+        postalCode: "Postal code",
+        postalCodePlaceholder: "28013",
+        licenseNumber: "License / registry no.",
+        licensePlaceholder: "CS-28/2024-POD-001",
+        website: "Website (optional)",
+        websitePlaceholder: "https://www.myclinic.com",
+        legalName: "Legal name (NOM)",
+        rfc: "RFC",
+        clues: "CLUES",
+        cofepris: "COFEPRIS registration",
+        readOnlyTitle: "Your clinic details",
+        readOnlyBody: "Read only. Your clinic administrator manages these details.",
+        labels: {
+          name: "Name:",
+          phone: "Phone:",
+          email: "Email:",
+          address: "Address:",
+          license: "License:",
+          consent: "Consent:",
+          web: "Web:",
+        },
+        viewDocument: "View document",
+      },
+      practice: {
+        title: "Practice information",
+        subtitle: "Details for your independent professional practice.",
+        professionalName: "Professional name",
+        namePlaceholder: "Dr. John Smith",
+        country: "Country (phone prefix)",
+        countryHint: "Default prefix for your practice.",
+        emailPlaceholder: "practice@example.com",
+        sanitaryRegistry: "Sanitary registry",
+        cedula: "Professional license",
+        cedulaPlaceholder: "12345678",
+      },
+      credentials: {
+        title: "Professional credentials",
+        subtitle: "Contact phone and professional registry number.",
+        contactPhoneTitle: "Contact phone",
+        contactPhoneHint: "Visible to patients and on documents when applicable.",
+        country: "Country",
+        mobile: "Mobile",
+        savePhone: "Save phone",
+        registryNumber: "Professional registry no.",
+        registryPlaceholder: "REG-2024-001",
+        save: "Save credentials",
+        clinicInfoTitle: "Clinic information",
+        clinicInfoBody: "As a clinic member, these details are managed by the administrator.",
+        clinicName: "Clinic name",
+      },
+      common: {
+        saved: "Saved",
+        readOnly: "Read only",
+        saveInfo: "Save information",
+        emDash: "—",
+        ellipsis: "...",
+      },
+      errors: {
+        connectionSave: "Connection error while saving.",
+      },
+      supportSenderLabel: "PodoAdmin",
     },
     support: {
       title: "Contact PodoAdmin",
@@ -2146,6 +5437,26 @@ export const translations: Record<Language, Translations> = {
       reopenConversation: "Reopen conversation",
       from: "From",
       sent: "Sent",
+    },
+    layout: {
+      brandFallback: "PodoAdmin",
+      unlockSidebarVisible: "Unlock (locked visible)",
+      unlockSidebarHidden: "Unlock (locked hidden)",
+      lockSidebarVisible: "Lock sidebar visible",
+      toggleSidebarLock: "Toggle sidebar lock",
+      hideMenu: "Hide menu",
+      showMenu: "Show menu",
+      pendingAccessBanner: "Your clinical access is pending. Activate payment in Billing or wait for an administrator to enable your account.",
+      goToBilling: "Go to billing",
+      goToSupport: "Go to support",
+      subscriptionInactiveBanner: "Your subscription is not active. Renew to keep using the platform.",
+      closeMenu: "Close menu",
+      sponsored: "Sponsored",
+      closeAnnouncement: "Close announcement",
+      promoCodeOnSite: "Code on the organizer's website:",
+      seeMore: "See more",
+      interested: "I'm interested",
+      interestRegistered: "Interest registered ✓",
     },
     whatsapp: {
       title: "WhatsApp Business",
@@ -2206,7 +5517,8 @@ export const translations: Record<Language, Translations> = {
         "Sent as the 4th template parameter in automatic and manual reminders (unless you enter another note when sending). Max 500 characters.",
       templateLanguageLabel: "Template language",
       templateLanguagePlaceholder: "en",
-      integrationActive: "Integration active (sends enabled when cron is active)",
+            integrationActive: "Integration active (sends enabled when cron is active)",
+      receptionistApiEnabled: "Allow reception to use automatic Meta API sending (reminders and history).",
       save: "Save settings",
       saving: "Saving…",
       testConnection: "Test connection",
@@ -2235,6 +5547,168 @@ export const translations: Record<Language, Translations> = {
       successTest: "Connection successful with Meta.",
       successTestWithPhone: "Connection successful ({phone})",
       successDisconnected: "WhatsApp disconnected.",
+      campaigns: {
+        title: "WhatsApp campaigns",
+        pageHint: "Broadcast messages to patients with a phone number. Use WhatsApp Web (manual, no API) or automatic Meta API sending if configured.",
+        webTitle: "Campaigns via WhatsApp Web",
+        webHint: "Create a message draft and send it patient by patient with wa.me. Without Meta: you tap Send in WhatsApp.",
+        openWeb: "Open WhatsApp Web",
+        newDraft: "New campaign (draft)",
+        metaApiTitle: "Automatic sending via Meta API",
+        metaApiHint: "Requires WhatsApp Business configured in Settings. You can ignore this section if you only use WhatsApp Web.",
+        denied: "No permission for WhatsApp campaigns.",
+        patientsLoadError: "Patients error",
+        draftCreated: "Campaign created as draft",
+        createError: "Error creating",
+        sendConfirm: "Send this campaign via Meta API to all patients with a phone number?",
+        apiSendResult: "API: sent {sent}, failed {failed}",
+        apiSendError: "Error sending via API",
+        namePlaceholder: "Internal name (e.g. Summer promo)",
+        messagePlaceholder: "Message with variables, e.g.:\nHello {{nombre}}, we would like to inform you...",
+        variablesHint: "Variables:",
+        variablesList: "{{nombre}} (first name), {{apellido}} (last name), {{nombre_completo}} (full name)",
+        clinicOnlyFilter: "Only patients from my clinic",
+        recipientsWithPhone: "Recipients with a valid phone:",
+        recipientsMismatchHint: "There are {count} patient(s) in your list; check they have a phone with at least 8 digits or uncheck “Only patients from my clinic”.",
+        patientsLoadFailed: "Could not load patients. Check permissions or reload the page.",
+        noPatientsYet: "There are no patients in the list yet.",
+        saveDraft: "Save draft",
+        assistantTitle: "Send assistant — {name}",
+        assistantPatientOf: "Patient {current} of {total}:",
+        openWhatsApp: "Open WhatsApp",
+        assistantDone: "Assistant completed: {count} patients.",
+        finish: "Finish",
+        nextPatient: "Next patient",
+        draftsToSend: "Drafts to send",
+        loading: "Loading…",
+        recipientsCount: "{count} recipient(s) with WhatsApp",
+        sendAssistant: "Send assistant",
+        hideList: "Hide list",
+        showList: "View list",
+        noValidRecipients: "No valid recipients.",
+        noDrafts: "No drafts. Create a campaign above.",
+        connected: "(connected)",
+        optional: "(optional)",
+        receptionistApiHint: "Automatic sending enabled by your podiatrist.",
+        receptionistApiDisabled: "Your podiatrist has not yet enabled automatic Meta API sending for reception.",
+        configureApiHint: "Configure WhatsApp Business in Settings to send campaigns via Meta API.",
+        allCampaigns: "All campaigns",
+        sentAt: "sent {date}",
+        sending: "Sending…",
+        sendByApi: "Send via API",
+        noCampaigns: "No campaigns",
+      },
+      messages: {
+        title: "WhatsApp messages",
+        webTitle: "Reminders via WhatsApp Web",
+        webHint: "Without configuring the Meta API. Open WhatsApp Web or the app with the message ready; you send it manually.",
+        openWeb: "Open WhatsApp Web",
+        metaApiTitle: "Automatic sending with Meta API",
+        metaApiHint: "Requires Meta API configured in Settings → WhatsApp.",
+        historyTitle: "History (automatic API)",
+        historyHint: "Log of automatic Meta API sends. WhatsApp Web reminders are not recorded here.",
+        denied: "You do not have permission to view this section.",
+        patientFallback: "Patient",
+        defaultExtraNote: "Please confirm your attendance by replying to this message.",
+        noValidPhone: "No valid phone for {name}.",
+        selectAppointmentFirst: "Select an appointment first.",
+        reminderSendError: "Could not send the reminder.",
+        reminderSent: "Reminder sent successfully.",
+        defaultMessage: "Default message",
+        variablesHint: "Variables:",
+        variablesList: "{{nombre}} (first name), {{fecha}} (date), {{hora}} (time), {{nota}} (note)",
+        extraNotePlaceholder: "Extra note for all sends today (optional)",
+        saved: "Saved",
+        saveMessage: "Save message",
+        tomorrowAppointments: "Tomorrow’s appointments ({date})",
+        loadingAppointments: "Loading appointments…",
+        noTomorrowAppointments: "No appointments scheduled for tomorrow.",
+        noPhone: "No phone",
+        sendViaWhatsApp: "Send via WhatsApp",
+        connected: "(connected)",
+        optional: "(optional)",
+        receptionistApiHint: "Automatic sending enabled by your podiatrist. Reminders are sent without opening WhatsApp Web.",
+        configLoadError: "Could not get WhatsApp status.",
+        connectedLabel: "Connected",
+        apiStatusLabel: "API status",
+        templateLabel: "Template",
+        templateUndefined: "Not defined",
+        lastErrorLabel: "Last error",
+        noErrors: "No errors",
+        sendAutoReminder: "Send automatic reminder",
+        selectUpcomingAppointment: "Select an upcoming appointment",
+        sending: "Sending...",
+        sendByApi: "Send via API",
+        singleExtraNotePlaceholder: "Extra note for this send (optional)",
+        lastApiSends: "Latest API sends",
+        refresh: "Refresh",
+        loadingHistory: "Loading history...",
+        configureForHistory: "Configure WhatsApp Business in Settings to use automatic sending and see history here.",
+        noApiSends: "No API sends. WhatsApp Web reminders are not recorded here.",
+        colDate: "Date",
+        colPatient: "Patient",
+        colPhone: "Phone",
+        colStatus: "Status",
+        colNote: "Note",
+        emDash: "—",
+        yes: "Yes",
+        no: "No",
+      },
+    },
+    clinicalTools: {
+      title: "Clinical tools",
+      denied: "You do not have permission to access this section.",
+      tabTemplates: "Session templates",
+      tabInventory: "Inventory",
+      tabReferrals: "Referrals",
+      templatesHint: "Define predefined clinical histories (callus, ingrown nail, etc.) to load when opening a session.",
+      newTemplate: "New template",
+      create: "Create",
+      creating: "Creating…",
+      category: "Category",
+      inventoryName: "Material name",
+      unit: "Unit",
+      add: "Add",
+      emptyInventory: "No materials registered",
+      patientId: "Patient ID",
+      referTo: "Refer to",
+      reason: "Reason",
+      registerReferral: "Register referral",
+      emptyReferrals: "No referrals",
+      nameRequired: "Enter a name for the template.",
+      templateCreated: "Template created. Edit it to choose sections and content.",
+      createFailed: "Could not create the template.",
+      presetCreated: "Template “{name}” created.",
+      templateUpdated: "Template updated.",
+      saveFailed: "Could not save the template.",
+      deleteConfirm: "Delete template “{name}”? This cannot be undone.",
+      templateDeleted: "Template deleted.",
+      deleteFailed: "Could not delete the template.",
+      invalidQuantity: "Enter a valid quantity (0 or more).",
+      defaultUnit: "unit",
+      inventoryAdded: "Material registered.",
+      genericError: "Error",
+      referralAdded: "Referral registered.",
+      namePlaceholder: "Name (e.g. Callus 1st toe)",
+      scopeLabel: "Scope:",
+      scopePersonal: "Only me",
+      scopeClinic: "Clinic (all podiatrists)",
+      clinicAdminHint: "As clinic administrator, templates are shared with the whole practice.",
+      sectionsCount: "{count} sections",
+      close: "Close",
+      edit: "Edit",
+      deleting: "Deleting…",
+      delete: "Delete",
+      nameLabel: "Name",
+      shareWithClinic: "Share with the practice",
+      saving: "Saving…",
+      saveTemplate: "Save template",
+      emptyTemplates: "No templates. Create an empty one or use the callus / ingrown nail shortcuts.",
+      quantityPlaceholder: "Quantity",
+      quantityAria: "Quantity",
+      patientPrefix: "Patient:",
+      scopeShared: "Clinic",
+      scopePersonalShort: "Personal",
     },
     systemDiagnostics: {
       title: "System status",
@@ -2361,6 +5835,292 @@ export const translations: Record<Language, Translations> = {
       subjectRequired: "Subject is required",
       recipientRequired: "Select at least one recipient",
       fromAdmin: "Admin Message",
+    },
+
+    clinic: {
+      title: "Clinic management",
+      tabOverview: "Overview",
+      tabPodiatrists: "Podiatrists",
+      tabPatients: "Patients",
+      tabReceptionists: "Receptionists",
+      statPodiatrists: "Podiatrists",
+      statTotalPatients: "Total patients",
+      statSessionsThisMonth: "Sessions this month",
+      vsPreviousMonth: "% vs. previous month",
+      agendaTitle: "Agenda (last 30 days)",
+      agendaSubtitle: "Patients seen, no-shows and cancellations recorded in the calendar",
+      allPodiatrists: "All podiatrists",
+      attended: "Attended",
+      noShow: "No-shows",
+      noShowRateOfResolved: "{n}% of resolved total",
+      cancelled: "Cancelled",
+      cancellationRate: "Cancellation rate: {n}%",
+      pending: "Pending",
+      demandTitle: "Agenda demand",
+      demandHint: "Total demand (30 days): {n} appointments. Peak hours, occupancy and daily close details are in Checkout → Agenda.",
+      openCheckoutAgenda: "Open Checkout → Agenda",
+      attendedPerDay: "Attended per day",
+      loadingAgendaMetrics: "Loading agenda metrics…",
+      activityByPodiatrist: "Activity by podiatrist",
+      sessionsCount: "{n} sessions",
+      podiatristsLimit: "Podiatrists: {current} of {limit} (limit set by PodoAdmin)",
+      podiatristsNoLimit: "Clinic podiatrists. No limit defined.",
+      createPodiatrist: "Create podiatrist",
+      colPodiatrist: "Podiatrist",
+      colEmail: "Email",
+      colLicense: "License",
+      colPatients: "Patients",
+      colSessionsMonth: "Sessions (month)",
+      licenseNotRegistered: "Not registered",
+      noPodiatrists: "No podiatrists in this clinic",
+      totalIndexed: "Total indexed",
+      searchPatientPlaceholder: "Search patient (name, email, phone)...",
+      activityAll: "Activity: all",
+      visitsRangeChip: "Visits {min}–{max}",
+      loadingPatients: "Loading patients…",
+      colPhone: "Phone",
+      colVisits: "Visits",
+      colAssignedPodiatrist: "Assigned podiatrist",
+      colLastSession: "Last session",
+      colActions: "Actions",
+      reassign: "Reassign",
+      noPatientsFound: "No patients found",
+      receptionistsHint: "Receptionists can create patients and create/edit appointments on the calendars of assigned podiatrists, without using credits.",
+      receptionistsActive: "Active: {active} / {max}. They must change the password on first sign-in.",
+      createReceptionist: "Create receptionist",
+      colName: "Name",
+      colAssignedPodiatrists: "Assigned podiatrists",
+      unassigned: "Unassigned",
+      podiatristsAction: "Podiatrists",
+      unblock: "Unblock",
+      block: "Block",
+      enable: "Enable",
+      disable: "Disable",
+      noReceptionists: "No receptionists. Create one to manage appointments and patients for clinic podiatrists.",
+      reassignTitle: "Reassign patient",
+      reassignUseCase: "Use case: When a podiatrist cannot take appointments due to absence or unavailability, you can reassign their patients to another professional at the clinic.",
+      currentPodiatrist: "Current podiatrist",
+      newPodiatrist: "New assigned podiatrist",
+      selectPodiatrist: "Select podiatrist...",
+      unknownPodiatrist: "Unknown",
+      createPodiatristSubtitle: "The new podiatrist will be assigned to your clinic.",
+      initialPasswordMin8: "Initial password (min. 8 characters)",
+      createReceptionistSubtitle: "All clinic podiatrists will be assigned. They must change the password on first access.",
+      initialPassword: "Initial password",
+      assignedPodiatristsTitle: "Assigned podiatrists",
+      noPodiatristsInClinic: "No podiatrists in the clinic.",
+      confirmDeleteReceptionist: "Delete receptionist {name} ({email})? This cannot be undone.",
+      maxActiveReceptionists: "Maximum {max} active receptionists in the clinic.",
+      emailTaken: "An account with this email already exists",
+      createReceptionistError: "Error creating receptionist",
+      saveAssignmentError: "Error saving assignment",
+      createPodiatristError: "Error creating podiatrist",
+      passwordMin8: "Password must be at least 8 characters",
+    },
+    auditLog: {
+      title: "Audit log",
+      actionLabels: {
+        LOGIN_SUCCESS: "Sign in",
+        LOGIN_FAILED: "Failed sign in",
+        LOGOUT: "Sign out",
+        PASSWORD_CHANGED: "Password changed",
+        PASSWORD_RESET_REJECTED: "Password reset rejected",
+        PASSWORD_RESET_APPROVED: "Password reset approved",
+        PASSWORD_RESET_COMPLETED: "Password reset completed",
+        PASSWORD_RESET_REQUESTED: "Password reset requested",
+        CREATE: "Create",
+        CREATE_USER: "User created",
+        UPDATE: "Update",
+        DELETE: "Delete",
+        DELETE_USER: "User deleted",
+        COMPLETE: "Completed",
+        EXPORT: "Export",
+        PRINT: "Print",
+        UPDATE_DRAFT: "Draft updated",
+        REASSIGN: "Reassign",
+        TRANSFER: "Transfer",
+        ADD_CREDITS: "Credits added",
+        SUBTRACT_CREDITS: "Credits subtracted",
+        ADMIN_CREDIT_ADJUSTMENT: "Credit adjustment (admin)",
+        ALERT_MULTIPLE_PRINT_VIOLATIONS: "Alert: multiple prints",
+        PRINT_VIOLATION_FORM: "Print attempt from form",
+      },
+      entityLabels: {
+        authentication: "Authentication",
+        session: "Session",
+        patient: "Patient",
+        prescription: "Prescription",
+        reassignment: "Reassignment",
+        credit: "Credits",
+        user: "User",
+        user_data: "User data",
+        clinic: "Clinic",
+        professional_info: "Professional info",
+        professional_credentials: "Credentials",
+        logo: "Logo",
+        message: "Message",
+        clinical_history: "Clinical history",
+        receptionist: "Receptionist",
+        registration_list: "Registration list",
+        support_conversation: "Support conversation",
+      },
+      filters: {
+        title: "Filters",
+        clear: "Clear filters",
+        search: "Search...",
+        allActions: "All actions",
+        allTypes: "All types",
+        allUsers: "All users",
+        from: "From",
+        to: "To",
+      },
+      empty: {
+        title: "No records",
+        description: "No audit log records found with the selected filters",
+      },
+      totalRecords: "Total records",
+      actionTypes: "Action types",
+      entityTypes: "Entity types",
+      activeUsers: "Active users",
+      topUsers: "Most active users",
+      recordsCount: "{n} records",
+      ofTotal: "(of {total} total)",
+      fullDetails: "Full details",
+      userLinkedHint: "Each record is linked to the user who performed the action. The Log ID uniquely identifies this event.",
+      userLabel: "User:",
+      userIdLabel: "User ID:",
+      logIdLabel: "Log ID:",
+      resourceIdLabel: "Resource ID:",
+      pageOf: "Page {current} of {total}",
+      summaries: {
+        loginSuccess: "Successful sign in",
+        loginSuccessEmail: "Successful sign in: {email}",
+        with2fa: "(2FA enabled)",
+        without2fa: "(without 2FA)",
+        logout: "Signed out.",
+        passwordChanged: "Password changed by the user.",
+        loginFailed: "Failed sign-in attempt.",
+        loginFailedEmail: "Failed sign-in attempt: {email}",
+        passwordResetRejected: "Password reset request rejected.",
+        passwordResetApproved: "Password reset approved by an administrator.",
+        passwordResetCompleted: "The user completed the password reset.",
+        passwordResetRequested: "Password reset request sent.",
+        patientPrefix: "Patient: {name}",
+        userPrefix: "User: {name}",
+        clinicPrefix: "Clinic: {name}",
+      },
+    },
+    securityMetrics: {
+      title: "Security metrics",
+      subtitle: "Security metrics, active alerts and recent events",
+      last24h: "Last 24 h",
+      last7days: "Last 7 days",
+      last30days: "Last 30 days",
+      refresh: "Refresh",
+      loadError: "Could not load metrics",
+      criticalEvents: "Critical events",
+      failedLogins: "Failed logins",
+      unreadAlerts: "Unread alerts",
+      summaryByType: "Summary by type",
+      loading: "Loading...",
+      noEventsInPeriod: "No events in the selected period.",
+      activeAlerts: "Active alerts",
+      noSystemAlerts: "No recent system alerts.",
+      recentAccessGeo: "Recent access (geolocation)",
+      date: "Date",
+      event: "Event",
+      userRole: "User / role",
+      ip: "IP",
+      location: "Location",
+      noAccessYet: "No access recorded yet. Sign in to generate data.",
+      loginOk: "Login OK",
+      loginFailed: "Login failed",
+      recentFailedLogins: "Recent failed logins",
+      emailDetail: "Email / detail",
+      noRecentRecords: "No recent records.",
+      attemptNumber: "Attempt #{n}",
+      metricLabels: {
+        failed_login: "Failed logins",
+        successful_login: "Successful logins",
+        twoFaFailed: "2FA failed",
+        captcha_failed: "CAPTCHA failed",
+        suspicious_activity: "Suspicious activity",
+      },
+    },
+    supportPage: {
+      title: "Support",
+      adminSubtitle: "User messages and registration lists for approval.",
+      tabMessages: "Messages",
+      tabLists: "Create lists",
+      conversations: "Conversations",
+      noConversations: "No conversations",
+      selectConversation: "Select a conversation to view messages and reply.",
+      supportAgent: "Support",
+      registrationLists: "Registration lists",
+      newList: "New list",
+      newListNamePlaceholder: "New list name...",
+      listsEmptyHint: "Create registration lists (courses, events) and submit them for the administrator to approve and import.",
+      deleteList: "Delete",
+      deleteListConfirm: "Are you sure you want to delete this list?",
+      createListError: "Error creating the list",
+      defaultListName: "New list",
+      invalidEmail: "Enter a valid email address.",
+      downloadCsv: "Download CSV",
+      markPaidToExport: "Mark at least one entry as paid to export.",
+      submitForApproval: "Submit for approval",
+      addEntry: "Add entry",
+      namePlaceholder: "Name",
+      emailPlaceholder: "Email",
+      roleIndependent: "Independent podiatrist",
+      roleClinicAdmin: "Clinic admin",
+      podiatristLimitLabel: "Podiatrist limit:",
+      podiatristLimitPlaceholder: "E.g. 5",
+      add: "Add",
+      clinicAdminLimitHint: "Clinic podiatrists will be limited to this number. Receptionists do not count toward the limit.",
+      noEntries: "No entries in this list.",
+      paid: "Paid",
+      unpaid: "Unpaid",
+      pendingPayment: "Pending payment ({n})",
+      paidSection: "Paid (exported to CSV) ({n})",
+      selectOrCreateList: "Select a list or create a new one.",
+      statusDraft: "Draft",
+      statusPending: "Pending",
+      statusApproved: "Approved",
+      statusRejected: "Rejected",
+      limitPodiatrists: "Limit: {n} podiatrists",
+    },
+    sponsoredAnnouncements: {
+      title: "Sponsored announcements",
+      heading: "Announcements by state / province",
+      subtitle: "Paid campaigns from external providers. All users in the area see a banner and notification.",
+      newCampaign: "New campaign",
+      formTitle: "New campaign",
+      existingAdvertiser: "Existing advertiser",
+      newAdvertiserOption: "— New advertiser —",
+      advertiserName: "Advertiser name",
+      advertiserNamePlaceholder: "E.g. Podiatry Institute",
+      titlePlaceholder: "Announcement title",
+      bodyPlaceholder: "Description (course, event, etc.)",
+      countryPlaceholder: "Country (MX)",
+      statePlaceholder: "State / province",
+      audienceEstimate: "≈ {n} users in area",
+      externalUrlPlaceholder: "Advertiser URL (their site)",
+      promoCodePlaceholder: "Discount code on advertiser site (optional)",
+      createDraft: "Create draft",
+      campaigns: "Campaigns",
+      loading: "Loading...",
+      noCampaigns: "No campaigns yet.",
+      advertiserCode: "Advertiser code:",
+      activate: "Activate",
+      pause: "Pause",
+      createAdvertiserError: "Could not create advertiser",
+      selectOrCreateAdvertiser: "Select or create an advertiser",
+      createCampaignError: "Error creating campaign",
+      statusError: "Error",
+      statusActive: "active",
+      statusDraft: "draft",
+      statusPaused: "paused",
+      defaultCta: "Learn more",
     },
     terms: {
       title: "Terms and Conditions",
@@ -2517,9 +6277,217 @@ export const translations: Record<Language, Translations> = {
       openedInTab: "History opened in a new tab. Use Print → Save as PDF.",
       invalidResponse: "Server response did not include valid patient data.",
     },
+    usersPage: {
+      fields: {
+        name: "Name",
+        email: "Email",
+        password: "Password",
+        role: "Role",
+        clinic: "Clinic",
+        clinicOptional: "Clinic (optional)",
+      },
+      create: {
+        title: "Create new user",
+        passwordHint: "Minimum 8 characters.",
+        clinicModeExisting: "Select existing clinic",
+        clinicModeNew: "Create new clinic",
+        clinicModeNone: "No clinic (independent)",
+        newClinicHint: "A clinic will be created with provisional data. The admin will complete name, code, phone, address and the rest in Settings.",
+        podiatristLimit: "Podiatrist limit (optional)",
+        podiatristLimitPlaceholder: "E.g. 5",
+        podiatristLimitHint: "Podiatrists in the clinic will be limited to this number. Receptionists do not count.",
+        saving: "Creating...",
+        success: "User created successfully.",
+        partialClinicFail: "User created, but the clinic could not be created. Configure it later from user edit.",
+        errors: {
+          nameRequired: "Name is required.",
+          emailInvalid: "Enter a valid email address.",
+          passwordMin: "Password must be at least 8 characters.",
+          clinicRequiredReceptionist: "Select a clinic for the receptionist.",
+          clinicRequiredAdmin: "Select an existing clinic or choose to create a new one.",
+          createFailed: "Could not create the user.",
+        },
+      },
+      import: {
+        title: "Import users (CSV)",
+        description: "Required columns: name, email, password (or use the default password), role.",
+        optionalColumnsSuperAdmin: " Optional: clinicMode (existing|new|none), clinicId (if existing), podiatrist_limit (clinic_admin only).",
+        downloadTemplate: "Download template",
+        selectFile: "Select file",
+        defaultPassword: "Default password (if missing in CSV)",
+        optionalPlaceholder: "Optional",
+        readyCount: "{count} rows ready to import",
+        andMore: "... and {count} more",
+        resultsSummary: "Result: {ok} ok, {fail} with error",
+        created: "✓ Created",
+        importing: "Importing... ({done}/{total})",
+        submit: "Import",
+        templateFilename: "users_template.csv",
+        errors: {
+          needRows: "The file must have at least a header row and one data row.",
+          missingColumns: "Missing required columns: name, email, password, role",
+          readFile: "Error reading the file",
+          invalidPassword: "Invalid password (min. 8 characters)",
+          unknown: "Unknown error",
+          connection: "Connection error",
+        },
+      },
+      edit: {
+        title: "Edit user",
+        noClinic: "No clinic",
+        errors: {
+          updateFailed: "Could not update the user.",
+        },
+      },
+      transfer: {
+        title: "Transfer clinical history",
+        subtitle: "Copy all patients and sessions from one user to another",
+        successMessage: "Transfer completed: {patients} patients, {sessions} sessions.",
+        error: "Error transferring data.",
+        successTitle: "Success!",
+        errorTitle: "Error",
+        sourceUser: "Source user",
+        targetUser: "Target user",
+        selectUser: "— Select —",
+        patientsCount: "{count} patients to transfer",
+        warning: "Data will be copied to the target user. The source keeps their history. This action is not easily undone.",
+        transferring: "Transferring...",
+        submit: "Transfer",
+      },
+      profile: {
+        loading: "Loading clinical data...",
+        patients: "Patients",
+        sessions: "Sessions",
+        patientsHeading: "Patients ({count})",
+        andMore: "...and {count} more",
+      },
+      status: {
+        banned: "Banned",
+        blocked: "Blocked",
+        gracePeriod: "Grace period",
+        disabled: "Disabled",
+        pendingPayment: "Pending payment",
+        active: "Active",
+      },
+      confirm: {
+        block: "Block {name}? They will not be able to sign in until unblocked.",
+        unblock: "Unblock {name}?",
+        enable: "Enable account for {name}?",
+        disable: "Disable account for {name}? They will not be able to sign in.",
+        ban: "Ban {name}? This is a serious action.",
+        unban: "Remove ban from {name}?",
+        delete: "Delete {name}? This may be irreversible.",
+        deletePermanent: "Permanently delete {name}? This cannot be undone.",
+      },
+      errors: {
+        approve: "Error approving",
+        reject: "Error rejecting",
+        block: "Could not block the user.",
+        unblock: "Could not unblock the user.",
+        enable: "Could not enable the user.",
+        disable: "Could not disable the user.",
+        ban: "Could not ban the user.",
+        unban: "Could not remove the ban.",
+        delete: "Could not delete the user.",
+      },
+      actions: {
+        importCsv: "Import CSV",
+        createUser: "Create user",
+        transferHistory: "Transfer history",
+        approve: "Approve",
+        reject: "Reject",
+        view: "View",
+        edit: "Edit",
+        ban: "Ban",
+        unban: "Unban",
+        block: "Block",
+        unblock: "Unblock",
+        enableAccount: "Enable account",
+        disableAccount: "Disable account",
+        delete: "Delete",
+        viewProfile: "View profile",
+        downloadJson: "Download JSON",
+        manageAccount: "Manage account",
+      },
+      table: {
+        user: "User",
+        email: "Email",
+        role: "Role",
+        status: "Status",
+        clinic: "Clinic",
+        limit: "Limit",
+        data: "Data",
+        actions: "Actions",
+        sortBy: "Sort by",
+        podiatristLimit: "Podiatrist limit",
+        dataSummary: "{patients} patients · {sessions} sessions",
+        currentPodiatrists: "Current: {count}",
+        saveLimit: "Save",
+        clinicMissing: "Clinic not found",
+        patients: "patients",
+        sessions: "sessions",
+      },
+      passwordReset: {
+        pendingTitle: "Password reset requests",
+        approved: "Request approved.",
+        approveError: "Could not approve the request.",
+        rejectReasonPrompt: "Rejection reason (optional):",
+        rejected: "Request rejected.",
+        rejectError: "Could not reject the request.",
+        approvedModalTitle: "Request approved",
+        linkHint: "The link was emailed to the user. Here is the link so you can resend it personally (WhatsApp, etc.):",
+        copied: "Link copied to clipboard.",
+        copyFailed: "Could not copy. Select and copy the link manually.",
+        copyLink: "Copy link",
+      },
+      regLists: {
+        title: "Pending registration lists",
+        hint: "Approve or reject lists submitted by support.",
+        byCreator: "By {name}",
+        downloadCsv: "CSV",
+        createdCount: "{count} user(s) created.",
+        approved: "List approved.",
+        errorsPrefix: "Errors:",
+      },
+      cooldown: {
+        notApplicable: "N/A",
+        scopeClinic: "clinic",
+        scopeProfessional: "professional",
+        reasonPrompt: "Authorization reason (optional):",
+        confirm: "Authorize early edit of {scope} for {name}?",
+        applied: "Authorization applied.",
+        error: "Could not apply authorization.",
+      },
+      export: {
+        failed: "Could not export user data.",
+      },
+      menu: {
+        unbanAccount: "Remove ban",
+        banAccount: "Ban account",
+        unblockAccount: "Unblock account",
+        blockAccount: "Block account",
+        enableAccount: "Enable account",
+        disableAccount: "Disable account",
+        authorizeCooldown: "Authorize edit (cooldown)",
+        deleteAccount: "Delete account",
+      },
+      searchPlaceholder: "Search users...",
+      allRoles: "All roles",
+      loading: "Loading users...",
+      empty: "No users found.",
+      selectPlaceholder: "— Select —",
+    },
   },
   
   pt: {
+    clinicalLayout: clinicalSharedByLang.pt.clinicalLayout,
+    podiatry: clinicalSharedByLang.pt.podiatry,
+    errorBoundary: clinicalSharedByLang.pt.errorBoundary,
+    clinicalList: clinicalSharedByLang.pt.clinicalList,
+    patientsClinical: clinicalSharedByLang.pt.patientsClinical,
+    sessionsClinical: clinicalSharedByLang.pt.sessionsClinical,
+    clinicalToolsExtras: clinicalSharedByLang.pt.clinicalToolsExtras,
+    calendarGrid: clinicalSharedByLang.pt.calendarGrid,
     common: {
       loading: "Carregando...",
       save: "Salvar",
@@ -2551,6 +6519,15 @@ export const translations: Record<Language, Translations> = {
       details: "Detalhes",
       view: "Ver",
       download: "Baixar",
+      showPassword: "Mostrar senha",
+      hidePassword: "Ocultar senha",
+      showShort: "Mostrar",
+      hideShort: "Ocultar",
+      captcha: "CAPTCHA",
+      seeAll: "Ver todos",
+      seeAllShort: "Ver tudo",
+      viewMore: "Ver mais",
+      go: "Ir",
     },
     auth: {
       login: "Entrar",
@@ -2666,11 +6643,24 @@ export const translations: Record<Language, Translations> = {
       blockedUntil: "Bloqueado até:",
       retryIn: "Pode tentar novamente em:",
       emailNotificationSent: "Foi enviada uma notificação por e-mail sobre estas tentativas.",
+      googleNotConfigured: "Google não está configurado neste ambiente",
+      googleConnectFailed: "Não foi possível conectar ao Google",
+      googleNoCode: "Nenhum código do Google foi recebido",
+      googleLoginError: "Erro ao iniciar sessão com Google",
+      googleCompleting: "Concluindo o login com Google…",
+      serverConnectionError: "Erro de conexão com o servidor",
+      connectionErrorShort: "Erro de conexão",
+      changePasswordCurrentRequired: "Informe sua senha atual.",
+      changePasswordError: "Erro ao alterar a senha",
+      verifyEmailMissingToken: "Nenhum token de verificação foi fornecido",
+      verifyEmailFailed: "Erro ao verificar o e-mail",
+      recoveryVerifySubject: "Verificação de identidade - Recuperação de senha",
     },
     nav: {
       dashboard: "Painel",
       patients: "Pacientes",
       clinicalSessions: "Sessões Clínicas",
+      clinicalTools: "Ferramentas clínicas",
       credits: "Créditos",
       settings: "Configurações",
       users: "Usuários",
@@ -2679,6 +6669,9 @@ export const translations: Record<Language, Translations> = {
       profile: "Perfil",
       clinicManagement: "Gestão da Clínica",
       whatsappMessages: "Mensagens WhatsApp",
+      whatsappCampaigns: "Campanhas WhatsApp",
+      calendar: "Calendário",
+      securityMetrics: "Métricas de segurança",
       checkout: "Cobranças",
     },
     checkout: {
@@ -2693,6 +6686,7 @@ export const translations: Record<Language, Translations> = {
       emptyPaid: "Não há cobranças nesta aba.",
       markPaid: "Marcar como pago",
       confirmPaid: "Confirma que {patient} já pagou?",
+      confirmPaidTitle: "Confirmar cobrança",
       paidAt: "Pago às",
       statusAwaiting: "Sem valor",
       statusReady: "Pronto para cobrar",
@@ -2717,7 +6711,34 @@ export const translations: Record<Language, Translations> = {
       saveTariffs: "Guardar tarifas",
       tariffsSaved: "Tarifas guardadas",
       addTariff: "Adicionar tarifa",
-      tariffLabelPlaceholder: "Nome (ex. Consulta)",
+            tariffLabelPlaceholder: "Nome (ex. Consulta)",
+      tariffAmountAria: "Valor",
+      tariffDurationTitle: "Duração da pauta (minutos)",
+      tariffDurationAria: "Duração em minutos",
+      tariffDurationPlaceholder: "min",
+      serverMigrateHint: "Erro do servidor. Se acabou de atualizar o projeto, execute npm run db:migrate e reinicie npm run dev.",
+views: {
+        operations: "Operações",
+        sales: "Vendas",
+        collections: "Cobranças",
+        profit: "Rentabilidade",
+        agenda: "Agenda",
+      },
+      viewHintOperations: "Fila de cobranças pendentes e concluídas.",
+      viewHintAgenda: "Ocupação, procura, horário e fecho diário de caixa.",
+      viewHintCollections: "Cobrado vs pendente, métodos de pagamento e contas a receber.",
+      viewHintProfit: "Metas, despesas e margem estimada.",
+      viewHintClinicSales: "Vendas agregadas de toda a clínica.",
+      viewHintSales: "Receitas, ticket médio e detalhe por serviço.",
+      viewDataOf: "Dados de",
+      entireClinic: "Toda a clínica",
+      myPractice: "A minha consulta",
+      podiatristFallback: "Podologista",
+      assignedPodiatrist: "Podologista atribuído",
+      podiatristLabel: "Podólogo",
+      weekBucket: "S{n}",
+      analytics: checkoutAnalyticsByLang.pt,
+      agendaAnalytics: agendaAnalyticsByLang.pt,
     },
     dashboard: {
       title: "Painel",
@@ -2729,6 +6750,40 @@ export const translations: Record<Language, Translations> = {
       recentActivity: "Atividade Recente",
       upcomingAppointments: "Próximas Consultas",
       noRecentActivity: "Sem atividade recente",
+      patientFallback: "Paciente",
+      sessionCompletedActivity: "Sessão concluída",
+      draftActivity: "Rascunho",
+      podiatrists: "Podólogos",
+      clinicAdmins: "Admins de clínica",
+      sponsoredAnnouncements: "Anúncios patrocinados",
+      systemUsers: "Utilizadores do sistema",
+      assignedClinic: "Clínica atribuída",
+      assignedPodiatrists: "Podólogos atribuídos",
+      attendedAppointments: "Consultas atendidas",
+      agendaOccupancy: "Ocupação da agenda",
+      salesThisMonth: "Vendas do mês",
+      pendingCollections: "Cobranças pendentes",
+      newPatients: "Pacientes novos",
+      inactivePatients: "Pacientes inativos",
+      podiatristsCount: "Podólogos",
+      last30Days: "Últimos 30 dias",
+      relativeMinutesAgo: "Há menos de 1 hora",
+      relativeHoursAgo: "Há {n} h",
+      relativeYesterday: "Ontem",
+      relativeDaysAgo: "Há {n} dias",
+      actions: {
+        addPatientDesc: "Registar um novo paciente",
+        newSessionDesc: "Abrir uma sessão clínica",
+        calendarDesc: "Ver e gerir a agenda",
+        settingsDesc: "Configurar o espaço de trabalho",
+        clinicDesc: "Gerir podólogos, pacientes e receção",
+        patientsDesc: "Consultar e filtrar pacientes",
+        sessionsDesc: "Rever histórico de sessões",
+        checkoutDesc: "Cobranças, vendas e agenda",
+        usersDesc: "Administrar utilizadores da plataforma",
+        securityDesc: "Métricas e alertas de segurança",
+        sponsoredDesc: "Campanhas geolocalizadas",
+      },
     },
     patients: {
       title: "Pacientes",
@@ -2760,10 +6815,48 @@ export const translations: Record<Language, Translations> = {
       consent: "Consentimento",
       consentGiven: "Consentimento dado",
       consentDate: "Data do consentimento",
+      consentDocumentLink: "Ver documento de consentimento informado",
+      consentLegalNotice: "As assinaturas digitais aqui não têm validade legal. É necessário que o paciente assine o documento impresso para validade jurídica.",
       clinicalHistory: "Histórico Clínico",
       viewHistory: "Ver Histórico",
       lastVisit: "Última Visita",
       totalSessions: "Total de Sessões",
+      engagement: {
+        segmentNew: "Novos",
+        segmentRecurrent: "Recorrentes",
+        segmentRecovered: "Recuperados",
+        inactive3m: "Inativos 3 meses",
+        inactive6m: "Inativos 6 meses",
+        ageAll: "Todas as idades",
+        age0_17: "0–17 anos",
+        age18_35: "18–35 anos",
+        age36_55: "36–55 anos",
+        age56Plus: "56+ anos",
+        ltvDay: "Dia",
+        ltvWeek: "Semana",
+        ltvMonth: "Mês",
+        ltvYear: "Ano",
+        ltvLifetime: "Histórico",
+        visitSingular: "visita",
+        visitPlural: "visitas",
+        paymentSingular: "cobrança",
+        paymentPlural: "cobranças",
+        noSessions: "Sem sessões",
+        daysInactive: "{n} dias inativo",
+        daysWithoutVisit: "{n} dias sem visita",
+        lastAgoDays: "Última há {n} dias",
+        minVisits: "Mín. visitas",
+        maxVisits: "Máx. visitas",
+        ltvLabel: "LTV",
+        ltvPeriodAria: "Período do valor de vida do paciente",
+        agendaDemandTitle: "Procura da agenda",
+        agendaDemandHint: "Veja horas de pico, ocupação e fecho diário em Cobranças → Agenda.",
+        goToCheckoutAgenda: "Ir a Cobranças → Agenda",
+        tablePatient: "Paciente",
+        tableAge: "Idade",
+        tableSegment: "Segmento",
+        yearsSuffix: "anos",
+      },
     },
     sessions: {
       title: "Sessões Clínicas",
@@ -2791,6 +6884,29 @@ export const translations: Record<Language, Translations> = {
       sessionSaved: "Sessão salva",
       checkoutCompleteHint:
         "O cobro na receção só aparece ao tocar em Concluir (paciente a sair). Guardar rascunho apenas guarda sem fechar a consulta.",
+      allStatuses: "Todas",
+      loadingSessions: "Carregando sessões…",
+      createFirstSession: "Crie sua primeira sessão clínica",
+      followUp: {
+        overdueBanner: "Consultas atrasadas",
+        upcomingBanner: "Próximas consultas (7 dias)",
+        overdueChip: "Atrasada",
+        upcomingChip: "Próxima",
+        sectionTitle: "Acompanhamento",
+        nextAppointment: "Próxima consulta",
+        noSpecificReason: "Sem motivo específico",
+      },
+      prescriptions: {
+        sectionTitle: "Receitas / Prescrições",
+        newPrescription: "Nova receita",
+        create: "Criar",
+        creating: "Criando…",
+      },
+      vitals: {
+        title: "Sinais vitais",
+        weightKg: "Peso (kg)",
+        heightCm: "Altura (cm)",
+      },
     },
     calendar: {
       title: "Calendário",
@@ -2879,6 +6995,26 @@ export const translations: Record<Language, Translations> = {
       exportWaLine: "• {{hora}} — {{paciente}} ({{duracion}} min) · {{telefono}}",
       exportWaAttachHint: "📎 O ficheiro agenda-.ics foi descarregado — anexe-o no WhatsApp para importar no calendário do telemóvel.",
       exportWaInvalidPhone: "O telefone do podologista não é válido para WhatsApp. Abra o WhatsApp manualmente e cole a mensagem.",
+      checkInWaiting: "Em espera",
+      checkInInConsult: "Em consulta",
+      checkInDone: "Atendido",
+      checkInNone: "Sem check-in",
+      scheduledMetric: "Agendadas",
+      completedMetric: "Concluídas",
+      noShow: "Não compareceu",
+      waitlist: "Lista de espera",
+      agendaDemandTitle: "Demanda da agenda",
+      agendaDemandDemandTotal: "Demanda total: {n}",
+      goToCheckoutAgendaLong: "Ver análise da agenda em cobranças",
+      pendingBadge: "Pendente",
+      confirmSaveAnyway: "Deseja salvar a consulta mesmo assim?",
+      outsideHoursBlocked: "Fora do horário: a consulta não será salva. A recepção não pode agendar fora do horário permitido.",
+      confirmMarkNoShow: "Marcar esta consulta como não comparecimento (no-show)?",
+      markNoShow: "Não compareceu",
+      noPhoneShort: "sem tel.",
+      preferredDateShort: "pref. {date}",
+      outsideHoursReceptionistNote: "A consulta não será salva: a recepção não pode agendar fora do horário.",
+      outsideHoursContinueNote: "Você pode continuar; será pedida confirmação ao salvar.",
     },
     credits: {
       title: "Créditos",
@@ -2930,11 +7066,35 @@ export const translations: Record<Language, Translations> = {
         success: "Alterações salvas com sucesso.",
         info: "A sessão expira em 5 minutos.",
       },
-      palettePreviewLabels: {
+            palettePreviewLabels: {
         error: "Erro",
         warning: "Aviso",
         success: "Sucesso",
         info: "Info",
+      },
+      palettePreviewUi: {
+        brandShort: "Podo",
+        home: "Início",
+        patients: "Pacientes",
+        preview: "Prévia",
+        sampleCard: "Cartão de exemplo",
+        secondaryText: "Texto secundário",
+        action: "Ação",
+        button: "Botão",
+      },
+      paletteWhatsappPreviewDesc: "Envie mensagens manualmente a partir do seu número.",
+      paintColorPicker: {
+        ariaLabel: "Seletor de cor",
+        basicColors: "Cores básicas:",
+        customColors: "Cores personalizadas:",
+        hideCustom: "« Ocultar cores personalizadas",
+        defineCustom: "Definir cores personalizadas »",
+        colorSolid: "Cor | Sólido",
+        hue: "Matiz",
+        sat: "Sat.",
+        lum: "Lum.",
+        addToCustom: "Adicionar aos personalizados",
+        accept: "Aceitar",
       },
       navMenuTitle: "Menu lateral",
       navMenuHint: "Escolha quais seções aparecem no menu de navegação. As alterações aplicam-se instantaneamente neste dispositivo.",
@@ -2961,6 +7121,451 @@ export const translations: Record<Language, Translations> = {
         whatsappBorder: "Painel (borda)",
         whatsappMuted: "Painel (texto secundário)",
       },
+      tabs: {
+        profile: "Perfil",
+        clinicalHistory: "História clínica",
+        integrations: "Integrações",
+        clinic: "Clínica",
+        billing: "Faturação",
+      },
+      settingsScope: {
+        appliesClinic: "Aplica-se a toda a clínica.",
+        appliesIndependent: "Aplica-se ao seu consultório independente.",
+        appliesPractice: "Aplica-se ao seu consultório.",
+      },
+      watermark: {
+        title: "Marca de água do fundo",
+        hint: "Imagem subtil na área principal. Ajuste tamanho, posição e intensidade.",
+        show: "Mostrar marca de água no fundo",
+        customImage: "Imagem personalizada",
+        useProfessionalLogo: "Usar logótipo profissional",
+        logoHint: "Se escolher o logótipo profissional ou da clínica, usa-se o configurado nesta página.",
+        loading: "A carregar marca de água…",
+        imageTooLarge: "A imagem não pode ultrapassar 2 MB.",
+        invalidFormat: "Formato inválido. Use PNG, JPG ou WebP (máx. 2 MB).",
+        loadImageError: "Erro ao carregar imagem.",
+        saved: "Marca de água guardada.",
+        saveFailed: "Erro ao guardar.",
+        imageLabel: "Imagem",
+        noLogo: "Sem logótipo configurado",
+        noImage: "Sem imagem",
+        upload: "Carregar imagem",
+        formatHint: "JPEG, PNG or WebP · max. 2 MB",
+        removeImage: "Remover imagem",
+        intensity: "Intensidade ({pct}%)",
+        intensityHint: "6–10% usually looks good as a subtle watermark.",
+        size: "Tamanho ({pct}% do painel)",
+        zoom: "Zoom ({pct}%)",
+        zoomHint: "Increase zoom (200%+) to cover the visible area. Combine with centered position.",
+        positionX: "Posição horizontal ({pct}%)",
+        positionY: "Posição vertical ({pct}%)",
+        left: "Esquerda",
+        center: "Centro",
+        right: "Direita",
+        top: "Cima",
+        bottom: "Baixo",
+        saving: "A guardar…",
+        save: "Guardar marca de água",
+      },
+      billing: {
+        title: "Faturação",
+        subscriptionTitle: "Assinatura PodoAdmin",
+        independentPlan: "Plano podólogo independente",
+        status: "Estado",
+        trialPeriod: "Período de teste",
+        trialEnd: "Fim do período de teste",
+        trialActive: "Período de teste de 1 mês ativo. Desfrute do acesso completo até {date}",
+        adminNoSub: "Os administradores da plataforma não necessitam de assinatura.",
+        receptionistHint: "A assinatura da clínica é gerida pelo administrador da clínica.",
+        statusActive: "Ativa",
+        statusPastDue: "Pagamento pendente",
+        statusCancelled: "Cancelada",
+        paymentReceived: "Pagamento recebido. A assinatura será ativada em alguns segundos.",
+        paymentCancelled: "Pagamento cancelado. Pode tentar novamente quando quiser.",
+        cardVerified: "Cartão verificado corretamente.",
+        cardVerifyError: "Erro ao verificar o cartão.",
+        cardMockVerified: "Cartão mock verificado (apenas desenvolvimento).",
+        cardSetupError: "Não foi possível iniciar a verificação do cartão.",
+        trialActivated: "Período de teste ativado.",
+        trialActivateError: "Não foi possível ativar o teste.",
+        checkoutError: "Não foi possível iniciar o pagamento.",
+        portalError: "Não foi possível abrir o portal de faturação.",
+        activateTrialTitle: "Ativar teste gratuito (1 mês)",
+        activateTrialHint: "Verifique o seu e-mail e cartão. Uma conta, um cartão e uma ligação (IP) só podem ser usados uma vez para o teste.",
+        stepEmail: "1. E-mail verificado",
+        emailVerifyHint: "Verifique a sua caixa de entrada{email} e confirme o link de verificação. Se não o recebeu, termine sessão e solicite-o novamente ao registar-se.",
+        stepCard: "2. Cartão",
+        verifyCard: "Verificar cartão (sem cobrança hoje)",
+        activateMonthTrial: "Ativar teste de 1 mês",
+        overLimit: "A sua clínica tem {count} podólogos ativos, acima do plano em linha (até {limit}). Contacte o PodoAdmin para ampliar a capacidade e a faturação.",
+        loading: "A carregar…",
+        clinicPlan: "Plano clínica",
+        activePodiatrists: "Podólogos ativos:",
+        stripeNotConfigured: "O Stripe não está configurado. Defina STRIPE_PRICE_CLINIC_MONTHLY_STANDARD e STRIPE_PRICE_INDEPENDENT_MONTHLY no servidor.",
+        subscribe: "Subscrever — ${amount} USD/mês",
+        manageStripe: "Gerir faturação no Stripe",
+        clinicManagedByAdmin: "A assinatura da sua clínica é gerida pelo administrador da clínica.",
+      },
+      dashboardLogo: {
+        title: "Logótipo no painel",
+        loading: "A carregar opções do dashboard…",
+        saved: "Configuração do logótipo no dashboard guardada.",
+        saveFailed: "Erro ao guardar.",
+        enabledByAdmin: "O administrador da clínica ativou a visualização do logótipo no dashboard.",
+        notShown: "O logótipo não é mostrado no dashboard.",
+        hint: "Cartão no ecrã principal. Ajuste tamanho, posição e intensidade.",
+        show: "Mostrar logótipo no dashboard",
+        opacity: "Opacidade ({pct}%)",
+        size: "Tamanho ({pct}% da área do cartão)",
+        zoom: "Zoom ({pct}%)",
+        zoomHint: "Enlarge or reduce the logo within the area. The card grows to avoid cropping.",
+        positionX: "Posição horizontal ({pct}%)",
+        positionY: "Posição vertical ({pct}%)",
+        left: "Esquerda",
+        center: "Centro",
+        right: "Direita",
+        top: "Cima",
+        bottom: "Baixo",
+        saving: "A guardar…",
+        save: "Guardar logótipo no dashboard",
+      },
+            clinicalLayout: {
+        loadingDesigner: "A carregar o designer…",
+        title: "Designer de história clínica",
+        hint: "Ative ou desative blocos para sessões e impressão. Adicione secções personalizadas conforme o seu fluxo clínico.",
+        restoreDefault: "Restaurar predefinido",
+        saveDesign: "Guardar design",
+        addSection: "Adicionar secção",
+        editSection: "Editar secção",
+        previewForm: "Pré-visualização — formulário de sessão",
+        newSectionDefault: "Nova secção",
+        itemN: "Item {n}",
+        columnN: "Coluna {n}",
+        saved: "Design guardado corretamente.",
+        saveFailed: "Erro ao guardar.",
+        restoreConfirm: "Restaurar todas as secções ao design predefinido? As personalizadas serão perdidas.",
+        saving: "A guardar…",
+        readOnlyHint: "Só leitura: o administrador da clínica configura o design partilhado.",
+        sectionsCount: "Secções ({count})",
+        sectionTitlePlaceholder: "Título da secção",
+        titleLabel: "Título",
+        builtinTitleHint: "Pode personalizar o título visível na sessão e na impressão.",
+        onPatientCard: "Na ficha do paciente",
+        enabled: "Ativa",
+        inSession: "Na sessão",
+        inPrint: "Na impressão",
+        patientCardHelp: "shows or hides the field when creating, editing or viewing a patient.",
+        printAntecedentsHelp: "includes antecedents in the printed podiatric clinical history.",
+        enabledHelp: "includes or excludes the section from the clinical flow.",
+        inSessionHelp: "visible when creating or editing a session.",
+        inPrintHelp: "included in the printable history (only sections with data).",
+        deleteCustomSection: "Eliminar secção personalizada",
+        selectSection: "Selecione uma secção da lista",
+        systemField: "Campo do sistema",
+        noSessionSections: "Nenhuma secção visível na sessão.",
+        remove: "Remover",
+        maxColumns: "Máximo {count} colunas.",
+        checklistItems: "Itens do checklist",
+        yesNoNaRows: "Linhas SIM / NÃO / N/D",
+        options: "Opções",
+        yesNoNaHint: "Each row will be a question in the session.",
+        addItem: "+ Adicionar item",
+        addRow: "+ Adicionar linha",
+        addOption: "+ Adicionar opção",
+        unit: "Unidade",
+        unitPlaceholder: "min, ml, mm, %…",
+        defaultUnit: "unidade",
+        scaleMax: "Escala máxima",
+        conditionalPrompt: "Pergunta SIM/NÃO",
+        conditionalPlaceholder: "Was there a complication?",
+        tableColumns: "Colunas da tabela",
+        tableColumnsHint: "Name each column (e.g. product, quantity, lot).",
+        addColumn: "+ Adicionar coluna",
+        tableRows: "Linhas na sessão",
+      },
+      print: {
+        title: "Configuração de impressões",
+        hint: "Ajuste como se veem a história clínica e as receitas ao imprimir ou guardar como PDF.",
+        preview: "Pré-visualização",
+        loading: "A carregar preferências de impressão…",
+        saved: "Preferências de impressão guardadas.",
+        saveFailed: "Não foi possível guardar.",
+        readOnlyHint: "Só o administrador da clínica pode alterar estas opções. Mostradas em modo de leitura.",
+        generalTitle: "Geral",
+        generalDesc: "Aplica-se a ambos os documentos.",
+        headerAlign: "Alinhamento do cabeçalho",
+        alignLeft: "Esquerda",
+        alignCenter: "Centrada",
+        monochrome: "Imprimir a preto e branco",
+        monochromeHint: "Escala de cinzentos, ideal para poupar tinta.",
+        showGeneratedBy: "Mostrar \"Gerado por PodoAdmin\" no rodapé",
+        footerText: "Texto de rodapé personalizado",
+        footerPlaceholder: "Ex. Horário de atendimento, aviso legal, redes sociais…",
+        historyTitle: "História clínica",
+        historyDesc: "Documento completo do paciente.",
+        showLogo: "Mostrar logótipo no cabeçalho",
+        showLegalData: "Mostrar dados legais",
+        showLegalDataHint: "RFC, CLUES, COFEPRIS and sanitary registry.",
+        includePhotos: "Incluir fotografias clínicas",
+        includePhotosHint: "Requer que o bloco de imagens esteja ativo no designer.",
+        compact: "Design compacto",
+        compactHistoryHint: "Smaller margins, type and diagrams to save pages.",
+        orientation: "Orientação da página",
+        portrait: "Vertical",
+        landscape: "Horizontal",
+        orientationHistoryHint: "Recomendado: vertical para histórias clínicas.",
+        evolutionRows: "Linhas de evolução clínica a imprimir",
+        rxTitle: "Receitas",
+        rxDesc: "Formato das receitas / prescrições.",
+        showWeight: "Mostrar peso do paciente",
+        showHeight: "Mostrar altura do paciente",
+        showNextVisit: "Mostrar próxima visita",
+        showNotes: "Mostrar notas adicionais",
+        showSignatureCedula: "Mostrar cédula/registo na assinatura",
+        compactRxHint: "Smaller margins and type to use less space.",
+        orientationRxHint: "Recomendado: horizontal para receitas.",
+        folioPosition: "Posição do folio",
+        folioInline: "No cabeçalho (recomendado)",
+        folioBar: "Barra destacada",
+        folioHint: "Inline folio saves a full line and usually fits on one page.",
+        saving: "A guardar…",
+        save: "Guardar preferências",
+        reset: "Repor valores predefinidos",
+        previewSimHint: "Approximate simulation; the final document uses real patient data.",
+        tabHistory: "História clínica",
+        tabRx: "Receita",
+        statusMonochrome: "Black and white mode on · ",
+        statusHeaderCenter: "Centered header",
+        statusHeaderLeft: "Left-aligned header",
+        statusEvolutionRows: " · {count} evolution rows",
+        statusCompact: " · compact layout",
+        statusFolioInline: " · folio in header",
+        demoClinicName: "Clínica Podológica Demo",
+        demoLicense: "License: 12345678",
+        demoLegal: "RFC: XAXX010101000 · CLUES: DFSSA000001",
+        demoContact: "555 123 4567 · demo@clinic.com",
+        demoHistoryTitle: "PODIATRIC CLINICAL HISTORY · Folio: PREMIUM-001",
+        demoPatientSection: "I. Patient data",
+        demoPatientCells: ["Name: Laura M.", "ID: INE-884422", "Tel: 555…", "DOB: 12/03/1985"],
+        demoEvolutionSection: "IV. Clinical evolution",
+        demoColDate: "Date",
+        demoColDiagnosis: "Diagnosis",
+        demoColTreatment: "Treatment",
+        demoDiagnosis: "Onychocryptosis",
+        demoTreatment: "Debridement",
+        demoMoreRows: "+ {count} more rows…",
+        demoPhotos: "Photographs",
+        demoFooter: "PodoAdmin · preview",
+        demoDoctor: "Dr. Podólogo Demo",
+        demoCedula: "License: 12345678",
+        demoTel: "Tel: 555 123 4567",
+        demoFolio: "Folio:",
+        demoFolioBar: "RX FOLIO:",
+        demoPatientData: "PATIENT DATA",
+        demoName: "Name: Laura M.",
+        demoDni: "ID: INE-884422",
+        demoAge: "Age: 41 years",
+        demoWeight: "Weight: 72.5 kg",
+        demoHeight: "Height: 165 cm",
+        demoPrescription: "Prescription / Instructions",
+        demoPrescriptionBody: "Apply antifungal cream twice daily for 14 days.",
+        demoNextVisit: "Next visit",
+        demoNextVisitDate: "Friday, August 15, 2026",
+        demoNotes: "Additional notes",
+        demoNotesBody: "Avoid closed footwear.",
+        demoSignature: "Professional signature",
+        logoPlaceholder: "LOGO",
+      },
+      profileAvatar: {
+        changeTitle: "Alterar foto de perfil",
+        invalidFormat: "Formato inválido. Use PNG, JPG ou WebP.",
+        tooLarge: "A imagem não pode ultrapassar 2 MB.",
+        saveFailed: "Não foi possível guardar a foto.",
+        processFailed: "Não foi possível processar a imagem.",
+        removeFailed: "Não foi possível remover a foto.",
+        saving: "A guardar…",
+        changePhoto: "Alterar foto",
+        uploadPhoto: "Carregar foto",
+        removePhoto: "Remover foto",
+        hint: "JPG, PNG ou WebP. Máx. 2 MB. Mostrada no menu lateral.",
+      },
+      profile: {
+        title: "Perfil do usuário",
+        name: "Nome",
+        email: "Email",
+        readOnlyHint: "Os dados do perfil não podem ser editados aqui. Contate o administrador se precisar de alterações.",
+      },
+      cooldown: {
+        logoPolicy: "Após guardar, o logo fica bloqueado por 15 dias. Depois desse período poderá carregá-lo ou alterá-lo novamente.",
+        logoBlocked: "O logo só pode ser alterado a cada 15 dias.",
+        clinicInfoPolicy: "Após guardar, os dados da clínica ficam bloqueados por 15 dias. Depois desse período poderá modificá-los novamente.",
+        clinicInfoBlocked: "Os dados só podem ser alterados a cada 15 dias.",
+        professionalInfoPolicy: "Após guardar, estes dados ficam bloqueados por 15 dias. Depois desse período poderá modificá-los novamente.",
+        professionalInfoBlocked: "Os dados só podem ser alterados a cada 15 dias.",
+        profilePolicy: "Nome e e-mail só podem ser alterados por um administrador. Devem decorrer 15 dias entre alterações.",
+        clinicReadOnlyPolicy: "As informações da clínica são geridas pelo administrador. Devem decorrer 15 dias entre alterações.",
+        genericBlocked: "Os dados só podem ser alterados a cada 15 dias.",
+      },
+      clinic: {
+        fallbackName: "Clínica {id}",
+        errors: {
+          nameCodeRequired: "Nome e código da clínica são obrigatórios.",
+          invalidWebsite: "A URL do site não é válida. Verifique se está corretamente configurada.",
+        },
+      },
+      consent: {
+        title: "Consentimento informado",
+        sharedTitle: "Texto partilhado da clínica",
+        sharedBody: "Este texto é gerido pelo administrador da clínica e usado no consentimento dos pacientes.",
+        currentVersion: "Versão atual: {version}",
+        empty: "Sem texto configurado.",
+        editHint: "Pode editar o texto; cada gravação incrementa a versão.",
+        placeholder: "Redija aqui os termos e o consentimento informado que o paciente deve aceitar.",
+        save: "Guardar consentimento",
+        saveError: "Erro ao guardar o consentimento.",
+      },
+      logo: {
+        empty: "Sem logo",
+        previewAlt: "Pré-visualização",
+        upload: "Carregar imagem",
+        formatHint: "PNG, JPG ou WebP · máx. 2MB",
+        save: "Guardar logo",
+        remove: "Remover logo",
+        errors: {
+          invalidFormat: "Formato inválido. Use PNG, JPG ou WebP (máx. 2MB).",
+          tooLarge: "O ficheiro é demasiado grande. Máximo 2MB.",
+          processFailed: "Não foi possível processar a imagem.",
+          cooldown: "O logo só pode ser alterado a cada 15 dias.",
+          saveFailed: "Não foi possível guardar o logo. Tente novamente.",
+        },
+      },
+      clinicLogo: {
+        title: "Logo da clínica",
+        sharedTitle: "Logo partilhado da clínica",
+        sharedBody: "Todos os profissionais da clínica veem este logo em documentos e impressões.",
+        alt: "Logo da clínica",
+        uploadHint: "Carregue o logo que identifica a sua clínica na aplicação e documentos.",
+      },
+      professionalLogo: {
+        title: "Logo profissional",
+        uploadHint: "Logo pessoal para documentos e impressão quando não há logo de clínica.",
+        alt: "Logo profissional",
+      },
+      adminLogo: {
+        title: "Logo da clínica",
+        body: "Os logos das clínicas são geridos pelos administradores de cada clínica. Como {role}, não precisa de um logo pessoal.",
+      },
+      assignedPodiatrists: {
+        title: "Podólogos atribuídos",
+        clinicHint: "Podólogos da sua clínica a quem pode prestar serviço. Marque ou desmarque para gerir consultas e pacientes de cada um.",
+        independentHint: "Podólogo que o atribuiu. Pode criar pacientes e gerir o calendário deles.",
+        emptyClinic: "Não há podólogos na sua clínica.",
+        save: "Guardar atribuição",
+        empty: "Sem podólogo atribuído.",
+      },
+      receptionist: {
+        title: "Recepcionista",
+        description: "Crie e gira a recepcionista vinculada à sua conta ou clínica.",
+        status: {
+          blocked: "Bloqueada",
+          disabled: "Desabilitada",
+          active: "Ativa",
+        },
+        unblock: "Desbloquear",
+        block: "Bloquear",
+        enable: "Habilitar",
+        disable: "Desabilitar",
+        delete: "Eliminar",
+        oneOnlyHint: "Só pode ter uma recepcionista vinculada. Elimine-a para criar outra.",
+        fields: {
+          name: "Nome",
+          email: "Email",
+          initialPassword: "Senha inicial",
+        },
+        createdSuccess: "Recepcionista criada com sucesso.",
+        create: "Criar recepcionista",
+        createError: "Erro ao criar recepcionista",
+        confirmDelete: "Eliminar esta recepcionista? Esta ação não pode ser desfeita.",
+      },
+      clinicInfo: {
+        title: "Informação da clínica",
+        subtitle: "Dados de contacto e fiscais da sua clínica.",
+        setupBanner: "Complete os dados da sua clínica. Enquanto o nome for provisório ou faltarem contacto e morada, aparecerão avisos.",
+        clinicName: "Nome da clínica *",
+        clinicNamePlaceholder: "A Minha Clínica Podológica",
+        clinicCode: "Código (para folhas) *",
+        clinicCodePlaceholder: "MICP",
+        clinicCodeHint: "Máx. 8 caracteres. Usado em folhas (ex: MICP-2025-001)",
+        country: "País (prefixo telefónico)",
+        countryHint: "Prefixo predefinido para telefones da clínica.",
+        phone: "Telefone",
+        email: "Email",
+        emailPlaceholder: "clinica@exemplo.com",
+        address: "Morada",
+        addressPlaceholder: "Rua Principal 45, 2º Esq.",
+        city: "Cidade",
+        cityPlaceholder: "Lisboa",
+        postalCode: "Código postal",
+        postalCodePlaceholder: "1000-001",
+        licenseNumber: "Nº licença/registo",
+        licensePlaceholder: "CS-28/2024-POD-001",
+        website: "Site (opcional)",
+        websitePlaceholder: "https://www.minhaclinica.com",
+        legalName: "Razão social (NOM)",
+        rfc: "RFC",
+        clues: "CLUES",
+        cofepris: "Registo COFEPRIS",
+        readOnlyTitle: "Detalhes da sua clínica",
+        readOnlyBody: "Só leitura. O administrador da clínica gere estes dados.",
+        labels: {
+          name: "Nome:",
+          phone: "Telefone:",
+          email: "Email:",
+          address: "Morada:",
+          license: "Licença:",
+          consent: "Consentimento:",
+          web: "Web:",
+        },
+        viewDocument: "Ver documento",
+      },
+      practice: {
+        title: "Informação do consultório",
+        subtitle: "Dados da sua prática profissional independente.",
+        professionalName: "Nome profissional",
+        namePlaceholder: "Dr. João Silva",
+        country: "País (prefixo telefónico)",
+        countryHint: "Prefixo predefinido para o seu consultório.",
+        emailPlaceholder: "consulta@exemplo.com",
+        sanitaryRegistry: "Registo sanitário",
+        cedula: "Cédula profissional",
+        cedulaPlaceholder: "12345678",
+      },
+      credentials: {
+        title: "Credenciais profissionais",
+        subtitle: "Telefone de contacto e número de registo profissional.",
+        contactPhoneTitle: "Telefone de contacto",
+        contactPhoneHint: "Visível para pacientes e em documentos quando aplicável.",
+        country: "País",
+        mobile: "Telemóvel",
+        savePhone: "Guardar telefone",
+        registryNumber: "Nº de registo profissional",
+        registryPlaceholder: "REG-2024-001",
+        save: "Guardar credenciais",
+        clinicInfoTitle: "Informação da clínica",
+        clinicInfoBody: "Como membro de uma clínica, estes dados são geridos pelo administrador.",
+        clinicName: "Nome da clínica",
+      },
+      common: {
+        saved: "Guardado",
+        readOnly: "Só leitura",
+        saveInfo: "Guardar informação",
+        emDash: "—",
+        ellipsis: "...",
+      },
+      errors: {
+        connectionSave: "Erro de ligação ao guardar.",
+      },
+      supportSenderLabel: "PodoAdmin",
     },
     support: {
       title: "Contactar PodoAdmin",
@@ -2983,6 +7588,26 @@ export const translations: Record<Language, Translations> = {
       reopenConversation: "Reabrir conversa",
       from: "De",
       sent: "Enviado",
+    },
+    layout: {
+      brandFallback: "PodoAdmin",
+      unlockSidebarVisible: "Desbloquear (bloqueado visível)",
+      unlockSidebarHidden: "Desbloquear (bloqueado oculto)",
+      lockSidebarVisible: "Bloquear barra lateral visível",
+      toggleSidebarLock: "Alternar bloqueio da barra lateral",
+      hideMenu: "Ocultar menu",
+      showMenu: "Mostrar menu",
+      pendingAccessBanner: "O seu acesso clínico está pendente. Ative o pagamento em Faturação ou aguarde que um administrador ative a sua conta.",
+      goToBilling: "Ir para faturação",
+      goToSupport: "Ir para suporte",
+      subscriptionInactiveBanner: "A sua assinatura não está ativa. Renove para continuar a usar a plataforma.",
+      closeMenu: "Fechar menu",
+      sponsored: "Patrocinado",
+      closeAnnouncement: "Fechar anúncio",
+      promoCodeOnSite: "Código no site do organizador:",
+      seeMore: "Ver mais",
+      interested: "Tenho interesse",
+      interestRegistered: "Interesse registrado ✓",
     },
     whatsapp: {
       title: "WhatsApp Business",
@@ -3043,7 +7668,8 @@ export const translations: Record<Language, Translations> = {
         "Enviado como 4.º parâmetro do modelo em lembretes automáticos e manuais (se não escrever outra nota ao enviar). Máximo 500 caracteres.",
       templateLanguageLabel: "Idioma do modelo",
       templateLanguagePlaceholder: "pt",
-      integrationActive: "Integração ativa (envios habilitados quando o cron estiver ativo)",
+            integrationActive: "Integração ativa (envios habilitados quando o cron estiver ativo)",
+      receptionistApiEnabled: "Permitir à receção usar o envio automático pela API Meta (lembretes e histórico).",
       save: "Salvar configuração",
       saving: "Salvando…",
       testConnection: "Testar conexão",
@@ -3072,6 +7698,168 @@ export const translations: Record<Language, Translations> = {
       successTest: "Conexão correta com a Meta.",
       successTestWithPhone: "Conexão correta ({phone})",
       successDisconnected: "WhatsApp desconectado.",
+      campaigns: {
+        title: "Campanhas WhatsApp",
+        pageHint: "Difunda mensagens a pacientes com telefone. Pode usar WhatsApp Web (manual, sem API) ou o envio automático pela API Meta se estiver configurado.",
+        webTitle: "Campanhas por WhatsApp Web",
+        webHint: "Crie o rascunho da mensagem e envie paciente a paciente com wa.me. Sem configurar a Meta: você toca em Enviar no WhatsApp.",
+        openWeb: "Abrir WhatsApp Web",
+        newDraft: "Nova campanha (rascunho)",
+        metaApiTitle: "Envio automático pela API Meta",
+        metaApiHint: "Requer WhatsApp Business configurado em Definições. Pode ignorar esta secção se só usar WhatsApp Web.",
+        denied: "Sem permissão para campanhas WhatsApp.",
+        patientsLoadError: "Erro pacientes",
+        draftCreated: "Campanha criada em rascunho",
+        createError: "Erro ao criar",
+        sendConfirm: "Enviar esta campanha pela API Meta a todos os pacientes com telefone?",
+        apiSendResult: "API: enviados {sent}, falhados {failed}",
+        apiSendError: "Erro ao enviar pela API",
+        namePlaceholder: "Nome interno (ex. Promo verão)",
+        messagePlaceholder: "Mensagem com variáveis, ex:\nOlá {{nombre}}, informamos que...",
+        variablesHint: "Variáveis:",
+        variablesList: "{{nombre}} (nome), {{apellido}} (apelido), {{nombre_completo}} (nome completo)",
+        clinicOnlyFilter: "Só pacientes da minha clínica",
+        recipientsWithPhone: "Destinatários com telefone válido:",
+        recipientsMismatchHint: "Há {count} paciente(s) na sua lista; verifique se têm telefone com pelo menos 8 dígitos ou desmarque «Só pacientes da minha clínica».",
+        patientsLoadFailed: "Não foi possível carregar os pacientes. Verifique permissões ou recarregue a página.",
+        noPatientsYet: "Ainda não há pacientes na lista.",
+        saveDraft: "Guardar rascunho",
+        assistantTitle: "Assistente de envio — {name}",
+        assistantPatientOf: "Paciente {current} de {total}:",
+        openWhatsApp: "Abrir WhatsApp",
+        assistantDone: "Assistente concluído: {count} pacientes.",
+        finish: "Concluir",
+        nextPatient: "Próximo paciente",
+        draftsToSend: "Rascunhos para enviar",
+        loading: "A carregar…",
+        recipientsCount: "{count} destinatário(s) com WhatsApp",
+        sendAssistant: "Assistente de envio",
+        hideList: "Ocultar lista",
+        showList: "Ver lista",
+        noValidRecipients: "Sem destinatários válidos.",
+        noDrafts: "Não há rascunhos. Crie uma campanha acima.",
+        connected: "(ligado)",
+        optional: "(opcional)",
+        receptionistApiHint: "Envio automático ativado pelo seu podólogo.",
+        receptionistApiDisabled: "O seu podólogo ainda não ativou o envio automático pela API Meta para a receção.",
+        configureApiHint: "Configure WhatsApp Business em Definições para enviar campanhas pela API Meta.",
+        allCampaigns: "Todas as campanhas",
+        sentAt: "enviada {date}",
+        sending: "A enviar…",
+        sendByApi: "Enviar pela API",
+        noCampaigns: "Não há campanhas",
+      },
+      messages: {
+        title: "Mensagens WhatsApp",
+        webTitle: "Lembretes por WhatsApp Web",
+        webHint: "Sem configurar a API da Meta. Abra o WhatsApp Web ou a app com a mensagem pronta; você envia manualmente.",
+        openWeb: "Abrir WhatsApp Web",
+        metaApiTitle: "Envio automático com API Meta",
+        metaApiHint: "Requer API Meta configurada em Definições → WhatsApp.",
+        historyTitle: "Histórico (API automática)",
+        historyHint: "Registo de envios automáticos pela API Meta. Os lembretes por WhatsApp Web não ficam registados aqui.",
+        denied: "Não tem permissão para ver esta secção.",
+        patientFallback: "Paciente",
+        defaultExtraNote: "Por favor confirme a sua presença respondendo a esta mensagem.",
+        noValidPhone: "Não há telefone válido para {name}.",
+        selectAppointmentFirst: "Selecione uma consulta primeiro.",
+        reminderSendError: "Não foi possível enviar o lembrete.",
+        reminderSent: "Lembrete enviado corretamente.",
+        defaultMessage: "Mensagem predefinida",
+        variablesHint: "Variáveis:",
+        variablesList: "{{nombre}} (nome), {{fecha}} (data), {{hora}} (hora), {{nota}} (nota)",
+        extraNotePlaceholder: "Nota extra para todos os envios de hoje (opcional)",
+        saved: "Guardado",
+        saveMessage: "Guardar mensagem",
+        tomorrowAppointments: "Consultas de amanhã ({date})",
+        loadingAppointments: "A carregar consultas…",
+        noTomorrowAppointments: "Não há consultas agendadas para amanhã.",
+        noPhone: "Sem telefone",
+        sendViaWhatsApp: "Enviar por WhatsApp",
+        connected: "(ligado)",
+        optional: "(opcional)",
+        receptionistApiHint: "Envio automático ativado pelo seu podólogo. Os lembretes são enviados sem abrir o WhatsApp Web.",
+        configLoadError: "Não foi possível obter o estado do WhatsApp.",
+        connectedLabel: "Ligado",
+        apiStatusLabel: "Estado API",
+        templateLabel: "Modelo",
+        templateUndefined: "Não definido",
+        lastErrorLabel: "Último erro",
+        noErrors: "Sem erros",
+        sendAutoReminder: "Enviar lembrete automático",
+        selectUpcomingAppointment: "Selecione uma consulta próxima",
+        sending: "A enviar...",
+        sendByApi: "Enviar pela API",
+        singleExtraNotePlaceholder: "Nota extra para este envio (opcional)",
+        lastApiSends: "Últimos envios por API",
+        refresh: "Atualizar",
+        loadingHistory: "A carregar histórico...",
+        configureForHistory: "Configure WhatsApp Business em Definições para usar o envio automático e ver o histórico aqui.",
+        noApiSends: "Sem envios por API. Os lembretes por WhatsApp Web não ficam registados aqui.",
+        colDate: "Data",
+        colPatient: "Paciente",
+        colPhone: "Telefone",
+        colStatus: "Estado",
+        colNote: "Nota",
+        emDash: "—",
+        yes: "Sim",
+        no: "Não",
+      },
+    },
+    clinicalTools: {
+      title: "Ferramentas clínicas",
+      denied: "Não tem permissão para aceder a esta secção.",
+      tabTemplates: "Modelos de sessão",
+      tabInventory: "Inventário",
+      tabReferrals: "Encaminhamentos",
+      templatesHint: "Defina históricos clínicos predefinidos (calo, unha encravada, etc.) para os carregar ao abrir uma sessão.",
+      newTemplate: "Novo modelo",
+      create: "Criar",
+      creating: "A criar…",
+      category: "Categoria",
+      inventoryName: "Nome do material",
+      unit: "Unidade",
+      add: "Adicionar",
+      emptyInventory: "Sem material registado",
+      patientId: "ID do paciente",
+      referTo: "Encaminhar para",
+      reason: "Motivo",
+      registerReferral: "Registar encaminhamento",
+      emptyReferrals: "Sem encaminhamentos",
+      nameRequired: "Indique um nome para o modelo.",
+      templateCreated: "Modelo criado. Edite-o para escolher secções e conteúdo.",
+      createFailed: "Não foi possível criar o modelo.",
+      presetCreated: "Modelo «{name}» criado.",
+      templateUpdated: "Modelo atualizado.",
+      saveFailed: "Não foi possível guardar o modelo.",
+      deleteConfirm: "Eliminar o modelo «{name}»? Esta ação não pode ser desfeita.",
+      templateDeleted: "Modelo eliminado.",
+      deleteFailed: "Não foi possível eliminar o modelo.",
+      invalidQuantity: "Indique uma quantidade válida (0 ou mais).",
+      defaultUnit: "unidade",
+      inventoryAdded: "Material registado.",
+      genericError: "Erro",
+      referralAdded: "Encaminhamento registado.",
+      namePlaceholder: "Nome (ex. Calosidade 1.º dedo)",
+      scopeLabel: "Âmbito:",
+      scopePersonal: "Só eu",
+      scopeClinic: "Consultório (todos os podólogos)",
+      clinicAdminHint: "Como administrador de clínica, os modelos são partilhados com todo o consultório.",
+      sectionsCount: "{count} secções",
+      close: "Fechar",
+      edit: "Editar",
+      deleting: "A eliminar…",
+      delete: "Eliminar",
+      nameLabel: "Nome",
+      shareWithClinic: "Partilhar com o consultório",
+      saving: "A guardar…",
+      saveTemplate: "Guardar modelo",
+      emptyTemplates: "Sem modelos. Crie um vazio ou use os atalhos de calosidade / unha encravada.",
+      quantityPlaceholder: "Quantidade",
+      quantityAria: "Quantidade",
+      patientPrefix: "Paciente:",
+      scopeShared: "Consultório",
+      scopePersonalShort: "Pessoal",
     },
     systemDiagnostics: {
       title: "Estado do sistema",
@@ -3198,6 +7986,292 @@ export const translations: Record<Language, Translations> = {
       subjectRequired: "O assunto é obrigatório",
       recipientRequired: "Selecione pelo menos um destinatário",
       fromAdmin: "Mensagem do Administrador",
+    },
+
+    clinic: {
+      title: "Gestão da clínica",
+      tabOverview: "Resumo",
+      tabPodiatrists: "Podólogos",
+      tabPatients: "Pacientes",
+      tabReceptionists: "Recepcionistas",
+      statPodiatrists: "Podólogos",
+      statTotalPatients: "Total de pacientes",
+      statSessionsThisMonth: "Sessões este mês",
+      vsPreviousMonth: "% vs. mês anterior",
+      agendaTitle: "Agenda (últimos 30 dias)",
+      agendaSubtitle: "Pacientes atendidos, faltas e cancelamentos registados no calendário",
+      allPodiatrists: "Todos os podólogos",
+      attended: "Atendidos",
+      noShow: "Faltaram",
+      noShowRateOfResolved: "{n}% do total resolvido",
+      cancelled: "Canceladas",
+      cancellationRate: "Taxa de cancelamento: {n}%",
+      pending: "Pendientes",
+      demandTitle: "Procura da agenda",
+      demandHint: "Procura total (30 dias): {n} consultas. Detalhe de horas de pico, ocupação e fecho diário em Cobranças → Agenda.",
+      openCheckoutAgenda: "Abrir Cobranças → Agenda",
+      attendedPerDay: "Atendidos por dia",
+      loadingAgendaMetrics: "A carregar métricas da agenda…",
+      activityByPodiatrist: "Atividade por podólogo",
+      sessionsCount: "{n} sessões",
+      podiatristsLimit: "Podólogos: {current} de {limit} (limite definido pela PodoAdmin)",
+      podiatristsNoLimit: "Podólogos de la clínica. Sem limite definido.",
+      createPodiatrist: "Criar podólogo",
+      colPodiatrist: "Podólogo",
+      colEmail: "Email",
+      colLicense: "Licença",
+      colPatients: "Pacientes",
+      colSessionsMonth: "Sessões (mês)",
+      licenseNotRegistered: "Não registada",
+      noPodiatrists: "Não há podólogos nesta clínica",
+      totalIndexed: "Total indexados",
+      searchPatientPlaceholder: "Pesquisar paciente (nome, email, telefone)...",
+      activityAll: "Atividade: todos",
+      visitsRangeChip: "Visitas {min}–{max}",
+      loadingPatients: "A carregar pacientes…",
+      colPhone: "Telefone",
+      colVisits: "Visitas",
+      colAssignedPodiatrist: "Podólogo atribuído",
+      colLastSession: "Última sessão",
+      colActions: "Ações",
+      reassign: "Reatribuir",
+      noPatientsFound: "Nenhum paciente encontrado",
+      receptionistsHint: "As recepcionistas têm acesso sem créditos para criar pacientes e criar/editar consultas no calendário dos podólogos que lhes atribuir.",
+      receptionistsActive: "Ativas: {active} / {max}. Devem alterar a palavra-passe no primeiro início de sessão.",
+      createReceptionist: "Criar recepcionista",
+      colName: "Nome",
+      colAssignedPodiatrists: "Podólogos atribuídos",
+      unassigned: "Sem atribuição",
+      podiatristsAction: "Podólogos",
+      unblock: "Desbloquear",
+      block: "Bloquear",
+      enable: "Ativar",
+      disable: "Desativar",
+      noReceptionists: "Não há recepcionistas. Crie uma para gerir consultas e pacientes dos podólogos da clínica.",
+      reassignTitle: "Reatribuir paciente",
+      reassignUseCase: "Caso de uso: Quando um podólogo não pode atender por ausência ou indisponibilidade, pode reatribuir os pacientes a outro profissional da clínica.",
+      currentPodiatrist: "Podólogo atual",
+      newPodiatrist: "Novo podólogo atribuído",
+      selectPodiatrist: "Selecionar podólogo...",
+      unknownPodiatrist: "Desconhecido",
+      createPodiatristSubtitle: "O novo podólogo será atribuído à sua clínica.",
+      initialPasswordMin8: "Palavra-passe inicial (mín. 8 caracteres)",
+      createReceptionistSubtitle: "Serão atribuídos todos os podólogos da clínica. Deverá alterar a palavra-passe no primeiro acesso.",
+      initialPassword: "Palavra-passe inicial",
+      assignedPodiatristsTitle: "Podólogos atribuídos",
+      noPodiatristsInClinic: "Não há podólogos na clínica.",
+      confirmDeleteReceptionist: "Eliminar a recepcionista {name} ({email})? Esta ação não pode ser desfeita.",
+      maxActiveReceptionists: "Máximo de {max} recepcionistas ativas na clínica.",
+      emailTaken: "Já existe uma conta com este email",
+      createReceptionistError: "Erro ao criar recepcionista",
+      saveAssignmentError: "Erro ao guardar atribuição",
+      createPodiatristError: "Erro ao criar podólogo",
+      passwordMin8: "A palavra-passe deve ter pelo menos 8 caracteres",
+    },
+    auditLog: {
+      title: "Log de auditoria",
+      actionLabels: {
+        LOGIN_SUCCESS: "Início de sessão",
+        LOGIN_FAILED: "Início de sessão falhou",
+        LOGOUT: "Encerrar sessão",
+        PASSWORD_CHANGED: "Senha alterada",
+        PASSWORD_RESET_REJECTED: "Redefinição de senha rejeitada",
+        PASSWORD_RESET_APPROVED: "Redefinição de senha aprovada",
+        PASSWORD_RESET_COMPLETED: "Redefinição de senha concluída",
+        PASSWORD_RESET_REQUESTED: "Solicitação de redefinição de senha",
+        CREATE: "Criação",
+        CREATE_USER: "Usuário criado",
+        UPDATE: "Atualização",
+        DELETE: "Exclusão",
+        DELETE_USER: "Usuário excluído",
+        COMPLETE: "Concluído",
+        EXPORT: "Exportação",
+        PRINT: "Impressão",
+        UPDATE_DRAFT: "Rascunho atualizado",
+        REASSIGN: "Reatribuição",
+        TRANSFER: "Transferência",
+        ADD_CREDITS: "Créditos adicionados",
+        SUBTRACT_CREDITS: "Créditos subtraídos",
+        ADMIN_CREDIT_ADJUSTMENT: "Ajuste de créditos (admin)",
+        ALERT_MULTIPLE_PRINT_VIOLATIONS: "Alerta: múltiplas impressões",
+        PRINT_VIOLATION_FORM: "Tentativa de impressão pelo formulário",
+      },
+      entityLabels: {
+        authentication: "Autenticação",
+        session: "Sessão",
+        patient: "Paciente",
+        prescription: "Receita",
+        reassignment: "Reatribuição",
+        credit: "Créditos",
+        user: "Usuário",
+        user_data: "Dados do usuário",
+        clinic: "Clínica",
+        professional_info: "Dados profissionais",
+        professional_credentials: "Credenciais",
+        logo: "Logo",
+        message: "Mensagem",
+        clinical_history: "Histórico clínico",
+        receptionist: "Recepcionista",
+        registration_list: "Lista de registro",
+        support_conversation: "Conversa de suporte",
+      },
+      filters: {
+        title: "Filtros",
+        clear: "Limpar filtros",
+        search: "Buscar...",
+        allActions: "Todas as ações",
+        allTypes: "Todos os tipos",
+        allUsers: "Todos os usuários",
+        from: "De",
+        to: "Até",
+      },
+      empty: {
+        title: "Sem registros",
+        description: "Nenhum registro de auditoria encontrado com os filtros selecionados",
+      },
+      totalRecords: "Total de registros",
+      actionTypes: "Tipos de ação",
+      entityTypes: "Tipos de entidade",
+      activeUsers: "Usuários ativos",
+      topUsers: "Usuários mais ativos",
+      recordsCount: "{n} registros",
+      ofTotal: "(de {total} no total)",
+      fullDetails: "Detalhes completos",
+      userLinkedHint: "Cada registro está vinculado ao usuário que realizou a ação. O Log ID identifica unicamente este evento.",
+      userLabel: "Usuário:",
+      userIdLabel: "ID do usuário:",
+      logIdLabel: "ID do registro (log):",
+      resourceIdLabel: "ID do recurso:",
+      pageOf: "Página {current} de {total}",
+      summaries: {
+        loginSuccess: "Início de sessão bem-sucedido",
+        loginSuccessEmail: "Início de sessão bem-sucedido: {email}",
+        with2fa: "(2FA ativado)",
+        without2fa: "(sem 2FA)",
+        logout: "Sessão encerrada.",
+        passwordChanged: "Senha alterada pelo usuário.",
+        loginFailed: "Tentativa de início de sessão falhou.",
+        loginFailedEmail: "Tentativa de início de sessão falhou: {email}",
+        passwordResetRejected: "Solicitação de redefinição de senha rejeitada.",
+        passwordResetApproved: "Redefinição de senha aprovada por um administrador.",
+        passwordResetCompleted: "O usuário concluiu a redefinição de senha.",
+        passwordResetRequested: "Solicitação de redefinição de senha enviada.",
+        patientPrefix: "Paciente: {name}",
+        userPrefix: "Usuário: {name}",
+        clinicPrefix: "Clínica: {name}",
+      },
+    },
+    securityMetrics: {
+      title: "Métricas de segurança",
+      subtitle: "Métricas de segurança, alertas ativos e eventos recentes",
+      last24h: "Últimas 24 h",
+      last7days: "Últimos 7 dias",
+      last30days: "Últimos 30 dias",
+      refresh: "Atualizar",
+      loadError: "Não foi possível carregar as métricas",
+      criticalEvents: "Eventos críticos",
+      failedLogins: "Logins falhos",
+      unreadAlerts: "Alertas não lidos",
+      summaryByType: "Resumo por tipo",
+      loading: "Carregando...",
+      noEventsInPeriod: "Sem eventos no período selecionado.",
+      activeAlerts: "Alertas ativos",
+      noSystemAlerts: "Não há alertas de sistema recentes.",
+      recentAccessGeo: "Acessos recentes (geolocalização)",
+      date: "Data",
+      event: "Evento",
+      userRole: "Usuário / função",
+      ip: "IP",
+      location: "Localização",
+      noAccessYet: "Nenhum acesso registrado ainda. Faça login para gerar dados.",
+      loginOk: "Login OK",
+      loginFailed: "Login falhou",
+      recentFailedLogins: "Últimos logins falhos",
+      emailDetail: "E-mail / detalhe",
+      noRecentRecords: "Sem registros recentes.",
+      attemptNumber: "Tentativa #{n}",
+      metricLabels: {
+        failed_login: "Logins falhos",
+        successful_login: "Logins bem-sucedidos",
+        twoFaFailed: "2FA falhou",
+        captcha_failed: "CAPTCHA falhou",
+        suspicious_activity: "Atividade suspeita",
+      },
+    },
+    supportPage: {
+      title: "Suporte",
+      adminSubtitle: "Mensagens de usuários e listas de registro para aprovação.",
+      tabMessages: "Mensagens",
+      tabLists: "Criar listas",
+      conversations: "Conversas",
+      noConversations: "Não há conversas",
+      selectConversation: "Selecione uma conversa para ver as mensagens e responder.",
+      supportAgent: "Suporte",
+      registrationLists: "Listas de registro",
+      newList: "Nova lista",
+      newListNamePlaceholder: "Nome da nova lista...",
+      listsEmptyHint: "Crie listas de registros (cursos, eventos) e envie-as para o administrador aprovar e importar.",
+      deleteList: "Excluir",
+      deleteListConfirm: "Tem certeza de que deseja excluir esta lista?",
+      createListError: "Erro ao criar a lista",
+      defaultListName: "Nova lista",
+      invalidEmail: "Introduza um e-mail válido.",
+      downloadCsv: "Baixar CSV",
+      markPaidToExport: "Marque pelo menos um registro como pago para exportar.",
+      submitForApproval: "Enviar para aprovação",
+      addEntry: "Adicionar registro",
+      namePlaceholder: "Nome",
+      emailPlaceholder: "E-mail",
+      roleIndependent: "Podólogo independente",
+      roleClinicAdmin: "Admin da clínica",
+      podiatristLimitLabel: "Limite de podólogos:",
+      podiatristLimitPlaceholder: "Ex: 5",
+      add: "Adicionar",
+      clinicAdminLimitHint: "Os podólogos da clínica serão limitados a este número. Recepcionistas não contam no limite.",
+      noEntries: "Não há registros nesta lista.",
+      paid: "Pago",
+      unpaid: "Não pago",
+      pendingPayment: "Pendentes de pagamento ({n})",
+      paidSection: "Pagos (exportados no CSV) ({n})",
+      selectOrCreateList: "Selecione uma lista ou crie uma nova.",
+      statusDraft: "Rascunho",
+      statusPending: "Pendente",
+      statusApproved: "Aprovada",
+      statusRejected: "Rejeitada",
+      limitPodiatrists: "Limite: {n} podólogos",
+    },
+    sponsoredAnnouncements: {
+      title: "Anúncios patrocinados",
+      heading: "Anúncios por estado / província",
+      subtitle: "Campanhas pagas por provedores externos. Todos os usuários da zona veem banner e notificação.",
+      newCampaign: "Nova campanha",
+      formTitle: "Nova campanha",
+      existingAdvertiser: "Provedor existente",
+      newAdvertiserOption: "— Novo provedor —",
+      advertiserName: "Nome do provedor",
+      advertiserNamePlaceholder: "Ex: Instituto Podológico",
+      titlePlaceholder: "Título do anúncio",
+      bodyPlaceholder: "Descrição (curso, evento, etc.)",
+      countryPlaceholder: "País (MX)",
+      statePlaceholder: "Estado / província",
+      audienceEstimate: "≈ {n} usuários na zona",
+      externalUrlPlaceholder: "URL do anunciante (seu site)",
+      promoCodePlaceholder: "Código de desconto no site do anunciante (opcional)",
+      createDraft: "Criar rascunho",
+      campaigns: "Campanhas",
+      loading: "Carregando...",
+      noCampaigns: "Ainda sem campanhas.",
+      advertiserCode: "Código do anunciante:",
+      activate: "Ativar",
+      pause: "Pausar",
+      createAdvertiserError: "Não foi possível criar o provedor",
+      selectOrCreateAdvertiser: "Selecione ou crie um provedor",
+      createCampaignError: "Erro ao criar campanha",
+      statusError: "Erro",
+      statusActive: "ativa",
+      statusDraft: "rascunho",
+      statusPaused: "pausada",
+      defaultCta: "Ver mais",
     },
     terms: {
       title: "Termos e Condições",
@@ -3329,9 +8403,217 @@ export const translations: Record<Language, Translations> = {
       openedInTab: "Histórico aberto numa nova aba. Use Imprimir → Salvar como PDF.",
       invalidResponse: "A resposta do servidor não inclui dados de pacientes válidos.",
     },
+    usersPage: {
+      fields: {
+        name: "Nome",
+        email: "Email",
+        password: "Senha",
+        role: "Função",
+        clinic: "Clínica",
+        clinicOptional: "Clínica (opcional)",
+      },
+      create: {
+        title: "Criar novo usuário",
+        passwordHint: "Mínimo de 8 caracteres.",
+        clinicModeExisting: "Selecionar clínica existente",
+        clinicModeNew: "Criar nova clínica",
+        clinicModeNone: "Sem clínica (independente)",
+        newClinicHint: "Uma clínica será criada com dados provisórios. O administrador completará nome, código, telefone, endereço e o restante em Configurações.",
+        podiatristLimit: "Limite de podólogos (opcional)",
+        podiatristLimitPlaceholder: "Ex: 5",
+        podiatristLimitHint: "Os podólogos da clínica ficam limitados a este número. Recepcionistas não contam.",
+        saving: "Criando...",
+        success: "Usuário criado com sucesso.",
+        partialClinicFail: "Usuário criado, mas a clínica não pôde ser criada. Configure depois na edição do usuário.",
+        errors: {
+          nameRequired: "O nome é obrigatório.",
+          emailInvalid: "Introduza um e-mail válido.",
+          passwordMin: "A senha deve ter pelo menos 8 caracteres.",
+          clinicRequiredReceptionist: "Selecione uma clínica para o recepcionista.",
+          clinicRequiredAdmin: "Selecione uma clínica existente ou escolha criar uma nova.",
+          createFailed: "Não foi possível criar o usuário.",
+        },
+      },
+      import: {
+        title: "Importar usuários (CSV)",
+        description: "Colunas obrigatórias: nome, email, password (ou use a senha padrão), rol.",
+        optionalColumnsSuperAdmin: " Opcional: clinicMode (existing|new|none), clinicId (se existing), podiatrist_limit (só clinic_admin).",
+        downloadTemplate: "Baixar modelo",
+        selectFile: "Selecionar arquivo",
+        defaultPassword: "Senha padrão (se faltar no CSV)",
+        optionalPlaceholder: "Opcional",
+        readyCount: "{count} linhas prontas para importar",
+        andMore: "... e mais {count}",
+        resultsSummary: "Resultado: {ok} ok, {fail} com erro",
+        created: "✓ Criado",
+        importing: "Importando... ({done}/{total})",
+        submit: "Importar",
+        templateFilename: "modelo_usuarios.csv",
+        errors: {
+          needRows: "O arquivo deve ter pelo menos uma linha de cabeçalho e uma de dados.",
+          missingColumns: "Faltam colunas obrigatórias: nome, email, password, rol",
+          readFile: "Erro ao ler o arquivo",
+          invalidPassword: "Senha inválida (mín. 8 caracteres)",
+          unknown: "Erro desconhecido",
+          connection: "Erro de conexão",
+        },
+      },
+      edit: {
+        title: "Editar usuário",
+        noClinic: "Sem clínica",
+        errors: {
+          updateFailed: "Não foi possível atualizar o usuário.",
+        },
+      },
+      transfer: {
+        title: "Transferir histórico clínico",
+        subtitle: "Copiar todos os pacientes e sessões de um usuário para outro",
+        successMessage: "Transferência concluída: {patients} pacientes, {sessions} sessões.",
+        error: "Erro ao transferir os dados.",
+        successTitle: "Sucesso!",
+        errorTitle: "Erro",
+        sourceUser: "Usuário de origem",
+        targetUser: "Usuário de destino",
+        selectUser: "— Selecionar —",
+        patientsCount: "{count} pacientes para transferir",
+        warning: "Os dados serão copiados para o usuário de destino. A origem mantém o histórico. Esta ação não é facilmente desfeita.",
+        transferring: "Transferindo...",
+        submit: "Transferir",
+      },
+      profile: {
+        loading: "Carregando dados clínicos...",
+        patients: "Pacientes",
+        sessions: "Sessões",
+        patientsHeading: "Pacientes ({count})",
+        andMore: "...e mais {count}",
+      },
+      status: {
+        banned: "Banido",
+        blocked: "Bloqueado",
+        gracePeriod: "Período de graça",
+        disabled: "Desabilitado",
+        pendingPayment: "Pagamento pendente",
+        active: "Ativo",
+      },
+      confirm: {
+        block: "Bloquear {name}? Não poderá entrar até ser desbloqueado.",
+        unblock: "Desbloquear {name}?",
+        enable: "Habilitar a conta de {name}?",
+        disable: "Desabilitar a conta de {name}? Não poderá entrar.",
+        ban: "Banir {name}? Esta é uma ação grave.",
+        unban: "Remover banimento de {name}?",
+        delete: "Eliminar {name}? Esta ação pode ser irreversível.",
+        deletePermanent: "Eliminar permanentemente {name}? Não pode ser desfeito.",
+      },
+      errors: {
+        approve: "Erro ao aprovar",
+        reject: "Erro ao rejeitar",
+        block: "Não foi possível bloquear o usuário.",
+        unblock: "Não foi possível desbloquear o usuário.",
+        enable: "Não foi possível habilitar o usuário.",
+        disable: "Não foi possível desabilitar o usuário.",
+        ban: "Não foi possível banir o usuário.",
+        unban: "Não foi possível remover o banimento.",
+        delete: "Não foi possível eliminar o usuário.",
+      },
+      actions: {
+        importCsv: "Importar CSV",
+        createUser: "Criar usuário",
+        transferHistory: "Transferir histórico",
+        approve: "Aprovar",
+        reject: "Rejeitar",
+        view: "Ver",
+        edit: "Editar",
+        ban: "Banir",
+        unban: "Desbanir",
+        block: "Bloquear",
+        unblock: "Desbloquear",
+        enableAccount: "Habilitar conta",
+        disableAccount: "Desabilitar conta",
+        delete: "Eliminar",
+        viewProfile: "Ver perfil",
+        downloadJson: "Baixar JSON",
+        manageAccount: "Gerir conta",
+      },
+      table: {
+        user: "Usuário",
+        email: "Email",
+        role: "Função",
+        status: "Estado",
+        clinic: "Clínica",
+        limit: "Limite",
+        data: "Dados",
+        actions: "Ações",
+        sortBy: "Ordenar por",
+        podiatristLimit: "Limite de podólogos",
+        dataSummary: "{patients} pacientes · {sessions} sessões",
+        currentPodiatrists: "Atuais: {count}",
+        saveLimit: "Guardar",
+        clinicMissing: "Clínica não encontrada",
+        patients: "pacientes",
+        sessions: "sessões",
+      },
+      passwordReset: {
+        pendingTitle: "Pedidos de recuperação de senha",
+        approved: "Pedido aprovado.",
+        approveError: "Não foi possível aprovar o pedido.",
+        rejectReasonPrompt: "Motivo da rejeição (opcional):",
+        rejected: "Pedido rejeitado.",
+        rejectError: "Não foi possível rejeitar o pedido.",
+        approvedModalTitle: "Pedido aprovado",
+        linkHint: "O link foi enviado ao e-mail do usuário. Aqui está o link para reenviá-lo pessoalmente (WhatsApp, etc.):",
+        copied: "Link copiado para a área de transferência.",
+        copyFailed: "Não foi possível copiar. Selecione e copie o link manualmente.",
+        copyLink: "Copiar link",
+      },
+      regLists: {
+        title: "Listas de registro pendentes",
+        hint: "Aprove ou rejeite as listas enviadas pelo suporte.",
+        byCreator: "Por {name}",
+        downloadCsv: "CSV",
+        createdCount: "{count} usuário(s) criado(s).",
+        approved: "Lista aprovada.",
+        errorsPrefix: "Erros:",
+      },
+      cooldown: {
+        notApplicable: "N/A",
+        scopeClinic: "clínica",
+        scopeProfessional: "profissional",
+        reasonPrompt: "Motivo da autorização (opcional):",
+        confirm: "Autorizar edição antecipada de {scope} para {name}?",
+        applied: "Autorização aplicada.",
+        error: "Não foi possível aplicar a autorização.",
+      },
+      export: {
+        failed: "Não foi possível exportar os dados do usuário.",
+      },
+      menu: {
+        unbanAccount: "Remover banimento",
+        banAccount: "Banir conta",
+        unblockAccount: "Desbloquear conta",
+        blockAccount: "Bloquear conta",
+        enableAccount: "Habilitar conta",
+        disableAccount: "Desabilitar conta",
+        authorizeCooldown: "Autorizar edição (cooldown)",
+        deleteAccount: "Eliminar conta",
+      },
+      searchPlaceholder: "Buscar usuários...",
+      allRoles: "Todas as funções",
+      loading: "Carregando usuários...",
+      empty: "Nenhum usuário encontrado.",
+      selectPlaceholder: "— Selecionar —",
+    },
   },
   
   fr: {
+    clinicalLayout: clinicalSharedByLang.fr.clinicalLayout,
+    podiatry: clinicalSharedByLang.fr.podiatry,
+    errorBoundary: clinicalSharedByLang.fr.errorBoundary,
+    clinicalList: clinicalSharedByLang.fr.clinicalList,
+    patientsClinical: clinicalSharedByLang.fr.patientsClinical,
+    sessionsClinical: clinicalSharedByLang.fr.sessionsClinical,
+    clinicalToolsExtras: clinicalSharedByLang.fr.clinicalToolsExtras,
+    calendarGrid: clinicalSharedByLang.fr.calendarGrid,
     common: {
       loading: "Chargement...",
       save: "Enregistrer",
@@ -3363,6 +8645,15 @@ export const translations: Record<Language, Translations> = {
       details: "Détails",
       view: "Voir",
       download: "Télécharger",
+      showPassword: "Afficher le mot de passe",
+      hidePassword: "Masquer le mot de passe",
+      showShort: "Afficher",
+      hideShort: "Masquer",
+      captcha: "CAPTCHA",
+      seeAll: "Tout voir",
+      seeAllShort: "Tout voir",
+      viewMore: "Voir plus",
+      go: "Aller",
     },
     auth: {
       login: "Connexion",
@@ -3478,11 +8769,24 @@ export const translations: Record<Language, Translations> = {
       blockedUntil: "Bloqué jusqu'à :",
       retryIn: "Vous pouvez réessayer dans :",
       emailNotificationSent: "Une notification par e-mail a été envoyée concernant ces tentatives.",
+      googleNotConfigured: "Google n'est pas configuré dans cet environnement",
+      googleConnectFailed: "Impossible de se connecter à Google",
+      googleNoCode: "Aucun code Google n'a été reçu",
+      googleLoginError: "Erreur de connexion avec Google",
+      googleCompleting: "Finalisation de la connexion Google…",
+      serverConnectionError: "Erreur de connexion au serveur",
+      connectionErrorShort: "Erreur de connexion",
+      changePasswordCurrentRequired: "Saisissez votre mot de passe actuel.",
+      changePasswordError: "Erreur lors du changement de mot de passe",
+      verifyEmailMissingToken: "Aucun jeton de vérification n'a été fourni",
+      verifyEmailFailed: "Erreur lors de la vérification de l'e-mail",
+      recoveryVerifySubject: "Vérification d'identité - Récupération de mot de passe",
     },
     nav: {
       dashboard: "Tableau de bord",
       patients: "Patients",
       clinicalSessions: "Séances Cliniques",
+      clinicalTools: "Outils cliniques",
       credits: "Crédits",
       settings: "Paramètres",
       users: "Utilisateurs",
@@ -3491,6 +8795,9 @@ export const translations: Record<Language, Translations> = {
       profile: "Profil",
       clinicManagement: "Gestion de Clinique",
       whatsappMessages: "Messages WhatsApp",
+      whatsappCampaigns: "Campagnes WhatsApp",
+      calendar: "Calendrier",
+      securityMetrics: "Métriques de sécurité",
       checkout: "Encaissements",
     },
     checkout: {
@@ -3505,6 +8812,7 @@ export const translations: Record<Language, Translations> = {
       emptyPaid: "Aucun encaissement dans cet onglet.",
       markPaid: "Marquer encaissé",
       confirmPaid: "Confirmer que {patient} a payé ?",
+      confirmPaidTitle: "Confirmer l'encaissement",
       paidAt: "Encaissé à",
       statusAwaiting: "Sans montant",
       statusReady: "Prêt à encaisser",
@@ -3529,7 +8837,34 @@ export const translations: Record<Language, Translations> = {
       saveTariffs: "Enregistrer les tarifs",
       tariffsSaved: "Tarifs enregistrés",
       addTariff: "Ajouter un tarif",
-      tariffLabelPlaceholder: "Libellé (ex. Consultation)",
+            tariffLabelPlaceholder: "Libellé (ex. Consultation)",
+      tariffAmountAria: "Montant",
+      tariffDurationTitle: "Durée indicative (minutes)",
+      tariffDurationAria: "Durée en minutes",
+      tariffDurationPlaceholder: "min",
+      serverMigrateHint: "Erreur serveur. Si vous venez de mettre à jour le projet, exécutez npm run db:migrate et redémarrez npm run dev.",
+views: {
+        operations: "Opérations",
+        sales: "Ventes",
+        collections: "Encaissements",
+        profit: "Rentabilité",
+        agenda: "Agenda",
+      },
+      viewHintOperations: "File d'encaissements en attente et terminés.",
+      viewHintAgenda: "Occupation, demande, horaires et clôture de caisse.",
+      viewHintCollections: "Encaissé vs en attente, modes de paiement et créances.",
+      viewHintProfit: "Objectifs, dépenses et marge estimée.",
+      viewHintClinicSales: "Ventes agrégées de toute la clinique.",
+      viewHintSales: "Revenus, ticket moyen et détail par service.",
+      viewDataOf: "Données de",
+      entireClinic: "Toute la clinique",
+      myPractice: "Mon cabinet",
+      podiatristFallback: "Podologue",
+      assignedPodiatrist: "Podologue assigné",
+      podiatristLabel: "Podologue",
+      weekBucket: "S{n}",
+      analytics: checkoutAnalyticsByLang.fr,
+      agendaAnalytics: agendaAnalyticsByLang.fr,
     },
     dashboard: {
       title: "Tableau de bord",
@@ -3541,6 +8876,40 @@ export const translations: Record<Language, Translations> = {
       recentActivity: "Activité Récente",
       upcomingAppointments: "Prochains Rendez-vous",
       noRecentActivity: "Aucune activité récente",
+      patientFallback: "Patient",
+      sessionCompletedActivity: "Séance terminée",
+      draftActivity: "Brouillon",
+      podiatrists: "Podologues",
+      clinicAdmins: "Admins de clinique",
+      sponsoredAnnouncements: "Annonces sponsorisées",
+      systemUsers: "Utilisateurs du système",
+      assignedClinic: "Clinique assignée",
+      assignedPodiatrists: "Podologues assignés",
+      attendedAppointments: "Rendez-vous honorés",
+      agendaOccupancy: "Occupation de l'agenda",
+      salesThisMonth: "Ventes du mois",
+      pendingCollections: "Encaissements en attente",
+      newPatients: "Nouveaux patients",
+      inactivePatients: "Patients inactifs",
+      podiatristsCount: "Podologues",
+      last30Days: "30 derniers jours",
+      relativeMinutesAgo: "Il y a moins d'1 heure",
+      relativeHoursAgo: "Il y a {n} h",
+      relativeYesterday: "Hier",
+      relativeDaysAgo: "Il y a {n} jours",
+      actions: {
+        addPatientDesc: "Enregistrer un nouveau patient",
+        newSessionDesc: "Ouvrir une séance clinique",
+        calendarDesc: "Voir et gérer l'agenda",
+        settingsDesc: "Configurer votre espace de travail",
+        clinicDesc: "Gérer podologues, patients et réception",
+        patientsDesc: "Consulter et filtrer les patients",
+        sessionsDesc: "Revoir l'historique des séances",
+        checkoutDesc: "Encaissements, ventes et agenda",
+        usersDesc: "Administrer les utilisateurs",
+        securityDesc: "Métriques et alertes de sécurité",
+        sponsoredDesc: "Campagnes géolocalisées",
+      },
     },
     patients: {
       title: "Patients",
@@ -3578,6 +8947,42 @@ export const translations: Record<Language, Translations> = {
       viewHistory: "Voir l'Historique",
       lastVisit: "Dernière Visite",
       totalSessions: "Total des Séances",
+      engagement: {
+        segmentNew: "Nouveaux",
+        segmentRecurrent: "Récurrents",
+        segmentRecovered: "Récupérés",
+        inactive3m: "Inactifs 3 mois",
+        inactive6m: "Inactifs 6 mois",
+        ageAll: "Tous les âges",
+        age0_17: "0–17 ans",
+        age18_35: "18–35 ans",
+        age36_55: "36–55 ans",
+        age56Plus: "56+ ans",
+        ltvDay: "Jour",
+        ltvWeek: "Semaine",
+        ltvMonth: "Mois",
+        ltvYear: "Année",
+        ltvLifetime: "Historique",
+        visitSingular: "visite",
+        visitPlural: "visites",
+        paymentSingular: "paiement",
+        paymentPlural: "paiements",
+        noSessions: "Aucune séance",
+        daysInactive: "{n} jours inactif",
+        daysWithoutVisit: "{n} jours sans visite",
+        lastAgoDays: "Dernière il y a {n} jours",
+        minVisits: "Visites min.",
+        maxVisits: "Visites max.",
+        ltvLabel: "LTV",
+        ltvPeriodAria: "Période de valeur vie patient",
+        agendaDemandTitle: "Demande d'agenda",
+        agendaDemandHint: "Consultez heures de pointe, occupation et clôture dans Encaissements → Agenda.",
+        goToCheckoutAgenda: "Aller à Encaissements → Agenda",
+        tablePatient: "Patient",
+        tableAge: "Âge",
+        tableSegment: "Segment",
+        yearsSuffix: "ans",
+      },
     },
     sessions: {
       title: "Séances Cliniques",
@@ -3605,6 +9010,29 @@ export const translations: Record<Language, Translations> = {
       sessionSaved: "Séance enregistrée",
       checkoutCompleteHint:
         "L'encaissement à l'accueil n'apparaît qu'en appuyant sur Terminer (patient qui part). Enregistrer le brouillon sauvegarde sans clôturer la visite.",
+      allStatuses: "Toutes",
+      loadingSessions: "Chargement des séances…",
+      createFirstSession: "Créez votre première séance clinique",
+      followUp: {
+        overdueBanner: "Rendez-vous en retard",
+        upcomingBanner: "Prochains rendez-vous (7 jours)",
+        overdueChip: "En retard",
+        upcomingChip: "À venir",
+        sectionTitle: "Suivi",
+        nextAppointment: "Prochain rendez-vous",
+        noSpecificReason: "Sans motif précis",
+      },
+      prescriptions: {
+        sectionTitle: "Ordonnances / Prescriptions",
+        newPrescription: "Nouvelle ordonnance",
+        create: "Créer",
+        creating: "Création…",
+      },
+      vitals: {
+        title: "Signes vitaux",
+        weightKg: "Poids (kg)",
+        heightCm: "Taille (cm)",
+      },
     },
     calendar: {
       title: "Calendrier",
@@ -3693,6 +9121,26 @@ export const translations: Record<Language, Translations> = {
       exportWaLine: "• {{hora}} — {{paciente}} ({{duracion}} min) · {{telefono}}",
       exportWaAttachHint: "📎 Le fichier agenda-.ics a été téléchargé — joignez-le dans WhatsApp pour l'importer dans le calendrier mobile.",
       exportWaInvalidPhone: "Le téléphone du podologue n'est pas valide pour WhatsApp. Ouvrez WhatsApp manuellement et collez le message.",
+      checkInWaiting: "En attente",
+      checkInInConsult: "En consultation",
+      checkInDone: "Vu",
+      checkInNone: "Sans check-in",
+      scheduledMetric: "Planifiées",
+      completedMetric: "Terminées",
+      noShow: "Absent",
+      waitlist: "Liste d'attente",
+      agendaDemandTitle: "Demande d'agenda",
+      agendaDemandDemandTotal: "Demande totale : {n}",
+      goToCheckoutAgendaLong: "Voir l'analyse d'agenda dans les encaissements",
+      pendingBadge: "En attente",
+      confirmSaveAnyway: "Voulez-vous enregistrer le rendez-vous quand même ?",
+      outsideHoursBlocked: "Hors horaires : le rendez-vous ne sera pas enregistré. La réception ne peut pas prendre de rendez-vous hors des horaires autorisés.",
+      confirmMarkNoShow: "Marquer ce rendez-vous comme absence (no-show) ?",
+      markNoShow: "Absent",
+      noPhoneShort: "sans tél.",
+      preferredDateShort: "préf. {date}",
+      outsideHoursReceptionistNote: "Le rendez-vous ne sera pas enregistré : la réception ne peut pas réserver hors horaires.",
+      outsideHoursContinueNote: "Vous pouvez continuer ; une confirmation sera demandée à l'enregistrement.",
     },
     credits: {
       title: "Crédits",
@@ -3744,11 +9192,35 @@ export const translations: Record<Language, Translations> = {
         success: "Modifications enregistrées.",
         info: "La session expire dans 5 minutes.",
       },
-      palettePreviewLabels: {
+            palettePreviewLabels: {
         error: "Erreur",
         warning: "Avertissement",
         success: "Succès",
         info: "Info",
+      },
+      palettePreviewUi: {
+        brandShort: "Podo",
+        home: "Accueil",
+        patients: "Patients",
+        preview: "Aperçu",
+        sampleCard: "Carte d'exemple",
+        secondaryText: "Texte secondaire",
+        action: "Action",
+        button: "Bouton",
+      },
+      paletteWhatsappPreviewDesc: "Envoyez des messages manuellement depuis votre numéro.",
+      paintColorPicker: {
+        ariaLabel: "Sélecteur de couleur",
+        basicColors: "Couleurs de base :",
+        customColors: "Couleurs personnalisées :",
+        hideCustom: "« Masquer les couleurs personnalisées",
+        defineCustom: "Définir des couleurs personnalisées »",
+        colorSolid: "Couleur | Uni",
+        hue: "Teinte",
+        sat: "Sat.",
+        lum: "Lum.",
+        addToCustom: "Ajouter aux personnalisées",
+        accept: "OK",
       },
       navMenuTitle: "Menu latéral",
       navMenuHint: "Choisissez les sections visibles dans le menu de navigation. Les changements s'appliquent immédiatement sur cet appareil.",
@@ -3775,6 +9247,451 @@ export const translations: Record<Language, Translations> = {
         whatsappBorder: "Panneau (bordure)",
         whatsappMuted: "Panneau (texte secondaire)",
       },
+      tabs: {
+        profile: "Profil",
+        clinicalHistory: "Dossier clinique",
+        integrations: "Intégrations",
+        clinic: "Clinique",
+        billing: "Facturation",
+      },
+      settingsScope: {
+        appliesClinic: "S'applique à toute la clinique.",
+        appliesIndependent: "S'applique à votre cabinet indépendant.",
+        appliesPractice: "S'applique à votre cabinet.",
+      },
+      watermark: {
+        title: "Filigrane d'arrière-plan",
+        hint: "Image discrète dans la zone principale. Ajustez taille, position et intensité.",
+        show: "Afficher le filigrane en arrière-plan",
+        customImage: "Image personnalisée",
+        useProfessionalLogo: "Utiliser le logo professionnel",
+        logoHint: "Si vous choisissez le logo professionnel ou de clinique, celui configuré sur cette page est utilisé.",
+        loading: "Chargement du filigrane…",
+        imageTooLarge: "L'image ne peut pas dépasser 2 Mo.",
+        invalidFormat: "Format invalide. Utilisez PNG, JPG ou WebP (max. 2 Mo).",
+        loadImageError: "Erreur lors du chargement de l'image.",
+        saved: "Filigrane enregistré.",
+        saveFailed: "Erreur lors de l'enregistrement.",
+        imageLabel: "Image",
+        noLogo: "Aucun logo configuré",
+        noImage: "Aucune image",
+        upload: "Téléverser une image",
+        formatHint: "JPEG, PNG or WebP · max. 2 MB",
+        removeImage: "Retirer l'image",
+        intensity: "Intensité ({pct} %)",
+        intensityHint: "6–10% usually looks good as a subtle watermark.",
+        size: "Taille ({pct} % du panneau)",
+        zoom: "Zoom ({pct} %)",
+        zoomHint: "Increase zoom (200%+) to cover the visible area. Combine with centered position.",
+        positionX: "Position horizontale ({pct} %)",
+        positionY: "Position verticale ({pct} %)",
+        left: "Gauche",
+        center: "Centre",
+        right: "Droite",
+        top: "Haut",
+        bottom: "Bas",
+        saving: "Enregistrement…",
+        save: "Enregistrer le filigrane",
+      },
+      billing: {
+        title: "Facturation",
+        subscriptionTitle: "Abonnement PodoAdmin",
+        independentPlan: "Plan podologue indépendant",
+        status: "État",
+        trialPeriod: "Période d'essai",
+        trialEnd: "Fin de la période d'essai",
+        trialActive: "Période d'essai d'1 mois active. Profitez de l'accès complet jusqu'au {date}",
+        adminNoSub: "Les administrateurs de la plateforme n'ont pas besoin d'abonnement.",
+        receptionistHint: "L'abonnement de la clinique est géré par l'administrateur de la clinique.",
+        statusActive: "Active",
+        statusPastDue: "Paiement en attente",
+        statusCancelled: "Annulée",
+        paymentReceived: "Paiement reçu. L'abonnement s'activera dans quelques secondes.",
+        paymentCancelled: "Paiement annulé. Vous pouvez réessayer quand vous voulez.",
+        cardVerified: "Carte vérifiée avec succès.",
+        cardVerifyError: "Erreur lors de la vérification de la carte.",
+        cardMockVerified: "Carte mock vérifiée (développement uniquement).",
+        cardSetupError: "Impossible de démarrer la vérification de la carte.",
+        trialActivated: "Période d'essai activée.",
+        trialActivateError: "Impossible d'activer l'essai.",
+        checkoutError: "Impossible de démarrer le paiement.",
+        portalError: "Impossible d'ouvrir le portail de facturation.",
+        activateTrialTitle: "Activer l'essai gratuit (1 mois)",
+        activateTrialHint: "Vérifiez votre e-mail et votre carte. Un compte, une carte et une connexion (IP) ne peuvent être utilisés qu'une seule fois pour l'essai.",
+        stepEmail: "1. E-mail vérifié",
+        emailVerifyHint: "Vérifiez votre boîte de réception{email} et confirmez le lien de vérification. Si vous ne l'avez pas reçu, déconnectez-vous et redemandez-le lors de l'inscription.",
+        stepCard: "2. Carte",
+        verifyCard: "Vérifier la carte (sans frais aujourd'hui)",
+        activateMonthTrial: "Activer l'essai d'1 mois",
+        overLimit: "Votre clinique a {count} podologues actifs, au-dessus du forfait en ligne (jusqu'à {limit}). Contactez PodoAdmin pour augmenter la capacité et la facturation.",
+        loading: "Chargement…",
+        clinicPlan: "Plan clinique",
+        activePodiatrists: "Podologues actifs :",
+        stripeNotConfigured: "Stripe n'est pas configuré. Définissez STRIPE_PRICE_CLINIC_MONTHLY_STANDARD et STRIPE_PRICE_INDEPENDENT_MONTHLY sur le serveur.",
+        subscribe: "S'abonner — ${amount} USD/mois",
+        manageStripe: "Gérer la facturation dans Stripe",
+        clinicManagedByAdmin: "L'abonnement de votre clinique est géré par l'administrateur de la clinique.",
+      },
+      dashboardLogo: {
+        title: "Logo sur le tableau de bord",
+        loading: "Chargement des options du tableau de bord…",
+        saved: "Paramètres du logo du tableau de bord enregistrés.",
+        saveFailed: "Erreur lors de l'enregistrement.",
+        enabledByAdmin: "L'administrateur de la clinique a activé l'affichage du logo sur le tableau de bord.",
+        notShown: "Le logo n'est pas affiché sur le tableau de bord.",
+        hint: "Carte sur l'écran principal. Ajustez taille, position et intensité.",
+        show: "Afficher le logo sur le tableau de bord",
+        opacity: "Opacité ({pct} %)",
+        size: "Taille ({pct} % de la zone de la carte)",
+        zoom: "Zoom ({pct} %)",
+        zoomHint: "Enlarge or reduce the logo within the area. The card grows to avoid cropping.",
+        positionX: "Position horizontale ({pct} %)",
+        positionY: "Position verticale ({pct} %)",
+        left: "Gauche",
+        center: "Centre",
+        right: "Droite",
+        top: "Haut",
+        bottom: "Bas",
+        saving: "Enregistrement…",
+        save: "Enregistrer le logo du tableau de bord",
+      },
+            clinicalLayout: {
+        loadingDesigner: "Chargement du concepteur…",
+        title: "Concepteur d'histoire clinique",
+        hint: "Activez ou désactivez des blocs pour les séances et l'impression. Ajoutez des sections personnalisées selon votre flux clinique.",
+        restoreDefault: "Restaurer par défaut",
+        saveDesign: "Enregistrer le design",
+        addSection: "Ajouter une section",
+        editSection: "Modifier la section",
+        previewForm: "Aperçu — formulaire de séance",
+        newSectionDefault: "Nouvelle section",
+        itemN: "Élément {n}",
+        columnN: "Colonne {n}",
+        saved: "Design enregistré avec succès.",
+        saveFailed: "Erreur lors de l'enregistrement.",
+        restoreConfirm: "Restaurer toutes les sections au design par défaut ? Les personnalisées seront perdues.",
+        saving: "Enregistrement…",
+        readOnlyHint: "Lecture seule : l'administrateur de la clinique configure le design partagé.",
+        sectionsCount: "Sections ({count})",
+        sectionTitlePlaceholder: "Titre de la section",
+        titleLabel: "Titre",
+        builtinTitleHint: "Vous pouvez personnaliser le titre visible en séance et à l'impression.",
+        onPatientCard: "Sur la fiche patient",
+        enabled: "Active",
+        inSession: "En séance",
+        inPrint: "À l'impression",
+        patientCardHelp: "shows or hides the field when creating, editing or viewing a patient.",
+        printAntecedentsHelp: "includes antecedents in the printed podiatric clinical history.",
+        enabledHelp: "includes or excludes the section from the clinical flow.",
+        inSessionHelp: "visible when creating or editing a session.",
+        inPrintHelp: "included in the printable history (only sections with data).",
+        deleteCustomSection: "Supprimer la section personnalisée",
+        selectSection: "Sélectionnez une section dans la liste",
+        systemField: "Champ système",
+        noSessionSections: "Aucune section visible en séance.",
+        remove: "Retirer",
+        maxColumns: "Maximum {count} colonnes.",
+        checklistItems: "Éléments de la liste",
+        yesNoNaRows: "Lignes OUI / NON / N/A",
+        options: "Options",
+        yesNoNaHint: "Each row will be a question in the session.",
+        addItem: "+ Ajouter un élément",
+        addRow: "+ Ajouter une ligne",
+        addOption: "+ Ajouter une option",
+        unit: "Unité",
+        unitPlaceholder: "min, ml, mm, %…",
+        defaultUnit: "unité",
+        scaleMax: "Échelle maximale",
+        conditionalPrompt: "Question OUI/NON",
+        conditionalPlaceholder: "Was there a complication?",
+        tableColumns: "Colonnes du tableau",
+        tableColumnsHint: "Name each column (e.g. product, quantity, lot).",
+        addColumn: "+ Ajouter une colonne",
+        tableRows: "Lignes en séance",
+      },
+      print: {
+        title: "Paramètres d'impression",
+        hint: "Ajustez l'apparence de l'histoire clinique et des ordonnances à l'impression ou en PDF.",
+        preview: "Aperçu",
+        loading: "Chargement des préférences d'impression…",
+        saved: "Préférences d'impression enregistrées.",
+        saveFailed: "Impossible d'enregistrer.",
+        readOnlyHint: "Seul l'administrateur de la clinique peut modifier ces options. Affichage en lecture seule.",
+        generalTitle: "Général",
+        generalDesc: "S'applique aux deux documents.",
+        headerAlign: "Alignement de l'en-tête",
+        alignLeft: "Gauche",
+        alignCenter: "Centré",
+        monochrome: "Imprimer en noir et blanc",
+        monochromeHint: "Niveaux de gris, idéal pour économiser l'encre.",
+        showGeneratedBy: "Afficher « Généré par PodoAdmin » dans le pied",
+        footerText: "Texte de pied de page personnalisé",
+        footerPlaceholder: "E.g. Business hours, legal notice, social media…",
+        historyTitle: "Histoire clinique",
+        historyDesc: "Document complet du patient.",
+        showLogo: "Afficher le logo dans l'en-tête",
+        showLegalData: "Afficher les données légales",
+        showLegalDataHint: "RFC, CLUES, COFEPRIS and sanitary registry.",
+        includePhotos: "Inclure les photographies cliniques",
+        includePhotosHint: "Requires the images block to be active in the designer.",
+        compact: "Mise en page compacte",
+        compactHistoryHint: "Smaller margins, type and diagrams to save pages.",
+        orientation: "Orientation de la page",
+        portrait: "Portrait",
+        landscape: "Paysage",
+        orientationHistoryHint: "Recommended: portrait for clinical histories.",
+        evolutionRows: "Lignes d'évolution clinique à imprimer",
+        rxTitle: "Ordonnances",
+        rxDesc: "Format des ordonnances / prescriptions.",
+        showWeight: "Afficher le poids du patient",
+        showHeight: "Afficher la taille du patient",
+        showNextVisit: "Afficher la prochaine visite",
+        showNotes: "Afficher les notes supplémentaires",
+        showSignatureCedula: "Afficher le numéro d'ordre sur la signature",
+        compactRxHint: "Smaller margins and type to use less space.",
+        orientationRxHint: "Recommended: landscape for prescriptions.",
+        folioPosition: "Position du folio",
+        folioInline: "Dans l'en-tête (recommandé)",
+        folioBar: "Barre mise en avant",
+        folioHint: "Inline folio saves a full line and usually fits on one page.",
+        saving: "Enregistrement…",
+        save: "Enregistrer les préférences",
+        reset: "Restaurer les valeurs par défaut",
+        previewSimHint: "Approximate simulation; the final document uses real patient data.",
+        tabHistory: "Histoire clinique",
+        tabRx: "Ordonnance",
+        statusMonochrome: "Black and white mode on · ",
+        statusHeaderCenter: "Centered header",
+        statusHeaderLeft: "Left-aligned header",
+        statusEvolutionRows: " · {count} evolution rows",
+        statusCompact: " · compact layout",
+        statusFolioInline: " · folio in header",
+        demoClinicName: "Clinique Podologique Démo",
+        demoLicense: "License: 12345678",
+        demoLegal: "RFC: XAXX010101000 · CLUES: DFSSA000001",
+        demoContact: "555 123 4567 · demo@clinic.com",
+        demoHistoryTitle: "PODIATRIC CLINICAL HISTORY · Folio: PREMIUM-001",
+        demoPatientSection: "I. Patient data",
+        demoPatientCells: ["Name: Laura M.", "ID: INE-884422", "Tel: 555…", "DOB: 12/03/1985"],
+        demoEvolutionSection: "IV. Clinical evolution",
+        demoColDate: "Date",
+        demoColDiagnosis: "Diagnosis",
+        demoColTreatment: "Treatment",
+        demoDiagnosis: "Onychocryptosis",
+        demoTreatment: "Debridement",
+        demoMoreRows: "+ {count} more rows…",
+        demoPhotos: "Photographs",
+        demoFooter: "PodoAdmin · preview",
+        demoDoctor: "Dr Podologue Démo",
+        demoCedula: "License: 12345678",
+        demoTel: "Tel: 555 123 4567",
+        demoFolio: "Folio:",
+        demoFolioBar: "RX FOLIO:",
+        demoPatientData: "PATIENT DATA",
+        demoName: "Name: Laura M.",
+        demoDni: "ID: INE-884422",
+        demoAge: "Age: 41 years",
+        demoWeight: "Weight: 72.5 kg",
+        demoHeight: "Height: 165 cm",
+        demoPrescription: "Prescription / Instructions",
+        demoPrescriptionBody: "Apply antifungal cream twice daily for 14 days.",
+        demoNextVisit: "Next visit",
+        demoNextVisitDate: "Friday, August 15, 2026",
+        demoNotes: "Additional notes",
+        demoNotesBody: "Avoid closed footwear.",
+        demoSignature: "Professional signature",
+        logoPlaceholder: "LOGO",
+      },
+      profileAvatar: {
+        changeTitle: "Changer la photo de profil",
+        invalidFormat: "Format invalide. Utilisez PNG, JPG ou WebP.",
+        tooLarge: "L'image ne peut pas dépasser 2 Mo.",
+        saveFailed: "Impossible d'enregistrer la photo.",
+        processFailed: "Impossible de traiter l'image.",
+        removeFailed: "Impossible de retirer la photo.",
+        saving: "Enregistrement…",
+        changePhoto: "Changer la photo",
+        uploadPhoto: "Téléverser une photo",
+        removePhoto: "Retirer la photo",
+        hint: "JPG, PNG ou WebP. Max. 2 Mo. Affichée dans le menu latéral.",
+      },
+      profile: {
+        title: "Profil utilisateur",
+        name: "Nom",
+        email: "E-mail",
+        readOnlyHint: "Les données du profil ne peuvent pas être modifiées ici. Contactez un administrateur si besoin.",
+      },
+      cooldown: {
+        logoPolicy: "Après enregistrement, le logo est verrouillé pendant 15 jours. Passé ce délai, vous pourrez le téléverser ou le changer à nouveau.",
+        logoBlocked: "Le logo ne peut être modifié que tous les 15 jours.",
+        clinicInfoPolicy: "Après enregistrement, les données de la clinique sont verrouillées pendant 15 jours. Passé ce délai, vous pourrez les modifier à nouveau.",
+        clinicInfoBlocked: "Les données ne peuvent être modifiées que tous les 15 jours.",
+        professionalInfoPolicy: "Après enregistrement, ces données sont verrouillées pendant 15 jours. Passé ce délai, vous pourrez les modifier à nouveau.",
+        professionalInfoBlocked: "Les données ne peuvent être modifiées que tous les 15 jours.",
+        profilePolicy: "Le nom et l'e-mail ne peuvent être modifiés que par un administrateur. 15 jours doivent s'écouler entre les modifications.",
+        clinicReadOnlyPolicy: "Les informations de la clinique sont gérées par votre administrateur. 15 jours doivent s'écouler entre les modifications.",
+        genericBlocked: "Les données ne peuvent être modifiées que tous les 15 jours.",
+      },
+      clinic: {
+        fallbackName: "Clinique {id}",
+        errors: {
+          nameCodeRequired: "Le nom et le code de la clinique sont obligatoires.",
+          invalidWebsite: "L'URL du site web n'est pas valide. Vérifiez qu'elle est correctement configurée.",
+        },
+      },
+      consent: {
+        title: "Consentement éclairé",
+        sharedTitle: "Texte partagé de la clinique",
+        sharedBody: "Ce texte est géré par l'administrateur de la clinique et utilisé pour le consentement des patients.",
+        currentVersion: "Version actuelle : {version}",
+        empty: "Aucun texte configuré.",
+        editHint: "Vous pouvez modifier le texte ; chaque enregistrement incrémente la version.",
+        placeholder: "Rédigez ici les conditions et le consentement éclairé que le patient doit accepter.",
+        save: "Enregistrer le consentement",
+        saveError: "Erreur lors de l'enregistrement du consentement.",
+      },
+      logo: {
+        empty: "Sans logo",
+        previewAlt: "Aperçu",
+        upload: "Téléverser une image",
+        formatHint: "PNG, JPG ou WebP · max 2 Mo",
+        save: "Enregistrer le logo",
+        remove: "Supprimer le logo",
+        errors: {
+          invalidFormat: "Format invalide. Utilisez PNG, JPG ou WebP (max 2 Mo).",
+          tooLarge: "Le fichier est trop volumineux. Maximum 2 Mo.",
+          processFailed: "Impossible de traiter l'image.",
+          cooldown: "Le logo ne peut être modifié que tous les 15 jours.",
+          saveFailed: "Impossible d'enregistrer le logo. Réessayez.",
+        },
+      },
+      clinicLogo: {
+        title: "Logo de la clinique",
+        sharedTitle: "Logo partagé de la clinique",
+        sharedBody: "Tous les professionnels de la clinique voient ce logo sur les documents et impressions.",
+        alt: "Logo de clinique",
+        uploadHint: "Téléversez le logo qui identifiera votre clinique dans l'application et les documents.",
+      },
+      professionalLogo: {
+        title: "Logo professionnel",
+        uploadHint: "Logo personnel pour documents et impression lorsqu'il n'y a pas de logo de clinique.",
+        alt: "Logo professionnel",
+      },
+      adminLogo: {
+        title: "Logo de clinique",
+        body: "Les logos de clinique sont gérés par les administrateurs de chaque clinique. En tant que {role}, vous n'avez pas besoin d'un logo personnel.",
+      },
+      assignedPodiatrists: {
+        title: "Podologues assignés",
+        clinicHint: "Podologues de votre clinique que vous pouvez servir. Cochez ou décochez pour gérer rendez-vous et patients de chacun.",
+        independentHint: "Podologue qui vous a assigné. Vous pouvez créer des patients et gérer son calendrier.",
+        emptyClinic: "Aucun podologue dans votre clinique.",
+        save: "Enregistrer l'affectation",
+        empty: "Aucun podologue assigné.",
+      },
+      receptionist: {
+        title: "Réceptionniste",
+        description: "Créez et gérez la réceptionniste liée à votre compte ou clinique.",
+        status: {
+          blocked: "Bloquée",
+          disabled: "Désactivée",
+          active: "Active",
+        },
+        unblock: "Débloquer",
+        block: "Bloquer",
+        enable: "Activer",
+        disable: "Désactiver",
+        delete: "Supprimer",
+        oneOnlyHint: "Vous ne pouvez avoir qu'une réceptionniste liée. Supprimez-la pour en créer une autre.",
+        fields: {
+          name: "Nom",
+          email: "E-mail",
+          initialPassword: "Mot de passe initial",
+        },
+        createdSuccess: "Réceptionniste créée avec succès.",
+        create: "Créer une réceptionniste",
+        createError: "Erreur lors de la création de la réceptionniste",
+        confirmDelete: "Supprimer cette réceptionniste ? Action irréversible.",
+      },
+      clinicInfo: {
+        title: "Informations de la clinique",
+        subtitle: "Coordonnées et données fiscales de votre clinique.",
+        setupBanner: "Complétez les données de votre clinique. Tant que le nom est provisoire ou que contact et adresse manquent, des alertes apparaîtront.",
+        clinicName: "Nom de la clinique *",
+        clinicNamePlaceholder: "Ma Clinique Podologique",
+        clinicCode: "Code (pour folios) *",
+        clinicCodePlaceholder: "MICP",
+        clinicCodeHint: "Max 8 caractères. Utilisé dans les folios (ex. : MICP-2025-001)",
+        country: "Pays (préfixe téléphonique)",
+        countryHint: "Préfixe par défaut pour les téléphones de la clinique.",
+        phone: "Téléphone",
+        email: "E-mail",
+        emailPlaceholder: "clinique@exemple.com",
+        address: "Adresse",
+        addressPlaceholder: "Rue Principale 45, 2e étage",
+        city: "Ville",
+        cityPlaceholder: "Madrid",
+        postalCode: "Code postal",
+        postalCodePlaceholder: "28013",
+        licenseNumber: "N° licence / registre",
+        licensePlaceholder: "CS-28/2024-POD-001",
+        website: "Site web (optionnel)",
+        websitePlaceholder: "https://www.maclinique.com",
+        legalName: "Raison sociale (NOM)",
+        rfc: "RFC",
+        clues: "CLUES",
+        cofepris: "Enregistrement COFEPRIS",
+        readOnlyTitle: "Détails de votre clinique",
+        readOnlyBody: "Lecture seule. Votre administrateur de clinique gère ces données.",
+        labels: {
+          name: "Nom :",
+          phone: "Téléphone :",
+          email: "E-mail :",
+          address: "Adresse :",
+          license: "Licence :",
+          consent: "Consentement :",
+          web: "Web :",
+        },
+        viewDocument: "Voir le document",
+      },
+      practice: {
+        title: "Informations du cabinet",
+        subtitle: "Données de votre pratique professionnelle indépendante.",
+        professionalName: "Nom professionnel",
+        namePlaceholder: "Dr Jean Dupont",
+        country: "Pays (préfixe téléphonique)",
+        countryHint: "Préfixe par défaut pour votre cabinet.",
+        emailPlaceholder: "cabinet@exemple.com",
+        sanitaryRegistry: "Registre sanitaire",
+        cedula: "Numéro professionnel",
+        cedulaPlaceholder: "12345678",
+      },
+      credentials: {
+        title: "Identifiants professionnels",
+        subtitle: "Téléphone de contact et numéro d'enregistrement professionnel.",
+        contactPhoneTitle: "Téléphone de contact",
+        contactPhoneHint: "Visible pour les patients et sur les documents le cas échéant.",
+        country: "Pays",
+        mobile: "Mobile",
+        savePhone: "Enregistrer le téléphone",
+        registryNumber: "N° d'enregistrement professionnel",
+        registryPlaceholder: "REG-2024-001",
+        save: "Enregistrer les identifiants",
+        clinicInfoTitle: "Informations de la clinique",
+        clinicInfoBody: "En tant que membre d'une clinique, ces données sont gérées par l'administrateur.",
+        clinicName: "Nom de la clinique",
+      },
+      common: {
+        saved: "Enregistré",
+        readOnly: "Lecture seule",
+        saveInfo: "Enregistrer les informations",
+        emDash: "—",
+        ellipsis: "...",
+      },
+      errors: {
+        connectionSave: "Erreur de connexion lors de l'enregistrement.",
+      },
+      supportSenderLabel: "PodoAdmin",
     },
     support: {
       title: "Contacter PodoAdmin",
@@ -3797,6 +9714,26 @@ export const translations: Record<Language, Translations> = {
       reopenConversation: "Rouvrir la conversation",
       from: "De",
       sent: "Envoyé",
+    },
+    layout: {
+      brandFallback: "PodoAdmin",
+      unlockSidebarVisible: "Déverrouiller (verrouillé visible)",
+      unlockSidebarHidden: "Déverrouiller (verrouillé masqué)",
+      lockSidebarVisible: "Verrouiller la barre latérale visible",
+      toggleSidebarLock: "Basculer le verrouillage de la barre latérale",
+      hideMenu: "Masquer le menu",
+      showMenu: "Afficher le menu",
+      pendingAccessBanner: "Votre accès clinique est en attente. Activez le paiement dans Facturation ou attendez qu'un administrateur active votre compte.",
+      goToBilling: "Aller à la facturation",
+      goToSupport: "Aller au support",
+      subscriptionInactiveBanner: "Votre abonnement n'est pas actif. Renouvelez pour continuer à utiliser la plateforme.",
+      closeMenu: "Fermer le menu",
+      sponsored: "Sponsorisé",
+      closeAnnouncement: "Fermer l'annonce",
+      promoCodeOnSite: "Code sur le site de l'organisateur :",
+      seeMore: "Voir plus",
+      interested: "Ça m'intéresse",
+      interestRegistered: "Intérêt enregistré ✓",
     },
     whatsapp: {
       title: "WhatsApp Business",
@@ -3857,7 +9794,8 @@ export const translations: Record<Language, Translations> = {
         "Envoyé comme 4e paramètre du modèle (sauf autre note à l'envoi). Max 500 caractères.",
       templateLanguageLabel: "Langue du modèle",
       templateLanguagePlaceholder: "fr",
-      integrationActive: "Intégration active (envois activés quand le cron est actif)",
+            integrationActive: "Intégration active (envois activés quand le cron est actif)",
+      receptionistApiEnabled: "Autoriser la réception à utiliser l'envoi automatique via l'API Meta (rappels et historique).",
       save: "Enregistrer",
       saving: "Enregistrement…",
       testConnection: "Tester la connexion",
@@ -3886,6 +9824,168 @@ export const translations: Record<Language, Translations> = {
       successTest: "Connexion réussie avec Meta.",
       successTestWithPhone: "Connexion réussie ({phone})",
       successDisconnected: "WhatsApp déconnecté.",
+      campaigns: {
+        title: "Campagnes WhatsApp",
+        pageHint: "Diffusez des messages aux patients avec téléphone. Utilisez WhatsApp Web (manuel, sans API) ou l'envoi automatique via l'API Meta si configuré.",
+        webTitle: "Campagnes via WhatsApp Web",
+        webHint: "Créez le brouillon et envoyez patient par patient avec wa.me. Sans Meta : vous appuyez sur Envoyer dans WhatsApp.",
+        openWeb: "Ouvrir WhatsApp Web",
+        newDraft: "Nouvelle campagne (brouillon)",
+        metaApiTitle: "Envoi automatique via l'API Meta",
+        metaApiHint: "Nécessite WhatsApp Business configuré dans Paramètres. Vous pouvez ignorer cette section si vous n'utilisez que WhatsApp Web.",
+        denied: "Pas d'autorisation pour les campagnes WhatsApp.",
+        patientsLoadError: "Erreur patients",
+        draftCreated: "Campagne créée en brouillon",
+        createError: "Erreur lors de la création",
+        sendConfirm: "Envoyer cette campagne via l'API Meta à tous les patients avec téléphone ?",
+        apiSendResult: "API : envoyés {sent}, échoués {failed}",
+        apiSendError: "Erreur d'envoi via API",
+        namePlaceholder: "Nom interne (ex. Promo été)",
+        messagePlaceholder: "Message avec variables, ex. :\nBonjour {{nombre}}, nous vous informons que...",
+        variablesHint: "Variables :",
+        variablesList: "{{nombre}} (prénom), {{apellido}} (nom), {{nombre_completo}} (nom complet)",
+        clinicOnlyFilter: "Uniquement les patients de ma clinique",
+        recipientsWithPhone: "Destinataires avec téléphone valide :",
+        recipientsMismatchHint: "Il y a {count} patient(s) dans votre liste ; vérifiez qu'ils ont un téléphone d'au moins 8 chiffres ou décochez « Uniquement les patients de ma clinique ».",
+        patientsLoadFailed: "Impossible de charger les patients. Vérifiez les permissions ou rechargez la page.",
+        noPatientsYet: "Il n'y a pas encore de patients dans la liste.",
+        saveDraft: "Enregistrer le brouillon",
+        assistantTitle: "Assistant d'envoi — {name}",
+        assistantPatientOf: "Patient {current} sur {total} :",
+        openWhatsApp: "Ouvrir WhatsApp",
+        assistantDone: "Assistant terminé : {count} patients.",
+        finish: "Terminer",
+        nextPatient: "Patient suivant",
+        draftsToSend: "Brouillons à envoyer",
+        loading: "Chargement…",
+        recipientsCount: "{count} destinataire(s) avec WhatsApp",
+        sendAssistant: "Assistant d'envoi",
+        hideList: "Masquer la liste",
+        showList: "Voir la liste",
+        noValidRecipients: "Aucun destinataire valide.",
+        noDrafts: "Aucun brouillon. Créez une campagne ci-dessus.",
+        connected: "(connecté)",
+        optional: "(optionnel)",
+        receptionistApiHint: "Envoi automatique activé par votre podologue.",
+        receptionistApiDisabled: "Votre podologue n'a pas encore activé l'envoi automatique via l'API Meta pour la réception.",
+        configureApiHint: "Configurez WhatsApp Business dans Paramètres pour envoyer des campagnes via l'API Meta.",
+        allCampaigns: "Toutes les campagnes",
+        sentAt: "envoyée {date}",
+        sending: "Envoi…",
+        sendByApi: "Envoyer via API",
+        noCampaigns: "Aucune campagne",
+      },
+      messages: {
+        title: "Messages WhatsApp",
+        webTitle: "Rappels via WhatsApp Web",
+        webHint: "Sans configurer l'API Meta. Ouvrez WhatsApp Web ou l'appli avec le message prêt ; vous l'envoyez manuellement.",
+        openWeb: "Ouvrir WhatsApp Web",
+        metaApiTitle: "Envoi automatique avec l'API Meta",
+        metaApiHint: "Nécessite l'API Meta configurée dans Paramètres → WhatsApp.",
+        historyTitle: "Historique (API automatique)",
+        historyHint: "Journal des envois automatiques via l'API Meta. Les rappels WhatsApp Web ne sont pas enregistrés ici.",
+        denied: "Vous n'avez pas l'autorisation de voir cette section.",
+        patientFallback: "Patient",
+        defaultExtraNote: "Veuillez confirmer votre présence en répondant à ce message.",
+        noValidPhone: "Pas de téléphone valide pour {name}.",
+        selectAppointmentFirst: "Sélectionnez d'abord un rendez-vous.",
+        reminderSendError: "Impossible d'envoyer le rappel.",
+        reminderSent: "Rappel envoyé avec succès.",
+        defaultMessage: "Message par défaut",
+        variablesHint: "Variables :",
+        variablesList: "{{nombre}} (prénom), {{fecha}} (date), {{hora}} (heure), {{nota}} (note)",
+        extraNotePlaceholder: "Note extra pour tous les envois d'aujourd'hui (optionnel)",
+        saved: "Enregistré",
+        saveMessage: "Enregistrer le message",
+        tomorrowAppointments: "Rendez-vous de demain ({date})",
+        loadingAppointments: "Chargement des rendez-vous…",
+        noTomorrowAppointments: "Aucun rendez-vous prévu pour demain.",
+        noPhone: "Sans téléphone",
+        sendViaWhatsApp: "Envoyer via WhatsApp",
+        connected: "(connecté)",
+        optional: "(optionnel)",
+        receptionistApiHint: "Envoi automatique activé par votre podologue. Les rappels sont envoyés sans ouvrir WhatsApp Web.",
+        configLoadError: "Impossible d'obtenir l'état de WhatsApp.",
+        connectedLabel: "Connecté",
+        apiStatusLabel: "État API",
+        templateLabel: "Modèle",
+        templateUndefined: "Non défini",
+        lastErrorLabel: "Dernière erreur",
+        noErrors: "Aucune erreur",
+        sendAutoReminder: "Envoyer un rappel automatique",
+        selectUpcomingAppointment: "Sélectionnez un rendez-vous à venir",
+        sending: "Envoi...",
+        sendByApi: "Envoyer via API",
+        singleExtraNotePlaceholder: "Note extra pour cet envoi (optionnel)",
+        lastApiSends: "Derniers envois API",
+        refresh: "Actualiser",
+        loadingHistory: "Chargement de l'historique...",
+        configureForHistory: "Configurez WhatsApp Business dans Paramètres pour utiliser l'envoi automatique et voir l'historique ici.",
+        noApiSends: "Aucun envoi API. Les rappels WhatsApp Web ne sont pas enregistrés ici.",
+        colDate: "Date",
+        colPatient: "Patient",
+        colPhone: "Téléphone",
+        colStatus: "État",
+        colNote: "Note",
+        emDash: "—",
+        yes: "Oui",
+        no: "Non",
+      },
+    },
+    clinicalTools: {
+      title: "Outils cliniques",
+      denied: "Vous n'avez pas l'autorisation d'accéder à cette section.",
+      tabTemplates: "Modèles de séance",
+      tabInventory: "Inventaire",
+      tabReferrals: "Orientations",
+      templatesHint: "Définissez des historiques cliniques prédéfinis (cor, ongle incarné, etc.) à charger à l'ouverture d'une séance.",
+      newTemplate: "Nouveau modèle",
+      create: "Créer",
+      creating: "Création…",
+      category: "Catégorie",
+      inventoryName: "Nom du matériel",
+      unit: "Unité",
+      add: "Ajouter",
+      emptyInventory: "Aucun matériel enregistré",
+      patientId: "ID patient",
+      referTo: "Orienter vers",
+      reason: "Motif",
+      registerReferral: "Enregistrer l'orientation",
+      emptyReferrals: "Aucune orientation",
+      nameRequired: "Indiquez un nom pour le modèle.",
+      templateCreated: "Modèle créé. Modifiez-le pour choisir les sections et le contenu.",
+      createFailed: "Impossible de créer le modèle.",
+      presetCreated: "Modèle « {name} » créé.",
+      templateUpdated: "Modèle mis à jour.",
+      saveFailed: "Impossible d'enregistrer le modèle.",
+      deleteConfirm: "Supprimer le modèle « {name} » ? Cette action est irréversible.",
+      templateDeleted: "Modèle supprimé.",
+      deleteFailed: "Impossible de supprimer le modèle.",
+      invalidQuantity: "Indiquez une quantité valide (0 ou plus).",
+      defaultUnit: "unité",
+      inventoryAdded: "Matériel enregistré.",
+      genericError: "Erreur",
+      referralAdded: "Orientation enregistrée.",
+      namePlaceholder: "Nom (ex. Callosité 1er orteil)",
+      scopeLabel: "Portée :",
+      scopePersonal: "Moi uniquement",
+      scopeClinic: "Cabinet (tous les podologues)",
+      clinicAdminHint: "En tant qu'administrateur de clinique, les modèles sont partagés avec tout le cabinet.",
+      sectionsCount: "{count} sections",
+      close: "Fermer",
+      edit: "Modifier",
+      deleting: "Suppression…",
+      delete: "Supprimer",
+      nameLabel: "Nom",
+      shareWithClinic: "Partager avec le cabinet",
+      saving: "Enregistrement…",
+      saveTemplate: "Enregistrer le modèle",
+      emptyTemplates: "Aucun modèle. Créez-en un vide ou utilisez les raccourcis callosité / ongle incarné.",
+      quantityPlaceholder: "Quantité",
+      quantityAria: "Quantité",
+      patientPrefix: "Patient :",
+      scopeShared: "Cabinet",
+      scopePersonalShort: "Personnel",
     },
     systemDiagnostics: {
       title: "État du système",
@@ -4012,6 +10112,292 @@ export const translations: Record<Language, Translations> = {
       subjectRequired: "Le sujet est obligatoire",
       recipientRequired: "Sélectionnez au moins un destinataire",
       fromAdmin: "Message de l'Administrateur",
+    },
+
+    clinic: {
+      title: "Gestion de la clinique",
+      tabOverview: "Aperçu",
+      tabPodiatrists: "Podologues",
+      tabPatients: "Patients",
+      tabReceptionists: "Réceptionnistes",
+      statPodiatrists: "Podologues",
+      statTotalPatients: "Total patients",
+      statSessionsThisMonth: "Séances ce mois",
+      vsPreviousMonth: "% vs. mois précédent",
+      agendaTitle: "Agenda (30 derniers jours)",
+      agendaSubtitle: "Patients vus, absences et annulations enregistrées dans le calendrier",
+      allPodiatrists: "Tous les podologues",
+      attended: "Vus",
+      noShow: "Absents",
+      noShowRateOfResolved: "{n}% du total résolu",
+      cancelled: "Annulés",
+      cancellationRate: "Taux d'annulation : {n}%",
+      pending: "En attente",
+      demandTitle: "Demande d'agenda",
+      demandHint: "Demande totale (30 jours) : {n} rendez-vous. Détail des heures de pointe, occupation et clôture quotidienne dans Encaissements → Agenda.",
+      openCheckoutAgenda: "Ouvrir Encaissements → Agenda",
+      attendedPerDay: "Vus par jour",
+      loadingAgendaMetrics: "Chargement des métriques d'agenda…",
+      activityByPodiatrist: "Activité par podologue",
+      sessionsCount: "{n} séances",
+      podiatristsLimit: "Podologues : {current} sur {limit} (limite définie par PodoAdmin)",
+      podiatristsNoLimit: "Podologues de la clinique. Aucune limite définie.",
+      createPodiatrist: "Créer un podologue",
+      colPodiatrist: "Podologue",
+      colEmail: "E-mail",
+      colLicense: "Licence",
+      colPatients: "Patients",
+      colSessionsMonth: "Séances (mois)",
+      licenseNotRegistered: "Non enregistrée",
+      noPodiatrists: "Aucun podologue dans cette clinique",
+      totalIndexed: "Total indexés",
+      searchPatientPlaceholder: "Rechercher un patient (nom, e-mail, téléphone)...",
+      activityAll: "Activité : tous",
+      visitsRangeChip: "Visites {min}–{max}",
+      loadingPatients: "Chargement des patients…",
+      colPhone: "Téléphone",
+      colVisits: "Visites",
+      colAssignedPodiatrist: "Podologue assigné",
+      colLastSession: "Dernière séance",
+      colActions: "Actions",
+      reassign: "Réassigner",
+      noPatientsFound: "Aucun patient trouvé",
+      receptionistsHint: "Les réceptionnistes peuvent créer des patients et créer/modifier des rendez-vous sur les calendriers des podologues assignés, sans utiliser de crédits.",
+      receptionistsActive: "Actives : {active} / {max}. Elles doivent changer le mot de passe à la première connexion.",
+      createReceptionist: "Créer une réceptionniste",
+      colName: "Nom",
+      colAssignedPodiatrists: "Podologues assignés",
+      unassigned: "Non assigné",
+      podiatristsAction: "Podologues",
+      unblock: "Débloquer",
+      block: "Bloquer",
+      enable: "Activer",
+      disable: "Désactiver",
+      noReceptionists: "Aucune réceptionniste. Créez-en une pour gérer les rendez-vous et patients des podologues de la clinique.",
+      reassignTitle: "Réassigner le patient",
+      reassignUseCase: "Cas d'usage : lorsqu'un podologue ne peut pas assurer les rendez-vous en raison d'une absence ou indisponibilité, vous pouvez réassigner ses patients à un autre professionnel de la clinique.",
+      currentPodiatrist: "Podologue actuel",
+      newPodiatrist: "Nouveau podologue assigné",
+      selectPodiatrist: "Sélectionner un podologue...",
+      unknownPodiatrist: "Inconnu",
+      createPodiatristSubtitle: "Le nouveau podologue sera assigné à votre clinique.",
+      initialPasswordMin8: "Mot de passe initial (min. 8 caractères)",
+      createReceptionistSubtitle: "Tous les podologues de la clinique seront assignés. Le mot de passe devra être changé au premier accès.",
+      initialPassword: "Mot de passe initial",
+      assignedPodiatristsTitle: "Podologues assignés",
+      noPodiatristsInClinic: "Aucun podologue dans la clinique.",
+      confirmDeleteReceptionist: "Supprimer la réceptionniste {name} ({email}) ? Cette action est irréversible.",
+      maxActiveReceptionists: "Maximum {max} réceptionnistes actives dans la clinique.",
+      emailTaken: "Un compte avec cet e-mail existe déjà",
+      createReceptionistError: "Erreur lors de la création de la réceptionniste",
+      saveAssignmentError: "Erreur lors de l'enregistrement de l'assignation",
+      createPodiatristError: "Erreur lors de la création du podologue",
+      passwordMin8: "Le mot de passe doit comporter au moins 8 caractères",
+    },
+    auditLog: {
+      title: "Journal d'audit",
+      actionLabels: {
+        LOGIN_SUCCESS: "Connexion",
+        LOGIN_FAILED: "Échec de connexion",
+        LOGOUT: "Déconnexion",
+        PASSWORD_CHANGED: "Mot de passe modifié",
+        PASSWORD_RESET_REJECTED: "Réinitialisation rejetée",
+        PASSWORD_RESET_APPROVED: "Réinitialisation approuvée",
+        PASSWORD_RESET_COMPLETED: "Réinitialisation terminée",
+        PASSWORD_RESET_REQUESTED: "Demande de réinitialisation",
+        CREATE: "Création",
+        CREATE_USER: "Utilisateur créé",
+        UPDATE: "Mise à jour",
+        DELETE: "Suppression",
+        DELETE_USER: "Utilisateur supprimé",
+        COMPLETE: "Terminé",
+        EXPORT: "Exportation",
+        PRINT: "Impression",
+        UPDATE_DRAFT: "Brouillon mis à jour",
+        REASSIGN: "Réaffectation",
+        TRANSFER: "Transfert",
+        ADD_CREDITS: "Crédits ajoutés",
+        SUBTRACT_CREDITS: "Crédits retirés",
+        ADMIN_CREDIT_ADJUSTMENT: "Ajustement de crédits (admin)",
+        ALERT_MULTIPLE_PRINT_VIOLATIONS: "Alerte : impressions multiples",
+        PRINT_VIOLATION_FORM: "Tentative d'impression depuis le formulaire",
+      },
+      entityLabels: {
+        authentication: "Authentification",
+        session: "Session",
+        patient: "Patient",
+        prescription: "Ordonnance",
+        reassignment: "Réaffectation",
+        credit: "Crédits",
+        user: "Utilisateur",
+        user_data: "Données utilisateur",
+        clinic: "Clinique",
+        professional_info: "Infos professionnelles",
+        professional_credentials: "Identifiants",
+        logo: "Logo",
+        message: "Message",
+        clinical_history: "Historique clinique",
+        receptionist: "Réceptionniste",
+        registration_list: "Liste d'inscription",
+        support_conversation: "Conversation support",
+      },
+      filters: {
+        title: "Filtres",
+        clear: "Effacer les filtres",
+        search: "Rechercher...",
+        allActions: "Toutes les actions",
+        allTypes: "Tous les types",
+        allUsers: "Tous les utilisateurs",
+        from: "Du",
+        to: "Au",
+      },
+      empty: {
+        title: "Aucun enregistrement",
+        description: "Aucun journal d'audit trouvé avec les filtres sélectionnés",
+      },
+      totalRecords: "Total des enregistrements",
+      actionTypes: "Types d'action",
+      entityTypes: "Types d'entité",
+      activeUsers: "Utilisateurs actifs",
+      topUsers: "Utilisateurs les plus actifs",
+      recordsCount: "{n} enregistrements",
+      ofTotal: "(sur {total} au total)",
+      fullDetails: "Détails complets",
+      userLinkedHint: "Chaque enregistrement est lié à l'utilisateur qui a effectué l'action. Le Log ID identifie cet événement de façon unique.",
+      userLabel: "Utilisateur :",
+      userIdLabel: "ID utilisateur :",
+      logIdLabel: "ID d'enregistrement (log) :",
+      resourceIdLabel: "ID ressource :",
+      pageOf: "Page {current} sur {total}",
+      summaries: {
+        loginSuccess: "Connexion réussie",
+        loginSuccessEmail: "Connexion réussie : {email}",
+        with2fa: "(2FA activé)",
+        without2fa: "(sans 2FA)",
+        logout: "Déconnexion.",
+        passwordChanged: "Mot de passe modifié par l'utilisateur.",
+        loginFailed: "Tentative de connexion échouée.",
+        loginFailedEmail: "Tentative de connexion échouée : {email}",
+        passwordResetRejected: "Demande de réinitialisation rejetée.",
+        passwordResetApproved: "Réinitialisation approuvée par un administrateur.",
+        passwordResetCompleted: "L'utilisateur a terminé la réinitialisation du mot de passe.",
+        passwordResetRequested: "Demande de réinitialisation envoyée.",
+        patientPrefix: "Patient : {name}",
+        userPrefix: "Utilisateur : {name}",
+        clinicPrefix: "Clinique : {name}",
+      },
+    },
+    securityMetrics: {
+      title: "Métriques de sécurité",
+      subtitle: "Métriques de sécurité, alertes actives et événements récents",
+      last24h: "Dernières 24 h",
+      last7days: "7 derniers jours",
+      last30days: "30 derniers jours",
+      refresh: "Actualiser",
+      loadError: "Impossible de charger les métriques",
+      criticalEvents: "Événements critiques",
+      failedLogins: "Connexions échouées",
+      unreadAlerts: "Alertes non lues",
+      summaryByType: "Résumé par type",
+      loading: "Chargement...",
+      noEventsInPeriod: "Aucun événement sur la période sélectionnée.",
+      activeAlerts: "Alertes actives",
+      noSystemAlerts: "Aucune alerte système récente.",
+      recentAccessGeo: "Accès récents (géolocalisation)",
+      date: "Date",
+      event: "Événement",
+      userRole: "Utilisateur / rôle",
+      ip: "IP",
+      location: "Emplacement",
+      noAccessYet: "Aucun accès enregistré. Connectez-vous pour générer des données.",
+      loginOk: "Connexion OK",
+      loginFailed: "Connexion échouée",
+      recentFailedLogins: "Dernières connexions échouées",
+      emailDetail: "E-mail / détail",
+      noRecentRecords: "Aucun enregistrement récent.",
+      attemptNumber: "Tentative #{n}",
+      metricLabels: {
+        failed_login: "Connexions échouées",
+        successful_login: "Connexions réussies",
+        twoFaFailed: "2FA échoué",
+        captcha_failed: "CAPTCHA échoué",
+        suspicious_activity: "Activité suspecte",
+      },
+    },
+    supportPage: {
+      title: "Support",
+      adminSubtitle: "Messages des utilisateurs et listes d'inscription à approuver.",
+      tabMessages: "Messages",
+      tabLists: "Créer des listes",
+      conversations: "Conversations",
+      noConversations: "Aucune conversation",
+      selectConversation: "Sélectionnez une conversation pour voir les messages et répondre.",
+      supportAgent: "Support",
+      registrationLists: "Listes d'inscription",
+      newList: "Nouvelle liste",
+      newListNamePlaceholder: "Nom de la nouvelle liste...",
+      listsEmptyHint: "Créez des listes d'inscription (cours, événements) et envoyez-les pour approbation et import par l'administrateur.",
+      deleteList: "Supprimer",
+      deleteListConfirm: "Voulez-vous vraiment supprimer cette liste ?",
+      createListError: "Erreur lors de la création de la liste",
+      defaultListName: "Nouvelle liste",
+      invalidEmail: "Saisissez une adresse e-mail valide.",
+      downloadCsv: "Télécharger CSV",
+      markPaidToExport: "Marquez au moins une entrée comme payée pour exporter.",
+      submitForApproval: "Envoyer pour approbation",
+      addEntry: "Ajouter une entrée",
+      namePlaceholder: "Nom",
+      emailPlaceholder: "E-mail",
+      roleIndependent: "Podologue indépendant",
+      roleClinicAdmin: "Admin de clinique",
+      podiatristLimitLabel: "Limite podologues :",
+      podiatristLimitPlaceholder: "Ex. : 5",
+      add: "Ajouter",
+      clinicAdminLimitHint: "Les podologues de la clinique seront limités à ce nombre. Les réceptionnistes ne comptent pas dans la limite.",
+      noEntries: "Aucune entrée dans cette liste.",
+      paid: "Payé",
+      unpaid: "Non payé",
+      pendingPayment: "En attente de paiement ({n})",
+      paidSection: "Payés (exportés en CSV) ({n})",
+      selectOrCreateList: "Sélectionnez une liste ou créez-en une nouvelle.",
+      statusDraft: "Brouillon",
+      statusPending: "En attente",
+      statusApproved: "Approuvée",
+      statusRejected: "Rejetée",
+      limitPodiatrists: "Limite : {n} podologues",
+    },
+    sponsoredAnnouncements: {
+      title: "Annonces sponsorisées",
+      heading: "Annonces par état / province",
+      subtitle: "Campagnes payées par des fournisseurs externes. Tous les utilisateurs de la zone voient une bannière et une notification.",
+      newCampaign: "Nouvelle campagne",
+      formTitle: "Nouvelle campagne",
+      existingAdvertiser: "Annonceur existant",
+      newAdvertiserOption: "— Nouvel annonceur —",
+      advertiserName: "Nom de l'annonceur",
+      advertiserNamePlaceholder: "Ex. : Institut Podologique",
+      titlePlaceholder: "Titre de l'annonce",
+      bodyPlaceholder: "Description (cours, événement, etc.)",
+      countryPlaceholder: "Pays (MX)",
+      statePlaceholder: "État / province",
+      audienceEstimate: "≈ {n} utilisateurs dans la zone",
+      externalUrlPlaceholder: "URL de l'annonceur (leur site)",
+      promoCodePlaceholder: "Code promo sur le site de l'annonceur (optionnel)",
+      createDraft: "Créer un brouillon",
+      campaigns: "Campagnes",
+      loading: "Chargement...",
+      noCampaigns: "Aucune campagne pour le moment.",
+      advertiserCode: "Code annonceur :",
+      activate: "Activer",
+      pause: "Pause",
+      createAdvertiserError: "Impossible de créer l'annonceur",
+      selectOrCreateAdvertiser: "Sélectionnez ou créez un annonceur",
+      createCampaignError: "Erreur lors de la création de la campagne",
+      statusError: "Erreur",
+      statusActive: "active",
+      statusDraft: "brouillon",
+      statusPaused: "en pause",
+      defaultCta: "En savoir plus",
     },
     terms: {
       title: "Termes et Conditions",
@@ -4142,6 +10528,206 @@ export const translations: Record<Language, Translations> = {
       downloadStarted: "Téléchargement démarré : {filename}",
       openedInTab: "Dossier ouvert dans un nouvel onglet. Utilisez Imprimer → Enregistrer au format PDF.",
       invalidResponse: "La réponse du serveur ne contient pas de données patients valides.",
+    },
+    usersPage: {
+      fields: {
+        name: "Nom",
+        email: "E-mail",
+        password: "Mot de passe",
+        role: "Rôle",
+        clinic: "Clinique",
+        clinicOptional: "Clinique (optionnel)",
+      },
+      create: {
+        title: "Créer un nouvel utilisateur",
+        passwordHint: "Minimum 8 caractères.",
+        clinicModeExisting: "Sélectionner une clinique existante",
+        clinicModeNew: "Créer une nouvelle clinique",
+        clinicModeNone: "Sans clinique (indépendant)",
+        newClinicHint: "Une clinique sera créée avec des données provisoires. L'administrateur complétera le nom, le code, le téléphone, l'adresse et le reste dans Paramètres.",
+        podiatristLimit: "Limite de podologues (optionnel)",
+        podiatristLimitPlaceholder: "Ex. : 5",
+        podiatristLimitHint: "Les podologues de la clinique seront limités à ce nombre. Les réceptionnistes ne comptent pas.",
+        saving: "Création...",
+        success: "Utilisateur créé avec succès.",
+        partialClinicFail: "Utilisateur créé, mais la clinique n'a pas pu être créée. Configurez-la ensuite depuis l'édition utilisateur.",
+        errors: {
+          nameRequired: "Le nom est obligatoire.",
+          emailInvalid: "Saisissez une adresse e-mail valide.",
+          passwordMin: "Le mot de passe doit contenir au moins 8 caractères.",
+          clinicRequiredReceptionist: "Sélectionnez une clinique pour le réceptionniste.",
+          clinicRequiredAdmin: "Sélectionnez une clinique existante ou créez-en une nouvelle.",
+          createFailed: "Impossible de créer l'utilisateur.",
+        },
+      },
+      import: {
+        title: "Importer des utilisateurs (CSV)",
+        description: "Colonnes obligatoires : nombre, email, password (ou mot de passe par défaut), rol.",
+        optionalColumnsSuperAdmin: " Optionnel : clinicMode (existing|new|none), clinicId (si existing), podiatrist_limit (clinic_admin uniquement).",
+        downloadTemplate: "Télécharger le modèle",
+        selectFile: "Sélectionner un fichier",
+        defaultPassword: "Mot de passe par défaut (si manquant dans le CSV)",
+        optionalPlaceholder: "Optionnel",
+        readyCount: "{count} lignes prêtes à importer",
+        andMore: "... et {count} de plus",
+        resultsSummary: "Résultat : {ok} ok, {fail} en erreur",
+        created: "✓ Créé",
+        importing: "Importation... ({done}/{total})",
+        submit: "Importer",
+        templateFilename: "modele_utilisateurs.csv",
+        errors: {
+          needRows: "Le fichier doit avoir au moins une ligne d'en-tête et une ligne de données.",
+          missingColumns: "Colonnes obligatoires manquantes : nombre, email, password, rol",
+          readFile: "Erreur lors de la lecture du fichier",
+          invalidPassword: "Mot de passe invalide (min. 8 caractères)",
+          unknown: "Erreur inconnue",
+          connection: "Erreur de connexion",
+        },
+      },
+      edit: {
+        title: "Modifier l'utilisateur",
+        noClinic: "Sans clinique",
+        errors: {
+          updateFailed: "Impossible de mettre à jour l'utilisateur.",
+        },
+      },
+      transfer: {
+        title: "Transférer l'historique clinique",
+        subtitle: "Copier tous les patients et séances d'un utilisateur vers un autre",
+        successMessage: "Transfert terminé : {patients} patients, {sessions} séances.",
+        error: "Erreur lors du transfert des données.",
+        successTitle: "Succès !",
+        errorTitle: "Erreur",
+        sourceUser: "Utilisateur source",
+        targetUser: "Utilisateur cible",
+        selectUser: "— Sélectionner —",
+        patientsCount: "{count} patients à transférer",
+        warning: "Les données seront copiées vers l'utilisateur cible. La source conserve son historique. Cette action n'est pas facilement annulable.",
+        transferring: "Transfert...",
+        submit: "Transférer",
+      },
+      profile: {
+        loading: "Chargement des données cliniques...",
+        patients: "Patients",
+        sessions: "Séances",
+        patientsHeading: "Patients ({count})",
+        andMore: "...et {count} de plus",
+      },
+      status: {
+        banned: "Banni",
+        blocked: "Bloqué",
+        gracePeriod: "Période de grâce",
+        disabled: "Désactivé",
+        pendingPayment: "Paiement en attente",
+        active: "Actif",
+      },
+      confirm: {
+        block: "Bloquer {name} ? Il ne pourra pas se connecter jusqu'au déblocage.",
+        unblock: "Débloquer {name} ?",
+        enable: "Activer le compte de {name} ?",
+        disable: "Désactiver le compte de {name} ? Il ne pourra pas se connecter.",
+        ban: "Bannir {name} ? Action grave.",
+        unban: "Lever le bannissement de {name} ?",
+        delete: "Supprimer {name} ? Peut être irréversible.",
+        deletePermanent: "Supprimer définitivement {name} ? Irréversible.",
+      },
+      errors: {
+        approve: "Erreur lors de l'approbation",
+        reject: "Erreur lors du rejet",
+        block: "Impossible de bloquer l'utilisateur.",
+        unblock: "Impossible de débloquer l'utilisateur.",
+        enable: "Impossible d'activer l'utilisateur.",
+        disable: "Impossible de désactiver l'utilisateur.",
+        ban: "Impossible de bannir l'utilisateur.",
+        unban: "Impossible de lever le bannissement.",
+        delete: "Impossible de supprimer l'utilisateur.",
+      },
+      actions: {
+        importCsv: "Importer CSV",
+        createUser: "Créer un utilisateur",
+        transferHistory: "Transférer l'historique",
+        approve: "Approuver",
+        reject: "Rejeter",
+        view: "Voir",
+        edit: "Modifier",
+        ban: "Bannir",
+        unban: "Lever le ban",
+        block: "Bloquer",
+        unblock: "Débloquer",
+        enableAccount: "Activer le compte",
+        disableAccount: "Désactiver le compte",
+        delete: "Supprimer",
+        viewProfile: "Voir le profil",
+        downloadJson: "Télécharger JSON",
+        manageAccount: "Gérer le compte",
+      },
+      table: {
+        user: "Utilisateur",
+        email: "E-mail",
+        role: "Rôle",
+        status: "Statut",
+        clinic: "Clinique",
+        limit: "Limite",
+        data: "Données",
+        actions: "Actions",
+        sortBy: "Trier par",
+        podiatristLimit: "Limite de podologues",
+        dataSummary: "{patients} patients · {sessions} séances",
+        currentPodiatrists: "Actuels : {count}",
+        saveLimit: "Enregistrer",
+        clinicMissing: "Clinique introuvable",
+        patients: "patients",
+        sessions: "séances",
+      },
+      passwordReset: {
+        pendingTitle: "Demandes de réinitialisation du mot de passe",
+        approved: "Demande approuvée.",
+        approveError: "Impossible d'approuver la demande.",
+        rejectReasonPrompt: "Motif du rejet (optionnel) :",
+        rejected: "Demande rejetée.",
+        rejectError: "Impossible de rejeter la demande.",
+        approvedModalTitle: "Demande approuvée",
+        linkHint: "Le lien a été envoyé par e-mail à l'utilisateur. Voici le lien pour le renvoyer personnellement (WhatsApp, etc.) :",
+        copied: "Lien copié dans le presse-papiers.",
+        copyFailed: "Impossible de copier. Sélectionnez et copiez le lien manuellement.",
+        copyLink: "Copier le lien",
+      },
+      regLists: {
+        title: "Listes d'inscription en attente",
+        hint: "Approuvez ou rejetez les listes envoyées par le support.",
+        byCreator: "Par {name}",
+        downloadCsv: "CSV",
+        createdCount: "{count} utilisateur(s) créé(s).",
+        approved: "Liste approuvée.",
+        errorsPrefix: "Erreurs :",
+      },
+      cooldown: {
+        notApplicable: "N/A",
+        scopeClinic: "clinique",
+        scopeProfessional: "professionnel",
+        reasonPrompt: "Motif de l'autorisation (optionnel) :",
+        confirm: "Autoriser l'édition anticipée de {scope} pour {name} ?",
+        applied: "Autorisation appliquée.",
+        error: "Impossible d'appliquer l'autorisation.",
+      },
+      export: {
+        failed: "Impossible d'exporter les données de l'utilisateur.",
+      },
+      menu: {
+        unbanAccount: "Lever le bannissement",
+        banAccount: "Bannir le compte",
+        unblockAccount: "Débloquer le compte",
+        blockAccount: "Bloquer le compte",
+        enableAccount: "Activer le compte",
+        disableAccount: "Désactiver le compte",
+        authorizeCooldown: "Autoriser l'édition (cooldown)",
+        deleteAccount: "Supprimer le compte",
+      },
+      searchPlaceholder: "Rechercher des utilisateurs...",
+      allRoles: "Tous les rôles",
+      loading: "Chargement des utilisateurs...",
+      empty: "Aucun utilisateur trouvé.",
+      selectPlaceholder: "— Sélectionner —",
     },
   },
 };

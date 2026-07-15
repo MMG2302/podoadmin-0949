@@ -1,7 +1,11 @@
+import { useLanguage } from "../../contexts/language-context";
+
 type BarPoint = {
   label: string;
   value: number;
   secondaryValue?: number;
+  /** Etiqueta del periodo anterior (visible en compareMode). */
+  secondaryLabel?: string;
 };
 
 type Props = {
@@ -19,10 +23,13 @@ export function SimpleBarChart({
   height = 160,
   className = "",
 }: Props) {
+  const { t } = useLanguage();
+  const a = t.checkout.analytics;
+
   if (data.length === 0) {
     return (
       <div className={`flex items-center justify-center text-sm text-brand-muted ${className}`} style={{ height }}>
-        Sin datos en el periodo
+        {a.emptyPeriod}
       </div>
     );
   }
@@ -47,10 +54,18 @@ export function SimpleBarChart({
           return (
             <div
               key={point.label}
-              className="flex flex-col items-center justify-end flex-1 min-w-[36px] sm:min-w-[44px] h-full gap-1"
-              title={`${point.label}: ${formatValue(point.value)}${
+              className={`flex flex-col items-center justify-end flex-1 h-full gap-1 ${
+                compareMode && point.secondaryLabel
+                  ? "min-w-[56px] sm:min-w-[72px]"
+                  : "min-w-[36px] sm:min-w-[44px]"
+              }`}
+              title={`${
+                compareMode && point.secondaryLabel
+                  ? `${point.secondaryLabel} / ${point.label}`
+                  : point.label
+              }: ${formatValue(point.value)}${
                 compareMode && point.secondaryValue != null
-                  ? ` / prev: ${formatValue(point.secondaryValue)}`
+                  ? ` / ${a.prevShort}: ${formatValue(point.secondaryValue)}`
                   : ""
               }`}
             >
@@ -73,8 +88,16 @@ export function SimpleBarChart({
                   />
                 )}
               </div>
-              <span className="text-[10px] sm:text-xs text-brand-muted truncate w-full text-center">
-                {point.label}
+              <span className="text-[10px] sm:text-xs text-brand-muted w-full text-center leading-tight truncate">
+                {compareMode && point.secondaryLabel ? (
+                  <>
+                    <span className="opacity-80">{point.secondaryLabel}</span>
+                    <span className="mx-0.5 opacity-50">·</span>
+                    <span className="text-brand-ink/80">{point.label}</span>
+                  </>
+                ) : (
+                  point.label
+                )}
               </span>
             </div>
           );
@@ -84,11 +107,11 @@ export function SimpleBarChart({
         <div className="flex flex-wrap gap-3 text-xs text-brand-muted">
           <span className="inline-flex items-center gap-1.5">
             <span className="w-3 h-3 rounded-sm bg-brand-ink" />
-            Periodo actual
+            {a.currentPeriod}
           </span>
           <span className="inline-flex items-center gap-1.5">
             <span className="w-3 h-3 rounded-sm bg-brand-border/70" />
-            Periodo anterior
+            {a.previousPeriodLegend}
           </span>
         </div>
       )}

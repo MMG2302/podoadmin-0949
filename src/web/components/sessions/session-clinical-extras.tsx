@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api } from "../../lib/api-client";
+import { useLanguage } from "../../contexts/language-context";
 
 interface ChecklistItem {
   id: string;
@@ -8,6 +9,7 @@ interface ChecklistItem {
 }
 
 export function SessionChecklistPanel({ sessionId }: { sessionId: string }) {
+  const { t } = useLanguage();
   const [items, setItems] = useState<ChecklistItem[]>([]);
   const [saving, setSaving] = useState(false);
 
@@ -32,7 +34,9 @@ export function SessionChecklistPanel({ sessionId }: { sessionId: string }) {
 
   return (
     <div className="mt-4 border-t pt-4">
-      <h4 className="text-sm font-semibold text-brand-ink mb-2">Protocolo / checklist</h4>
+      <h4 className="text-sm font-semibold text-brand-ink mb-2">
+        {t.sessionsClinical.checklistTitle}
+      </h4>
       <ul className="space-y-1">
         {items.map((item) => (
           <li key={item.id} className="flex items-center gap-2 text-sm">
@@ -60,6 +64,8 @@ export function SessionPatientSignature({
   patientId: string;
   consentVersion: number;
 }) {
+  const { t, language } = useLanguage();
+  const sc = t.sessionsClinical;
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [drawing, setDrawing] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -152,32 +158,31 @@ export function SessionPatientSignature({
     if (res.success) await loadExisting();
   };
 
+  const locale =
+    language === "en" ? "en-US" : language === "pt" ? "pt-PT" : language === "fr" ? "fr-FR" : "es-ES";
+
   return (
     <div className="mt-4 border-t pt-4">
-      <h4 className="text-sm font-semibold mb-1">Firma del paciente</h4>
-      <p className="text-xs text-gray-500 mb-2">
-        Se guarda en el expediente (tabla de consentimientos, vinculada a esta sesión).
-      </p>
+      <h4 className="text-sm font-semibold mb-1">{sc.signatureTitle}</h4>
+      <p className="text-xs text-gray-500 mb-2">{sc.signatureHint}</p>
       {loading ? (
-        <p className="text-xs text-gray-400">Cargando firma…</p>
+        <p className="text-xs text-gray-400">{sc.signatureLoading}</p>
       ) : savedImage ? (
         <div className="space-y-2">
           <img
             src={savedImage}
-            alt="Firma del paciente"
+            alt={sc.signatureAlt}
             className="max-w-md border border-gray-200 rounded-lg bg-white p-2"
           />
           {savedAt && (
             <p className="text-xs text-gray-500">
-              Guardada: {new Date(savedAt).toLocaleString("es-ES")}
+              {sc.signatureSavedAt.replace("{date}", new Date(savedAt).toLocaleString(locale))}
             </p>
           )}
-          <p className="text-xs text-gray-400">
-            Dibuje de nuevo abajo para reemplazar la firma.
-          </p>
+          <p className="text-xs text-gray-400">{sc.signatureRedraw}</p>
         </div>
       ) : (
-        <p className="text-xs text-gray-400 mb-2">Aún no hay firma para esta sesión.</p>
+        <p className="text-xs text-gray-400 mb-2">{sc.signatureEmpty}</p>
       )}
       <canvas
         ref={canvasRef}
@@ -191,22 +196,23 @@ export function SessionPatientSignature({
       />
       <div className="flex gap-2 mt-2">
         <button type="button" className="text-xs underline" onClick={clear}>
-          Borrar
+          {sc.signatureClear}
         </button>
         <button
           type="button"
           onClick={save}
           className="px-3 py-1 bg-brand-ink text-brand-ink-fg rounded text-xs"
         >
-          Guardar firma
+          {sc.signatureSave}
         </button>
-        {saved && <span className="text-xs text-green-700">Guardada</span>}
+        {saved && <span className="text-xs text-green-700">{sc.signatureSaved}</span>}
       </div>
     </div>
   );
 }
 
 export function PatientEvolutionReportButton({ patientId }: { patientId: string }) {
+  const { t } = useLanguage();
   const [loading, setLoading] = useState(false);
 
   const openReport = async () => {
@@ -231,7 +237,7 @@ export function PatientEvolutionReportButton({ patientId }: { patientId: string 
       onClick={openReport}
       className="text-sm text-blue-600 underline disabled:opacity-50"
     >
-      {loading ? "Generando…" : "Informe de evolución (PDF / imprimir)"}
+      {loading ? t.sessionsClinical.evolutionReportLoading : t.sessionsClinical.evolutionReport}
     </button>
   );
 }

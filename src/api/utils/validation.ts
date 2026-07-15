@@ -339,6 +339,12 @@ export const patientsListQuerySchema = clinicalListPaginationSchema.extend({
   segment: z.enum(['new', 'recurrent', 'recovered']).optional(),
   ageMin: z.coerce.number().int().min(0).max(130).optional(),
   ageMax: z.coerce.number().int().min(0).max(130).optional(),
+  /** Sin sesión en los últimos 90 (3m) o 180 (6m) días. */
+  inactive: z.enum(['3m', '6m']).optional(),
+  minVisits: z.coerce.number().int().min(0).max(10_000).optional(),
+  maxVisits: z.coerce.number().int().min(0).max(10_000).optional(),
+  /** LTV: suma de cobros pagados en día/mes/año o lifetime. */
+  ltvPeriod: z.enum(['day', 'week', 'month', 'year', 'lifetime']).optional(),
 });
 
 /** Query: listado de sesiones */

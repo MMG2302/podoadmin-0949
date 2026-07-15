@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { MainLayout } from "../components/layout/main-layout";
+import { useLanguage } from "../contexts/language-context";
 import { api } from "../lib/api-client";
 import { MapPin, Plus, Play, Pause, Users } from "lucide-react";
 
@@ -26,6 +27,9 @@ interface Campaign {
 }
 
 const SponsoredAnnouncementsPage = () => {
+  const { t } = useLanguage();
+  const sa = t.sponsoredAnnouncements;
+
   const [advertisers, setAdvertisers] = useState<Advertiser[]>([]);
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [loading, setLoading] = useState(true);
@@ -40,10 +44,17 @@ const SponsoredAnnouncementsPage = () => {
     targetState: "",
     externalUrl: "",
     promoCode: "",
-    ctaLabel: "Ver más",
+    ctaLabel: sa.defaultCta,
     startsAt: "",
     endsAt: "",
   });
+
+  const statusLabel = (status: string): string => {
+    if (status === "active") return sa.statusActive;
+    if (status === "draft") return sa.statusDraft;
+    if (status === "paused") return sa.statusPaused;
+    return status;
+  };
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -65,13 +76,13 @@ const SponsoredAnnouncementsPage = () => {
       setAudienceEstimate(null);
       return;
     }
-    const t = setTimeout(async () => {
+    const timer = setTimeout(async () => {
       const r = await api.get<{ success?: boolean; count?: number }>(
         `/location-announcements/admin/audience-estimate?country=${encodeURIComponent(form.targetCountry)}&state=${encodeURIComponent(form.targetState)}`
       );
       if (r.success) setAudienceEstimate(r.data?.count ?? 0);
     }, 400);
-    return () => clearTimeout(t);
+    return () => clearTimeout(timer);
   }, [form.targetCountry, form.targetState]);
 
   const handleCreate = async (e: React.FormEvent) => {
@@ -83,13 +94,13 @@ const SponsoredAnnouncementsPage = () => {
         { name: form.newAdvertiserName.trim() }
       );
       if (!advRes.success || !advRes.data?.advertiser) {
-        alert(advRes.error || "No se pudo crear el proveedor");
+        alert(advRes.error || sa.createAdvertiserError);
         return;
       }
       advertiserId = advRes.data.advertiser.id;
     }
     if (!advertiserId) {
-      alert("Selecciona o crea un proveedor");
+      alert(sa.selectOrCreateAdvertiser);
       return;
     }
     const startsAt = form.startsAt ? new Date(form.startsAt).getTime() : Date.now();
@@ -111,27 +122,27 @@ const SponsoredAnnouncementsPage = () => {
       setForm((f) => ({ ...f, title: "", body: "", targetState: "", externalUrl: "", promoCode: "" }));
       await load();
     } else {
-      alert(res.error || "Error al crear campaña");
+      alert(res.error || sa.createCampaignError);
     }
   };
 
   const setStatus = async (id: string, status: string) => {
     const r = await api.post(`/location-announcements/admin/campaigns/${id}/status`, { status });
     if (r.success) await load();
-    else alert(r.error || "Error");
+    else alert(r.error || sa.statusError);
   };
 
   return (
-    <MainLayout title="Anuncios patrocinados">
+    <MainLayout title={sa.title}>
       <div className="space-y-6 max-w-5xl">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div>
             <h2 className="text-lg font-semibold text-brand-ink flex items-center gap-2">
               <MapPin className="w-5 h-5" />
-              Anuncios por estado / provincia
+              {sa.heading}
             </h2>
             <p className="text-sm text-brand-muted mt-1">
-              Campañas pagadas por proveedores externos. Todos los usuarios en la zona ven banner y notificación.
+              {sa.subtitle}
             </p>
           </div>
           <button
@@ -140,22 +151,22 @@ const SponsoredAnnouncementsPage = () => {
             className="inline-flex items-center gap-2 px-4 py-2 bg-brand-ink text-brand-ink-fg rounded-lg text-sm font-medium"
           >
             <Plus className="w-4 h-4" />
-            Nueva campaña
+            {sa.newCampaign}
           </button>
         </div>
 
         {showForm && (
           <form onSubmit={handleCreate} className="bg-brand-surface border border-brand-border rounded-xl p-6 space-y-4">
-            <h3 className="font-medium text-brand-ink">Nueva campaña</h3>
+            <h3 className="font-medium text-brand-ink">{sa.formTitle}</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium mb-1">Proveedor existente</label>
+                <label className="block text-sm font-medium mb-1">{sa.existingAdvertiser}</label>
                 <select
                   value={form.advertiserId}
                   onChange={(e) => setForm({ ...form, advertiserId: e.target.value })}
                   className="w-full px-3 py-2 border border-brand-border rounded-lg bg-brand-surface text-sm"
                 >
-                  <option value="">— Nuevo proveedor —</option>
+                  <option value="">{sa.newAdvertiserOption}</option>
                   {advertisers.map((a) => (
                     <option key={a.id} value={a.id}>{a.name}</option>
                   ))}
@@ -163,12 +174,12 @@ const SponsoredAnnouncementsPage = () => {
               </div>
               {!form.advertiserId && (
                 <div>
-                  <label className="block text-sm font-medium mb-1">Nombre del proveedor</label>
+                  <label className="block text-sm font-medium mb-1">{sa.advertiserName}</label>
                   <input
                     value={form.newAdvertiserName}
                     onChange={(e) => setForm({ ...form, newAdvertiserName: e.target.value })}
                     className="w-full px-3 py-2 border border-brand-border rounded-lg text-sm"
-                    placeholder="Ej: Instituto Podológico"
+                    placeholder={sa.advertiserNamePlaceholder}
                   />
                 </div>
               )}
@@ -177,14 +188,14 @@ const SponsoredAnnouncementsPage = () => {
               required
               value={form.title}
               onChange={(e) => setForm({ ...form, title: e.target.value })}
-              placeholder="Título del anuncio"
+              placeholder={sa.titlePlaceholder}
               className="w-full px-3 py-2 border border-brand-border rounded-lg text-sm"
             />
             <textarea
               required
               value={form.body}
               onChange={(e) => setForm({ ...form, body: e.target.value })}
-              placeholder="Descripción (curso, evento, etc.)"
+              placeholder={sa.bodyPlaceholder}
               rows={3}
               className="w-full px-3 py-2 border border-brand-border rounded-lg text-sm"
             />
@@ -192,19 +203,19 @@ const SponsoredAnnouncementsPage = () => {
               <input
                 value={form.targetCountry}
                 onChange={(e) => setForm({ ...form, targetCountry: e.target.value.toUpperCase() })}
-                placeholder="País (MX)"
+                placeholder={sa.countryPlaceholder}
                 className="px-3 py-2 border border-brand-border rounded-lg text-sm"
               />
               <input
                 required
                 value={form.targetState}
                 onChange={(e) => setForm({ ...form, targetState: e.target.value })}
-                placeholder="Estado / provincia"
+                placeholder={sa.statePlaceholder}
                 className="px-3 py-2 border border-brand-border rounded-lg text-sm"
               />
               {audienceEstimate != null && (
                 <p className="text-sm text-brand-muted flex items-center gap-1 self-center">
-                  <Users className="w-4 h-4" /> ≈ {audienceEstimate} usuarios en zona
+                  <Users className="w-4 h-4" /> {sa.audienceEstimate.replace("{n}", String(audienceEstimate))}
                 </p>
               )}
             </div>
@@ -213,13 +224,13 @@ const SponsoredAnnouncementsPage = () => {
               type="url"
               value={form.externalUrl}
               onChange={(e) => setForm({ ...form, externalUrl: e.target.value })}
-              placeholder="URL del anunciante (su web)"
+              placeholder={sa.externalUrlPlaceholder}
               className="w-full px-3 py-2 border border-brand-border rounded-lg text-sm"
             />
             <input
               value={form.promoCode}
               onChange={(e) => setForm({ ...form, promoCode: e.target.value })}
-              placeholder="Código descuento en web del anunciante (opcional)"
+              placeholder={sa.promoCodePlaceholder}
               className="w-full px-3 py-2 border border-brand-border rounded-lg text-sm"
             />
             <div className="grid grid-cols-2 gap-4">
@@ -237,17 +248,17 @@ const SponsoredAnnouncementsPage = () => {
               />
             </div>
             <button type="submit" className="px-4 py-2 bg-brand-ink text-brand-ink-fg rounded-lg text-sm font-medium">
-              Crear borrador
+              {sa.createDraft}
             </button>
           </form>
         )}
 
         <div className="bg-brand-surface border border-brand-border rounded-xl overflow-hidden">
-          <div className="p-4 border-b border-brand-border font-medium text-brand-ink">Campañas</div>
+          <div className="p-4 border-b border-brand-border font-medium text-brand-ink">{sa.campaigns}</div>
           {loading ? (
-            <p className="p-4 text-sm text-brand-muted">Cargando...</p>
+            <p className="p-4 text-sm text-brand-muted">{sa.loading}</p>
           ) : campaigns.length === 0 ? (
-            <p className="p-4 text-sm text-brand-muted">Sin campañas aún.</p>
+            <p className="p-4 text-sm text-brand-muted">{sa.noCampaigns}</p>
           ) : (
             <ul className="divide-y divide-brand-border">
               {campaigns.map((c) => (
@@ -258,10 +269,10 @@ const SponsoredAnnouncementsPage = () => {
                       {c.targetState}, {c.targetCountry} · {c.advertiserName} ·{" "}
                       <span className={
                         c.status === "active" ? "text-green-600" : c.status === "draft" ? "text-gray-500" : "text-amber-600"
-                      }>{c.status}</span>
+                      }>{statusLabel(c.status)}</span>
                     </p>
                     {c.promoCode && (
-                      <p className="text-xs mt-1">Código anunciante: <code>{c.promoCode}</code></p>
+                      <p className="text-xs mt-1">{sa.advertiserCode} <code>{c.promoCode}</code></p>
                     )}
                   </div>
                   <div className="flex gap-2">
@@ -271,7 +282,7 @@ const SponsoredAnnouncementsPage = () => {
                         onClick={() => void setStatus(c.id, "active")}
                         className="inline-flex items-center gap-1 px-3 py-1.5 text-xs bg-green-600 text-white rounded-lg"
                       >
-                        <Play className="w-3 h-3" /> Activar
+                        <Play className="w-3 h-3" /> {sa.activate}
                       </button>
                     )}
                     {c.status === "active" && (
@@ -280,7 +291,7 @@ const SponsoredAnnouncementsPage = () => {
                         onClick={() => void setStatus(c.id, "paused")}
                         className="inline-flex items-center gap-1 px-3 py-1.5 text-xs border border-brand-border rounded-lg"
                       >
-                        <Pause className="w-3 h-3" /> Pausar
+                        <Pause className="w-3 h-3" /> {sa.pause}
                       </button>
                     )}
                   </div>

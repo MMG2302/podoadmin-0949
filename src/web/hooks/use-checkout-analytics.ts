@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { api } from "../lib/api-client";
+import { useLanguage } from "../contexts/language-context";
 import type { CheckoutAnalytics, CheckoutAnalyticsPeriod, CheckoutAnalyticsPrefs } from "../types/checkout-analytics";
 
 function analyticsQuery(period: CheckoutAnalyticsPeriod, podiatristId?: string): string {
@@ -20,24 +21,42 @@ export function useCheckoutAnalytics(
   enabled: boolean,
   podiatristId?: string
 ) {
+  const { t } = useLanguage();
   const [analytics, setAnalytics] = useState<CheckoutAnalytics | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const loadFailed = t.checkout.analytics.loadFailed;
+  const networkError = t.checkout.analytics.loadNetworkError;
 
   const load = useCallback(async () => {
-    if (!enabled) return;
+    if (!enabled) {
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     setError(null);
-    const res = await api.get<{ success: boolean; analytics?: CheckoutAnalytics; error?: string }>(
-      analyticsQuery(period, podiatristId)
-    );
-    setLoading(false);
-    if (res.success && res.data?.analytics) {
-      setAnalytics(res.data.analytics);
-    } else {
-      setError(res.message || res.error || "No se pudieron cargar las analíticas");
+    try {
+      const res = await api.get<{ success: boolean; analytics?: CheckoutAnalytics; error?: string }>(
+        analyticsQuery(period, podiatristId)
+      );
+      if (res.success && res.data?.analytics) {
+        setAnalytics(res.data.analytics);
+      } else {
+        setAnalytics(null);
+        setError(
+          res.message ||
+            res.error ||
+            res.data?.error ||
+            loadFailed
+        );
+      }
+    } catch (err) {
+      setAnalytics(null);
+      setError(err instanceof Error ? err.message : networkError);
+    } finally {
+      setLoading(false);
     }
-  }, [enabled, period, podiatristId]);
+  }, [enabled, period, podiatristId, loadFailed, networkError]);
 
   useEffect(() => {
     void load();

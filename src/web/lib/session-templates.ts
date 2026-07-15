@@ -49,11 +49,11 @@ export interface SessionTemplate {
 export type SessionTemplateScope = "personal" | "clinic";
 
 export const TEMPLATE_CATEGORIES = [
-  { id: "general", label: "General" },
-  { id: "dermatologia", label: "Dermatología / callosidades" },
-  { id: "uñas", label: "Uñas" },
-  { id: "biomecanica", label: "Biomecánica" },
-  { id: "cirugia", label: "Cirugía / procedimientos" },
+  { id: "general" },
+  { id: "dermatologia" },
+  { id: "uñas" },
+  { id: "biomecanica" },
+  { id: "cirugia" },
 ] as const;
 
 export const DEFAULT_TEMPLATE_FIELDS: SessionTemplateFields = {
@@ -287,7 +287,7 @@ export function resolvePresetFields(
 
 export const SESSION_TEMPLATE_PRESETS: SessionTemplatePreset[] = [
   {
-    name: "Callosidad / heloma",
+    name: "heloma",
     category: "dermatologia",
     enabledSections: HELOMA_PRESET_SECTIONS,
     fields: {
@@ -302,7 +302,7 @@ export const SESSION_TEMPLATE_PRESETS: SessionTemplatePreset[] = [
     },
   },
   {
-    name: "Uña encarnada (onicocriptosis)",
+    name: "onychocryptosis",
     category: "uñas",
     enabledSections: ONYCH_PRESET_SECTIONS,
     fields: {
@@ -317,7 +317,7 @@ export const SESSION_TEMPLATE_PRESETS: SessionTemplatePreset[] = [
     },
   },
   {
-    name: "Procedimiento quirúrgico",
+    name: "surgery",
     category: "cirugia",
     enabledSections: SURGERY_PRESET_SECTIONS,
     fields: {
@@ -525,8 +525,10 @@ export function sessionFormHasClinicalContent(fields: SessionTemplateFields): bo
   return textFilled || podiatryExamHasContent(normalized.podiatryExam!) || Boolean(customFilled);
 }
 
-export function templateScopeLabel(template: SessionTemplate, currentUserId?: string): string {
-  if (template.isShared) return "Consultorio";
-  if (template.createdBy && template.createdBy === currentUserId) return "Personal";
-  return "Personal";
+export function templateScopeLabel(
+  t: { clinicalToolsExtras: { scopeClinic: string; scopePersonal: string } },
+  template: SessionTemplate,
+  _currentUserId?: string
+): string {
+  return template.isShared ? t.clinicalToolsExtras.scopeClinic : t.clinicalToolsExtras.scopePersonal;
 }

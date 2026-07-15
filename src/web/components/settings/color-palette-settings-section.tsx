@@ -288,6 +288,7 @@ export function ColorPaletteSettingsSection() {
           preview={
             <PaletteWhatsappPreviewMockup
               title={t.settings.paletteGroupWhatsapp}
+              description={t.settings.paletteWhatsappPreviewDesc}
               buttonLabel={t.settings.paletteTokens.whatsapp}
             />
           }

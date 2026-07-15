@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useLocation } from "wouter";
 import { useAuth } from "../../contexts/auth-context";
+import { useLanguage } from "../../contexts/language-context";
 import { usePermissions } from "../../hooks/use-permissions";
 import { api } from "../../lib/api-client";
 import { BILLING_SETTINGS_PATH } from "../../lib/billing-settings-path";
@@ -52,6 +53,7 @@ interface TrialVerification {
 }
 
 export function BillingSettingsSection() {
+  const { t } = useLanguage();
   const { user, updateUser } = useAuth();
   const { isSuperAdmin, isAdmin, isReceptionist } = usePermissions();
   const [, setLocation] = useLocation();
@@ -104,8 +106,8 @@ export function BillingSettingsSection() {
   }, [load]);
 
   useEffect(() => {
-    if (success === "1") setMessage("Pago recibido. La suscripción se activará en unos segundos.");
-    if (cancelled === "1") setMessage("Pago cancelado. Puedes intentarlo de nuevo cuando quieras.");
+    if (success === "1") setMessage(t.settings.billing.paymentReceived);
+    if (cancelled === "1") setMessage(t.settings.billing.paymentCancelled);
   }, [success, cancelled]);
 
   useEffect(() => {
@@ -115,11 +117,11 @@ export function BillingSettingsSection() {
       const res = await api.post("/trial/card/complete", { sessionId: trialCardSessionId });
       setBusy(false);
       if (res.success) {
-        setMessage("Tarjeta verificada correctamente.");
+        setMessage(t.settings.billing.cardVerified);
         load();
         setLocation(BILLING_SETTINGS_PATH);
       } else {
-        setMessage(res.message || res.error || "Error al verificar la tarjeta.");
+        setMessage(res.message || res.error || t.settings.billing.cardVerifyError);
       }
     };
     void completeCard();
@@ -132,7 +134,7 @@ export function BillingSettingsSection() {
       const res = await api.post("/trial/card/mock");
       setBusy(false);
       if (res.success) {
-        setMessage("Tarjeta mock verificada (solo desarrollo).");
+        setMessage(t.settings.billing.cardMockVerified);
         load();
         setLocation(BILLING_SETTINGS_PATH);
       }
@@ -149,7 +151,7 @@ export function BillingSettingsSection() {
       window.location.href = res.data.url;
       return;
     }
-    setMessage(res.message || res.error || "No se pudo iniciar verificación de tarjeta.");
+    setMessage(res.message || res.error || t.settings.billing.cardSetupError);
   };
 
   const activateTrial = async () => {
@@ -158,13 +160,13 @@ export function BillingSettingsSection() {
     const res = await api.post<{ systemAccess?: boolean; message?: string }>("/trial/activate");
     setBusy(false);
     if (res.success) {
-      setMessage(res.data?.message || "Periodo de prueba activado.");
+      setMessage(res.data?.message || t.settings.billing.trialActivated);
       if (typeof res.data?.systemAccess === "boolean") {
         updateUser({ systemAccess: res.data.systemAccess });
       }
       load();
     } else {
-      setMessage(res.message || res.error || "No se pudo activar la prueba.");
+      setMessage(res.message || res.error || t.settings.billing.trialActivateError);
     }
   };
 
@@ -177,7 +179,7 @@ export function BillingSettingsSection() {
       window.location.href = res.data.url;
       return;
     }
-    setMessage(res.message || res.error || "No se pudo iniciar el pago.");
+    setMessage(res.message || res.error || t.settings.billing.checkoutError);
   };
 
   const openPortal = async () => {
@@ -189,13 +191,13 @@ export function BillingSettingsSection() {
       window.location.href = res.data.url;
       return;
     }
-    setMessage(res.message || res.error || "No se pudo abrir el portal de facturación.");
+    setMessage(res.message || res.error || t.settings.billing.portalError);
   };
 
   if (isSuperAdmin || isAdmin) {
     return (
       <p className="text-brand-muted text-sm sm:text-base">
-        Los administradores de plataforma no requieren suscripción.
+        {t.settings.billing.adminNoSub}
       </p>
     );
   }
@@ -203,16 +205,16 @@ export function BillingSettingsSection() {
   if (isReceptionist) {
     return (
       <p className="text-brand-muted text-sm sm:text-base">
-        La suscripción de la clínica la gestiona el administrador de la clínica.
+        {t.settings.billing.receptionistHint}
       </p>
     );
   }
 
   const statusLabel: Record<string, string> = {
-    active: "Activa",
-    trial: "Periodo de prueba",
-    past_due: "Pago pendiente",
-    cancelled: "Cancelada",
+    active: t.settings.billing.statusActive,
+    trial: t.settings.billing.trialPeriod,
+    past_due: t.settings.billing.statusPastDue,
+    cancelled: t.settings.billing.statusCancelled,
   };
 
   const checkoutBlocked = pricing?.overIncludedPodiatrists && pricing.subjectType === "clinic";
@@ -234,29 +236,28 @@ export function BillingSettingsSection() {
         !(subscription?.status === "trial" && subscription.isActive) &&
         trialVerification && (
           <div className="p-4 sm:p-5 rounded-xl border border-brand-border bg-brand-canvas space-y-4 text-sm">
-            <p className="font-semibold text-brand-ink">Activar prueba gratuita (1 mes)</p>
+            <p className="font-semibold text-brand-ink">{t.settings.billing.activateTrialTitle}</p>
             <p className="text-brand-muted">
-              Verifica tu correo y tarjeta. Una cuenta, una tarjeta y una conexión (IP) solo pueden
-              usarse una vez para la prueba.
+              {t.settings.billing.activateTrialHint}
             </p>
 
             <div className="space-y-2">
               <p className="font-medium text-brand-ink">
-                1. Correo verificado {trialVerification.emailVerified ? "✓" : ""}
+                {t.settings.billing.stepEmail} {trialVerification.emailVerified ? "✓" : ""}
               </p>
               {!trialVerification.emailVerified && trialVerification.emailRequired && (
                 <p className="text-brand-muted text-xs">
-                  Revisa tu bandeja de entrada
-                  {trialVerification.email ? ` (${trialVerification.email})` : ""} y confirma el enlace
-                  de verificación. Si no lo recibiste, cierra sesión y vuelve a solicitarlo al
-                  registrarte.
+                  {t.settings.billing.emailVerifyHint.replace(
+                    "{email}",
+                    trialVerification.email ? ` (${trialVerification.email})` : ""
+                  )}
                 </p>
               )}
             </div>
 
             <div className="space-y-2">
               <p className="font-medium text-brand-ink">
-                2. Tarjeta {trialVerification.cardVerified ? "✓" : ""}
+                {t.settings.billing.stepCard} {trialVerification.cardVerified ? "✓" : ""}
               </p>
               {!trialVerification.cardVerified && trialVerification.cardRequired && (
                 <button
@@ -265,7 +266,7 @@ export function BillingSettingsSection() {
                   onClick={startCardSetup}
                   className="w-full py-2.5 sm:py-2 bg-brand-ink text-brand-ink-fg rounded-lg text-sm font-medium min-h-[44px]"
                 >
-                  Verificar tarjeta (sin cobro hoy)
+                  {t.settings.billing.verifyCard}
                 </button>
               )}
             </div>
@@ -277,7 +278,7 @@ export function BillingSettingsSection() {
                 onClick={activateTrial}
                 className="w-full py-2.5 bg-emerald-700 text-white rounded-lg font-medium min-h-[44px]"
               >
-                Activar prueba de 1 mes
+                {t.settings.billing.activateMonthTrial}
               </button>
             )}
           </div>
@@ -285,28 +286,30 @@ export function BillingSettingsSection() {
 
       {trialEligibility?.eligible && subscription?.status === "trial" && subscription.isActive && (
         <div className={`${semanticAlertSuccessClass} !p-3 text-sm`}>
-          Periodo de prueba de 1 mes activo. Disfruta del acceso completo hasta{" "}
-          {new Date(subscription.currentPeriodEnd).toLocaleDateString()}.
+          {t.settings.billing.trialActive.replace(
+            "{date}",
+            new Date(subscription.currentPeriodEnd).toLocaleDateString()
+          )}
         </div>
       )}
 
       {checkoutBlocked && (
         <div className={`${semanticAlertWarningClass} !p-3 text-sm`}>
-          Tu clínica tiene <strong>{pricing?.podiatristCount}</strong> podólogos activos, por encima
-          del plan en línea (hasta {pricing?.podiatristLimit}). Contacta a PodoAdmin para ampliar tu
-          capacidad y la facturación.
+          {t.settings.billing.overLimit
+            .replace("{count}", String(pricing?.podiatristCount ?? ""))
+            .replace("{limit}", String(pricing?.podiatristLimit ?? ""))}
         </div>
       )}
 
       {loading ? (
-        <p className="text-brand-muted text-sm">Cargando…</p>
+        <p className="text-brand-muted text-sm">{t.settings.billing.loading}</p>
       ) : (
         <div className="bg-brand-surface rounded-xl border border-brand-border p-4 sm:p-6 space-y-4">
           <div>
-            <p className="text-sm text-brand-muted">Suscripción PodoAdmin</p>
+            <p className="text-sm text-brand-muted">{t.settings.billing.subscriptionTitle}</p>
             <p className="text-base sm:text-lg font-semibold text-brand-ink">
               {pricing?.plan.label ??
-                (pricing?.subjectType === "clinic" ? "Plan clínica" : "Plan podólogo independiente")}
+                (pricing?.subjectType === "clinic" ? t.settings.billing.clinicPlan : t.settings.billing.independentPlan)}
             </p>
             {pricing?.plan.description && (
               <p className="text-xs text-brand-muted mt-1">{pricing.plan.description}</p>
@@ -316,7 +319,7 @@ export function BillingSettingsSection() {
           {pricing?.subjectType === "clinic" && (
             <div className="text-sm bg-brand-canvas rounded-lg p-3 space-y-1">
               <p>
-                <span className="text-brand-muted">Podólogos activos:</span>{" "}
+                <span className="text-brand-muted">{t.settings.billing.activePodiatrists}</span>{" "}
                 <strong className="text-brand-ink">
                   {pricing.podiatristCount} / {pricing.podiatristLimit}
                 </strong>
@@ -327,7 +330,7 @@ export function BillingSettingsSection() {
           {subscription && (
             <>
               <div className="flex justify-between gap-4 text-sm">
-                <span className="text-brand-muted shrink-0">Estado</span>
+                <span className="text-brand-muted shrink-0">{t.settings.billing.status}</span>
                 <span
                   className={`font-medium text-right ${
                     subscription.isActive ? "text-semantic-success" : "text-semantic-warning"
@@ -337,7 +340,7 @@ export function BillingSettingsSection() {
                 </span>
               </div>
               <div className="flex justify-between gap-4 text-sm">
-                <span className="text-brand-muted shrink-0">Fin del periodo</span>
+                <span className="text-brand-muted shrink-0">{t.settings.billing.trialEnd}</span>
                 <span className="text-brand-ink text-right">
                   {new Date(subscription.currentPeriodEnd).toLocaleDateString()}
                 </span>
@@ -347,8 +350,7 @@ export function BillingSettingsSection() {
 
           {!stripeEnabled && (
             <p className={`${semanticAlertWarningClass} !p-3 text-sm`}>
-              Stripe no está configurado. Define STRIPE_PRICE_CLINIC_MONTHLY_STANDARD y
-              STRIPE_PRICE_INDEPENDENT_MONTHLY en el servidor.
+              {t.settings.billing.stripeNotConfigured}
             </p>
           )}
 
@@ -361,7 +363,7 @@ export function BillingSettingsSection() {
                   onClick={startCheckout}
                   className="w-full py-2.5 bg-brand-ink text-brand-ink-fg rounded-lg text-sm font-medium disabled:opacity-50 min-h-[44px]"
                 >
-                  {`Suscribirse — $${pricing?.plan.amountUsd ?? ""} USD/mes`}
+                  {t.settings.billing.subscribe.replace("{amount}", String(pricing?.plan.amountUsd ?? ""))}
                 </button>
               ) : (
                 <button
@@ -370,7 +372,7 @@ export function BillingSettingsSection() {
                   onClick={openPortal}
                   className="w-full py-2.5 bg-brand-ink text-brand-ink-fg rounded-lg text-sm font-medium disabled:opacity-50 min-h-[44px]"
                 >
-                  Gestionar facturación en Stripe
+                  {t.settings.billing.manageStripe}
                 </button>
               )}
             </div>
@@ -378,7 +380,7 @@ export function BillingSettingsSection() {
 
           {stripeEnabled && !canManageBilling && user?.role === "podiatrist" && user?.clinicId && (
             <p className="text-sm text-brand-muted">
-              La suscripción de tu clínica la gestiona el administrador de la clínica.
+              {t.settings.billing.clinicManagedByAdmin}
             </p>
           )}
         </div>

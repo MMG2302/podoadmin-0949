@@ -551,9 +551,7 @@ export function WhatsAppSettingsSection() {
             disabled={!form.enabled}
             className="mt-1"
           />
-          <span className="text-sm text-brand-muted">
-            Permitir a recepción usar el envío automático por API Meta (recordatorios y historial).
-          </span>
+          <span className="text-sm text-brand-muted">{w.receptionistApiEnabled}</span>
         </label>
 
         <div className="flex flex-wrap gap-3 pt-2">

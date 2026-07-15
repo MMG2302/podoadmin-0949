@@ -156,17 +156,17 @@ const SupportPage = () => {
     setListLoading(true);
     try {
       const r = await api.post<{ success?: boolean; list?: { id: string; name: string } }>("/registration-lists", {
-        name: listName.trim() || "Nueva lista",
+        name: listName.trim() || t.supportPage.defaultListName,
       });
       if (r.success && r.data?.list) {
         setListName("");
         loadLists();
         await openList(r.data.list.id);
       } else {
-        alert(r.error || (r.data as { message?: string })?.message || "Error al crear la lista");
+        alert(r.error || (r.data as { message?: string })?.message || t.supportPage.createListError);
       }
     } catch (err) {
-      alert(err instanceof Error ? err.message : "Error al crear la lista");
+      alert(err instanceof Error ? err.message : t.supportPage.createListError);
     } finally {
       setListLoading(false);
     }
@@ -206,7 +206,7 @@ const SupportPage = () => {
       return;
 
     if (!isValidEmail(newEntry.email)) {
-      alert("Introduce un correo electrónico válido.");
+      alert(t.supportPage.invalidEmail);
       return;
     }
     const payload: Record<string, unknown> = { name: newEntry.name, email: newEntry.email, role: newEntry.role };
@@ -235,7 +235,7 @@ const SupportPage = () => {
   };
 
   const deleteList = async (listId: string) => {
-    if (!confirm("¿Seguro que quieres eliminar esta lista?")) return;
+    if (!confirm(t.supportPage.deleteListConfirm)) return;
     await api.delete(`/registration-lists/${listId}`);
     setLists((prev) => prev.filter((l) => l.id !== listId));
     setSelectedList((prev) => (prev && prev.list.id === listId ? null : prev));
@@ -270,7 +270,13 @@ const SupportPage = () => {
   };
 
   const statusLabel = (s: string) =>
-    s === "draft" ? "Borrador" : s === "pending" ? "Pendiente" : s === "approved" ? "Aprobada" : "Rechazada";
+    s === "draft"
+      ? t.supportPage.statusDraft
+      : s === "pending"
+      ? t.supportPage.statusPending
+      : s === "approved"
+      ? t.supportPage.statusApproved
+      : t.supportPage.statusRejected;
 
   return (
     <MainLayout title={t.support.title}>
@@ -278,7 +284,7 @@ const SupportPage = () => {
         <div>
           <h2 className="text-xl font-semibold text-brand-ink">{t.support.contactPodoAdmin}</h2>
           <p className="text-sm text-brand-muted mt-1">
-            Mensajes de usuarios y listas de registro para aprobación.
+            {t.supportPage.adminSubtitle}
           </p>
         </div>
 
@@ -290,7 +296,7 @@ const SupportPage = () => {
                 activeTab === "messages" ? "bg-white dark:bg-gray-700 text-brand-ink shadow-sm" : "text-brand-muted hover:text-brand-ink dark:hover:text-white"
               }`}
             >
-              Mensajes
+              {t.supportPage.tabMessages}
             </button>
             <button
               onClick={() => setActiveTab("lists")}
@@ -298,7 +304,7 @@ const SupportPage = () => {
                 activeTab === "lists" ? "bg-white dark:bg-gray-700 text-brand-ink shadow-sm" : "text-brand-muted hover:text-brand-ink dark:hover:text-white"
               }`}
             >
-              Crear listas
+              {t.supportPage.tabLists}
             </button>
           </div>
         )}
@@ -307,11 +313,11 @@ const SupportPage = () => {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <div className="bg-brand-surface rounded-xl border border-brand-border overflow-hidden">
               <div className="p-4 border-b border-brand-border">
-                <h3 className="font-medium text-brand-ink">Conversaciones</h3>
+                <h3 className="font-medium text-brand-ink">{t.supportPage.conversations}</h3>
               </div>
               <div className="max-h-[400px] overflow-y-auto">
                 {conversations.length === 0 ? (
-                  <div className="p-8 text-center text-brand-muted">No hay conversaciones</div>
+                  <div className="p-8 text-center text-brand-muted">{t.supportPage.noConversations}</div>
                 ) : (
                   <div className="divide-y divide-gray-50 dark:divide-gray-800">
                     {conversations.map((c) => (
@@ -384,7 +390,7 @@ const SupportPage = () => {
                         }`}
                       >
                         <p className="text-xs text-brand-muted mb-1">
-                          {m.isFromSupport ? (user?.name || "Soporte") : (selected.userName || selected.userEmail)} ·{" "}
+                          {m.isFromSupport ? (user?.name || t.supportPage.supportAgent) : (selected.userName || selected.userEmail)} ·{" "}
                           {new Date(m.createdAt).toLocaleString()}
                         </p>
                         <p className="text-sm text-brand-ink whitespace-pre-wrap">{m.body}</p>
@@ -412,7 +418,7 @@ const SupportPage = () => {
                 </>
               ) : (
                 <div className="p-12 text-center text-brand-muted">
-                  Selecciona una conversación para ver los mensajes y responder.
+                  {t.supportPage.selectConversation}
                 </div>
               )}
             </div>
@@ -423,14 +429,14 @@ const SupportPage = () => {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <div className="bg-brand-surface rounded-xl border border-brand-border overflow-hidden">
               <div className="p-4 border-b border-brand-border flex justify-between items-center">
-                <h3 className="font-medium text-brand-ink">Listas de registro</h3>
+                <h3 className="font-medium text-brand-ink">{t.supportPage.registrationLists}</h3>
                 <button
                   type="button"
                   onClick={() => void createList()}
                   disabled={listLoading}
                   className="px-3 py-1.5 bg-brand-ink text-brand-ink-fg rounded-lg text-sm font-medium hover:bg-brand-ink-hover disabled:opacity-50"
                 >
-                  {listLoading ? "..." : "Nueva lista"}
+                  {listLoading ? "..." : t.supportPage.newList}
                 </button>
               </div>
               <div className="p-4 border-b border-gray-50 dark:border-gray-800">
@@ -438,7 +444,7 @@ const SupportPage = () => {
                   type="text"
                   value={listName}
                   onChange={(e) => setListName(e.target.value)}
-                  placeholder="Nombre de la nueva lista..."
+                  placeholder={t.supportPage.newListNamePlaceholder}
                   className="w-full px-3 py-2 border border-brand-border rounded-lg bg-brand-surface text-brand-ink text-sm"
                   onKeyDown={(e) => e.key === "Enter" && createList()}
                 />
@@ -446,7 +452,7 @@ const SupportPage = () => {
               <div className="max-h-[350px] overflow-y-auto">
                 {lists.length === 0 ? (
                   <div className="p-8 text-center text-brand-muted text-sm">
-                    Crea listas de registros (cursos, eventos) y envíalas para que el administrador las apruebe e importe.
+                    {t.supportPage.listsEmptyHint}
                   </div>
                 ) : (
                   <div className="divide-y divide-gray-50 dark:divide-gray-800">
@@ -490,7 +496,7 @@ const SupportPage = () => {
                             }}
                             className="text-xs px-2 py-1 rounded bg-red-50 text-red-600 hover:bg-red-100"
                           >
-                            Eliminar
+                            {t.supportPage.deleteList}
                           </button>
                         )}
                       </div>
@@ -535,14 +541,14 @@ const SupportPage = () => {
                         onClick={() => {
                           const paidIds = selectedList.entries.filter((e) => e.paid).map((e) => e.id);
                           if (paidIds.length === 0) {
-                            alert("Marca al menos un registro como pagado para exportar.");
+                            alert(t.supportPage.markPaidToExport);
                             return;
                           }
                           void downloadCsv(selectedList.list.id, paidIds);
                         }}
                         className="text-xs px-2 py-1 bg-gray-100 text-gray-600 rounded hover:bg-gray-200"
                       >
-                        Descargar CSV
+                        {t.supportPage.downloadCsv}
                       </button>
                       {selectedList.list.status === "draft" && (
                         <button
@@ -550,7 +556,7 @@ const SupportPage = () => {
                           disabled={selectedList.entries.length === 0}
                           className="text-xs px-2 py-1 bg-green-100 text-green-700 rounded hover:bg-green-200 disabled:opacity-50"
                         >
-                          Enviar para aprobación
+                          {t.supportPage.submitForApproval}
                         </button>
                       )}
                     </div>
@@ -558,12 +564,12 @@ const SupportPage = () => {
 
                   {selectedList.list.status === "draft" && (
                     <div className="p-4 border-b border-brand-border space-y-2">
-                      <p className="text-xs font-medium text-brand-muted">Añadir registro</p>
+                      <p className="text-xs font-medium text-brand-muted">{t.supportPage.addEntry}</p>
                       <div className="flex flex-col gap-2">
                         <div className="flex gap-2 flex-wrap">
                           <input
                             type="text"
-                            placeholder="Nombre"
+                            placeholder={t.supportPage.namePlaceholder}
                             value={newEntry.name}
                             onChange={(e) => setNewEntry((p) => ({ ...p, name: e.target.value }))}
                             className="flex-1 min-w-[100px] px-3 py-2 border border-brand-border rounded-lg bg-brand-surface text-brand-ink text-sm"
@@ -571,7 +577,7 @@ const SupportPage = () => {
                           <input
                             type="email"
                             inputMode="email"
-                            placeholder="Email"
+                            placeholder={t.supportPage.emailPlaceholder}
                             value={newEntry.email}
                             onChange={(e) => setNewEntry((p) => ({ ...p, email: e.target.value }))}
                             className="flex-1 min-w-[120px] px-3 py-2 border border-brand-border rounded-lg bg-brand-surface text-brand-ink text-sm"
@@ -581,17 +587,17 @@ const SupportPage = () => {
                             onChange={(e) => setNewEntry((p) => ({ ...p, role: e.target.value }))}
                             className="px-3 py-2 border border-brand-border rounded-lg bg-brand-surface text-brand-ink text-sm"
                           >
-                            <option value="podiatrist">Podólogo independiente</option>
-                            <option value="clinic_admin">Admin de clínica</option>
+                            <option value="podiatrist">{t.supportPage.roleIndependent}</option>
+                            <option value="clinic_admin">{t.supportPage.roleClinicAdmin}</option>
                           </select>
                           {newEntry.role === "clinic_admin" && (
                             <div className="flex items-center gap-2">
-                              <label className="text-xs text-brand-muted whitespace-nowrap">Límite podólogos:</label>
+                              <label className="text-xs text-brand-muted whitespace-nowrap">{t.supportPage.podiatristLimitLabel}</label>
                               <input
                                 type="number"
                                 min="1"
                                 max="999"
-                                placeholder="Ej: 5"
+                                placeholder={t.supportPage.podiatristLimitPlaceholder}
                                 value={newEntry.podiatristLimit}
                                 onChange={(e) => setNewEntry((p) => ({ ...p, podiatristLimit: e.target.value }))}
                                 className="w-20 px-3 py-2 border border-brand-border rounded-lg bg-brand-surface text-brand-ink text-sm"
@@ -603,12 +609,12 @@ const SupportPage = () => {
                             disabled={!newEntry.name.trim() || !newEntry.email.trim()}
                             className="px-3 py-2 bg-brand-ink text-brand-ink-fg rounded-lg text-sm font-medium hover:bg-brand-ink-hover disabled:opacity-50"
                           >
-                            Añadir
+                            {t.supportPage.add}
                           </button>
                         </div>
                         {newEntry.role === "clinic_admin" && (
                           <p className="text-xs text-brand-muted">
-                            Los podólogos de la clínica estarán limitados a este número. Recepcionistas no cuentan en el límite.
+                            {t.supportPage.clinicAdminLimitHint}
                           </p>
                         )}
                       </div>
@@ -617,7 +623,7 @@ const SupportPage = () => {
 
                   <div className="flex-1 overflow-y-auto p-4 max-h-[300px]">
                     {selectedList.entries.length === 0 ? (
-                      <p className="text-sm text-brand-muted">No hay registros en esta lista.</p>
+                      <p className="text-sm text-brand-muted">{t.supportPage.noEntries}</p>
                     ) : (
                       (() => {
                         const isDraft = selectedList.list.status === "draft";
@@ -653,14 +659,14 @@ const SupportPage = () => {
                                     : "bg-yellow-50 text-yellow-700 border-yellow-300"
                                 } ${isDraft ? "cursor-pointer" : "cursor-not-allowed opacity-60"}`}
                               >
-                                {e.paid ? "Pagado" : "No pagado"}
+                                {e.paid ? t.supportPage.paid : t.supportPage.unpaid}
                               </button>
                               <div>
                                 <p className="font-medium text-sm text-brand-ink">{e.name}</p>
                                 <p className="text-xs text-brand-muted">
-                                  {e.email} · {e.role === "clinic_admin" ? "Admin de clínica" : "Podólogo independiente"}
+                                  {e.email} · {e.role === "clinic_admin" ? t.supportPage.roleClinicAdmin : t.supportPage.roleIndependent}
                                   {e.role === "clinic_admin" && e.podiatristLimit != null && (
-                                    <> · Límite: {e.podiatristLimit} podólogos</>
+                                    <> · {t.supportPage.limitPodiatrists.replace("{n}", String(e.podiatristLimit))}</>
                                   )}
                                 </p>
                               </div>
@@ -670,7 +676,7 @@ const SupportPage = () => {
                                 onClick={() => removeEntry(e.id)}
                                 className="text-red-600 hover:text-red-700 text-sm"
                               >
-                                Eliminar
+                                {t.supportPage.deleteList}
                               </button>
                             )}
                           </div>
@@ -681,7 +687,7 @@ const SupportPage = () => {
                             {pending.length > 0 && (
                               <div className="space-y-1">
                                 <p className="text-xs font-semibold text-yellow-700 dark:text-yellow-400">
-                                  Pendientes de pago ({pending.length})
+                                  {t.supportPage.pendingPayment.replace("{n}", String(pending.length))}
                                 </p>
                                 <div className="space-y-2">{pending.map((e) => renderRow(e))}</div>
                               </div>
@@ -689,7 +695,7 @@ const SupportPage = () => {
                             {paid.length > 0 && (
                               <div className="space-y-1">
                                 <p className="text-xs font-semibold text-green-700 dark:text-green-400">
-                                  Pagados (se exportan al CSV) ({paid.length})
+                                  {t.supportPage.paidSection.replace("{n}", String(paid.length))}
                                 </p>
                                 <div className="space-y-2">{paid.map((e) => renderRow(e))}</div>
                               </div>
@@ -702,7 +708,7 @@ const SupportPage = () => {
                 </div>
               ) : (
                 <div className="p-12 text-center text-brand-muted">
-                  Selecciona una lista o crea una nueva.
+                  {t.supportPage.selectOrCreateList}
                 </div>
               )}
             </div>

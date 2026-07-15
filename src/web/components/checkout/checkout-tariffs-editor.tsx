@@ -148,6 +148,32 @@ export function CheckoutTariffsEditor({ podiatristId, canEdit }: CheckoutTariffs
                   }}
                   placeholder="0.00"
                   className="w-28 px-3 py-2 text-sm bg-brand-surface border border-brand-border rounded-lg"
+                  aria-label={t.checkout.tariffAmountAria}
+                />
+                <input
+                  type="number"
+                  min={5}
+                  max={480}
+                  step={5}
+                  disabled={!canEdit}
+                  value={row.durationMinutes ?? ""}
+                  onChange={(e) => {
+                    const v = e.target.value.trim();
+                    if (!v) {
+                      updateRow(index, { durationMinutes: undefined });
+                      return;
+                    }
+                    const n = Number(v);
+                    updateRow(index, {
+                      durationMinutes: Number.isFinite(n)
+                        ? Math.min(480, Math.max(5, Math.round(n)))
+                        : undefined,
+                    });
+                  }}
+                  placeholder={t.checkout.tariffDurationPlaceholder}
+                  title={t.checkout.tariffDurationTitle}
+                  className="w-20 px-2 py-2 text-sm bg-brand-surface border border-brand-border rounded-lg"
+                  aria-label={t.checkout.tariffDurationAria}
                 />
                 {canEdit && rows.length > 1 && (
                   <button

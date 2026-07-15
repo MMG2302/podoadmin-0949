@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect, useCallback } from "react";
+import { Link } from "wouter";
 import { MainLayout } from "../components/layout/main-layout";
 import { useLanguage } from "../contexts/language-context";
 import { useAuth, User } from "../contexts/auth-context";
@@ -12,42 +13,40 @@ import {
 } from "../lib/form-field-classes";
 import type { Patient } from "../types/clinical";
 import { SimpleBarChart } from "../components/checkout/simple-bar-chart";
-
-type PatientSegment = "new" | "recurrent" | "recovered";
-
-const SEGMENT_LABELS: Record<PatientSegment, string> = {
-  new: "Nuevos",
-  recurrent: "Recurrentes",
-  recovered: "Recuperados",
-};
-
-const AGE_RANGE_OPTIONS = [
-  { id: "all", label: "Todas las edades" },
-  { id: "0-17", label: "0-17 años", ageMin: 0, ageMax: 17 },
-  { id: "18-35", label: "18-35 años", ageMin: 18, ageMax: 35 },
-  { id: "36-55", label: "36-55 años", ageMin: 36, ageMax: 55 },
-  { id: "56+", label: "56+ años", ageMin: 56, ageMax: 130 },
-] as const;
-
-type DemographicsSummary = {
-  new: number;
-  recurrent: number;
-  recovered: number;
-  total: number;
-  withAge: number;
-  ageBuckets: Array<{ label: string; min: number; max: number; count: number }>;
-};
+import {
+  AGE_RANGE_OPTIONS,
+  LTV_PERIOD_STORAGE_KEY,
+  ageRangeLabel,
+  buildPatientListFilters,
+  formatInactivityHint,
+  formatLtvPaidCount,
+  formatVisitCount,
+  inactiveLabel,
+  ltvPeriodLabel,
+  parseStoredLtvPeriod,
+  segmentLabel,
+  type AgeRangeId,
+  type DemographicsSummary,
+  type PatientInactiveFilter,
+  type PatientLtvPeriod,
+  type PatientSegmentFilter,
+} from "../lib/patient-engagement";
+import { formatCheckoutAmount } from "../types/checkout-handoff";
 
 type AppointmentMetrics = {
   periodDays: number;
   fromDate: string;
   toDate: string;
   attendedPerDay: Array<{ date: string; count: number }>;
+  demandPerDay?: Array<{ date: string; count: number }>;
+  demandByWeekday?: Array<{ weekday: number; label: string; count: number }>;
+  topDemandDays?: Array<{ date: string; label: string; count: number }>;
   totals: {
     attended: number;
     noShow: number;
     cancelled: number;
     scheduled: number;
+    demand?: number;
     cancellationRate: number;
     noShowRate: number;
   };
@@ -82,7 +81,7 @@ const ReassignPatientModal = ({
   currentPodiatristId: string;
   onReassign: (patientId: string, newPodiatristId: string) => void;
 }) => {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const [selectedPodiatrist, setSelectedPodiatrist] = useState("");
 
   if (!isOpen || !patient) return null;
@@ -100,19 +99,19 @@ const ReassignPatientModal = ({
     <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
       <div className="bg-white rounded-2xl w-full max-w-md shadow-xl">
         <div className="p-6 border-b border-gray-100">
-          <h3 className="text-lg font-semibold text-brand-ink">Reasignar paciente</h3>
+          <h3 className="text-lg font-semibold text-brand-ink">{t.clinic.reassignTitle}</h3>
           <p className="text-sm text-gray-500 mt-1">{patient.firstName} {patient.lastName}</p>
         </div>
         <div className="p-6 space-y-4">
           <div className={semanticAlertInfoClass}>
             <p className="text-sm">
-              <strong>Caso de uso:</strong> Cuando un podólogo no puede atender citas por ausencia o indisponibilidad, puede reasignar sus pacientes a otro profesional de la clínica.
+              {t.clinic.reassignUseCase}
             </p>
           </div>
 
           <div>
             <label className="block text-sm font-medium text-brand-ink mb-2">
-              Podólogo actual
+              {t.clinic.currentPodiatrist}
             </label>
             <div className="px-4 py-2.5 bg-gray-50 rounded-lg text-gray-600 text-sm">
               {patient.podiatristName}
@@ -121,14 +120,14 @@ const ReassignPatientModal = ({
 
           <div>
             <label className="block text-sm font-medium text-brand-ink mb-2">
-              Nuevo podólogo asignado
+              {t.clinic.newPodiatrist}
             </label>
             <select
               value={selectedPodiatrist}
               onChange={(e) => setSelectedPodiatrist(e.target.value)}
               className="w-full px-4 py-2.5 rounded-lg border border-gray-200 focus:border-brand-ink focus:ring-1 focus:ring-brand-ink outline-none transition-colors"
             >
-              <option value="">Seleccionar podólogo...</option>
+              <option value="">{t.clinic.selectPodiatrist}</option>
               {availablePodiatrists.map(pod => (
                 <option key={pod.id} value={pod.id}>{pod.name}</option>
               ))}
@@ -148,7 +147,7 @@ const ReassignPatientModal = ({
               disabled={!selectedPodiatrist}
               className="flex-1 px-4 py-2.5 bg-brand-ink text-brand-ink-fg rounded-lg font-medium hover:bg-brand-ink-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              Reasignar
+              {t.clinic.reassign}
             </button>
           </div>
         </div>
@@ -162,12 +161,14 @@ const StatCard = ({
   label, 
   value, 
   icon, 
-  trend 
+  trend,
+  trendSuffix,
 }: { 
   label: string; 
   value: string | number; 
   icon: React.ReactNode;
   trend?: { value: number; isPositive: boolean };
+  trendSuffix?: string;
 }) => (
   <div className="bg-white rounded-xl border border-gray-100 p-6">
     <div className="flex items-start justify-between">
@@ -176,7 +177,7 @@ const StatCard = ({
         <p className="text-3xl font-semibold text-brand-ink">{value}</p>
         {trend && (
           <p className={`text-xs mt-2 ${trend.isPositive ? "text-green-600" : "text-red-600"}`}>
-            {trend.isPositive ? "↑" : "↓"} {Math.abs(trend.value)}% vs. mes anterior
+            {trend.isPositive ? "↑" : "↓"} {Math.abs(trend.value)}{trendSuffix ?? "% vs. previous month"}
           </p>
         )}
       </div>
@@ -189,7 +190,8 @@ const StatCard = ({
 
 // Main Clinic Page
 const ClinicPage = () => {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
+  const eng = t.patients.engagement;
   const { user: currentUser, getAllUsers, fetchUsers, ensureVisibleUsers, isEmailTaken } = useAuth();
   const allUsers = getAllUsers();
 
@@ -209,8 +211,18 @@ const ClinicPage = () => {
     licenses: Record<string, string | null>;
   } | null>(null);
   const [debouncedPatientSearch, setDebouncedPatientSearch] = useState("");
-  const [segmentFilter, setSegmentFilter] = useState<"all" | PatientSegment>("all");
-  const [ageRangeFilter, setAgeRangeFilter] = useState<(typeof AGE_RANGE_OPTIONS)[number]["id"]>("all");
+  const [segmentFilter, setSegmentFilter] = useState<"all" | PatientSegmentFilter>("all");
+  const [ageRangeFilter, setAgeRangeFilter] = useState<AgeRangeId>("all");
+  const [inactiveFilter, setInactiveFilter] = useState<"all" | PatientInactiveFilter>("all");
+  const [minVisitsFilter, setMinVisitsFilter] = useState("");
+  const [maxVisitsFilter, setMaxVisitsFilter] = useState("");
+  const [ltvPeriod, setLtvPeriod] = useState<PatientLtvPeriod>(() => {
+    try {
+      return parseStoredLtvPeriod(localStorage.getItem(LTV_PERIOD_STORAGE_KEY));
+    } catch {
+      return "lifetime";
+    }
+  });
   const [demographicsSummary, setDemographicsSummary] = useState<DemographicsSummary | null>(null);
   const [appointmentMetrics, setAppointmentMetrics] = useState<AppointmentMetrics | null>(null);
   const [metricsPodiatristFilter, setMetricsPodiatristFilter] = useState<string>("all");
@@ -236,18 +248,37 @@ const ClinicPage = () => {
     return () => clearTimeout(timer);
   }, [patientSearch]);
 
-  const patientListFilters = useMemo(() => {
-    const filters: Record<string, string | undefined> = {};
-    if (debouncedPatientSearch) filters.q = debouncedPatientSearch;
-    if (podiatristFilter !== "all") filters.createdBy = podiatristFilter;
-    if (segmentFilter !== "all") filters.segment = segmentFilter;
-    const ageRange = AGE_RANGE_OPTIONS.find((o) => o.id === ageRangeFilter);
-    if (ageRange && ageRange.id !== "all" && "ageMin" in ageRange) {
-      filters.ageMin = String(ageRange.ageMin);
-      filters.ageMax = String(ageRange.ageMax);
+  useEffect(() => {
+    try {
+      localStorage.setItem(LTV_PERIOD_STORAGE_KEY, ltvPeriod);
+    } catch {
+      /* ignore */
     }
-    return filters;
-  }, [debouncedPatientSearch, podiatristFilter, segmentFilter, ageRangeFilter]);
+  }, [ltvPeriod]);
+
+  const patientListFilters = useMemo(
+    () =>
+      buildPatientListFilters({
+        q: debouncedPatientSearch || undefined,
+        createdBy: podiatristFilter,
+        segment: segmentFilter,
+        ageRangeId: ageRangeFilter,
+        inactive: inactiveFilter,
+        minVisits: minVisitsFilter,
+        maxVisits: maxVisitsFilter,
+        ltvPeriod,
+      }),
+    [
+      debouncedPatientSearch,
+      podiatristFilter,
+      segmentFilter,
+      ageRangeFilter,
+      inactiveFilter,
+      minVisitsFilter,
+      maxVisitsFilter,
+      ltvPeriod,
+    ]
+  );
 
   const {
     items: clinicPatientsList,
@@ -358,14 +389,14 @@ const ClinicPage = () => {
       .filter((p) => clinicPodiatristIds.has(p.createdBy))
       .map((p) => ({
         ...p,
-        podiatristName: podiatristMap.get(p.createdBy) || "Desconocido",
+        podiatristName: podiatristMap.get(p.createdBy) || t.clinic.unknownPodiatrist,
         lastSessionDate: p.lastSessionDate ?? null,
       }));
   }, [clinicPatientsList, clinicPodiatrists, clinicPodiatristIds]);
 
   const filteredPatients = patientsWithPodiatrist;
 
-  const segmentBadgeClass = (segment?: PatientSegment) => {
+  const segmentBadgeClass = (segment?: PatientSegmentFilter) => {
     if (segment === "new") return "bg-blue-50 text-blue-700";
     if (segment === "recovered") return "bg-violet-50 text-violet-700";
     if (segment === "recurrent") return "bg-emerald-50 text-emerald-700";
@@ -440,7 +471,7 @@ const ClinicPage = () => {
 
   const handleDeleteReceptionist = async (rec: User) => {
     const confirmed = window.confirm(
-      `¿Eliminar a la recepcionista ${rec.name} (${rec.email})? Esta acción no se puede deshacer.`
+      t.clinic.confirmDeleteReceptionist.replace("{name}", rec.name).replace("{email}", rec.email)
     );
     if (!confirmed) return;
     try {
@@ -458,12 +489,12 @@ const ClinicPage = () => {
     e.preventDefault();
     if (!currentUser?.clinicId || !currentUser?.id) return;
     if (!canCreateReceptionist) {
-      setReceptionistError(`Máximo ${MAX_ACTIVE_RECEPTIONISTS} recepcionistas activas en la clínica.`);
+      setReceptionistError(t.clinic.maxActiveReceptionists.replace("{max}", String(MAX_ACTIVE_RECEPTIONISTS)));
       return;
     }
     setReceptionistError(null);
     if (isEmailTaken(receptionistForm.email.trim())) {
-      setReceptionistError("Ya existe una cuenta con este correo electrónico");
+      setReceptionistError(t.clinic.emailTaken);
       return;
     }
     try {
@@ -473,14 +504,14 @@ const ClinicPage = () => {
         password: receptionistForm.password,
       });
       if (!res.success || !res.data?.user?.id) {
-        setReceptionistError(res.data?.message ?? res.error ?? "Error al crear recepcionista");
+        setReceptionistError(res.data?.message ?? res.error ?? t.clinic.createReceptionistError);
         return;
       }
       await fetchUsers();
       setReceptionistForm({ name: "", email: "", password: "" });
       setShowCreateReceptionistModal(false);
     } catch (err) {
-      setReceptionistError(err instanceof Error ? err.message : "Error al crear recepcionista");
+      setReceptionistError(err instanceof Error ? err.message : t.clinic.createReceptionistError);
     }
   };
 
@@ -500,13 +531,13 @@ const ClinicPage = () => {
         { assignedPodiatristIds: editAssignedPodiatristIds }
       );
       if (!res.success) {
-        setEditAssignmentsError(res.error ?? res.data?.message ?? "Error al guardar asignación");
+        setEditAssignmentsError(res.error ?? res.data?.message ?? t.clinic.saveAssignmentError);
         return;
       }
       await fetchUsers();
       setEditingReceptionist(null);
     } catch (err) {
-      setEditAssignmentsError(err instanceof Error ? err.message : "Error al guardar asignación");
+      setEditAssignmentsError(err instanceof Error ? err.message : t.clinic.saveAssignmentError);
     } finally {
       setReceptionistActionLoadingId(null);
     }
@@ -517,11 +548,11 @@ const ClinicPage = () => {
     if (!currentUser?.clinicId) return;
     setPodiatristError(null);
     if (isEmailTaken(podiatristForm.email.trim())) {
-      setPodiatristError("Ya existe una cuenta con este correo electrónico");
+      setPodiatristError(t.clinic.emailTaken);
       return;
     }
     if (podiatristForm.password.length < 8) {
-      setPodiatristError("La contraseña debe tener al menos 8 caracteres");
+      setPodiatristError(t.clinic.passwordMin8);
       return;
     }
     try {
@@ -533,14 +564,14 @@ const ClinicPage = () => {
         clinicId: currentUser.clinicId,
       });
       if (!res.success || !res.data?.user?.id) {
-        setPodiatristError(res.data?.message ?? res.error ?? "Error al crear podólogo");
+        setPodiatristError(res.data?.message ?? res.error ?? t.clinic.createPodiatristError);
         return;
       }
       await fetchUsers();
       setPodiatristForm({ name: "", email: "", password: "" });
       setShowCreatePodiatristModal(false);
     } catch (err) {
-      setPodiatristError(err instanceof Error ? err.message : "Error al crear podólogo");
+      setPodiatristError(err instanceof Error ? err.message : t.clinic.createPodiatristError);
     }
   };
 
@@ -559,7 +590,7 @@ const ClinicPage = () => {
                 : "text-gray-600 hover:text-brand-ink dark:hover:text-white"
             }`}
           >
-            Resumen
+            {t.clinic.tabOverview}
           </button>
           <button
             onClick={() => setActiveTab("podiatrists")}
@@ -569,7 +600,7 @@ const ClinicPage = () => {
                 : "text-gray-600 hover:text-brand-ink dark:hover:text-white"
             }`}
           >
-            Podólogos
+            {t.clinic.tabPodiatrists}
           </button>
           <button
             onClick={() => setActiveTab("patients")}
@@ -579,7 +610,7 @@ const ClinicPage = () => {
                 : "text-gray-600 hover:text-brand-ink dark:hover:text-white"
             }`}
           >
-            Pacientes
+            {t.clinic.tabPatients}
           </button>
           <button
             onClick={() => setActiveTab("receptionists")}
@@ -589,7 +620,7 @@ const ClinicPage = () => {
                 : "text-gray-600 hover:text-brand-ink dark:hover:text-white"
             }`}
           >
-            Recepcionistas
+            {t.clinic.tabReceptionists}
           </button>
         </div>
 
@@ -599,7 +630,7 @@ const ClinicPage = () => {
             {/* Stats Grid */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               <StatCard
-                label="Podólogos"
+                label={t.clinic.statPodiatrists}
                 value={totals.podiatrists}
                 icon={
                   <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -608,7 +639,7 @@ const ClinicPage = () => {
                 }
               />
               <StatCard
-                label="Total Pacientes"
+                label={t.clinic.statTotalPatients}
                 value={totals.patients}
                 icon={
                   <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -617,7 +648,7 @@ const ClinicPage = () => {
                 }
               />
               <StatCard
-                label="Sesiones este mes"
+                label={t.clinic.statSessionsThisMonth}
                 value={totals.sessionsThisMonth}
                 icon={
                   <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -625,6 +656,7 @@ const ClinicPage = () => {
                   </svg>
                 }
                 trend={{ value: 12, isPositive: true }}
+                trendSuffix={t.clinic.vsPreviousMonth}
               />
             </div>
 
@@ -632,15 +664,15 @@ const ClinicPage = () => {
             <div className="bg-white rounded-xl border border-gray-100 p-6 space-y-4">
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                 <div>
-                  <h3 className="text-lg font-semibold text-brand-ink">Agenda (últimos 30 días)</h3>
-                  <p className="text-sm text-gray-500">Pacientes atendidos, no-show y cancelaciones registradas en el calendario</p>
+                  <h3 className="text-lg font-semibold text-brand-ink">{t.clinic.agendaTitle}</h3>
+                  <p className="text-sm text-gray-500">{t.clinic.agendaSubtitle}</p>
                 </div>
                 <select
                   value={metricsPodiatristFilter}
                   onChange={(e) => setMetricsPodiatristFilter(e.target.value)}
                   className="px-3 py-2 rounded-lg border border-gray-200 text-sm"
                 >
-                  <option value="all">Todos los podólogos</option>
+                  <option value="all">{t.clinic.allPodiatrists}</option>
                   {clinicPodiatrists.map((pod) => (
                     <option key={pod.id} value={pod.id}>{pod.name}</option>
                   ))}
@@ -651,30 +683,43 @@ const ClinicPage = () => {
                 <>
                   <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
                     <div className="rounded-lg border border-gray-100 p-4">
-                      <p className="text-xs text-gray-500">Atendidos</p>
+                      <p className="text-xs text-gray-500">{t.clinic.attended}</p>
                       <p className="text-2xl font-semibold text-brand-ink">{appointmentMetrics.totals.attended}</p>
                     </div>
                     <div className="rounded-lg border border-gray-100 p-4">
-                      <p className="text-xs text-gray-500">No asistieron</p>
+                      <p className="text-xs text-gray-500">{t.clinic.noShow}</p>
                       <p className="text-2xl font-semibold text-brand-ink">{appointmentMetrics.totals.noShow}</p>
-                      <p className="text-xs text-gray-400">{appointmentMetrics.totals.noShowRate}% del total resuelto</p>
+                      <p className="text-xs text-gray-400">{t.clinic.noShowRateOfResolved.replace("{n}", String(appointmentMetrics.totals.noShowRate))}</p>
                     </div>
                     <div className="rounded-lg border border-gray-100 p-4">
-                      <p className="text-xs text-gray-500">Canceladas</p>
+                      <p className="text-xs text-gray-500">{t.clinic.cancelled}</p>
                       <p className="text-2xl font-semibold text-brand-ink">{appointmentMetrics.totals.cancelled}</p>
-                      <p className="text-xs text-gray-400">Tasa cancelación: {appointmentMetrics.totals.cancellationRate}%</p>
+                      <p className="text-xs text-gray-400">{t.clinic.cancellationRate.replace("{n}", String(appointmentMetrics.totals.cancellationRate))}</p>
                     </div>
                     <div className="rounded-lg border border-gray-100 p-4">
-                      <p className="text-xs text-gray-500">Pendientes</p>
+                      <p className="text-xs text-gray-500">{t.clinic.pending}</p>
                       <p className="text-2xl font-semibold text-brand-ink">{appointmentMetrics.totals.scheduled}</p>
                     </div>
                   </div>
 
                   <div>
-                    <p className="text-sm font-medium text-brand-ink mb-2">Atendidos por día</p>
+                    <p className="text-sm font-medium text-brand-ink mb-2">{t.clinic.demandTitle}</p>
+                    <p className="text-xs text-gray-500 mb-2">
+                      {t.clinic.demandHint.replace("{n}", String(appointmentMetrics.totals.demand ?? 0))}
+                    </p>
+                    <Link
+                      href="/checkout"
+                      className="text-sm font-medium text-brand-ink underline-offset-2 hover:underline"
+                    >
+                      {t.clinic.openCheckoutAgenda}
+                    </Link>
+                  </div>
+
+                  <div>
+                    <p className="text-sm font-medium text-brand-ink mb-2">{t.clinic.attendedPerDay}</p>
                     <SimpleBarChart
                       data={appointmentMetrics.attendedPerDay.map((d) => ({
-                        label: new Date(`${d.date}T12:00:00`).toLocaleDateString("es-ES", { day: "numeric", month: "short" }),
+                        label: new Date(`${d.date}T12:00:00`).toLocaleDateString(language === "en" ? "en-US" : language === "pt" ? "pt-BR" : language === "fr" ? "fr-FR" : "es-ES", { day: "numeric", month: "short" }),
                         value: d.count,
                       }))}
                       height={140}
@@ -682,13 +727,13 @@ const ClinicPage = () => {
                   </div>
                 </>
               ) : (
-                <p className="text-sm text-gray-500">Cargando métricas de agenda…</p>
+                <p className="text-sm text-gray-500">{t.clinic.loadingAgendaMetrics}</p>
               )}
             </div>
 
             {/* Podiatrist Activity */}
             <div className="bg-white rounded-xl border border-gray-100 p-6">
-              <h3 className="text-lg font-semibold text-brand-ink mb-4">Actividad por podólogo</h3>
+              <h3 className="text-lg font-semibold text-brand-ink mb-4">{t.clinic.activityByPodiatrist}</h3>
               <div className="space-y-4">
                 {podiatristStats.map((stat) => {
                   const activityPercentage = Math.min(
@@ -704,7 +749,7 @@ const ClinicPage = () => {
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center justify-between mb-1">
                           <p className="font-medium text-brand-ink truncate">{stat.user.name}</p>
-                          <span className="text-sm text-gray-500">{stat.sessionsThisMonth} sesiones</span>
+                          <span className="text-sm text-gray-500">{t.clinic.sessionsCount.replace("{n}", String(stat.sessionsThisMonth))}</span>
                         </div>
                         <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
                           <div 
@@ -727,8 +772,8 @@ const ClinicPage = () => {
             <div className="flex items-center justify-between">
               <p className="text-sm text-gray-500">
                 {clinicPodiatristLimit !== null
-                  ? `Podólogos: ${clinicPodiatrists.length} de ${clinicPodiatristLimit} (límite definido por PodoAdmin)`
-                  : "Podólogos de la clínica. Sin límite definido."}
+                  ? t.clinic.podiatristsLimit.replace("{current}", String(clinicPodiatrists.length)).replace("{limit}", String(clinicPodiatristLimit))
+                  : t.clinic.podiatristsNoLimit}
               </p>
               <button
                 onClick={() => {
@@ -742,18 +787,18 @@ const ClinicPage = () => {
                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                 </svg>
-                Crear podólogo
+                {t.clinic.createPodiatrist}
               </button>
             </div>
             <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
             <table className="w-full">
               <thead>
                 <tr className="border-b border-gray-100 bg-gray-50">
-                  <th className="text-left px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Podólogo</th>
-                  <th className="text-left px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Email</th>
-                  <th className="text-left px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Licencia</th>
-                  <th className="text-left px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Pacientes</th>
-                  <th className="text-left px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Sesiones (mes)</th>
+                  <th className="text-left px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">{t.clinic.colPodiatrist}</th>
+                  <th className="text-left px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">{t.clinic.colEmail}</th>
+                  <th className="text-left px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">{t.clinic.colLicense}</th>
+                  <th className="text-left px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">{t.clinic.colPatients}</th>
+                  <th className="text-left px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">{t.clinic.colSessionsMonth}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50">
@@ -772,7 +817,7 @@ const ClinicPage = () => {
                       {stat.license ? (
                         <span className="font-mono text-brand-ink">{stat.license}</span>
                       ) : (
-                        <span className="text-gray-400 italic text-xs">No registrada</span>
+                        <span className="text-gray-400 italic text-xs">{t.clinic.licenseNotRegistered}</span>
                       )}
                     </td>
                     <td className="px-6 py-4 text-sm text-brand-ink font-medium">{stat.patientCount}</td>
@@ -784,7 +829,7 @@ const ClinicPage = () => {
             
             {podiatristStats.length === 0 && (
               <div className="p-12 text-center">
-                <p className="text-gray-500">No hay podólogos en esta clínica</p>
+                <p className="text-gray-500">{t.clinic.noPodiatrists}</p>
               </div>
             )}
             </div>
@@ -796,78 +841,168 @@ const ClinicPage = () => {
           <div className="space-y-4">
             {/* Demographics index */}
             {demographicsSummary && (
-              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-                {(["new", "recurrent", "recovered"] as PatientSegment[]).map((segment) => (
-                  <button
-                    key={segment}
-                    type="button"
-                    onClick={() => setSegmentFilter(segmentFilter === segment ? "all" : segment)}
-                    className={`rounded-xl border p-4 text-left transition-colors ${
-                      segmentFilter === segment
-                        ? "border-brand-ink bg-brand-canvas"
-                        : "border-gray-100 bg-white hover:border-gray-200"
-                    }`}
-                  >
-                    <p className="text-xs text-gray-500">{SEGMENT_LABELS[segment]}</p>
-                    <p className="text-2xl font-semibold text-brand-ink">{demographicsSummary[segment]}</p>
-                  </button>
-                ))}
-                <div className="rounded-xl border border-gray-100 bg-white p-4">
-                  <p className="text-xs text-gray-500">Total indexados</p>
-                  <p className="text-2xl font-semibold text-brand-ink">{demographicsSummary.total}</p>
+              <div className="space-y-3">
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                  {(["new", "recurrent", "recovered"] as PatientSegmentFilter[]).map((segment) => (
+                    <button
+                      key={segment}
+                      type="button"
+                      onClick={() => setSegmentFilter(segmentFilter === segment ? "all" : segment)}
+                      className={`rounded-xl border p-4 text-left transition-colors ${
+                        segmentFilter === segment
+                          ? "border-brand-ink bg-brand-canvas"
+                          : "border-gray-100 bg-white hover:border-gray-200"
+                      }`}
+                    >
+                      <p className="text-xs text-gray-500">{segmentLabel(eng, segment)}</p>
+                      <p className="text-2xl font-semibold text-brand-ink">{demographicsSummary[segment]}</p>
+                    </button>
+                  ))}
+                  <div className="rounded-xl border border-gray-100 bg-white p-4">
+                    <p className="text-xs text-gray-500">{t.clinic.totalIndexed}</p>
+                    <p className="text-2xl font-semibold text-brand-ink">{demographicsSummary.total}</p>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  {(["3m", "6m"] as PatientInactiveFilter[]).map((key) => (
+                    <button
+                      key={key}
+                      type="button"
+                      onClick={() => setInactiveFilter(inactiveFilter === key ? "all" : key)}
+                      className={`rounded-xl border p-4 text-left transition-colors ${
+                        inactiveFilter === key
+                          ? "border-brand-ink bg-brand-canvas"
+                          : "border-gray-100 bg-white hover:border-gray-200"
+                      }`}
+                    >
+                      <p className="text-xs text-gray-500">{inactiveLabel(eng, key)}</p>
+                      <p className="text-2xl font-semibold text-brand-ink">
+                        {key === "3m"
+                          ? demographicsSummary.inactive3m ?? 0
+                          : demographicsSummary.inactive6m ?? 0}
+                      </p>
+                    </button>
+                  ))}
                 </div>
               </div>
             )}
 
             {/* Filters */}
-            <div className="flex flex-col sm:flex-row gap-3">
+            <div className="flex flex-col sm:flex-row flex-wrap gap-3">
               <input
                 type="text"
-                placeholder="Buscar paciente (nombre, email, teléfono)..."
+                placeholder={t.clinic.searchPatientPlaceholder}
                 value={patientSearch}
                 onChange={(e) => setPatientSearch(e.target.value)}
-                className="flex-1 px-4 py-2 rounded-lg border border-gray-200 focus:border-brand-ink focus:ring-1 focus:ring-brand-ink outline-none transition-colors text-sm"
+                className="flex-1 min-w-[180px] px-4 py-2 rounded-lg border border-gray-200 focus:border-brand-ink focus:ring-1 focus:ring-brand-ink outline-none transition-colors text-sm"
               />
               <select
                 value={podiatristFilter}
                 onChange={(e) => setPodiatristFilter(e.target.value)}
                 className="px-4 py-2 rounded-lg border border-gray-200 focus:border-brand-ink focus:ring-1 focus:ring-brand-ink outline-none transition-colors text-sm"
               >
-                <option value="all">Todos los podólogos</option>
+                <option value="all">{t.clinic.allPodiatrists}</option>
                 {clinicPodiatrists.map(pod => (
                   <option key={pod.id} value={pod.id}>{pod.name}</option>
                 ))}
               </select>
               <select
                 value={ageRangeFilter}
-                onChange={(e) => setAgeRangeFilter(e.target.value as (typeof AGE_RANGE_OPTIONS)[number]["id"])}
+                onChange={(e) => setAgeRangeFilter(e.target.value as AgeRangeId)}
                 className="px-4 py-2 rounded-lg border border-gray-200 focus:border-brand-ink focus:ring-1 focus:ring-brand-ink outline-none transition-colors text-sm"
               >
                 {AGE_RANGE_OPTIONS.map((opt) => (
-                  <option key={opt.id} value={opt.id}>{opt.label}</option>
+                  <option key={opt.id} value={opt.id}>{ageRangeLabel(eng, opt.id)}</option>
                 ))}
               </select>
+              <select
+                value={inactiveFilter}
+                onChange={(e) => setInactiveFilter(e.target.value as "all" | PatientInactiveFilter)}
+                className="px-4 py-2 rounded-lg border border-gray-200 focus:border-brand-ink focus:ring-1 focus:ring-brand-ink outline-none transition-colors text-sm"
+              >
+                <option value="all">{t.clinic.activityAll}</option>
+                <option value="3m">{inactiveLabel(eng, "3m")}</option>
+                <option value="6m">{inactiveLabel(eng, "6m")}</option>
+              </select>
+              <input
+                type="number"
+                min={0}
+                inputMode="numeric"
+                placeholder={eng.minVisits}
+                value={minVisitsFilter}
+                onChange={(e) => setMinVisitsFilter(e.target.value)}
+                className="w-28 px-3 py-2 rounded-lg border border-gray-200 text-sm"
+              />
+              <input
+                type="number"
+                min={0}
+                inputMode="numeric"
+                placeholder={eng.maxVisits}
+                value={maxVisitsFilter}
+                onChange={(e) => setMaxVisitsFilter(e.target.value)}
+                className="w-28 px-3 py-2 rounded-lg border border-gray-200 text-sm"
+              />
+              <label className="flex items-center gap-2 text-sm text-gray-500">
+                <span className="shrink-0">{eng.ltvLabel}</span>
+                <select
+                  value={ltvPeriod}
+                  onChange={(e) => setLtvPeriod(e.target.value as PatientLtvPeriod)}
+                  className="px-3 py-2 rounded-lg border border-gray-200 text-sm text-brand-ink"
+                  aria-label={eng.ltvPeriodAria}
+                >
+                  {(["day", "week", "month", "year", "lifetime"] as PatientLtvPeriod[]).map((key) => (
+                    <option key={key} value={key}>
+                      {ltvPeriodLabel(eng, key)}
+                    </option>
+                  ))}
+                </select>
+              </label>
             </div>
 
-            {(segmentFilter !== "all" || ageRangeFilter !== "all") && (
+            {(segmentFilter !== "all" ||
+              ageRangeFilter !== "all" ||
+              inactiveFilter !== "all" ||
+              minVisitsFilter ||
+              maxVisitsFilter) && (
               <div className="flex flex-wrap items-center gap-2">
                 {segmentFilter !== "all" && (
                   <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${segmentBadgeClass(segmentFilter)}`}>
-                    {SEGMENT_LABELS[segmentFilter]}
+                    {segmentLabel(eng, segmentFilter)}
                     <button type="button" className="ml-1" onClick={() => setSegmentFilter("all")}>×</button>
                   </span>
                 )}
                 {ageRangeFilter !== "all" && (
                   <span className="px-2.5 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-700">
-                    {AGE_RANGE_OPTIONS.find((o) => o.id === ageRangeFilter)?.label}
+                    {ageRangeLabel(eng, ageRangeFilter)}
                     <button type="button" className="ml-1" onClick={() => setAgeRangeFilter("all")}>×</button>
+                  </span>
+                )}
+                {inactiveFilter !== "all" && (
+                  <span className="px-2.5 py-1 rounded-full text-xs font-medium bg-amber-50 text-amber-800">
+                    {inactiveLabel(eng, inactiveFilter)}
+                    <button type="button" className="ml-1" onClick={() => setInactiveFilter("all")}>×</button>
+                  </span>
+                )}
+                {(minVisitsFilter || maxVisitsFilter) && (
+                  <span className="px-2.5 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-700">
+                    {t.clinic.visitsRangeChip.replace("{min}", minVisitsFilter || "0").replace("{max}", maxVisitsFilter || "∞")}
+                    <button
+                      type="button"
+                      className="ml-1"
+                      onClick={() => {
+                        setMinVisitsFilter("");
+                        setMaxVisitsFilter("");
+                      }}
+                    >
+                      ×
+                    </button>
                   </span>
                 )}
               </div>
             )}
 
             {patientsLoading && (
-              <p className="text-sm text-gray-500">Cargando pacientes…</p>
+              <p className="text-sm text-gray-500">{t.clinic.loadingPatients}</p>
             )}
 
             {/* Patients Table */}
@@ -876,14 +1011,18 @@ const ClinicPage = () => {
                 <table className="w-full">
                   <thead>
                     <tr className="border-b border-gray-100 bg-gray-50">
-                      <th className="text-left px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Paciente</th>
-                      <th className="text-left px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Email</th>
-                      <th className="text-left px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Teléfono</th>
-                      <th className="text-left px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Edad</th>
-                      <th className="text-left px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Segmento</th>
-                      <th className="text-left px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Podólogo asignado</th>
-                      <th className="text-left px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Última sesión</th>
-                      <th className="text-right px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Acciones</th>
+                      <th className="text-left px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">{eng.tablePatient}</th>
+                      <th className="text-left px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">{t.clinic.colEmail}</th>
+                      <th className="text-left px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">{t.clinic.colPhone}</th>
+                      <th className="text-left px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">{eng.tableAge}</th>
+                      <th className="text-left px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">{eng.tableSegment}</th>
+                      <th className="text-left px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">{t.clinic.colVisits}</th>
+                      <th className="text-left px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                        {eng.ltvLabel} ({ltvPeriodLabel(eng, ltvPeriod)})
+                      </th>
+                      <th className="text-left px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">{t.clinic.colAssignedPodiatrist}</th>
+                      <th className="text-left px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">{t.clinic.colLastSession}</th>
+                      <th className="text-right px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">{t.clinic.colActions}</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-50">
@@ -897,16 +1036,30 @@ const ClinicPage = () => {
                         <td className="px-6 py-4 text-sm text-gray-600">{patient.email}</td>
                         <td className="px-6 py-4 text-sm text-gray-600">{patient.phone}</td>
                         <td className="px-6 py-4 text-sm text-gray-600">
-                          {patient.ageYears != null ? `${patient.ageYears} años` : "—"}
+                          {patient.ageYears != null ? `${patient.ageYears} ${eng.yearsSuffix}` : "—"}
                         </td>
                         <td className="px-6 py-4">
                           {patient.patientSegment ? (
                             <span className={`px-2.5 py-1 text-xs font-medium rounded-full ${segmentBadgeClass(patient.patientSegment)}`}>
-                              {SEGMENT_LABELS[patient.patientSegment]}
+                              {segmentLabel(eng, patient.patientSegment)}
                             </span>
                           ) : (
                             "—"
                           )}
+                        </td>
+                        <td className="px-6 py-4 text-sm text-gray-600">
+                          <p className="font-medium text-brand-ink">{formatVisitCount(patient.sessionCount, eng)}</p>
+                          <p className="text-xs text-gray-400">
+                            {formatInactivityHint(patient.daysSinceLastSession, patient.sessionCount, eng)}
+                          </p>
+                        </td>
+                        <td className="px-6 py-4 text-sm text-gray-600">
+                          <p className="font-medium text-brand-ink">
+                            {formatCheckoutAmount(patient.ltvCents ?? 0)}
+                          </p>
+                          <p className="text-xs text-gray-400">
+                            {formatLtvPaidCount(patient.ltvPaidCount, eng)}
+                          </p>
                         </td>
                         <td className="px-6 py-4">
                           <span className="px-2.5 py-1 bg-gray-100 text-gray-700 text-xs font-medium rounded-full">
@@ -915,7 +1068,7 @@ const ClinicPage = () => {
                         </td>
                         <td className="px-6 py-4 text-sm text-gray-600">
                           {patient.lastSessionDate 
-                            ? new Date(patient.lastSessionDate).toLocaleDateString("es-ES")
+                            ? new Date(patient.lastSessionDate).toLocaleDateString(language === "en" ? "en-US" : language === "pt" ? "pt-BR" : language === "fr" ? "fr-FR" : "es-ES")
                             : "-"
                           }
                         </td>
@@ -927,7 +1080,7 @@ const ClinicPage = () => {
                             }}
                             className="px-3 py-1.5 text-xs font-medium text-brand-ink border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
                           >
-                            Reasignar
+                            {t.clinic.reassign}
                           </button>
                         </td>
                       </tr>
@@ -941,7 +1094,7 @@ const ClinicPage = () => {
                   <svg className="w-12 h-12 text-gray-300 mx-auto mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
                   </svg>
-                  <p className="text-gray-500">No se encontraron pacientes</p>
+                  <p className="text-gray-500">{t.clinic.noPatientsFound}</p>
                 </div>
               )}
             </div>
@@ -954,10 +1107,10 @@ const ClinicPage = () => {
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
               <div>
                 <p className="text-sm text-gray-500">
-                  Las recepcionistas tienen acceso sin créditos a crear pacientes, crear y editar citas en el calendario de los podólogos que les asignes.
+                  {t.clinic.receptionistsHint}
                 </p>
                 <p className="text-xs text-gray-400 mt-1">
-                  Activas: {activeReceptionistCount} / {MAX_ACTIVE_RECEPTIONISTS}. Deben cambiar la contraseña en el primer inicio de sesión.
+                  {t.clinic.receptionistsActive.replace("{active}", String(activeReceptionistCount)).replace("{max}", String(MAX_ACTIVE_RECEPTIONISTS))}
                 </p>
               </div>
               <button
@@ -973,7 +1126,7 @@ const ClinicPage = () => {
                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                 </svg>
-                Crear recepcionista
+                {t.clinic.createReceptionist}
               </button>
             </div>
             <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
@@ -981,10 +1134,10 @@ const ClinicPage = () => {
                 <table className="w-full">
                   <thead>
                     <tr className="border-b border-gray-100 bg-gray-50">
-                      <th className="text-left px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Nombre</th>
-                      <th className="text-left px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Email</th>
-                      <th className="text-left px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Podólogos asignados</th>
-                      <th className="text-right px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Acciones</th>
+                      <th className="text-left px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">{t.clinic.colName}</th>
+                      <th className="text-left px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">{t.clinic.colEmail}</th>
+                      <th className="text-left px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">{t.clinic.colAssignedPodiatrists}</th>
+                      <th className="text-right px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">{t.clinic.colActions}</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-50">
@@ -997,7 +1150,7 @@ const ClinicPage = () => {
                           <td className="px-6 py-4 text-sm text-gray-600">{rec.email}</td>
                           <td className="px-6 py-4">
                             <span className="text-xs text-gray-600">
-                              {names.length > 0 ? names.join(", ") : "Sin asignar"}
+                              {names.length > 0 ? names.join(", ") : t.clinic.unassigned}
                             </span>
                           </td>
                           <td className="px-6 py-4">
@@ -1008,7 +1161,7 @@ const ClinicPage = () => {
                                 disabled={receptionistActionLoadingId === rec.id}
                                 className="px-3 py-1.5 text-xs rounded-lg border border-gray-200 text-gray-700 hover:bg-gray-50 disabled:opacity-50"
                               >
-                                Podólogos
+                                {t.clinic.podiatristsAction}
                               </button>
                               <button
                                 type="button"
@@ -1016,7 +1169,7 @@ const ClinicPage = () => {
                                 disabled={receptionistActionLoadingId === rec.id}
                                 className="px-3 py-1.5 text-xs rounded-lg border border-gray-200 text-gray-700 hover:bg-gray-50 disabled:opacity-50"
                               >
-                                {rec.isBlocked ? "Desbloquear" : "Bloquear"}
+                                {rec.isBlocked ? t.clinic.unblock : t.clinic.block}
                               </button>
                               <button
                                 type="button"
@@ -1024,7 +1177,7 @@ const ClinicPage = () => {
                                 disabled={receptionistActionLoadingId === rec.id}
                                 className="px-3 py-1.5 text-xs rounded-lg border border-gray-200 text-gray-700 hover:bg-gray-50 disabled:opacity-50"
                               >
-                                {rec.isEnabled === false ? "Habilitar" : "Deshabilitar"}
+                                {rec.isEnabled === false ? t.clinic.enable : t.clinic.disable}
                               </button>
                               <button
                                 type="button"
@@ -1032,7 +1185,7 @@ const ClinicPage = () => {
                                 disabled={receptionistActionLoadingId === rec.id}
                                 className="px-3 py-1.5 text-xs rounded-lg border border-red-200 text-red-600 hover:bg-red-50 disabled:opacity-50"
                               >
-                                Eliminar
+                                {t.common.delete}
                               </button>
                             </div>
                           </td>
@@ -1044,7 +1197,7 @@ const ClinicPage = () => {
               </div>
               {clinicReceptionists.length === 0 && (
                 <div className="p-12 text-center">
-                  <p className="text-gray-500">No hay recepcionistas. Crear una para que gestione citas y pacientes de los podólogos de la clínica.</p>
+                  <p className="text-gray-500">{t.clinic.noReceptionists}</p>
                 </div>
               )}
             </div>
@@ -1057,12 +1210,12 @@ const ClinicPage = () => {
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl w-full max-w-md shadow-xl">
             <div className="p-6 border-b border-gray-100">
-              <h3 className="text-lg font-semibold text-brand-ink">Crear podólogo</h3>
-              <p className="text-sm text-gray-500 mt-1">El nuevo podólogo será asignado a tu clínica.</p>
+              <h3 className="text-lg font-semibold text-brand-ink">{t.clinic.createPodiatrist}</h3>
+              <p className="text-sm text-gray-500 mt-1">{t.clinic.createPodiatristSubtitle}</p>
             </div>
             <form onSubmit={handleCreatePodiatrist} className="p-6 space-y-4">
               <div>
-                <label className="block text-sm font-medium text-brand-ink mb-1">Nombre</label>
+                <label className="block text-sm font-medium text-brand-ink mb-1">{t.common.name}</label>
                 <input
                   type="text"
                   value={podiatristForm.name}
@@ -1072,7 +1225,7 @@ const ClinicPage = () => {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-brand-ink mb-1">Email</label>
+                <label className="block text-sm font-medium text-brand-ink mb-1">{t.common.email}</label>
                 <input
                   type="email"
                   value={podiatristForm.email}
@@ -1082,7 +1235,7 @@ const ClinicPage = () => {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-brand-ink mb-1">Contraseña inicial (mín. 8 caracteres)</label>
+                <label className="block text-sm font-medium text-brand-ink mb-1">{t.clinic.initialPasswordMin8}</label>
                 <input
                   type="password"
                   value={podiatristForm.password}
@@ -1101,13 +1254,13 @@ const ClinicPage = () => {
                   onClick={() => setShowCreatePodiatristModal(false)}
                   className="flex-1 px-4 py-2.5 border border-brand-border rounded-lg text-brand-ink font-medium hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
                 >
-                  Cancelar
+                  {t.common.cancel}
                 </button>
                 <button
                   type="submit"
                   className="flex-1 px-4 py-2.5 bg-brand-ink text-brand-ink-fg rounded-lg font-medium hover:bg-brand-ink-hover transition-colors"
                 >
-                  Crear podólogo
+                  {t.clinic.createPodiatrist}
                 </button>
               </div>
             </form>
@@ -1120,12 +1273,12 @@ const ClinicPage = () => {
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl w-full max-w-md shadow-xl">
             <div className="p-6 border-b border-gray-100">
-              <h3 className="text-lg font-semibold text-brand-ink">Crear recepcionista</h3>
-              <p className="text-sm text-gray-500 mt-1">Se asignarán todos los podólogos de la clínica. Deberá cambiar la contraseña en su primer acceso.</p>
+              <h3 className="text-lg font-semibold text-brand-ink">{t.clinic.createReceptionist}</h3>
+              <p className="text-sm text-gray-500 mt-1">{t.clinic.createReceptionistSubtitle}</p>
             </div>
             <form onSubmit={handleCreateReceptionist} className="p-6 space-y-4">
               <div>
-                <label className="block text-sm font-medium text-brand-ink mb-1">Nombre</label>
+                <label className="block text-sm font-medium text-brand-ink mb-1">{t.common.name}</label>
                 <input
                   type="text"
                   value={receptionistForm.name}
@@ -1135,7 +1288,7 @@ const ClinicPage = () => {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-brand-ink mb-1">Email</label>
+                <label className="block text-sm font-medium text-brand-ink mb-1">{t.common.email}</label>
                 <input
                   type="email"
                   value={receptionistForm.email}
@@ -1145,7 +1298,7 @@ const ClinicPage = () => {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-brand-ink mb-1">Contraseña inicial</label>
+                <label className="block text-sm font-medium text-brand-ink mb-1">{t.clinic.initialPassword}</label>
                 <input
                   type="password"
                   value={receptionistForm.password}
@@ -1170,7 +1323,7 @@ const ClinicPage = () => {
                   type="submit"
                   className="flex-1 px-4 py-2.5 bg-brand-ink text-brand-ink-fg rounded-lg font-medium hover:bg-brand-ink-hover transition-colors"
                 >
-                  Crear recepcionista
+                  {t.clinic.createReceptionist}
                 </button>
               </div>
             </form>
@@ -1183,12 +1336,12 @@ const ClinicPage = () => {
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl w-full max-w-md shadow-xl max-h-[90vh] overflow-y-auto">
             <div className="p-6 border-b border-gray-100">
-              <h3 className="text-lg font-semibold text-brand-ink">Podólogos asignados</h3>
+              <h3 className="text-lg font-semibold text-brand-ink">{t.clinic.assignedPodiatristsTitle}</h3>
               <p className="text-sm text-gray-500 mt-1">{editingReceptionist.name} ({editingReceptionist.email})</p>
             </div>
             <div className="p-6 space-y-3">
               {clinicPodiatrists.length === 0 ? (
-                <p className="text-sm text-gray-500">No hay podólogos en la clínica.</p>
+                <p className="text-sm text-gray-500">{t.clinic.noPodiatristsInClinic}</p>
               ) : (
                 clinicPodiatrists.map((pod) => {
                   const checked = editAssignedPodiatristIds.includes(pod.id);
@@ -1222,7 +1375,7 @@ const ClinicPage = () => {
                   onClick={() => setEditingReceptionist(null)}
                   className="flex-1 px-4 py-2.5 border border-brand-border rounded-lg text-brand-ink font-medium hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
                 >
-                  Cancelar
+                  {t.common.cancel}
                 </button>
                 <button
                   type="button"
@@ -1230,7 +1383,7 @@ const ClinicPage = () => {
                   disabled={receptionistActionLoadingId === editingReceptionist.id}
                   className="flex-1 px-4 py-2.5 bg-brand-ink text-brand-ink-fg rounded-lg font-medium hover:bg-brand-ink-hover transition-colors disabled:opacity-50"
                 >
-                  Guardar
+                  {t.common.save}
                 </button>
               </div>
             </div>

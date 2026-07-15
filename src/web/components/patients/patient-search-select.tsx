@@ -6,6 +6,7 @@ import {
   invalidatePatientDetailCache,
   searchPatients,
 } from "../../hooks/use-patient-picker";
+import { useLanguage } from "../../contexts/language-context";
 
 function patientLabel(p: Patient): string {
   return `${p.firstName} ${p.lastName}`.trim();
@@ -34,11 +35,16 @@ export function PatientSearchSelect({
   onPatientChange,
   disabled = false,
   required = false,
-  placeholder = "Buscar por nombre, DNI, teléfono o email…",
-  emptyHint = "Escribe al menos 2 caracteres para buscar",
+  placeholder,
+  emptyHint,
   isPatientEligible,
-  ineligibleSuffix = " (datos incompletos)",
+  ineligibleSuffix,
 }: Props) {
+  const { t } = useLanguage();
+  const pc = t.patientsClinical;
+  const resolvedPlaceholder = placeholder ?? pc.searchPlaceholder;
+  const resolvedEmptyHint = emptyHint ?? pc.searchEmptyHint;
+  const resolvedIneligible = ineligibleSuffix ?? pc.ineligibleSuffix;
   const listId = useId();
   const rootRef = useRef<HTMLDivElement>(null);
   const [query, setQuery] = useState("");
@@ -153,9 +159,9 @@ export function PatientSearchSelect({
             type="button"
             onClick={clearSelection}
             className="shrink-0 px-3 py-2 text-sm border border-brand-border rounded-lg hover:bg-brand-canvas"
-            aria-label="Cambiar paciente"
+            aria-label={pc.changePatientAria}
           >
-            Cambiar
+            {pc.changePatient}
           </button>
         </div>
       ) : (
@@ -174,7 +180,7 @@ export function PatientSearchSelect({
               setOpen(true);
             }}
             onFocus={() => setOpen(true)}
-            placeholder={placeholder}
+            placeholder={resolvedPlaceholder}
             className={formFieldClassSm}
           />
           {open && (
@@ -184,15 +190,15 @@ export function PatientSearchSelect({
               className="absolute z-20 mt-1 w-full max-h-56 overflow-y-auto rounded-lg border border-brand-border bg-brand-surface shadow-lg py-1"
             >
               {loading && (
-                <li className="px-3 py-2 text-sm text-brand-muted">Buscando…</li>
+                <li className="px-3 py-2 text-sm text-brand-muted">{pc.searching}</li>
               )}
               {!loading && query.trim().length < 2 && (
-                <li className="px-3 py-2 text-sm text-brand-muted">{emptyHint}</li>
+                <li className="px-3 py-2 text-sm text-brand-muted">{resolvedEmptyHint}</li>
               )}
               {!loading &&
                 query.trim().length >= 2 &&
                 results.length === 0 && (
-                  <li className="px-3 py-2 text-sm text-brand-muted">Sin resultados</li>
+                  <li className="px-3 py-2 text-sm text-brand-muted">{pc.noResults}</li>
                 )}
               {!loading &&
                 results.map((p) => {
@@ -206,7 +212,7 @@ export function PatientSearchSelect({
                       >
                         <p className="text-sm font-medium text-brand-ink">
                           {patientLabel(p)}
-                          {!eligible ? ineligibleSuffix : ""}
+                          {!eligible ? resolvedIneligible : ""}
                         </p>
                         <p className="text-xs text-brand-muted truncate">{patientMeta(p) || p.folio}</p>
                       </button>
@@ -223,7 +229,7 @@ export function PatientSearchSelect({
           onClick={() => void refreshSelected()}
           className="text-xs text-brand-muted underline hover:text-brand-ink"
         >
-          Actualizar datos del paciente
+          {pc.refreshPatient}
         </button>
       )}
     </div>

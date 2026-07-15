@@ -111,23 +111,23 @@ const CreateUserModal = ({
     const password = formData.password;
 
     if (!name) {
-      alert("El nombre es obligatorio.");
+      alert(t.usersPage.create.errors.nameRequired);
       return;
     }
     if (!email || !isValidEmail(email)) {
-      alert("Introduce un correo electrónico válido.");
+      alert(t.usersPage.create.errors.emailInvalid);
       return;
     }
     if (!password || password.length < 8) {
-      alert("La contraseña debe tener al menos 8 caracteres.");
+      alert(t.usersPage.create.errors.passwordMin);
       return;
     }
     if (formData.role === "receptionist" && !formData.clinicId) {
-      alert("Selecciona una clínica para el recepcionista.");
+      alert(t.usersPage.create.errors.clinicRequiredReceptionist);
       return;
     }
     if (formData.role === "clinic_admin" && formData.clinicMode === "existing" && !formData.clinicId) {
-      alert("Selecciona una clínica existente o elige crear una nueva.");
+      alert(t.usersPage.create.errors.clinicRequiredAdmin);
       return;
     }
     const payload: CreateUserPayload = {
@@ -164,11 +164,11 @@ const CreateUserModal = ({
     <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 overflow-y-auto">
       <div className="bg-white rounded-2xl w-full max-w-md shadow-xl my-8">
         <div className="p-6 border-b border-gray-100">
-          <h3 className="text-lg font-semibold text-brand-ink">Crear nuevo usuario</h3>
+          <h3 className="text-lg font-semibold text-brand-ink">{t.usersPage.create.title}</h3>
         </div>
         <form onSubmit={handleSubmit} noValidate className="p-6 space-y-4 max-h-[70vh] overflow-y-auto">
           <div>
-            <label className="block text-sm font-medium text-brand-ink mb-1">Nombre</label>
+            <label className="block text-sm font-medium text-brand-ink mb-1">{t.usersPage.fields.name}</label>
             <input
               type="text"
               value={formData.name}
@@ -178,7 +178,7 @@ const CreateUserModal = ({
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-brand-ink mb-1">Email</label>
+            <label className="block text-sm font-medium text-brand-ink mb-1">{t.usersPage.fields.email}</label>
             <input
               type="email"
               value={formData.email}
@@ -188,7 +188,7 @@ const CreateUserModal = ({
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-brand-ink mb-1">Contraseña</label>
+            <label className="block text-sm font-medium text-brand-ink mb-1">{t.usersPage.fields.password}</label>
             <input
               type="password"
               value={formData.password}
@@ -196,10 +196,10 @@ const CreateUserModal = ({
               className="w-full px-4 py-2.5 rounded-lg border border-gray-200 focus:border-brand-ink focus:ring-1 focus:ring-brand-ink outline-none transition-colors"
               autoComplete="new-password"
             />
-            <p className="text-xs text-gray-500 mt-1">Mínimo 8 caracteres.</p>
+            <p className="text-xs text-gray-500 mt-1">{t.usersPage.create.passwordHint}</p>
           </div>
           <div>
-            <label className="block text-sm font-medium text-brand-ink mb-1">Rol</label>
+            <label className="block text-sm font-medium text-brand-ink mb-1">{t.usersPage.fields.role}</label>
             <select
               value={formData.role}
               onChange={(e) => {
@@ -218,11 +218,11 @@ const CreateUserModal = ({
               }}
               className="w-full px-4 py-2.5 rounded-lg border border-gray-200 focus:border-brand-ink focus:ring-1 focus:ring-brand-ink outline-none transition-colors"
             >
-              <option value="podiatrist">Podólogo</option>
-              <option value="clinic_admin">Administrador de Clínica</option>
-              <option value="receptionist">Recepcionista</option>
-              <option value="admin">Soporte</option>
-              <option value="super_admin">Super Administrador</option>
+              <option value="podiatrist">{t.roles.podiatrist}</option>
+              <option value="clinic_admin">{t.roles.clinicAdmin}</option>
+              <option value="receptionist">{t.roles.receptionist}</option>
+              <option value="admin">{t.roles.admin}</option>
+              <option value="super_admin">{t.roles.superAdmin}</option>
             </select>
           </div>
 
@@ -230,7 +230,7 @@ const CreateUserModal = ({
             <>
               <div>
                 <label className="block text-sm font-medium text-brand-ink mb-1">
-                  {formData.role === "clinic_admin" || formData.role === "receptionist" ? "Clínica" : "Clínica (opcional)"}
+                  {formData.role === "clinic_admin" || formData.role === "receptionist" ? t.usersPage.fields.clinic : t.usersPage.fields.clinicOptional}
                 </label>
                 {formData.role !== "receptionist" && (
                   <select
@@ -238,22 +238,22 @@ const CreateUserModal = ({
                     onChange={(e) => setFormData({ ...formData, clinicMode: e.target.value as "existing" | "new" | "none", clinicId: "" })}
                     className="w-full px-4 py-2.5 rounded-lg border border-gray-200 focus:border-brand-ink focus:ring-1 focus:ring-brand-ink outline-none transition-colors"
                   >
-                    <option value="existing">Seleccionar clínica existente</option>
-                    <option value="new">Crear nueva clínica</option>
-                    {formData.role === "podiatrist" && <option value="none">Sin clínica (independiente)</option>}
+                    <option value="existing">{t.usersPage.create.clinicModeExisting}</option>
+                    <option value="new">{t.usersPage.create.clinicModeNew}</option>
+                    {formData.role === "podiatrist" && <option value="none">{t.usersPage.create.clinicModeNone}</option>}
                   </select>
                 )}
               </div>
 
               {showClinicSelector && (
                 <div>
-                  <label className="block text-sm font-medium text-brand-ink mb-1">Clínica</label>
+                  <label className="block text-sm font-medium text-brand-ink mb-1">{t.usersPage.fields.clinic}</label>
                   <select
                     value={formData.clinicId}
                     onChange={(e) => setFormData({ ...formData, clinicId: e.target.value })}
                     className="w-full px-4 py-2.5 rounded-lg border border-gray-200 focus:border-brand-ink focus:ring-1 focus:ring-brand-ink outline-none transition-colors"
                   >
-                    <option value="">— Seleccionar —</option>
+                    <option value="">{t.usersPage.selectPlaceholder}</option>
                     {clinics.map((c) => (
                       <option key={c.clinicId} value={c.clinicId}>
                         {c.clinicName} ({c.clinicCode})
@@ -266,16 +266,16 @@ const CreateUserModal = ({
               {showNewClinicForm && (
                 <div className="space-y-3 p-4 bg-gray-50 rounded-lg border border-gray-200">
                   <p className="text-sm text-gray-600">
-                    Se creará una clínica con datos provisionales. El administrador completará <strong>nombre, código, teléfono, dirección</strong> y el resto en <strong>Configuración</strong>.
+                    {t.usersPage.create.newClinicHint}
                   </p>
                   {formData.role === "clinic_admin" && (
                     <div>
-                      <label className="block text-sm font-medium text-brand-ink mb-1">Límite de podólogos (opcional)</label>
+                      <label className="block text-sm font-medium text-brand-ink mb-1">{t.usersPage.create.podiatristLimit}</label>
                       <input
                         type="number"
                         min="1"
                         max="999"
-                        placeholder="Ej: 5"
+                        placeholder={t.usersPage.create.podiatristLimitPlaceholder}
                         value={formData.newClinic?.podiatristLimit ?? ""}
                         onChange={(e) => {
                           const v = e.target.value;
@@ -287,7 +287,7 @@ const CreateUserModal = ({
                         }}
                         className="w-full px-4 py-2.5 rounded-lg border border-gray-200 focus:border-brand-ink focus:ring-1 focus:ring-brand-ink outline-none transition-colors"
                       />
-                      <p className="text-xs text-gray-500 mt-1">Los podólogos de la clínica estarán limitados a este número. Recepcionistas no cuentan.</p>
+                      <p className="text-xs text-gray-500 mt-1">{t.usersPage.create.podiatristLimitHint}</p>
                     </div>
                   )}
                 </div>
@@ -308,7 +308,7 @@ const CreateUserModal = ({
               disabled={isSaving}
               className="flex-1 px-4 py-2.5 bg-brand-ink text-brand-ink-fg rounded-lg font-medium hover:bg-brand-ink-hover transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
             >
-              {isSaving ? "Creando..." : t.common.create}
+              {isSaving ? t.usersPage.create.saving : t.common.create}
             </button>
           </div>
         </form>
@@ -339,6 +339,7 @@ const BulkImportModal = ({
   isSuperAdmin: boolean;
   currentUserClinicId?: string;
 }) => {
+  const { t } = useLanguage();
   const [file, setFile] = useState<File | null>(null);
   const [defaultPassword, setDefaultPassword] = useState("");
   const [parsedRows, setParsedRows] = useState<Array<{ name: string; email: string; password: string; role: UserRole; clinicMode: string; clinicId: string; podiatristLimit?: number | null }>>([]);
@@ -366,7 +367,7 @@ const BulkImportModal = ({
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = "plantilla_usuarios.csv";
+    a.download = t.usersPage.import.templateFilename;
     a.click();
     URL.revokeObjectURL(url);
   };
@@ -406,7 +407,7 @@ const BulkImportModal = ({
         const text = String(reader.result);
         const rows = parseCSV(text);
         if (rows.length < 2) {
-          setParseError("El archivo debe tener al menos una fila de encabezado y una fila de datos.");
+          setParseError(t.usersPage.import.errors.needRows);
           return;
         }
         const header = rows[0].map((h) => h.toLowerCase().replace(/\s/g, ""));
@@ -419,7 +420,7 @@ const BulkImportModal = ({
         const podiatristLimitIdx = header.findIndex((h) => h === "podiatristlimit" || h === "podiatrist_limit");
 
         if (nameIdx < 0 || emailIdx < 0 || passIdx < 0 || roleIdx < 0) {
-          setParseError("Faltan columnas obligatorias: nombre, email, password, rol");
+          setParseError(t.usersPage.import.errors.missingColumns);
           return;
         }
 
@@ -455,7 +456,7 @@ const BulkImportModal = ({
         setParsedRows(parsed);
         setFile(f);
       } catch (err) {
-        setParseError(err instanceof Error ? err.message : "Error al leer el archivo");
+        setParseError(err instanceof Error ? err.message : t.usersPage.import.errors.readFile);
       }
     };
     reader.readAsText(f, "UTF-8");
@@ -471,7 +472,7 @@ const BulkImportModal = ({
       let password = row.password;
       if (!password && defaultPassword) password = defaultPassword;
       if (!password || password.length < 8) {
-        results.push({ index: i + 1, name: row.name, email: row.email, success: false, error: "Contraseña inválida (mín. 8 caracteres)" });
+        results.push({ index: i + 1, name: row.name, email: row.email, success: false, error: t.usersPage.import.errors.invalidPassword });
         continue;
       }
       try {
@@ -505,7 +506,7 @@ const BulkImportModal = ({
           }
           results.push({ index: i + 1, name: row.name, email: row.email, success: true });
         } else {
-          const msg = (response.data as { message?: string })?.message || response.error || "Error desconocido";
+          const msg = (response.data as { message?: string })?.message || response.error || t.usersPage.import.errors.unknown;
           results.push({ index: i + 1, name: row.name, email: row.email, success: false, error: msg });
         }
       } catch (err) {
@@ -514,7 +515,7 @@ const BulkImportModal = ({
           name: row.name,
           email: row.email,
           success: false,
-          error: err instanceof Error ? err.message : "Error de conexión",
+          error: err instanceof Error ? err.message : t.usersPage.import.errors.connection,
         });
       }
       setImportResults([...results]);
@@ -534,13 +535,13 @@ const BulkImportModal = ({
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
             </svg>
-            Importar usuarios desde CSV
+            {t.usersPage.import.title}
           </h3>
         </div>
         <div className="p-6 space-y-4 overflow-y-auto flex-1">
           <p className="text-sm text-gray-600">
-            Sube un archivo CSV con columnas: <strong>nombre</strong>, <strong>email</strong>, <strong>password</strong>, <strong>rol</strong>.
-            {isSuperAdmin && " Opcional: clinicMode (existing|new|none), clinicId (si existing), podiatrist_limit (solo clinic_admin)."}
+            {t.usersPage.import.description}
+            {isSuperAdmin && t.usersPage.import.optionalColumnsSuperAdmin}
           </p>
           <div className="flex gap-3">
             <button
@@ -551,23 +552,23 @@ const BulkImportModal = ({
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
               </svg>
-              Descargar plantilla
+              {t.usersPage.import.downloadTemplate}
             </button>
             <label className="px-4 py-2 bg-brand-ink text-brand-ink-fg rounded-lg text-sm font-medium hover:bg-brand-ink-hover transition-colors cursor-pointer flex items-center gap-2">
               <input type="file" accept=".csv,.txt" className="hidden" onChange={handleFileChange} />
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
               </svg>
-              Seleccionar archivo
+              {t.usersPage.import.selectFile}
             </label>
           </div>
           <div>
-            <label className="block text-sm font-medium text-brand-ink mb-1">Contraseña por defecto (si falta en CSV)</label>
+            <label className="block text-sm font-medium text-brand-ink mb-1">{t.usersPage.import.defaultPassword}</label>
             <input
               type="password"
               value={defaultPassword}
               onChange={(e) => setDefaultPassword(e.target.value)}
-              placeholder="Opcional"
+              placeholder={t.usersPage.import.optionalPlaceholder}
               className="w-full px-4 py-2.5 rounded-lg border border-gray-200 focus:border-brand-ink focus:ring-1 focus:ring-brand-ink outline-none transition-colors"
             />
           </div>
@@ -575,15 +576,15 @@ const BulkImportModal = ({
           {parsedRows.length > 0 && !importDone && (
             <div className="border border-gray-200 rounded-lg overflow-hidden">
               <p className="p-3 bg-brand-canvas text-sm font-medium text-brand-ink">
-                {parsedRows.length} usuario(s) listo(s) para importar
+                {t.usersPage.import.readyCount.replace("{count}", String(parsedRows.length))}
               </p>
               <div className="max-h-40 overflow-y-auto">
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="bg-gray-50 border-b border-gray-200">
-                      <th className="text-left p-2">Nombre</th>
-                      <th className="text-left p-2">Email</th>
-                      <th className="text-left p-2">Rol</th>
+                      <th className="text-left p-2">{t.usersPage.fields.name}</th>
+                      <th className="text-left p-2">{t.usersPage.fields.email}</th>
+                      <th className="text-left p-2">{t.usersPage.fields.role}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -596,20 +597,22 @@ const BulkImportModal = ({
                     ))}
                   </tbody>
                 </table>
-                {parsedRows.length > 10 && <p className="p-2 text-xs text-gray-500">... y {parsedRows.length - 10} más</p>}
+                {parsedRows.length > 10 && <p className="p-2 text-xs text-gray-500">{t.usersPage.import.andMore.replace("{count}", String(parsedRows.length - 10))}</p>}
               </div>
             </div>
           )}
           {importDone && importResults.length > 0 && (
             <div className="border border-gray-200 rounded-lg overflow-hidden">
               <p className="p-3 bg-brand-canvas text-sm font-medium text-brand-ink">
-                Resultados: {importResults.filter((r) => r.success).length} creados, {importResults.filter((r) => !r.success).length} con error
+                {t.usersPage.import.resultsSummary
+                  .replace("{ok}", String(importResults.filter((r) => r.success).length))
+                  .replace("{fail}", String(importResults.filter((r) => !r.success).length))}
               </p>
               <div className="max-h-48 overflow-y-auto">
                 {importResults.map((r) => (
                   <div key={r.index} className={`flex items-center justify-between p-2 text-sm border-b border-gray-100 ${r.success ? "bg-semantic-success-bg" : "bg-semantic-error-bg"}`}>
                     <span className="font-medium">{r.name}</span>
-                    <span className={r.success ? formSuccessClass : formErrorClass}>{r.success ? "✓ Creado" : r.error}</span>
+                    <span className={r.success ? formSuccessClass : formErrorClass}>{r.success ? t.usersPage.import.created : r.error}</span>
                   </div>
                 ))}
               </div>
@@ -622,7 +625,7 @@ const BulkImportModal = ({
             onClick={handleClose}
             className="flex-1 px-4 py-2.5 border border-brand-border rounded-lg text-brand-ink font-medium hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
           >
-            {importDone ? "Cerrar" : "Cancelar"}
+            {importDone ? t.common.close : t.common.cancel}
           </button>
           {!importDone && parsedRows.length > 0 && (
             <button
@@ -631,7 +634,7 @@ const BulkImportModal = ({
               disabled={isImporting}
               className="flex-1 px-4 py-2.5 bg-brand-ink text-brand-ink-fg rounded-lg font-medium hover:bg-brand-ink-hover transition-colors disabled:opacity-50"
             >
-              {isImporting ? `Importando... (${importResults.length}/${parsedRows.length})` : "Importar"}
+              {isImporting ? t.usersPage.import.importing.replace("{done}", String(importResults.length)).replace("{total}", String(parsedRows.length)) : t.usersPage.import.submit}
             </button>
           )}
         </div>
@@ -641,15 +644,15 @@ const BulkImportModal = ({
 };
 
 // Edit User Modal
-const EditUserModal = ({ 
-  isOpen, 
-  onClose, 
+const EditUserModal = ({
+  isOpen,
+  onClose,
   user,
   onSave,
   clinics = [],
-}: { 
-  isOpen: boolean; 
-  onClose: () => void; 
+}: {
+  isOpen: boolean;
+  onClose: () => void;
   user: User | null;
   onSave: (userId: string, updates: Partial<User>) => void;
   clinics?: ClinicOption[];
@@ -719,11 +722,11 @@ const EditUserModal = ({
     <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
       <div className="bg-brand-surface rounded-2xl w-full max-w-md shadow-xl dark:shadow-black/40">
         <div className="p-6 border-b border-gray-100 dark:border-gray-700">
-          <h3 className="text-lg font-semibold text-brand-ink">Editar usuario</h3>
+          <h3 className="text-lg font-semibold text-brand-ink">{t.usersPage.edit.title}</h3>
         </div>
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
           <div>
-            <label className={labelCls}>Nombre</label>
+            <label className={labelCls}>{t.usersPage.fields.name}</label>
             <input
               type="text"
               value={formData.name}
@@ -733,7 +736,7 @@ const EditUserModal = ({
             />
           </div>
           <div>
-            <label className={labelCls}>Email</label>
+            <label className={labelCls}>{t.usersPage.fields.email}</label>
             <input
               type="email"
               value={formData.email}
@@ -745,17 +748,17 @@ const EditUserModal = ({
             />
           </div>
           <div>
-            <label className={labelCls}>Rol</label>
+            <label className={labelCls}>{t.usersPage.fields.role}</label>
             <select
               value={formData.role}
               onChange={(e) => handleRoleChange(e.target.value as UserRole)}
               className={selectCls}
             >
-              <option value="podiatrist">Podólogo</option>
-              <option value="clinic_admin">Administrador de Clínica</option>
-              <option value="admin">Soporte</option>
+              <option value="podiatrist">{t.roles.podiatrist}</option>
+              <option value="clinic_admin">{t.roles.clinicAdmin}</option>
+              <option value="admin">{t.roles.admin}</option>
               {isEditorSuperAdmin && (
-                <option value="super_admin">Super Administrador</option>
+                <option value="super_admin">{t.roles.superAdmin}</option>
               )}
             </select>
             {isPromotingToSuperAdmin && (
@@ -796,13 +799,13 @@ const EditUserModal = ({
           </div>
           {needsClinic && (
             <div>
-              <label className={labelCls}>Clínica</label>
+              <label className={labelCls}>{t.usersPage.fields.clinic}</label>
               <select
                 value={formData.clinicId}
                 onChange={(e) => setFormData({ ...formData, clinicId: e.target.value })}
                 className={selectCls}
               >
-                <option value="">— Sin clínica —</option>
+                <option value="">{t.usersPage.edit.noClinic}</option>
                 {clinics.map((c) => (
                   <option key={c.clinicId} value={c.clinicId}>
                     {c.clinicName} ({c.clinicCode})
@@ -869,18 +872,20 @@ const TransferHistoryModal = ({
         onTransferred();
         setResult({
           success: true,
-          message: transferResult.message ?? `Se han transferido ${transferResult.patientsTransferred ?? 0} paciente(s) correctamente.`,
+          message: transferResult.message ?? t.usersPage.transfer.successMessage
+            .replace("{patients}", String(transferResult.patientsTransferred ?? 0))
+            .replace("{sessions}", "0"),
         });
       } else {
         setResult({
           success: false,
-          message: transferResult.error ?? "Error al transferir los datos.",
+          message: transferResult.error ?? t.usersPage.transfer.error,
         });
       }
     } catch {
       setResult({
         success: false,
-        message: "Error al transferir los datos.",
+        message: t.usersPage.transfer.error,
       });
     } finally {
       setIsTransferring(false);
@@ -891,25 +896,25 @@ const TransferHistoryModal = ({
     <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
       <div className="bg-white rounded-2xl w-full max-w-lg shadow-xl">
         <div className="p-6 border-b border-gray-100">
-          <h3 className="text-lg font-semibold text-brand-ink">Transferir historial clínico</h3>
-          <p className="text-sm text-gray-500 mt-1">Copiar todos los pacientes y sesiones de un usuario a otro</p>
+          <h3 className="text-lg font-semibold text-brand-ink">{t.usersPage.transfer.title}</h3>
+          <p className="text-sm text-gray-500 mt-1">{t.usersPage.transfer.subtitle}</p>
         </div>
         <div className="p-6 space-y-4">
           {result ? (
             <div className={result.success ? semanticAlertSuccessClass : semanticAlertErrorClass}>
-              <p className="font-medium">{result.success ? "¡Éxito!" : "Error"}</p>
+              <p className="font-medium">{result.success ? t.usersPage.transfer.successTitle : t.usersPage.transfer.errorTitle}</p>
               <p className="text-sm mt-1">{result.message}</p>
             </div>
           ) : (
             <>
               <div>
-                <label className="block text-sm font-medium text-brand-ink mb-1">Usuario origen</label>
+                <label className="block text-sm font-medium text-brand-ink mb-1">{t.usersPage.transfer.sourceUser}</label>
                 <select
                   value={sourceUserId}
                   onChange={(e) => setSourceUserId(e.target.value)}
                   className="w-full px-4 py-2.5 rounded-lg border border-gray-200 focus:border-brand-ink focus:ring-1 focus:ring-brand-ink outline-none transition-colors"
                 >
-                  <option value="">Seleccionar usuario...</option>
+                  <option value="">{t.usersPage.transfer.selectUser}</option>
                   {allUsers.filter(u => u.role === "podiatrist").map(u => (
                     <option key={u.id} value={u.id}>{u.name} ({u.email})</option>
                   ))}
@@ -919,7 +924,7 @@ const TransferHistoryModal = ({
               {sourceUserId && (
                 <div className="bg-gray-50 rounded-lg p-3">
                   <p className="text-sm text-gray-500">
-                    <span className="font-medium text-brand-ink">{sourcePatientCount}</span> pacientes para transferir
+                    {t.usersPage.transfer.patientsCount.replace("{count}", String(sourcePatientCount))}
                   </p>
                 </div>
               )}
@@ -931,13 +936,13 @@ const TransferHistoryModal = ({
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-brand-ink mb-1">Usuario destino</label>
+                <label className="block text-sm font-medium text-brand-ink mb-1">{t.usersPage.transfer.targetUser}</label>
                 <select
                   value={targetUserId}
                   onChange={(e) => setTargetUserId(e.target.value)}
                   className="w-full px-4 py-2.5 rounded-lg border border-gray-200 focus:border-brand-ink focus:ring-1 focus:ring-brand-ink outline-none transition-colors"
                 >
-                  <option value="">Seleccionar usuario...</option>
+                  <option value="">{t.usersPage.transfer.selectUser}</option>
                   {allUsers.filter(u => u.role === "podiatrist" && u.id !== sourceUserId).map(u => (
                     <option key={u.id} value={u.id}>{u.name} ({u.email})</option>
                   ))}
@@ -946,7 +951,7 @@ const TransferHistoryModal = ({
 
               <div className={semanticAlertWarningClass}>
                 <p>
-                  <strong>Advertencia:</strong> Esta acción transferirá la propiedad de todos los pacientes y sesiones. El usuario origen perderá acceso a estos datos.
+                  {t.usersPage.transfer.warning}
                 </p>
               </div>
             </>
@@ -963,7 +968,7 @@ const TransferHistoryModal = ({
               }}
               className="flex-1 px-4 py-2.5 border border-brand-border rounded-lg text-brand-ink font-medium hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
             >
-              {result ? "Cerrar" : t.common.cancel}
+              {result ? t.common.close : t.common.cancel}
             </button>
             {!result && (
               <button
@@ -971,7 +976,7 @@ const TransferHistoryModal = ({
                 disabled={!sourceUserId || !targetUserId || sourceUserId === targetUserId || isTransferring}
                 className="flex-1 px-4 py-2.5 bg-brand-ink text-brand-ink-fg rounded-lg font-medium hover:bg-brand-ink-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {isTransferring ? "Transfiriendo..." : "Transferir"}
+                {isTransferring ? t.usersPage.transfer.transferring : t.usersPage.transfer.submit}
               </button>
             )}
           </div>
@@ -1046,17 +1051,17 @@ const UserProfileModal = ({
         
         <div className="p-6 space-y-6">
           {profileLoading ? (
-            <p className="text-sm text-gray-500">Cargando datos clínicos...</p>
+            <p className="text-sm text-gray-500">{t.usersPage.profile.loading}</p>
           ) : (
           <>
           {/* Stats */}
           <div className="grid grid-cols-2 gap-4">
             <div className="bg-gray-50 rounded-lg p-4">
-              <p className="text-sm text-gray-500">Pacientes</p>
+              <p className="text-sm text-gray-500">{t.usersPage.profile.patients}</p>
               <p className="text-2xl font-semibold text-brand-ink">{patientCount}</p>
             </div>
             <div className="bg-gray-50 rounded-lg p-4">
-              <p className="text-sm text-gray-500">Sesiones</p>
+              <p className="text-sm text-gray-500">{t.usersPage.profile.sessions}</p>
               <p className="text-2xl font-semibold text-brand-ink">{sessionCount}</p>
             </div>
           </div>
@@ -1064,7 +1069,7 @@ const UserProfileModal = ({
           {/* Patients list */}
           {patients.length > 0 && (
             <div>
-              <h4 className="text-sm font-semibold text-brand-ink mb-3">Pacientes ({patientCount})</h4>
+              <h4 className="text-sm font-semibold text-brand-ink mb-3">{t.usersPage.profile.patientsHeading.replace("{count}", String(patientCount))}</h4>
               <div className="bg-gray-50 rounded-lg divide-y divide-gray-100 max-h-48 overflow-y-auto form-modal-scroll">
                 {patients.slice(0, 10).map((patient) => (
                   <div key={patient.id} className="p-3 flex items-center justify-between">
@@ -1074,7 +1079,7 @@ const UserProfileModal = ({
                 ))}
                 {patientCount > 10 && (
                   <div className="p-3 text-center">
-                    <span className="text-xs text-gray-500">...y {patientCount - 10} más</span>
+                    <span className="text-xs text-gray-500">{t.usersPage.profile.andMore.replace("{count}", String(patientCount - 10))}</span>
                   </div>
                 )}
               </div>
@@ -1242,14 +1247,14 @@ const UsersPage = () => {
       await loadPendingLists();
       await fetchUsers();
       await loadClinics();
-      const msg = r.data?.message ?? (r.data?.created ? `Se crearon ${r.data.created} usuario(s).` : "Lista aprobada.");
+      const msg = r.data?.message ?? (r.data?.created ? t.usersPage.regLists.createdCount.replace("{count}", String(r.data.created)) : t.usersPage.regLists.approved);
       if (r.data?.errors?.length) {
-        alert(`${msg}\n\nErrores:\n${r.data.errors.map((e) => `${e.email}: ${e.error}`).join("\n")}`);
+        alert(`${msg}\n\n${t.usersPage.regLists.errorsPrefix}\n${r.data.errors.map((e) => `${e.email}: ${e.error}`).join("\n")}`);
       } else {
         alert(msg);
       }
     } else {
-      alert(r.error || "Error al aprobar");
+      alert(r.error || t.usersPage.errors.approve);
     }
   };
 
@@ -1258,7 +1263,7 @@ const UsersPage = () => {
     if (r.success) {
       await loadPendingLists();
     } else {
-      alert(r.error || "Error al rechazar");
+      alert(r.error || t.usersPage.errors.reject);
     }
   };
 
@@ -1375,7 +1380,7 @@ const UsersPage = () => {
     <th
       className={`${align === "right" ? "text-right" : "text-left"} px-4 py-3 text-xs font-semibold text-brand-muted uppercase tracking-wider truncate cursor-pointer select-none hover:bg-gray-100 dark:hover:bg-gray-700 active:bg-gray-200 dark:active:bg-gray-600 transition-colors`}
       onClick={() => handleSort(sortKey)}
-      title={`Ordenar por ${label}`}
+      title={t.usersPage.table.sortBy.replace("{label}", label)}
     >
       <span className="inline-flex items-center gap-1">
         {label}
@@ -1422,7 +1427,7 @@ const UsersPage = () => {
           <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
           </svg>
-          Baneado
+          {t.usersPage.status.banned}
         </span>
       );
     }
@@ -1432,7 +1437,7 @@ const UsersPage = () => {
           <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
           </svg>
-          Bloqueado
+          {t.usersPage.status.blocked}
         </span>
       );
     }
@@ -1441,20 +1446,20 @@ const UsersPage = () => {
       const daysSinceDisabled = (Date.now() - disabledAt) / (24 * 60 * 60 * 1000);
       const isGracePeriod = daysSinceDisabled < 30;
       const graceDays = Math.max(0, Math.floor(daysSinceDisabled));
-      const graceLabel = `Período de gracia (${graceDays} día${graceDays === 1 ? "" : "s"})`;
+      const graceLabel = `${t.usersPage.status.gracePeriod} (${graceDays})`;
       return (
         <span className={`${semanticChipWarningClass} gap-1`}>
           <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
-          {isGracePeriod ? graceLabel : "Deshabilitado"}
+          {isGracePeriod ? graceLabel : t.usersPage.status.disabled}
         </span>
       );
     }
     if (user.isEnabled === false && (user.role === "clinic_admin" || user.role === "podiatrist")) {
       return (
         <span className={semanticChipWarningClass}>
-          Pendiente pago
+          {t.usersPage.status.pendingPayment}
         </span>
       );
     }
@@ -1463,7 +1468,7 @@ const UsersPage = () => {
         <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
         </svg>
-        Activo
+        {t.usersPage.status.active}
       </span>
     );
   };
@@ -1480,18 +1485,18 @@ const UsersPage = () => {
   const handleCreateUser = async (payload: CreateUserPayload): Promise<boolean | string> => {
     const email = (payload.email || "").trim();
     if (!email) {
-      alert("El correo electrónico es obligatorio.");
+      alert(t.usersPage.create.errors.emailInvalid);
       return false;
     }
 
     const emailExists = allUsers.some((u) => u.email.toLowerCase() === email.toLowerCase());
     if (emailExists) {
-      alert("Ya existe una cuenta con este correo electrónico.");
+      alert(t.usersPage.create.errors.createFailed);
       return false;
     }
 
     if (!payload.password || payload.password.length < 8) {
-      alert("La contraseña debe tener al menos 8 caracteres.");
+      alert(t.usersPage.create.errors.passwordMin);
       return false;
     }
 
@@ -1507,10 +1512,10 @@ const UsersPage = () => {
       const response = await api.post<{ success: boolean; user: User }>("/users", userPayload);
 
       if (!response.success || !response.data?.success) {
-        const msg = response.data?.message || response.error || "Error al crear usuario";
+        const msg = response.data?.message || response.error || t.usersPage.create.errors.createFailed;
         const issues = (response.data as any)?.issues as Array<{ message?: string; path?: (string | number)[] }> | undefined;
         const details = issues?.length ? issues.map((i) => i.message || i.path?.join(".")).join(". ") : "";
-        alert(details ? `${msg}\n\nDetalles: ${details}` : msg);
+        alert(details ? `${msg}\n\n${t.common.details}: ${details}` : msg);
         return false;
       }
 
@@ -1526,7 +1531,7 @@ const UsersPage = () => {
 
         if (!clinicRes.success || !clinicRes.data?.clinic) {
           await fetchUsers();
-          return "Usuario creado, pero no se pudo crear la clínica. Asigna una clínica manualmente.";
+          return t.usersPage.create.partialClinicFail;
         }
 
         createdClinic = clinicRes.data.clinic;
@@ -1557,10 +1562,10 @@ const UsersPage = () => {
           newUserClinicId: newUser.clinicId,
         },
       });
-      return "Usuario creado correctamente. Ya puede iniciar sesión con la contraseña indicada.";
+      return t.usersPage.create.success;
     } catch (error) {
       console.error("Error creando usuario:", error);
-      alert("Error al crear usuario. Comprueba la consola del navegador (F12) para más detalles.");
+      alert(t.usersPage.create.errors.createFailed);
       return false;
     }
   };
@@ -1584,11 +1589,11 @@ const UsersPage = () => {
             details: { action: "user_update", targetUserId: userId, targetUserName: updates.name },
           });
         } else {
-          alert(response.error || response.data?.message || "Error al actualizar usuario");
+          alert(response.error || response.data?.message || t.usersPage.edit.errors.updateFailed);
         }
       } catch (error) {
         console.error("Error actualizando usuario:", error);
-        alert("Error al actualizar usuario.");
+        alert(t.usersPage.edit.errors.updateFailed);
       }
     })();
   };
@@ -1618,40 +1623,40 @@ const UsersPage = () => {
             // Si falla clipboard, el modal mostrará el enlace para copiarlo
           }
         } else {
-          alert(r.data?.message || "Solicitud aprobada.");
+          alert(r.data?.message || t.usersPage.passwordReset.approved);
         }
       } else {
-        alert(r.error || r.data?.message || "Error al aprobar");
+        alert(r.error || r.data?.message || t.usersPage.passwordReset.approveError);
       }
     } catch (e) {
-      alert("Error al aprobar la solicitud");
+      alert(t.usersPage.passwordReset.approveError);
     }
   };
 
   const handleRejectPasswordReset = async (requestId: string) => {
-    const reason = window.prompt("Motivo del rechazo (opcional):");
+    const reason = window.prompt(t.usersPage.passwordReset.rejectReasonPrompt);
     try {
       const r = await api.post<{ success: boolean; message?: string }>(`/auth/password-reset-requests/${requestId}/reject`, { reason: reason || "" });
       if (r.success) {
         await loadPasswordResetRequests();
-        alert(r.data?.message || "Solicitud rechazada.");
+        alert(r.data?.message || t.usersPage.passwordReset.rejected);
       } else {
-        alert(r.error || r.data?.message || "Error al rechazar");
+        alert(r.error || r.data?.message || t.usersPage.passwordReset.rejectError);
       }
     } catch (e) {
-      alert("Error al rechazar la solicitud");
+      alert(t.usersPage.passwordReset.rejectError);
     }
   };
 
   const handleExportUserData = async (user: User) => {
     const ok = await downloadUserClinicalExport(user.id, `user_${user.id}_clinical_history.json`);
     if (!ok) {
-      alert("No se pudo exportar el historial clínico.");
+      alert(t.usersPage.export.failed);
     }
   };
 
   const handleBlockUser = (user: User) => {
-    if (!window.confirm(`¿Estás seguro de que deseas bloquear la cuenta de ${user.name}?`)) {
+    if (!window.confirm(t.usersPage.confirm.block.replace("{name}", user.name))) {
       return;
     }
     
@@ -1673,17 +1678,17 @@ const UsersPage = () => {
             },
           });
         } else {
-          alert(response.error || response.data?.message || "Error al bloquear el usuario.");
+          alert(response.error || response.data?.message || t.usersPage.errors.block);
         }
       } catch (error) {
         console.error("Error bloqueando usuario:", error);
-        alert("Error al bloquear el usuario.");
+        alert(t.usersPage.errors.block);
       }
     })();
   };
 
   const handleUnblockUser = (user: User) => {
-    if (!window.confirm(`¿Estás seguro de que deseas desbloquear la cuenta de ${user.name}?`)) {
+    if (!window.confirm(t.usersPage.confirm.unblock.replace("{name}", user.name))) {
       return;
     }
     
@@ -1705,17 +1710,17 @@ const UsersPage = () => {
             },
           });
         } else {
-          alert(response.error || response.data?.message || "Error al desbloquear el usuario.");
+          alert(response.error || response.data?.message || t.usersPage.errors.unblock);
         }
       } catch (error) {
         console.error("Error desbloqueando usuario:", error);
-        alert("Error al desbloquear el usuario.");
+        alert(t.usersPage.errors.unblock);
       }
     })();
   };
 
   const handleEnableUser = async (user: User) => {
-    if (!window.confirm(`¿Estás seguro de que deseas habilitar la cuenta de ${user.name}?`)) {
+    if (!window.confirm(t.usersPage.confirm.enable.replace("{name}", user.name))) {
       return;
     }
     
@@ -1737,16 +1742,16 @@ const UsersPage = () => {
           },
         });
       } else {
-        alert(response.error || response.data?.message || "Error al habilitar el usuario");
+        alert(response.error || response.data?.message || t.usersPage.errors.enable);
       }
     } catch (error) {
       console.error("Error habilitando usuario:", error);
-      alert("Error al habilitar el usuario");
+      alert(t.usersPage.errors.enable);
     }
   };
 
   const handleDisableUser = async (user: User) => {
-    if (!window.confirm(`¿Estás seguro de que deseas deshabilitar la cuenta de ${user.name}?\n\nEl usuario no podrá iniciar sesión hasta que sea habilitado nuevamente.`)) {
+    if (!window.confirm(t.usersPage.confirm.disable.replace("{name}", user.name))) {
       return;
     }
 
@@ -1768,16 +1773,16 @@ const UsersPage = () => {
           },
         });
       } else {
-        alert(response.error || response.data?.message || "Error al deshabilitar el usuario");
+        alert(response.error || response.data?.message || t.usersPage.errors.disable);
       }
     } catch (error) {
       console.error("Error deshabilitando usuario:", error);
-      alert("Error al deshabilitar el usuario");
+      alert(t.usersPage.errors.disable);
     }
   };
 
   const handleBanUser = (user: User) => {
-    if (!window.confirm(`¿Estás seguro de que deseas BANEAR permanentemente la cuenta de ${user.name}? Esta acción es irreversible.`)) {
+    if (!window.confirm(t.usersPage.confirm.ban.replace("{name}", user.name))) {
       return;
     }
     
@@ -1799,17 +1804,17 @@ const UsersPage = () => {
             },
           });
         } else {
-          alert(response.error || response.data?.message || "Error al banear el usuario.");
+          alert(response.error || response.data?.message || t.usersPage.errors.ban);
         }
       } catch (error) {
         console.error("Error baneando usuario:", error);
-        alert("Error al banear el usuario.");
+        alert(t.usersPage.errors.ban);
       }
     })();
   };
 
   const handleUnbanUser = (user: User) => {
-    if (!window.confirm(`¿Estás seguro de que deseas desbanear la cuenta de ${user.name}?`)) {
+    if (!window.confirm(t.usersPage.confirm.unban.replace("{name}", user.name))) {
       return;
     }
     
@@ -1831,11 +1836,11 @@ const UsersPage = () => {
             },
           });
         } else {
-          alert(response.error || response.data?.message || "Error al desbanear el usuario.");
+          alert(response.error || response.data?.message || t.usersPage.errors.unban);
         }
       } catch (error) {
         console.error("Error desbaneando usuario:", error);
-        alert("Error al desbanear el usuario.");
+        alert(t.usersPage.errors.unban);
       }
     })();
   };
@@ -1844,18 +1849,24 @@ const UsersPage = () => {
     const appliesToClinic = user.role === "clinic_admin" && !!user.clinicId;
     const appliesToProfessional = user.role === "podiatrist";
     if (!appliesToClinic && !appliesToProfessional) {
-      alert("Este rol no tiene restricción de edición de 15 días aplicable.");
+      alert(t.usersPage.cooldown.notApplicable);
       return;
     }
 
-    const scopeLabel = appliesToClinic ? "datos y logo de la clínica" : "datos y logo profesional";
+    const scopeLabel = appliesToClinic ? t.usersPage.cooldown.scopeClinic : t.usersPage.cooldown.scopeProfessional;
     const reason = window.prompt(
-      `Autorizar cambio excepcional para ${user.name} (${scopeLabel}).\n\nOmite la espera de 15 días. Motivo (opcional):`,
-      ""
+      t.usersPage.cooldown.reasonPrompt
+        .replace("{name}", user.name)
+        .replace("{scope}", scopeLabel)
     );
-    if (reason === null) return;
-
-    if (!window.confirm(`¿Confirmar autorización excepcional para ${user.name}? Podrá editar ${scopeLabel} de inmediato.`)) {
+    if (reason === null) {
+      return;
+    }
+    if (
+      !window.confirm(
+        t.usersPage.cooldown.confirm.replace("{name}", user.name).replace("{scope}", scopeLabel)
+      )
+    ) {
       return;
     }
 
@@ -1879,23 +1890,23 @@ const UsersPage = () => {
               reason: reason.trim() || null,
             },
           });
-          alert(response.data.message || "Autorización excepcional aplicada.");
+          alert(response.data.message || t.usersPage.cooldown.applied);
         } else {
-          alert(response.error || response.data?.message || "Error al autorizar el cambio excepcional.");
+          alert(response.error || response.data?.message || t.usersPage.cooldown.error);
         }
       } catch (error) {
         console.error("Error autorizando cambio excepcional:", error);
-        alert("Error al autorizar el cambio excepcional.");
+        alert(t.usersPage.cooldown.error);
       }
     })();
   };
 
   const handleDeleteUser = (user: User) => {
-    if (!window.confirm(`¿Estás seguro de que deseas ELIMINAR permanentemente la cuenta de ${user.name}? Esta acción es irreversible y eliminará todos los datos del usuario.`)) {
+    if (!window.confirm(t.usersPage.confirm.delete.replace("{name}", user.name))) {
       return;
     }
     
-    if (!window.confirm("Esta acción es PERMANENTE e IRREVERSIBLE. ¿Continuar?")) {
+    if (!window.confirm(t.usersPage.confirm.deletePermanent.replace("{name}", user.name))) {
       return;
     }
     
@@ -1917,11 +1928,11 @@ const UsersPage = () => {
             },
           });
         } else {
-          alert(response.error || response.data?.message || "Error al eliminar el usuario.");
+          alert(response.error || response.data?.message || t.usersPage.errors.delete);
         }
       } catch (error) {
         console.error("Error eliminando usuario:", error);
-        alert("Error al eliminar el usuario.");
+        alert(t.usersPage.errors.delete);
       }
     })();
   };
@@ -1955,7 +1966,7 @@ const UsersPage = () => {
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       const target = event.target as HTMLElement;
-      if (!target.closest('[data-account-menu]') && !target.closest('button[title="Gestionar cuenta"]')) {
+      if (!target.closest('[data-account-menu]') && !target.closest('button[data-account-menu-trigger]')) {
         setOpenAccountMenuId(null);
       }
     };
@@ -1977,7 +1988,7 @@ const UsersPage = () => {
                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
                 </svg>
-                Importar CSV
+                {t.usersPage.actions.importCsv}
               </button>
             )}
             {isSuperAdmin && (
@@ -1989,7 +2000,7 @@ const UsersPage = () => {
                   <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                   </svg>
-                  Crear usuario
+                  {t.usersPage.actions.createUser}
                 </button>
                 <button
                   onClick={() => setShowTransferModal(true)}
@@ -1998,7 +2009,7 @@ const UsersPage = () => {
                   <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
                   </svg>
-                  Transferir historial
+                  {t.usersPage.actions.transferHistory}
                 </button>
               </>
             )}
@@ -2008,7 +2019,7 @@ const UsersPage = () => {
           <div className="flex gap-3 w-full sm:w-auto">
             <input
               type="text"
-              placeholder="Buscar usuarios..."
+              placeholder={t.usersPage.searchPlaceholder}
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="flex-1 sm:w-64 px-4 py-2 rounded-lg border border-brand-border bg-brand-surface text-brand-ink placeholder-gray-400 dark:placeholder-gray-500 focus:border-brand-ink focus:ring-1 focus:ring-brand-ink outline-none transition-colors text-sm"
@@ -2018,7 +2029,7 @@ const UsersPage = () => {
               onChange={(e) => setRoleFilter(e.target.value as UserRole | "all")}
               className="px-4 py-2 rounded-lg border border-brand-border bg-brand-surface text-brand-ink focus:border-brand-ink focus:ring-1 focus:ring-brand-ink outline-none transition-colors text-sm [&_option]:bg-white [&_option]:text-brand-ink dark:[&_option]:bg-gray-800 dark:[&_option]:text-white"
             >
-              <option value="all">Todos los roles</option>
+              <option value="all">{t.usersPage.allRoles}</option>
               <option value="super_admin">{t.roles.superAdmin}</option>
               <option value="clinic_admin">{t.roles.clinicAdmin}</option>
               <option value="admin">{t.roles.admin}</option>
@@ -2035,7 +2046,7 @@ const UsersPage = () => {
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
               </svg>
-              Solicitudes de recuperación de contraseña pendientes
+              {t.usersPage.passwordReset.pendingTitle}
             </h3>
             <div className="space-y-2">
               {pendingPasswordResets.map((req) => (
@@ -2052,13 +2063,13 @@ const UsersPage = () => {
                       onClick={() => handleApprovePasswordReset(req.id)}
                       className="px-3 py-1.5 bg-brand-ink text-brand-ink-fg text-sm font-medium rounded-lg hover:bg-brand-ink-hover"
                     >
-                      Aprobar
+                      {t.usersPage.actions.approve}
                     </button>
                     <button
                       onClick={() => handleRejectPasswordReset(req.id)}
                       className={`px-3 py-1.5 text-sm font-medium rounded-lg border border-semantic-error bg-semantic-error-bg text-semantic-error hover:opacity-90`}
                     >
-                      Rechazar
+                      {t.usersPage.actions.reject}
                     </button>
                   </div>
                 </div>
@@ -2074,10 +2085,10 @@ const UsersPage = () => {
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
               </svg>
-              Listas de registro pendientes de aprobación
+              {t.usersPage.regLists.title}
             </h3>
             <p className="text-xs text-blue-700 mb-3">
-              Listas enviadas por vendedores/soporte. Descarga el CSV, revísalo e impórtalo con "Importar CSV". Luego aprueba la lista.
+              {t.usersPage.regLists.hint}
             </p>
             <div className="space-y-2">
               {pendingRegistrationLists.map((list) => (
@@ -2085,7 +2096,7 @@ const UsersPage = () => {
                   <div>
                     <span className="font-medium text-brand-ink">{list.name}</span>
                     {list.creatorName && (
-                      <span className="text-gray-500 text-sm ml-2">por {list.creatorName}</span>
+                      <span className="text-gray-500 text-sm ml-2">{t.usersPage.regLists.byCreator.replace("{name}", list.creatorName)}</span>
                     )}
                     <span className="text-xs text-gray-400 ml-2">
                       {list.submittedAt && new Date(list.submittedAt).toLocaleString()}
@@ -2096,19 +2107,19 @@ const UsersPage = () => {
                       onClick={() => handleDownloadRegistrationListCsv(list.id)}
                       className="px-3 py-1.5 border border-brand-border text-brand-ink text-sm font-medium rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800"
                     >
-                      Descargar CSV
+                      {t.usersPage.regLists.downloadCsv}
                     </button>
                     <button
                       onClick={() => handleApproveRegistrationList(list.id)}
                       className="px-3 py-1.5 bg-brand-ink text-brand-ink-fg text-sm font-medium rounded-lg hover:bg-brand-ink-hover"
                     >
-                      Aprobar
+                      {t.usersPage.actions.approve}
                     </button>
                     <button
                       onClick={() => handleRejectRegistrationList(list.id)}
                       className={`px-3 py-1.5 text-sm font-medium rounded-lg border border-semantic-error bg-semantic-error-bg text-semantic-error hover:opacity-90`}
                     >
-                      Rechazar
+                      {t.usersPage.actions.reject}
                     </button>
                   </div>
                 </div>
@@ -2126,12 +2137,12 @@ const UsersPage = () => {
                   <svg className="w-5 h-5 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
-                  Solicitud aprobada
+                  {t.usersPage.passwordReset.approvedModalTitle}
                 </h3>
               </div>
               <div className="p-6 space-y-4">
                 <p className="text-sm text-gray-600">
-                  Se ha enviado el enlace al correo del usuario. Aquí tienes el enlace para que puedas reenviarlo personalmente (WhatsApp, etc.):
+                  {t.usersPage.passwordReset.linkHint}
                 </p>
                 <div className="flex gap-2">
                   <input
@@ -2145,14 +2156,14 @@ const UsersPage = () => {
                     onClick={async () => {
                       try {
                         await navigator.clipboard.writeText(approvedResetLink);
-                        alert("Enlace copiado al portapapeles.");
+                        alert(t.usersPage.passwordReset.copied);
                       } catch {
-                        alert("No se pudo copiar. Selecciona y copia el enlace manualmente.");
+                        alert(t.usersPage.passwordReset.copyFailed);
                       }
                     }}
                     className="px-4 py-2.5 bg-brand-ink text-brand-ink-fg rounded-lg font-medium hover:bg-gray-800 transition-colors whitespace-nowrap"
                   >
-                    Copiar enlace
+                    {t.usersPage.passwordReset.copyLink}
                   </button>
                 </div>
               </div>
@@ -2161,9 +2172,7 @@ const UsersPage = () => {
                   type="button"
                   onClick={() => setApprovedResetLink(null)}
                   className="px-4 py-2.5 bg-brand-canvas text-brand-ink rounded-lg font-medium hover:bg-gray-200 transition-colors"
-                >
-                  Cerrar
-                </button>
+                >{t.common.close}</button>
               </div>
             </div>
           </div>
@@ -2203,12 +2212,12 @@ const UsersPage = () => {
                 {u.clinicId && (
                   <>
                     <div className="mobile-card-row">
-                      <span className="mobile-card-label">Clínica</span>
+                      <span className="mobile-card-label">{t.usersPage.table.clinic}</span>
                       <span className="mobile-card-value">{clinicMap.get(u.clinicId)?.clinicName ?? u.clinicId}</span>
                     </div>
                     {clinicMap.get(u.clinicId) && (
                       <div className="mobile-card-row">
-                        <span className="mobile-card-label">Límite podólogos</span>
+                        <span className="mobile-card-label">{t.usersPage.table.podiatristLimit}</span>
                         {isSuperAdmin && u.role === "clinic_admin" ? (
                           <div className="flex items-center gap-2">
                             <input
@@ -2226,7 +2235,7 @@ const UsersPage = () => {
                               disabled={clinicLimitSaving === u.clinicId}
                               className="px-3 py-2 text-sm font-medium bg-brand-ink text-brand-ink-fg rounded-lg hover:bg-brand-ink-hover disabled:opacity-50 min-h-[44px]"
                             >
-                              {clinicLimitSaving === u.clinicId ? "..." : "Guardar"}
+                              {clinicLimitSaving === u.clinicId ? t.settings.common.ellipsis : t.usersPage.table.saveLimit}
                             </button>
                           </div>
                         ) : (
@@ -2240,8 +2249,8 @@ const UsersPage = () => {
                   </>
                 )}
                 <div className="mobile-card-row">
-                  <span className="mobile-card-label">Datos</span>
-                  <span className="mobile-card-value">{u.patientCount} pacientes · {u.sessionCount} sesiones</span>
+                  <span className="mobile-card-label">{t.usersPage.table.data}</span>
+                  <span className="mobile-card-value">{t.usersPage.table.dataSummary.replace("{patients}", String(u.patientCount)).replace("{sessions}", String(u.sessionCount))}</span>
                 </div>
               </div>
               
@@ -2249,16 +2258,12 @@ const UsersPage = () => {
                 <button
                   onClick={() => { setSelectedUser(u); setShowProfileModal(true); }}
                   className="flex-1 py-2.5 bg-brand-canvas text-brand-ink rounded-lg hover:bg-gray-200 active:bg-gray-300 transition-colors text-sm font-medium min-h-[44px]"
-                >
-                  Ver
-                </button>
+                >{t.usersPage.actions.view}</button>
                 {isSuperAdmin && (
                   <button
                     onClick={() => { setSelectedUser(u); setShowEditModal(true); }}
                     className="flex-1 py-2.5 bg-brand-canvas text-brand-ink rounded-lg hover:bg-gray-200 active:bg-gray-300 transition-colors text-sm font-medium min-h-[44px]"
-                  >
-                    Editar
-                  </button>
+                  >{t.usersPage.actions.edit}</button>
                 )}
                 {/* Estado de cuenta: super_admin gestiona todos; clinic_admin solo recepcionistas de su clínica */}
                 {(isSuperAdmin || currentUser?.role === "clinic_admin") && canManageUser(u) && (
@@ -2267,53 +2272,43 @@ const UsersPage = () => {
                       <button
                         onClick={() => handleUnbanUser(u)}
                         className="w-full py-2 px-3 bg-green-50 text-green-700 rounded-lg hover:bg-green-100 active:bg-green-200 transition-colors text-xs font-medium"
-                      >
-                        Desbanear
-                      </button>
+                      >{t.usersPage.actions.unban}</button>
                     ) : (
                       <button
                         onClick={() => handleBanUser(u)}
                         className="w-full py-2 px-3 bg-red-50 text-red-700 rounded-lg hover:bg-red-100 active:bg-red-200 transition-colors text-xs font-medium"
-                      >
-                        Banear
-                      </button>
+                      >{t.usersPage.actions.ban}</button>
                     ))}
                     {u.isBlocked ? (
                       <button
                         onClick={() => handleUnblockUser(u)}
                         className="w-full py-2 px-3 bg-green-50 text-green-700 rounded-lg hover:bg-green-100 active:bg-green-200 transition-colors text-xs font-medium"
-                      >
-                        Desbloquear
-                      </button>
+                      >{t.usersPage.actions.unblock}</button>
                     ) : (
                       <button
                         onClick={() => handleBlockUser(u)}
                         className="w-full py-2 px-3 bg-orange-50 text-orange-700 rounded-lg hover:bg-orange-100 active:bg-orange-200 transition-colors text-xs font-medium"
-                      >
-                        Bloquear
-                      </button>
+                      >{t.usersPage.actions.block}</button>
                     )}
                     {u.isEnabled === false ? (
                       <button
                         onClick={() => handleEnableUser(u)}
                         className="w-full py-2.5 px-3 bg-green-50 text-green-700 rounded-lg hover:bg-green-100 active:bg-green-200 transition-colors text-xs font-semibold border border-green-200"
                       >
-                        ✅ Habilitar cuenta
+                        ✅ {t.usersPage.actions.enableAccount}
                       </button>
                     ) : (
                       <button
                         onClick={() => handleDisableUser(u)}
                         className="w-full py-2.5 px-3 bg-yellow-50 text-yellow-700 rounded-lg hover:bg-yellow-100 active:bg-yellow-200 transition-colors text-xs font-semibold border border-yellow-200"
                       >
-                        ⚠️ Deshabilitar cuenta
+                        ⚠️ {t.usersPage.actions.disableAccount}
                       </button>
                     )}
                     <button
                       onClick={() => handleDeleteUser(u)}
                       className="w-full py-2 px-3 bg-red-50 text-red-700 rounded-lg hover:bg-red-100 active:bg-red-200 transition-colors text-xs font-medium"
-                    >
-                      Eliminar
-                    </button>
+                    >{t.usersPage.actions.delete}</button>
                   </div>
                 )}
               </div>
@@ -2337,14 +2332,14 @@ const UsersPage = () => {
               </colgroup>
               <thead>
                 <tr className="border-b border-brand-border bg-brand-canvas">
-                  <SortableTh sortKey="name" label="Usuario" />
-                  <SortableTh sortKey="email" label="Email" />
-                  <SortableTh sortKey="role" label="Rol" />
-                  <SortableTh sortKey="status" label="Estado" />
-                  <SortableTh sortKey="clinic" label="Clínica" />
-                  <th className="text-left px-4 py-3 text-xs font-semibold text-brand-muted uppercase tracking-wider truncate">Límite</th>
-                  <SortableTh sortKey="data" label="Datos" />
-                  <th className="text-right px-4 py-3 text-xs font-semibold text-brand-muted uppercase tracking-wider truncate">Acciones</th>
+                  <SortableTh sortKey="name" label={t.usersPage.table.user} />
+                  <SortableTh sortKey="email" label={t.usersPage.table.email} />
+                  <SortableTh sortKey="role" label={t.usersPage.table.role} />
+                  <SortableTh sortKey="status" label={t.usersPage.table.status} />
+                  <SortableTh sortKey="clinic" label={t.usersPage.table.clinic} />
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-brand-muted uppercase tracking-wider truncate">{t.usersPage.table.limit}</th>
+                  <SortableTh sortKey="data" label={t.usersPage.table.data} />
+                  <th className="text-right px-4 py-3 text-xs font-semibold text-brand-muted uppercase tracking-wider truncate">{t.usersPage.table.actions}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50 dark:divide-gray-800">
@@ -2397,14 +2392,14 @@ const UsersPage = () => {
                                   onChange={(e) => setClinicLimitEdits((prev) => ({ ...prev, [u.clinicId!]: e.target.value }))}
                                   placeholder="∞"
                                   className="w-16 min-w-[44px] min-h-[44px] px-2 py-2 text-sm rounded-lg border border-gray-200 focus:ring-2 focus:ring-brand-ink focus:border-brand-ink outline-none touch-manipulation"
-                                  title={`Actual: ${info.podiatristCount} podólogos`}
+                                  title={t.usersPage.table.currentPodiatrists.replace("{count}", String(info.podiatristCount))}
                                 />
                                 <button
                                   type="button"
                                   onClick={() => handleSavePodiatristLimit(u.clinicId!)}
                                   disabled={!hasChange || clinicLimitSaving === u.clinicId}
                                   className="px-3 py-2 min-h-[44px] text-sm font-medium bg-brand-ink text-brand-ink-fg rounded-lg hover:bg-brand-ink-hover disabled:opacity-50 disabled:cursor-not-allowed touch-manipulation"
-                                  title="Guardar límite"
+                                  title={t.usersPage.table.saveLimit}
                                 >
                                   {clinicLimitSaving === u.clinicId ? "..." : "✓"}
                                 </button>
@@ -2413,15 +2408,15 @@ const UsersPage = () => {
                           }
                           return <span className="text-xs text-gray-600">{display}</span>;
                         }
-                        return <span className="text-xs text-gray-400" title="Clínica no encontrada o eliminada">-</span>;
+                        return <span className="text-xs text-gray-400" title={t.usersPage.table.clinicMissing}>-</span>;
                       })() : (
                         <span className="text-xs text-gray-400">-</span>
                       )}
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-2 text-xs text-gray-500 truncate">
-                        <span>{u.patientCount} pacientes</span>
-                        <span>{u.sessionCount} sesiones</span>
+                        <span>{u.patientCount} {t.usersPage.table.patients}</span>
+                        <span>{u.sessionCount} {t.usersPage.table.sessions}</span>
                       </div>
                     </td>
                     <td className="px-4 py-3">
@@ -2433,7 +2428,7 @@ const UsersPage = () => {
                             setShowProfileModal(true);
                           }}
                           className="p-2 text-gray-400 hover:text-brand-ink dark:hover:text-white hover:bg-gray-100 rounded-lg transition-colors"
-                          title="Ver perfil"
+                          title={t.usersPage.actions.viewProfile}
                         >
                           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
@@ -2449,7 +2444,7 @@ const UsersPage = () => {
                               setShowEditModal(true);
                             }}
                             className="p-2 text-gray-400 hover:text-brand-ink dark:hover:text-white hover:bg-gray-100 rounded-lg transition-colors"
-                            title="Editar"
+                            title={t.common.edit}
                           >
                             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
@@ -2463,7 +2458,7 @@ const UsersPage = () => {
                           <button
                             onClick={() => handleExportUserData(u)}
                             className="p-2 text-gray-400 hover:text-brand-ink dark:hover:text-white hover:bg-gray-100 rounded-lg transition-colors"
-                            title="Descargar JSON"
+                            title={t.usersPage.actions.downloadJson}
                           >
                             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
@@ -2476,7 +2471,7 @@ const UsersPage = () => {
                           <div className="inline-block">
                             <button
                               className="p-2 text-gray-400 hover:text-brand-ink dark:hover:text-white hover:bg-gray-100 rounded-lg transition-colors"
-                              title="Gestionar cuenta"
+                              title={t.usersPage.actions.manageAccount} data-account-menu-trigger
                               onClick={(e) => {
                                 e.stopPropagation();
                                 const btn = e.currentTarget as HTMLElement;
@@ -2511,7 +2506,7 @@ const UsersPage = () => {
                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
               </svg>
-              <p className="text-gray-500 text-sm">Cargando usuarios…</p>
+              <p className="text-gray-500 text-sm">{t.usersPage.loading}</p>
             </div>
           )}
 
@@ -2520,7 +2515,7 @@ const UsersPage = () => {
               <svg className="w-12 h-12 text-gray-300 mx-auto mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
               </svg>
-              <p className="text-gray-500">No se encontraron usuarios</p>
+              <p className="text-gray-500">{t.usersPage.empty}</p>
             </div>
           )}
         </div>
@@ -2582,30 +2577,30 @@ const UsersPage = () => {
           >
             <div className="py-1">
               {isSuperAdmin && (u.isBanned ? (
-                <button onClick={() => { handleUnbanUser(u); closeMenu(); }} className="w-full text-left px-4 py-2 text-sm text-semantic-success hover:bg-semantic-success-bg">Desbanear cuenta</button>
+                <button onClick={() => { handleUnbanUser(u); closeMenu(); }} className="w-full text-left px-4 py-2 text-sm text-semantic-success hover:bg-semantic-success-bg">{t.usersPage.menu.unbanAccount}</button>
               ) : (
-                <button onClick={() => { handleBanUser(u); closeMenu(); }} className="w-full text-left px-4 py-2 text-sm text-semantic-error hover:bg-semantic-error-bg">Banear cuenta</button>
+                <button onClick={() => { handleBanUser(u); closeMenu(); }} className="w-full text-left px-4 py-2 text-sm text-semantic-error hover:bg-semantic-error-bg">{t.usersPage.menu.banAccount}</button>
               ))}
               {u.isBlocked ? (
-                <button onClick={() => { handleUnblockUser(u); closeMenu(); }} className="w-full text-left px-4 py-2 text-sm text-semantic-success hover:bg-semantic-success-bg">Desbloquear cuenta</button>
+                <button onClick={() => { handleUnblockUser(u); closeMenu(); }} className="w-full text-left px-4 py-2 text-sm text-semantic-success hover:bg-semantic-success-bg">{t.usersPage.menu.unblockAccount}</button>
               ) : (
-                <button onClick={() => { handleBlockUser(u); closeMenu(); }} className="w-full text-left px-4 py-2 text-sm text-orange-700 hover:bg-orange-50">Bloquear cuenta</button>
+                <button onClick={() => { handleBlockUser(u); closeMenu(); }} className="w-full text-left px-4 py-2 text-sm text-orange-700 hover:bg-orange-50">{t.usersPage.menu.blockAccount}</button>
               )}
               {u.isEnabled === false ? (
-                <button onClick={() => { handleEnableUser(u); closeMenu(); }} className="w-full text-left px-4 py-2 text-sm text-semantic-success hover:bg-semantic-success-bg font-medium">✅ Habilitar cuenta</button>
+                <button onClick={() => { handleEnableUser(u); closeMenu(); }} className="w-full text-left px-4 py-2 text-sm text-semantic-success hover:bg-semantic-success-bg font-medium">✅ {t.usersPage.actions.enableAccount}</button>
               ) : (
-                <button onClick={() => { handleDisableUser(u); closeMenu(); }} className="w-full text-left px-4 py-2 text-sm text-yellow-700 hover:bg-yellow-50 font-medium">⚠️ Deshabilitar cuenta</button>
+                <button onClick={() => { handleDisableUser(u); closeMenu(); }} className="w-full text-left px-4 py-2 text-sm text-yellow-700 hover:bg-yellow-50 font-medium">⚠️ {t.usersPage.actions.disableAccount}</button>
               )}
               {isSuperAdmin && ((u.role === "clinic_admin" && u.clinicId) || u.role === "podiatrist") && (
                 <button
                   onClick={() => { handleResetEditCooldown(u); closeMenu(); }}
                   className="w-full text-left px-4 py-2 text-sm text-blue-700 hover:bg-blue-50"
                 >
-                  Autorizar cambio excepcional (15 días)
+                  {t.usersPage.menu.authorizeCooldown}
                 </button>
               )}
               <div className="border-t border-gray-100 my-1" />
-              <button onClick={() => { handleDeleteUser(u); closeMenu(); }} className="w-full text-left px-4 py-2 text-sm text-semantic-error hover:bg-semantic-error-bg">Eliminar cuenta</button>
+              <button onClick={() => { handleDeleteUser(u); closeMenu(); }} className="w-full text-left px-4 py-2 text-sm text-semantic-error hover:bg-semantic-error-bg">{t.usersPage.menu.deleteAccount}</button>
             </div>
           </div>,
           document.body

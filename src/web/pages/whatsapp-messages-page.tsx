@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { MainLayout } from "../components/layout/main-layout";
 import { api } from "../lib/api-client";
 import { useAuth } from "../contexts/auth-context";
+import { useLanguage } from "../contexts/language-context";
 import { usePermissions } from "../hooks/use-permissions";
 import type { Patient } from "../types/clinical";
 import {
@@ -87,9 +88,13 @@ type WhatsAppWorkspace = {
 };
 
 export default function WhatsAppMessagesPage() {
+  const { t, language } = useLanguage();
   const { user } = useAuth();
   const { canViewWhatsAppWeb, isReceptionist, canConfigureWhatsApp } = usePermissions();
   const tenantCountry = useTenantCountry(user);
+  const m = t.whatsapp.messages;
+  const dateLocale =
+    language === "en" ? "en-US" : language === "pt" ? "pt-PT" : language === "fr" ? "fr-FR" : "es-MX";
   const [messages, setMessages] = useState<WhatsAppMessageRow[]>([]);
   const [appointments, setAppointments] = useState<AppointmentRow[]>([]);
   const [patients, setPatients] = useState<Patient[]>([]);
@@ -108,7 +113,10 @@ export default function WhatsAppMessagesPage() {
   const [success, setSuccess] = useState<string | null>(null);
 
   const tomorrowIso = useMemo(() => getTomorrowLocalDateString(), []);
-  const tomorrowLabel = useMemo(() => formatDisplayDate(tomorrowIso), [tomorrowIso]);
+  const tomorrowLabel = useMemo(
+    () => formatDisplayDate(tomorrowIso, dateLocale),
+    [tomorrowIso, dateLocale]
+  );
 
   const apiConnected = Boolean(workspace?.apiConnected);
   const canUseApi = Boolean(workspace?.canUseApi && apiConnected);
@@ -182,7 +190,7 @@ export default function WhatsAppMessagesPage() {
   const patientById = useMemo(() => new Map(patients.map((p) => [p.id, p])), [patients]);
 
   const resolveAppointmentContact = (a: AppointmentRow) => {
-    let patientName = a.pendingPatientName?.trim() || "Paciente";
+    let patientName = a.pendingPatientName?.trim() || m.patientFallback;
     let phone = a.pendingPatientPhone?.trim() || null;
     if (a.patientId) {
       const p = patientById.get(a.patientId);
@@ -227,7 +235,7 @@ export default function WhatsAppMessagesPage() {
     const note =
       webExtraNote.trim() ||
       whatsAppConfig?.defaultExtraNote?.trim() ||
-      "Por favor confirme su asistencia respondiendo a este mensaje.";
+      m.defaultExtraNote;
     return applyWhatsAppWebTemplate(webTemplate, {
       nombre: row.patientName,
       fecha: row.dateLabel,
@@ -238,7 +246,7 @@ export default function WhatsAppMessagesPage() {
 
   const openWhatsAppForRow = (row: TomorrowRow) => {
     if (!row.waPhone) {
-      setError(`No hay teléfono válido para ${row.patientName}.`);
+      setError(m.noValidPhone.replace("{name}", row.patientName));
       return;
     }
     setError(null);
@@ -255,7 +263,7 @@ export default function WhatsAppMessagesPage() {
 
   const handleSendReminder = async () => {
     if (!selectedAppointmentId) {
-      setError("Selecciona una cita primero.");
+      setError(m.selectAppointmentFirst);
       return;
     }
     setSending(true);
@@ -267,10 +275,10 @@ export default function WhatsAppMessagesPage() {
     });
     setSending(false);
     if (!res.success) {
-      setError(res.error || (res.data as { message?: string })?.message || "No se pudo enviar el recordatorio.");
+      setError(res.error || (res.data as { message?: string })?.message || m.reminderSendError);
       return;
     }
-    setSuccess("Recordatorio enviado correctamente.");
+    setSuccess(m.reminderSent);
     setSelectedAppointmentId("");
     setExtraNote("");
     await loadData();
@@ -285,27 +293,22 @@ export default function WhatsAppMessagesPage() {
 
   if (!canViewWhatsAppWeb) {
     return (
-      <MainLayout title="Mensajes WhatsApp">
+      <MainLayout title={m.title}>
         <div className="max-w-2xl p-6 bg-brand-surface rounded-xl border border-brand-border">
-          <p className={formErrorClass}>No tienes permisos para ver esta sección.</p>
+          <p className={formErrorClass}>{m.denied}</p>
         </div>
       </MainLayout>
     );
   }
 
   return (
-    <MainLayout title="Mensajes WhatsApp">
+    <MainLayout title={m.title}>
       <div className="max-w-5xl space-y-6">
         <div className={whatsappPanelClass}>
           <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-4">
             <div>
-              <h3 className="text-lg font-semibold text-brand-ink">
-                Recordatorios por WhatsApp Web
-              </h3>
-              <p className={`text-sm mt-1 max-w-2xl opacity-90 ${whatsappMutedTextClass}`}>
-                Sin configurar la API de Meta. Abre WhatsApp Web o la app con el mensaje ya escrito para cada
-                paciente. Tú envías el mensaje manualmente desde tu número.
-              </p>
+              <h3 className="text-lg font-semibold text-brand-ink">{m.webTitle}</h3>
+              <p className={`text-sm mt-1 max-w-2xl opacity-90 ${whatsappMutedTextClass}`}>{m.webHint}</p>
             </div>
             <a
               href="https://web.whatsapp.com"
@@ -313,13 +316,13 @@ export default function WhatsAppMessagesPage() {
               rel="noopener noreferrer"
               className={`shrink-0 ${whatsappButtonClass}`}
             >
-              Abrir WhatsApp Web
+              {m.openWeb}
             </a>
           </div>
 
           <div className="space-y-3 mb-5">
             <label className="block text-sm font-medium text-gray-800 dark:text-gray-200">
-              Mensaje predeterminado
+              {m.defaultMessage}
             </label>
             <textarea
               value={webTemplate}
@@ -328,17 +331,13 @@ export default function WhatsAppMessagesPage() {
               className={`w-full px-4 py-2.5 ${whatsappInputBorderClass} bg-brand-surface text-sm`}
             />
             <p className="text-xs text-brand-muted">
-              Variables:{" "}
-              <code className="text-xs">{"{{nombre}}"}</code>,{" "}
-              <code className="text-xs">{"{{fecha}}"}</code>,{" "}
-              <code className="text-xs">{"{{hora}}"}</code>,{" "}
-              <code className="text-xs">{"{{nota}}"}</code>
+              {m.variablesHint} {m.variablesList}
             </p>
             <div className="flex flex-col sm:flex-row gap-3">
               <input
                 value={webExtraNote}
                 onChange={(e) => setWebExtraNote(e.target.value.slice(0, 500))}
-                placeholder="Nota extra para todos los envíos de hoy (opcional)"
+                placeholder={m.extraNotePlaceholder}
                 className={`flex-1 px-4 py-2.5 ${whatsappInputBorderClass} bg-brand-surface text-sm`}
               />
               <button
@@ -346,20 +345,20 @@ export default function WhatsAppMessagesPage() {
                 onClick={saveWebTemplate}
                 className={`px-4 py-2.5 ${whatsappOutlineButtonClass} font-medium`}
               >
-                {templateSaved ? "Guardado" : "Guardar mensaje"}
+                {templateSaved ? m.saved : m.saveMessage}
               </button>
             </div>
           </div>
 
           <h4 className="text-sm font-semibold text-brand-ink mb-2">
-            Citas de mañana ({tomorrowLabel})
+            {m.tomorrowAppointments.replace("{date}", tomorrowLabel)}
           </h4>
 
           {loading ? (
-            <p className="text-sm text-gray-500">Cargando citas…</p>
+            <p className="text-sm text-gray-500">{m.loadingAppointments}</p>
           ) : tomorrowAppointments.length === 0 ? (
             <p className="text-sm text-brand-muted bg-white/60 dark:bg-gray-900/40 rounded-lg p-4">
-              No hay citas programadas para mañana.
+              {m.noTomorrowAppointments}
             </p>
           ) : (
             <ul className={whatsappListClass}>
@@ -372,7 +371,7 @@ export default function WhatsAppMessagesPage() {
                     <p className="font-medium text-brand-ink">{row.patientName}</p>
                     <p className="text-sm text-brand-muted">
                       {row.time}
-                      {row.phone ? ` · ${row.phone}` : " · Sin teléfono"}
+                      {row.phone ? ` · ${row.phone}` : ` · ${m.noPhone}`}
                     </p>
                   </div>
                   <button
@@ -382,7 +381,7 @@ export default function WhatsAppMessagesPage() {
                     className={`shrink-0 gap-2 ${whatsappButtonClass}`}
                   >
                     <span aria-hidden>💬</span>
-                    Enviar por WhatsApp
+                    {m.sendViaWhatsApp}
                   </button>
                 </li>
               ))}
@@ -399,12 +398,12 @@ export default function WhatsAppMessagesPage() {
           >
             <div>
               <h3 className="text-lg font-semibold text-brand-ink">
-                Envío automático con API Meta {apiConnected ? "(conectado)" : "(opcional)"}
+                {m.metaApiTitle} {apiConnected ? m.connected : m.optional}
               </h3>
               <p className="text-sm text-brand-muted mt-0.5">
                 {isReceptionist
-                  ? "Envío automático habilitado por tu podólogo. Los recordatorios se envían sin abrir WhatsApp Web."
-                  : "Solo si configuraste WhatsApp Business en Ajustes. Puedes ignorar esta sección."}
+                  ? m.receptionistApiHint
+                  : m.metaApiHint}
               </p>
             </div>
             {!isReceptionist && (
@@ -415,33 +414,31 @@ export default function WhatsAppMessagesPage() {
           {showApiSection && (
             <div className="mt-5 space-y-6 border-t border-brand-border pt-5">
               {!whatsAppConfig ? (
-                <p className="text-sm text-gray-500">No se pudo obtener el estado de WhatsApp.</p>
+                <p className="text-sm text-gray-500">{m.configLoadError}</p>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-3 text-sm">
                   <div className="p-3 rounded-lg bg-gray-50 dark:bg-gray-900">
-                    <p className="text-brand-muted">Conectado</p>
-                    <p className="font-semibold">{whatsAppConfig.configured && whatsAppConfig.enabled ? "Sí" : "No"}</p>
+                    <p className="text-brand-muted">{m.connectedLabel}</p>
+                    <p className="font-semibold">{whatsAppConfig.configured && whatsAppConfig.enabled ? m.yes : m.no}</p>
                   </div>
                   <div className="p-3 rounded-lg bg-gray-50 dark:bg-gray-900">
-                    <p className="text-brand-muted">Estado API</p>
+                    <p className="text-brand-muted">{m.apiStatusLabel}</p>
                     <p className="font-semibold">{whatsAppConfig.status || "pending"}</p>
                   </div>
                   <div className="p-3 rounded-lg bg-gray-50 dark:bg-gray-900">
-                    <p className="text-brand-muted">Plantilla</p>
-                    <p className="font-semibold">{whatsAppConfig.templateName || "No definida"}</p>
+                    <p className="text-brand-muted">{m.templateLabel}</p>
+                    <p className="font-semibold">{whatsAppConfig.templateName || m.templateUndefined}</p>
                   </div>
                   <div className="p-3 rounded-lg bg-gray-50 dark:bg-gray-900">
-                    <p className="text-brand-muted">Último error</p>
-                    <p className="font-semibold truncate">{whatsAppConfig.lastError || "Sin errores"}</p>
+                    <p className="text-brand-muted">{m.lastErrorLabel}</p>
+                    <p className="font-semibold truncate">{whatsAppConfig.lastError || m.noErrors}</p>
                   </div>
                 </div>
               )}
 
               <div>
-                <h4 className="font-medium text-brand-ink mb-1">Enviar recordatorio automático</h4>
-                <p className="text-sm text-brand-muted mb-4">
-                  Requiere API Meta configurada en Ajustes → WhatsApp.
-                </p>
+                <h4 className="font-medium text-brand-ink mb-1">{m.sendAutoReminder}</h4>
+                <p className="text-sm text-brand-muted mb-4">{m.metaApiHint}</p>
 
                 {error && <div className={`mb-3 ${semanticAlertErrorClass}`}>{error}</div>}
                 {success && <div className={`mb-3 ${semanticAlertSuccessClass}`}>{success}</div>}
@@ -453,7 +450,7 @@ export default function WhatsAppMessagesPage() {
                       onChange={(e) => setSelectedAppointmentId(e.target.value)}
                       className="flex-1 px-4 py-2.5 border border-brand-border rounded-lg bg-brand-surface"
                     >
-                      <option value="">Selecciona una cita próxima</option>
+                      <option value="">{m.selectUpcomingAppointment}</option>
                       {upcomingAppointments.map((a) => {
                         const { patientName } = resolveAppointmentContact(a);
                         return (
@@ -468,7 +465,7 @@ export default function WhatsAppMessagesPage() {
                       disabled={sending || !selectedAppointmentId || !apiConnected}
                       className="px-5 py-2.5 bg-brand-ink text-brand-ink-fg rounded-lg font-medium disabled:opacity-50 md:self-start"
                     >
-                      {sending ? "Enviando..." : "Enviar por API"}
+                      {sending ? m.sending : m.sendByApi}
                     </button>
                   </div>
                   <textarea
@@ -476,7 +473,7 @@ export default function WhatsAppMessagesPage() {
                     onChange={(e) => setExtraNote(e.target.value.slice(0, 500))}
                     rows={2}
                     className="w-full px-4 py-2.5 border border-brand-border rounded-lg bg-brand-surface text-sm"
-                    placeholder="Nota extra para este envío (opcional)"
+                    placeholder={m.singleExtraNotePlaceholder}
                   />
                 </div>
               </div>
@@ -494,15 +491,9 @@ export default function WhatsAppMessagesPage() {
           >
             <div>
               <h3 className="text-lg font-semibold text-brand-ink">
-                Historial (API automática) {apiConnected ? "" : "(opcional)"}
+                {m.historyTitle} {apiConnected ? "" : m.optional}
               </h3>
-              <p className="text-sm text-brand-muted mt-0.5">
-                {isReceptionist
-                  ? "Registro de envíos automáticos por API Meta."
-                  : apiConnected
-                    ? "Registro de envíos automáticos por API Meta."
-                    : "Solo si usas la API Meta. Los recordatorios por WhatsApp Web no quedan registrados aquí."}
-              </p>
+              <p className="text-sm text-brand-muted mt-0.5">{m.historyHint}</p>
             </div>
             {!isReceptionist && (
               <span className="text-gray-400 text-sm ml-4 shrink-0">
@@ -514,49 +505,49 @@ export default function WhatsAppMessagesPage() {
           {showHistorySection && (
             <div className="mt-5 border-t border-brand-border pt-5">
               <div className="flex items-center justify-between mb-4">
-                <p className="text-sm text-brand-muted">Últimos envíos por API</p>
+                <p className="text-sm text-brand-muted">{m.lastApiSends}</p>
                 <button
                   onClick={loadData}
                   className="text-sm px-3 py-1.5 border border-brand-border rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800"
                 >
-                  Actualizar
+                  {m.refresh}
                 </button>
               </div>
 
               {loading ? (
-                <p className="text-sm text-gray-500">Cargando historial...</p>
+                <p className="text-sm text-gray-500">{m.loadingHistory}</p>
               ) : !apiConnected ? (
                 <p className="text-sm text-gray-500">
-                  Configura WhatsApp Business en Ajustes para usar el envío automático y ver el historial aquí.
+                  {m.configureForHistory}
                 </p>
               ) : messages.length === 0 ? (
                 <p className="text-sm text-gray-500">
-                  Sin envíos por API. Los recordatorios por WhatsApp Web no quedan registrados aquí.
+                  {m.noApiSends}
                 </p>
               ) : (
                 <div className="overflow-x-auto">
                   <table className="min-w-full text-sm">
                     <thead>
                       <tr className="text-left border-b border-brand-border">
-                        <th className="py-2 pr-4">Fecha</th>
-                        <th className="py-2 pr-4">Paciente</th>
-                        <th className="py-2 pr-4">Teléfono</th>
-                        <th className="py-2 pr-4">Estado</th>
-                        <th className="py-2 pr-4">Nota</th>
+                        <th className="py-2 pr-4">{m.colDate}</th>
+                        <th className="py-2 pr-4">{m.colPatient}</th>
+                        <th className="py-2 pr-4">{m.colPhone}</th>
+                        <th className="py-2 pr-4">{m.colStatus}</th>
+                        <th className="py-2 pr-4">{m.colNote}</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {messages.map((m) => (
-                        <tr key={m.id} className="border-b border-gray-50 dark:border-gray-900">
-                          <td className="py-2 pr-4">{new Date(m.createdAt).toLocaleString("es-MX")}</td>
-                          <td className="py-2 pr-4">{m.patientName || "—"}</td>
-                          <td className="py-2 pr-4">{m.patientPhone || "—"}</td>
+                      {messages.map((row) => (
+                        <tr key={row.id} className="border-b border-gray-50 dark:border-gray-900">
+                          <td className="py-2 pr-4">{new Date(row.createdAt).toLocaleString()}</td>
+                          <td className="py-2 pr-4">{row.patientName || m.emDash}</td>
+                          <td className="py-2 pr-4">{row.patientPhone || m.emDash}</td>
                           <td className="py-2 pr-4">
-                            <span className={getStatusBadgeClass(m.status)}>
-                              {m.status}
+                            <span className={getStatusBadgeClass(row.status)}>
+                              {row.status}
                             </span>
                           </td>
-                          <td className="py-2 pr-4 max-w-[200px] truncate">{m.extraNote || "—"}</td>
+                          <td className="py-2 pr-4 max-w-[200px] truncate">{row.extraNote || m.emDash}</td>
                         </tr>
                       ))}
                     </tbody>

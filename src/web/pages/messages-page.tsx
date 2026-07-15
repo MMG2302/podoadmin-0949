@@ -14,7 +14,7 @@ type RecipientMode = "all" | "specific" | "single";
 type ViewMode = "compose" | "sent";
 
 const MessagesPage = () => {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const { user, getAllUsers, ensureVisibleUsers } = useAuth();
   const [usersReady, setUsersReady] = useState(false);
 
@@ -132,7 +132,7 @@ const MessagesPage = () => {
 
     setIsSending(false);
     if (!res.success) {
-      setError(res.error || (res.data as { error?: string })?.error || "Error al enviar");
+      setError(res.error || (res.data as { error?: string })?.error || t.messaging.sendError);
       return;
     }
 
@@ -148,7 +148,8 @@ const MessagesPage = () => {
   };
 
   const formatDate = (dateStr: string) => {
-    return new Date(dateStr).toLocaleDateString("es-ES", {
+    const localeMap: Record<string, string> = { es: "es-ES", en: "en-US", pt: "pt-BR", fr: "fr-FR" };
+    return new Date(dateStr).toLocaleDateString(localeMap[language] || "es-ES", {
       year: "numeric",
       month: "short",
       day: "numeric",
@@ -292,7 +293,7 @@ const MessagesPage = () => {
                           type="text"
                           value={userSearch}
                           onChange={(e) => setUserSearch(e.target.value)}
-                          placeholder="Buscar por nombre, email o rol..."
+                          placeholder={t.messaging.searchUsersPlaceholder}
                           className="flex-1 px-3 py-2 border border-brand-border rounded-lg bg-brand-surface text-sm text-brand-ink"
                         />
                         <div className="flex gap-2 text-xs">
@@ -303,19 +304,19 @@ const MessagesPage = () => {
                             }}
                             className="px-2 py-1 rounded border border-brand-border text-brand-muted hover:bg-gray-50 dark:hover:bg-gray-800"
                           >
-                            Seleccionar filtrados
+                            {t.messaging.selectFiltered}
                           </button>
                           <button
                             type="button"
                             onClick={() => setSelectedUsers(new Set())}
                             className="px-2 py-1 rounded border border-brand-border text-brand-muted hover:bg-gray-50 dark:hover:bg-gray-800"
                           >
-                            Limpiar selección
+                            {t.messaging.clearSelection}
                           </button>
                         </div>
                       </div>
                       <p className="text-xs text-brand-muted">
-                        Mostrando {filteredUsers.length} usuarios · Seleccionados: {selectedUsers.size}
+                        {t.messaging.showingUsers.replace("{n}", String(filteredUsers.length))} · {t.messaging.selectedCount.replace("{n}", String(selectedUsers.size))}
                       </p>
                     </div>
                     <div className="max-h-48 overflow-y-auto form-modal-scroll space-y-1">
@@ -341,7 +342,7 @@ const MessagesPage = () => {
                                 {u.name}
                                 {isSelected && (
                                   <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-200">
-                                    Seleccionado
+                                    {t.messaging.selected}
                                   </span>
                                 )}
                               </span>
@@ -384,18 +385,21 @@ const MessagesPage = () => {
                           type="text"
                           value={singleUserSearch}
                           onChange={(e) => setSingleUserSearch(e.target.value)}
-                          placeholder="Buscar por nombre, email o rol..."
+                          placeholder={t.messaging.searchUsersPlaceholder}
                           className="flex-1 px-3 py-2 border border-brand-border rounded-lg bg-brand-surface text-sm text-brand-ink"
                         />
                       </div>
                       <p className="text-xs text-brand-muted">
-                        Mostrando {singleFilteredUsers.length} usuarios
+                        {t.messaging.showingUsersCount.replace("{n}", String(singleFilteredUsers.length))}
                         {singleUser && (
                           <>
-                            {" · "}Seleccionado:{" "}
-                            {singleFilteredUsers.find((u) => u.id === singleUser)?.name ||
-                              allUsers.find((u) => u.id === singleUser)?.name ||
-                              ""}
+                            {" · "}
+                            {t.messaging.selectedUser.replace(
+                              "{name}",
+                              singleFilteredUsers.find((u) => u.id === singleUser)?.name ||
+                                allUsers.find((u) => u.id === singleUser)?.name ||
+                                ""
+                            )}
                           </>
                         )}
                       </p>
@@ -424,7 +428,7 @@ const MessagesPage = () => {
                                 {u.name}
                                 {isSelected && (
                                   <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-200">
-                                    Seleccionado
+                                    {t.messaging.selected}
                                   </span>
                                 )}
                               </span>

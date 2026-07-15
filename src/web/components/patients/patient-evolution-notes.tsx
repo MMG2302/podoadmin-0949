@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { api } from "../../lib/api-client";
 import { useAuth } from "../../contexts/auth-context";
+import { useLanguage } from "../../contexts/language-context";
 import type { Patient } from "../../types/clinical";
 
 type EvolutionNote = {
@@ -13,6 +14,8 @@ type EvolutionNote = {
 
 export function PatientEvolutionNotesSection({ patient }: { patient: Patient }) {
   const { user } = useAuth();
+  const { t } = useLanguage();
+  const pc = t.patientsClinical;
   const [notes, setNotes] = useState<EvolutionNote[]>([]);
   const [entryDate, setEntryDate] = useState(new Date().toISOString().slice(0, 10));
   const [note, setNote] = useState("");
@@ -59,13 +62,13 @@ export function PatientEvolutionNotesSection({ patient }: { patient: Patient }) 
   return (
     <div className="mt-6 border-t border-brand-border pt-4">
       <div className="flex items-center justify-between gap-2 mb-3">
-        <h4 className="font-medium text-brand-ink">Notas de evolución (NOM-004)</h4>
+        <h4 className="font-medium text-brand-ink">{pc.evolutionTitle}</h4>
         <button
           type="button"
           onClick={() => void printReport()}
           className="text-xs underline text-brand-ink"
         >
-          Imprimir informe
+          {pc.printReport}
         </button>
       </div>
       <ul className="space-y-2 mb-3 text-sm">
@@ -78,7 +81,7 @@ export function PatientEvolutionNotesSection({ patient }: { patient: Patient }) 
             <p className="text-gray-800 dark:text-gray-200 whitespace-pre-wrap">{n.note}</p>
           </li>
         ))}
-        {notes.length === 0 && <li className="text-gray-400 text-sm">Sin notas de evolución</li>}
+        {notes.length === 0 && <li className="text-gray-400 text-sm">{pc.noEvolutionNotes}</li>}
       </ul>
       <div className="space-y-2">
         <input
@@ -91,7 +94,7 @@ export function PatientEvolutionNotesSection({ patient }: { patient: Patient }) 
           value={note}
           onChange={(e) => setNote(e.target.value)}
           rows={3}
-          placeholder="Nota de evolución clínica..."
+          placeholder={pc.evolutionPlaceholder}
           className="w-full px-3 py-2 border border-brand-border rounded-lg bg-brand-surface text-sm text-brand-ink"
         />
         <button
@@ -100,7 +103,7 @@ export function PatientEvolutionNotesSection({ patient }: { patient: Patient }) 
           onClick={() => void addNote()}
           className="px-4 py-2 bg-brand-ink text-brand-ink-fg rounded-lg text-sm disabled:opacity-50"
         >
-          {saving ? "Guardando…" : "Añadir nota"}
+          {saving ? pc.saving : pc.addNote}
         </button>
       </div>
     </div>

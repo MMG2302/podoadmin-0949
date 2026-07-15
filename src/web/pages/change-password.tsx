@@ -43,7 +43,7 @@ const ChangePassword = () => {
     }
 
     if (!currentPassword) {
-      setError("Introduce tu contraseña actual.");
+      setError(t.auth.changePasswordCurrentRequired);
       return;
     }
 
@@ -60,10 +60,10 @@ const ChangePassword = () => {
         setSuccess(true);
         setTimeout(() => setLocation("/"), 2000);
       } else {
-        setError(response.message || response.error || "Error al cambiar la contraseña");
+        setError(response.message || response.error || t.auth.changePasswordError);
       }
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Error de conexión");
+      setError(err instanceof Error ? err.message : t.auth.connectionErrorShort);
     } finally {
       setIsLoading(false);
     }
@@ -144,7 +144,7 @@ const ChangePassword = () => {
                         type="button"
                         onClick={() => setShowCurrentPassword((v) => !v)}
                         className="absolute inset-y-0 right-0 flex items-center px-3 text-gray-500 hover:text-brand-ink dark:hover:text-white"
-                        aria-label={showCurrentPassword ? "Ocultar contraseña" : "Mostrar contraseña"}
+                        aria-label={showCurrentPassword ? t.common.hidePassword : t.common.showPassword}
                       >
                         {showCurrentPassword ? (
                           <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -186,7 +186,7 @@ const ChangePassword = () => {
                         type="button"
                         onClick={() => setShowNewPassword((v) => !v)}
                         className="absolute inset-y-0 right-0 flex items-center px-3 text-gray-500 hover:text-brand-ink dark:hover:text-white"
-                        aria-label={showNewPassword ? "Ocultar contraseña" : "Mostrar contraseña"}
+                        aria-label={showNewPassword ? t.common.hidePassword : t.common.showPassword}
                       >
                         {showNewPassword ? (
                           <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -257,7 +257,7 @@ const ChangePassword = () => {
                         type="button"
                         onClick={() => setShowConfirmPassword((v) => !v)}
                         className="absolute inset-y-0 right-0 flex items-center px-3 text-gray-500 hover:text-brand-ink dark:hover:text-white"
-                        aria-label={showConfirmPassword ? "Ocultar contraseña" : "Mostrar contraseña"}
+                        aria-label={showConfirmPassword ? t.common.hidePassword : t.common.showPassword}
                       >
                         {showConfirmPassword ? (
                           <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">

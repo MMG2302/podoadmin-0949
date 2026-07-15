@@ -4,11 +4,19 @@ import { useLanguage } from "../contexts/language-context";
 import { useAuth } from "../contexts/auth-context";
 import { AuditLog } from "../types/audit-log";
 import { api } from "../lib/api-client";
+import type { Language } from "../i18n/translations";
 
 const ITEMS_PER_PAGE = 20;
 
+const DATE_LOCALE: Record<Language, string> = {
+  es: "es-ES",
+  en: "en-US",
+  pt: "pt-BR",
+  fr: "fr-FR",
+};
+
 const AuditLogPage = () => {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const { user, getAllUsers } = useAuth();
   
   const [logs, setLogs] = useState<AuditLog[]>([]);
@@ -147,58 +155,14 @@ const AuditLogPage = () => {
     return { display: u.email || userId, sub: userId };
   };
 
-  // Etiquetas amigables para no depender del código interno en producción
   const getFriendlyActionLabel = (action: string): string => {
-    const labels: Record<string, string> = {
-      LOGIN_SUCCESS: "Inicio de sesión",
-      LOGIN_FAILED: "Inicio de sesión fallido",
-      LOGOUT: "Cierre de sesión",
-      PASSWORD_CHANGED: "Contraseña cambiada",
-      PASSWORD_RESET_REJECTED: "Restablecimiento de contraseña rechazado",
-      PASSWORD_RESET_APPROVED: "Restablecimiento de contraseña aprobado",
-      PASSWORD_RESET_COMPLETED: "Restablecimiento de contraseña completado",
-      PASSWORD_RESET_REQUESTED: "Solicitud de restablecimiento de contraseña",
-      CREATE: "Creación",
-      CREATE_USER: "Usuario creado",
-      UPDATE: "Actualización",
-      DELETE: "Eliminación",
-      DELETE_USER: "Usuario eliminado",
-      COMPLETE: "Completado",
-      EXPORT: "Exportación",
-      PRINT: "Impresión",
-      UPDATE_DRAFT: "Borrador actualizado",
-      REASSIGN: "Reasignación",
-      TRANSFER: "Transferencia",
-      ADD_CREDITS: "Créditos añadidos",
-      SUBTRACT_CREDITS: "Créditos restados",
-      ADMIN_CREDIT_ADJUSTMENT: "Ajuste de créditos (admin)",
-      ALERT_MULTIPLE_PRINT_VIOLATIONS: "Alerta: múltiples impresiones",
-      PRINT_VIOLATION_FORM: "Intento de impresión desde formulario",
-    };
+    const labels = t.auditLog.actionLabels as Record<string, string>;
     return labels[action] ?? action;
   };
 
   const getFriendlyEntityTypeLabel = (entityType: string): string => {
     const type = entityType.toLowerCase();
-    const labels: Record<string, string> = {
-      authentication: "Autenticación",
-      session: "Sesión",
-      patient: "Paciente",
-      prescription: "Receta",
-      reassignment: "Reasignación",
-      credit: "Créditos",
-      user: "Usuario",
-      user_data: "Datos de usuario",
-      clinic: "Clínica",
-      professional_info: "Datos profesionales",
-      professional_credentials: "Credenciales",
-      logo: "Logo",
-      message: "Mensaje",
-      clinical_history: "Historial clínico",
-      receptionist: "Recepcionista",
-      registration_list: "Lista de registro",
-      support_conversation: "Conversación de soporte",
-    };
+    const labels = t.auditLog.entityLabels as Record<string, string>;
     return labels[type] ?? entityType;
   };
 
@@ -206,37 +170,39 @@ const AuditLogPage = () => {
     const action = log.action;
     const entityType = (log.entityType || "").toLowerCase();
     const d = parsedDetails || {};
+    const s = t.auditLog.summaries;
 
     if (action === "LOGIN_SUCCESS" && entityType === "authentication") {
       const email = (d.email as string) ?? "";
       const has2FA = d.has2FA === true;
-      return `Inicio de sesión correcto${email ? `: ${email}` : ""}${has2FA ? " (2FA activado)" : " (sin 2FA)"}`;
+      const base = email ? s.loginSuccessEmail.replace("{email}", email) : s.loginSuccess;
+      return `${base}${has2FA ? ` ${s.with2fa}` : ` ${s.without2fa}`}`;
     }
     if (action === "LOGOUT" && entityType === "session") {
-      return "Cierre de sesión.";
+      return s.logout;
     }
     if (action === "PASSWORD_CHANGED" && entityType === "authentication") {
-      return "Contraseña cambiada por el usuario.";
+      return s.passwordChanged;
     }
     if (action === "LOGIN_FAILED" && entityType === "authentication") {
       const email = (d.email as string) ?? "";
-      return email ? `Intento de inicio de sesión fallido: ${email}` : "Intento de inicio de sesión fallido.";
+      return email ? s.loginFailedEmail.replace("{email}", email) : s.loginFailed;
     }
     if (action === "PASSWORD_RESET_REJECTED" && entityType === "authentication") {
-      return "Solicitud de restablecimiento de contraseña rechazada.";
+      return s.passwordResetRejected;
     }
     if (action === "PASSWORD_RESET_APPROVED" && entityType === "authentication") {
-      return "Restablecimiento de contraseña aprobado por un administrador.";
+      return s.passwordResetApproved;
     }
     if (action === "PASSWORD_RESET_COMPLETED" && entityType === "authentication") {
-      return "El usuario completó el restablecimiento de contraseña.";
+      return s.passwordResetCompleted;
     }
     if (action === "PASSWORD_RESET_REQUESTED" && entityType === "authentication") {
-      return "Solicitud de restablecimiento de contraseña enviada.";
+      return s.passwordResetRequested;
     }
-    if (d.patientName && typeof d.patientName === "string") return `Paciente: ${d.patientName}`;
-    if (d.targetUserName && typeof d.targetUserName === "string") return `Usuario: ${d.targetUserName}`;
-    if (d.clinicName && typeof d.clinicName === "string") return `Clínica: ${d.clinicName}`;
+    if (d.patientName && typeof d.patientName === "string") return s.patientPrefix.replace("{name}", d.patientName);
+    if (d.targetUserName && typeof d.targetUserName === "string") return s.userPrefix.replace("{name}", d.targetUserName);
+    if (d.clinicName && typeof d.clinicName === "string") return s.clinicPrefix.replace("{name}", d.clinicName);
     if (d.subject && typeof d.subject === "string") return d.subject;
     if (d.email && typeof d.email === "string") return d.email;
     if (log.details && log.details.length <= 120) return log.details;
@@ -354,7 +320,7 @@ const AuditLogPage = () => {
   };
 
   const formatDate = (dateStr: string) => {
-    return new Date(dateStr).toLocaleDateString("es-ES", {
+    return new Date(dateStr).toLocaleDateString(DATE_LOCALE[language] || "es-ES", {
       day: "2-digit",
       month: "short",
       year: "numeric",
@@ -423,19 +389,19 @@ const AuditLogPage = () => {
         {/* Statistics Summary */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <div className="bg-brand-surface rounded-xl border border-brand-border p-4">
-            <div className="text-sm text-brand-muted mb-1">Total de registros</div>
+            <div className="text-sm text-brand-muted mb-1">{t.auditLog.totalRecords}</div>
             <div className="text-2xl font-bold text-brand-ink">{statistics.total}</div>
           </div>
           <div className="bg-brand-surface rounded-xl border border-brand-border p-4">
-            <div className="text-sm text-brand-muted mb-1">Tipos de acción</div>
+            <div className="text-sm text-brand-muted mb-1">{t.auditLog.actionTypes}</div>
             <div className="text-2xl font-bold text-brand-ink">{Object.keys(statistics.actionCounts).length}</div>
           </div>
           <div className="bg-brand-surface rounded-xl border border-brand-border p-4">
-            <div className="text-sm text-brand-muted mb-1">Tipos de entidad</div>
+            <div className="text-sm text-brand-muted mb-1">{t.auditLog.entityTypes}</div>
             <div className="text-2xl font-bold text-brand-ink">{Object.keys(statistics.entityCounts).length}</div>
           </div>
           <div className="bg-brand-surface rounded-xl border border-brand-border p-4">
-            <div className="text-sm text-brand-muted mb-1">Usuarios activos</div>
+            <div className="text-sm text-brand-muted mb-1">{t.auditLog.activeUsers}</div>
             <div className="text-2xl font-bold text-brand-ink">{statistics.topUsers.length}</div>
           </div>
         </div>
@@ -443,7 +409,7 @@ const AuditLogPage = () => {
         {/* Top Users */}
         {statistics.topUsers.length > 0 && (
           <div className="bg-brand-surface rounded-xl border border-brand-border p-4">
-            <h3 className="text-sm font-medium text-brand-muted mb-3">Usuarios más activos</h3>
+            <h3 className="text-sm font-medium text-brand-muted mb-3">{t.auditLog.topUsers}</h3>
             <div className="flex flex-wrap gap-2">
               {statistics.topUsers.map((u) => (
                 <button
@@ -465,12 +431,12 @@ const AuditLogPage = () => {
         {/* Filters */}
         <div className="bg-brand-surface rounded-xl border border-brand-border p-4">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-sm font-medium text-brand-muted">Filtros</h3>
+            <h3 className="text-sm font-medium text-brand-muted">{t.auditLog.filters.title}</h3>
             <button
               onClick={clearFilters}
               className="text-sm text-brand-muted hover:text-brand-ink dark:hover:text-white transition-colors"
             >
-              Limpiar filtros
+              {t.auditLog.filters.clear}
             </button>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3">
@@ -485,7 +451,7 @@ const AuditLogPage = () => {
               </svg>
               <input
                 type="text"
-                placeholder="Buscar..."
+                placeholder={t.auditLog.filters.search}
                 value={searchQuery}
                 onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1); }}
                 className="w-full pl-9 pr-3 py-2 text-sm border border-brand-border rounded-lg bg-brand-surface text-brand-ink focus:outline-none focus:border-brand-ink focus:ring-1 focus:ring-brand-ink"
@@ -496,7 +462,7 @@ const AuditLogPage = () => {
               onChange={(e) => { setActionFilter(e.target.value); setCurrentPage(1); }}
               className="px-3 py-2 text-sm border border-brand-border rounded-lg bg-brand-surface text-brand-ink focus:outline-none focus:border-brand-ink focus:ring-1 focus:ring-brand-ink"
             >
-              <option value="all">Todas las acciones</option>
+              <option value="all">{t.auditLog.filters.allActions}</option>
               {uniqueActions.map((action) => (
                 <option key={action} value={action}>{getFriendlyActionLabel(action)}</option>
               ))}
@@ -506,7 +472,7 @@ const AuditLogPage = () => {
               onChange={(e) => { setEntityTypeFilter(e.target.value); setCurrentPage(1); }}
               className="px-3 py-2 text-sm border border-brand-border rounded-lg bg-brand-surface text-brand-ink focus:outline-none focus:border-brand-ink focus:ring-1 focus:ring-brand-ink"
             >
-              <option value="all">Todos los tipos</option>
+              <option value="all">{t.auditLog.filters.allTypes}</option>
               {uniqueEntityTypes.map((type) => (
                 <option key={type} value={type}>{getFriendlyEntityTypeLabel(type)}</option>
               ))}
@@ -516,7 +482,7 @@ const AuditLogPage = () => {
               onChange={(e) => { setUserFilter(e.target.value); setCurrentPage(1); }}
               className="px-3 py-2 text-sm border border-brand-border rounded-lg bg-brand-surface text-brand-ink focus:outline-none focus:border-brand-ink focus:ring-1 focus:ring-brand-ink"
             >
-              <option value="all">Todos los usuarios</option>
+              <option value="all">{t.auditLog.filters.allUsers}</option>
               {uniqueUsers.map((userId) => {
                 const userName = allUsers.find(u => u.id === userId)?.name || logs.find(l => l.userId === userId)?.userName || userId;
                 return <option key={userId} value={userId}>{userName}</option>;
@@ -527,14 +493,14 @@ const AuditLogPage = () => {
               value={dateFrom}
               onChange={(e) => { setDateFrom(e.target.value); setCurrentPage(1); }}
               className="px-3 py-2 text-sm border border-brand-border rounded-lg bg-brand-surface text-brand-ink focus:outline-none focus:border-brand-ink focus:ring-1 focus:ring-brand-ink"
-              placeholder="Desde"
+              placeholder={t.auditLog.filters.from}
             />
             <input
               type="date"
               value={dateTo}
               onChange={(e) => { setDateTo(e.target.value); setCurrentPage(1); }}
               className="px-3 py-2 text-sm border border-brand-border rounded-lg bg-brand-surface text-brand-ink focus:outline-none focus:border-brand-ink focus:ring-1 focus:ring-brand-ink"
-              placeholder="Hasta"
+              placeholder={t.auditLog.filters.to}
             />
           </div>
         </div>
@@ -542,7 +508,8 @@ const AuditLogPage = () => {
         {/* Actions Bar */}
         <div className="flex items-center justify-between">
           <div className="text-sm text-brand-muted">
-            {filteredLogs.length} registros {filteredLogs.length !== logs.length && `(de ${logs.length} total)`}
+            {t.auditLog.recordsCount.replace("{n}", String(filteredLogs.length))}{" "}
+            {filteredLogs.length !== logs.length && t.auditLog.ofTotal.replace("{total}", String(logs.length))}
           </div>
           <div className="flex items-center gap-2">
             <button
@@ -574,8 +541,8 @@ const AuditLogPage = () => {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
               </svg>
             </div>
-            <h3 className="text-lg font-semibold text-brand-ink mb-2">No hay registros</h3>
-            <p className="text-brand-muted">No se encontraron registros de auditoría con los filtros seleccionados</p>
+            <h3 className="text-lg font-semibold text-brand-ink mb-2">{t.auditLog.empty.title}</h3>
+            <p className="text-brand-muted">{t.auditLog.empty.description}</p>
           </div>
         ) : (
           <div className="bg-brand-surface rounded-xl border border-brand-border overflow-hidden">
@@ -637,11 +604,11 @@ const AuditLogPage = () => {
                       </div>
                     </div>
                     
-                    {/* Expanded Details */}
+                    {/* Expanded Details — raw payload keys/values intentionally not translated */}
                     {isExpanded && (
                       <div className="px-4 pb-4 ml-9">
                         <div className="bg-brand-canvas rounded-lg p-4">
-                          <h4 className="text-xs font-medium text-brand-muted uppercase mb-2">Detalles completos</h4>
+                          <h4 className="text-xs font-medium text-brand-muted uppercase mb-2">{t.auditLog.fullDetails}</h4>
                           {parsedDetails ? (
                             <div className="space-y-2">
                               {Object.entries(parsedDetails).map(([key, value]) => (
@@ -657,25 +624,25 @@ const AuditLogPage = () => {
                             <p className="text-sm text-brand-muted">{log.details}</p>
                           )}
                           <div className="mt-3 pt-3 border-t border-brand-border">
-                            <p className="text-xs text-brand-muted mb-2">Cada registro está vinculado al usuario que realizó la acción. El Log ID identifica de forma única este evento.</p>
+                            <p className="text-xs text-brand-muted mb-2">{t.auditLog.userLinkedHint}</p>
                             <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
-                              <span className="text-xs font-medium text-brand-muted flex-shrink-0">Usuario:</span>
+                              <span className="text-xs font-medium text-brand-muted flex-shrink-0">{t.auditLog.userLabel}</span>
                               <span className="text-xs font-medium text-brand-ink">{userDisplay.display}</span>
                               {userDisplay.sub && userDisplay.sub !== userDisplay.display && (
                                 <span className="text-xs text-brand-muted">({userDisplay.sub})</span>
                               )}
                             </div>
                             <div className="flex mt-1">
-                              <span className="text-xs font-medium text-brand-muted w-40 flex-shrink-0">ID de usuario:</span>
+                              <span className="text-xs font-medium text-brand-muted w-40 flex-shrink-0">{t.auditLog.userIdLabel}</span>
                               <span className="text-xs text-brand-muted font-mono">{log.userId}</span>
                             </div>
                             <div className="flex mt-1">
-                              <span className="text-xs font-medium text-brand-muted w-40 flex-shrink-0">ID de registro (log):</span>
+                              <span className="text-xs font-medium text-brand-muted w-40 flex-shrink-0">{t.auditLog.logIdLabel}</span>
                               <span className="text-xs text-brand-muted font-mono">{log.id}</span>
                             </div>
                             {log.entityId && (
                               <div className="flex mt-1">
-                                <span className="text-xs font-medium text-brand-muted w-40 flex-shrink-0">ID recurso:</span>
+                                <span className="text-xs font-medium text-brand-muted w-40 flex-shrink-0">{t.auditLog.resourceIdLabel}</span>
                                 <span className="text-xs text-brand-muted font-mono">{log.entityId}</span>
                               </div>
                             )}
@@ -708,7 +675,9 @@ const AuditLogPage = () => {
               «
             </button>
             <span className="px-4 py-1.5 text-sm">
-              Página {currentPage} de {totalPages}
+              {t.auditLog.pageOf
+                .replace("{current}", String(currentPage))
+                .replace("{total}", String(totalPages))}
             </span>
             <button
               onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}

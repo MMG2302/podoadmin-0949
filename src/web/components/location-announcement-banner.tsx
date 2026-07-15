@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { api } from "../lib/api-client";
 import { semanticAlertInfoClass } from "../lib/form-field-classes";
 import { MapPin, X, ExternalLink } from "lucide-react";
+import { useLanguage } from "../contexts/language-context";
 
 export interface LocationAnnouncement {
   id: string;
@@ -16,6 +17,7 @@ export interface LocationAnnouncement {
 }
 
 export function LocationAnnouncementBanner() {
+  const { t } = useLanguage();
   const [announcements, setAnnouncements] = useState<LocationAnnouncement[]>([]);
   const [dismissed, setDismissed] = useState<Set<string>>(new Set());
   const [interestSent, setInterestSent] = useState<Set<string>>(new Set());
@@ -60,7 +62,7 @@ export function LocationAnnouncementBanner() {
           <div className="flex items-start justify-between gap-2">
             <div>
               <p className="text-xs font-medium text-semantic-info uppercase tracking-wide">
-                Patrocinado · {ann.targetState}
+                {t.layout.sponsored} · {ann.targetState}
                 {ann.advertiserName ? ` · ${ann.advertiserName}` : ""}
               </p>
               <h3 className="text-sm font-semibold text-brand-ink mt-0.5">{ann.title}</h3>
@@ -69,7 +71,7 @@ export function LocationAnnouncementBanner() {
               type="button"
               onClick={() => void handleDismiss()}
               className="p-1 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-white/60 dark:hover:bg-gray-800"
-              aria-label="Cerrar anuncio"
+              aria-label={t.layout.closeAnnouncement}
             >
               <X className="w-4 h-4" />
             </button>
@@ -77,7 +79,7 @@ export function LocationAnnouncementBanner() {
           <p className="text-sm text-brand-muted mt-1 line-clamp-3">{ann.body}</p>
           {ann.promoCode && (
             <p className="text-xs mt-2 text-brand-ink">
-              Código en la web del organizador:{" "}
+              {t.layout.promoCodeOnSite}{" "}
               <span className="font-mono font-semibold bg-white/80 dark:bg-gray-900 px-2 py-0.5 rounded">
                 {ann.promoCode}
               </span>
@@ -91,7 +93,7 @@ export function LocationAnnouncementBanner() {
               className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-brand-ink text-brand-ink-fg rounded-lg hover:bg-brand-ink-hover"
             >
               <ExternalLink className="w-3.5 h-3.5" />
-              {ann.ctaLabel || "Ver más"}
+              {ann.ctaLabel || t.layout.seeMore}
             </a>
             <button
               type="button"
@@ -99,7 +101,7 @@ export function LocationAnnouncementBanner() {
               disabled={interestSent.has(ann.id)}
               className="px-3 py-1.5 text-xs font-medium border border-semantic-info text-semantic-info rounded-lg hover:bg-semantic-info-bg disabled:opacity-60"
             >
-              {interestSent.has(ann.id) ? "Interés registrado ✓" : "Me interesa"}
+              {interestSent.has(ann.id) ? t.layout.interestRegistered : t.layout.interested}
             </button>
           </div>
         </div>

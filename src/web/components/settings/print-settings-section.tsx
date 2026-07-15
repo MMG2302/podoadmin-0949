@@ -12,6 +12,7 @@ import {
 import { formErrorClass, formSuccessClass } from "../../lib/form-field-classes";
 import { PrintSettingsPreviewMockup } from "./print-settings-preview-mockup";
 import { useAuth } from "../../contexts/auth-context";
+import { useLanguage } from "../../contexts/language-context";
 import { api } from "../../lib/api-client";
 
 function Toggle({
@@ -55,14 +56,15 @@ function OrientationPicker({
   disabled?: boolean;
   hint?: string;
 }) {
+  const { t } = useLanguage();
   return (
     <div>
-      <label className="block text-xs font-medium text-gray-500 mb-1">Orientación de página</label>
+      <label className="block text-xs font-medium text-gray-500 mb-1">{t.settings.print.orientation}</label>
       <div className="flex gap-2">
         {(
           [
-            { value: "portrait", label: "Vertical" },
-            { value: "landscape", label: "Horizontal" },
+            { value: "portrait", label: t.settings.print.portrait },
+            { value: "landscape", label: t.settings.print.landscape },
           ] as const
         ).map((opt) => (
           <button
@@ -98,6 +100,7 @@ function SubCard({ title, description, children }: { title: string; description?
 }
 
 export function PrintSettingsSection() {
+  const { t } = useLanguage();
   const { user } = useAuth();
   const [config, setConfig] = useState<PrintPreferencesConfig>(DEFAULT_PRINT_PREFERENCES);
   const [canEdit, setCanEdit] = useState(false);
@@ -199,9 +202,9 @@ export function PrintSettingsSection() {
         setConfig(res.data.config);
         setCanEdit(res.data.canEdit);
       }
-      setMessage("Preferencias de impresión guardadas.");
+      setMessage(t.settings.print.saved);
     } else {
-      setError(res.error || "No se pudo guardar.");
+      setError(res.error || t.settings.print.saveFailed);
     }
   };
 
@@ -214,7 +217,7 @@ export function PrintSettingsSection() {
   if (loading) {
     return (
       <div className="bg-brand-surface rounded-xl border border-brand-border p-8 text-center text-sm text-gray-500">
-        Cargando preferencias de impresión…
+        {t.settings.print.loading}
       </div>
     );
   }
@@ -224,27 +227,27 @@ export function PrintSettingsSection() {
   return (
     <div className="bg-brand-surface rounded-xl border border-brand-border p-6 space-y-5">
       <div>
-        <h3 className="text-lg font-semibold text-brand-ink">Configuración de impresiones</h3>
+        <h3 className="text-lg font-semibold text-brand-ink">{t.settings.print.title}</h3>
         <p className="text-sm text-gray-500 mt-1">
-          Ajusta cómo se ven la historia clínica y las recetas al imprimir o guardar como PDF.{" "}
+          {t.settings.print.hint}{" "}
           {scope === "clinic"
-            ? "Aplica a toda la clínica."
-            : "Aplica a tu consultorio independiente."}
+            ? t.settings.settingsScope.appliesClinic
+            : t.settings.settingsScope.appliesIndependent}
         </p>
       </div>
 
       {disabled && (
         <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 dark:bg-amber-950/40 dark:border-amber-900 dark:text-amber-200">
-          Solo el administrador de la clínica puede cambiar estas opciones. Se muestran en modo lectura.
+          {t.settings.print.readOnlyHint}
         </p>
       )}
 
       <PrintSettingsPreviewMockup config={config} logoUrl={logoUrl} />
 
       {/* General */}
-      <SubCard title="General" description="Se aplica a ambos documentos.">
+      <SubCard title={t.settings.print.generalTitle} description={t.settings.print.generalDesc}>
         <div>
-          <label className="block text-xs font-medium text-gray-500 mb-1">Alineación de la cabecera</label>
+          <label className="block text-xs font-medium text-gray-500 mb-1">{t.settings.print.headerAlign}</label>
           <div className="flex gap-2">
             {(["left", "center"] as const).map((align) => (
               <button
@@ -258,7 +261,7 @@ export function PrintSettingsSection() {
                     : "bg-brand-canvas text-brand-muted hover:bg-brand-border/40"
                 } ${disabled ? "opacity-60 cursor-not-allowed" : ""}`}
               >
-                {align === "left" ? "Izquierda" : "Centrada"}
+                {align === "left" ? t.settings.print.alignLeft : t.settings.print.alignCenter}
               </button>
             ))}
           </div>
@@ -268,19 +271,19 @@ export function PrintSettingsSection() {
           disabled={disabled}
           checked={config.monochrome}
           onChange={(v) => patch({ monochrome: v })}
-          label="Imprimir en blanco y negro"
-          hint="Escala de grises, ideal para ahorrar tinta."
+          label={t.settings.print.monochrome}
+          hint={t.settings.print.monochromeHint}
         />
         <Toggle
           disabled={disabled}
           checked={config.showGeneratedByFooter}
           onChange={(v) => patch({ showGeneratedByFooter: v })}
-          label='Mostrar "Generado por PodoAdmin" en el pie'
+          label={t.settings.print.showGeneratedBy}
         />
 
         <div>
           <label className="block text-xs font-medium text-gray-500 mb-1">
-            Texto de pie de página personalizado
+            {t.settings.print.footerText}
           </label>
           <textarea
             value={config.footerText}
@@ -288,7 +291,7 @@ export function PrintSettingsSection() {
             maxLength={300}
             rows={2}
             onChange={(e) => patch({ footerText: e.target.value })}
-            placeholder="Ej. Horario de atención, aviso legal, redes sociales…"
+            placeholder={t.settings.print.footerPlaceholder}
             className="w-full px-3 py-2 text-sm bg-brand-surface text-brand-ink border border-brand-border rounded-lg focus:ring-2 focus:ring-brand-ink focus:border-transparent disabled:opacity-60"
           />
           <p className="text-xs text-gray-400 mt-1 text-right">{config.footerText.length}/300</p>
@@ -296,43 +299,43 @@ export function PrintSettingsSection() {
       </SubCard>
 
       {/* Historia clínica */}
-      <SubCard title="Historia clínica" description="Documento completo del paciente.">
+      <SubCard title={t.settings.print.historyTitle} description={t.settings.print.historyDesc}>
         <Toggle
           disabled={disabled}
           checked={config.history.showLogo}
           onChange={(v) => patchHistory({ showLogo: v })}
-          label="Mostrar logo en la cabecera"
+          label={t.settings.print.showLogo}
         />
         <Toggle
           disabled={disabled}
           checked={config.history.showLegalData}
           onChange={(v) => patchHistory({ showLegalData: v })}
-          label="Mostrar datos legales"
-          hint="RFC, CLUES, COFEPRIS y registro sanitario."
+          label={t.settings.print.showLegalData}
+          hint={t.settings.print.showLegalDataHint}
         />
         <Toggle
           disabled={disabled}
           checked={config.history.includePhotos}
           onChange={(v) => patchHistory({ includePhotos: v })}
-          label="Incluir fotografías clínicas"
-          hint="Requiere que el bloque de imágenes esté activo en el diseñador."
+          label={t.settings.print.includePhotos}
+          hint={t.settings.print.includePhotosHint}
         />
         <Toggle
           disabled={disabled}
           checked={config.history.compact}
           onChange={(v) => patchHistory({ compact: v })}
-          label="Diseño compacto"
-          hint="Menos márgenes, tipografía y diagramas más pequeños para ahorrar páginas."
+          label={t.settings.print.compact}
+          hint={t.settings.print.compactHistoryHint}
         />
         <OrientationPicker
           disabled={disabled}
           value={config.history.orientation}
           onChange={(v) => patchHistory({ orientation: v })}
-          hint="Recomendado: vertical para historias clínicas."
+          hint={t.settings.print.orientationHistoryHint}
         />
         <div>
           <label className="block text-xs font-medium text-gray-500 mb-1">
-            Filas de evolución clínica a imprimir
+            {t.settings.print.evolutionRows}
           </label>
           <div className="flex flex-wrap gap-2">
             {EVOLUTION_ROWS_OPTIONS.map((rows) => (
@@ -355,65 +358,65 @@ export function PrintSettingsSection() {
       </SubCard>
 
       {/* Recetas */}
-      <SubCard title="Recetas" description="Formato de las recetas / prescripciones.">
+      <SubCard title={t.settings.print.rxTitle} description={t.settings.print.rxDesc}>
         <Toggle
           disabled={disabled}
           checked={config.prescription.showLogo}
           onChange={(v) => patchPrescription({ showLogo: v })}
-          label="Mostrar logo en la cabecera"
+          label={t.settings.print.showLogo}
         />
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <Toggle
             disabled={disabled}
             checked={config.prescription.showWeight}
             onChange={(v) => patchPrescription({ showWeight: v })}
-            label="Mostrar peso del paciente"
+            label={t.settings.print.showWeight}
           />
           <Toggle
             disabled={disabled}
             checked={config.prescription.showHeight}
             onChange={(v) => patchPrescription({ showHeight: v })}
-            label="Mostrar estatura del paciente"
+            label={t.settings.print.showHeight}
           />
           <Toggle
             disabled={disabled}
             checked={config.prescription.showNextVisit}
             onChange={(v) => patchPrescription({ showNextVisit: v })}
-            label="Mostrar próxima visita"
+            label={t.settings.print.showNextVisit}
           />
           <Toggle
             disabled={disabled}
             checked={config.prescription.showNotes}
             onChange={(v) => patchPrescription({ showNotes: v })}
-            label="Mostrar notas adicionales"
+            label={t.settings.print.showNotes}
           />
         </div>
         <Toggle
           disabled={disabled}
           checked={config.prescription.showSignatureCedula}
           onChange={(v) => patchPrescription({ showSignatureCedula: v })}
-          label="Mostrar cédula/registro en la firma"
+          label={t.settings.print.showSignatureCedula}
         />
         <Toggle
           disabled={disabled}
           checked={config.prescription.compact}
           onChange={(v) => patchPrescription({ compact: v })}
-          label="Diseño compacto"
-          hint="Menos márgenes y tipografía más pequeña para ocupar menos espacio."
+          label={t.settings.print.compact}
+          hint={t.settings.print.compactRxHint}
         />
         <OrientationPicker
           disabled={disabled}
           value={config.prescription.orientation}
           onChange={(v) => patchPrescription({ orientation: v })}
-          hint="Recomendado: horizontal para recetas."
+          hint={t.settings.print.orientationRxHint}
         />
         <div>
-          <label className="block text-xs font-medium text-gray-500 mb-1">Posición del folio</label>
+          <label className="block text-xs font-medium text-gray-500 mb-1">{t.settings.print.folioPosition}</label>
           <div className="flex flex-wrap gap-2">
             {(
               [
-                { value: "inline", label: "En cabecera (recomendado)" },
-                { value: "bar", label: "Barra destacada" },
+                { value: "inline", label: t.settings.print.folioInline },
+                { value: "bar", label: t.settings.print.folioBar },
               ] as const
             ).map((opt) => (
               <button
@@ -432,7 +435,7 @@ export function PrintSettingsSection() {
             ))}
           </div>
           <p className="text-xs text-gray-400 mt-1">
-            El folio en cabecera ahorra una línea completa y suele caber en una sola página.
+            {t.settings.print.folioHint}
           </p>
         </div>
       </SubCard>
@@ -445,7 +448,7 @@ export function PrintSettingsSection() {
             disabled={saving}
             className="px-4 py-2 text-sm bg-brand-ink text-brand-ink-fg rounded-lg font-medium hover:bg-brand-ink-hover transition-colors disabled:opacity-50"
           >
-            {saving ? "Guardando…" : "Guardar preferencias"}
+            {saving ? t.settings.print.saving : t.settings.print.save}
           </button>
           <button
             type="button"
@@ -453,7 +456,7 @@ export function PrintSettingsSection() {
             disabled={saving}
             className="px-4 py-2 text-sm bg-brand-canvas text-brand-ink rounded-lg font-medium hover:bg-brand-border/30 transition-colors disabled:opacity-50"
           >
-            Restablecer valores por defecto
+            {t.settings.print.reset}
           </button>
         </div>
       )}

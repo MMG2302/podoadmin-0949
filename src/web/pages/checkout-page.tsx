@@ -17,6 +17,7 @@ import { CheckoutTariffsEditor } from "../components/checkout/checkout-tariffs-e
 import { QuickTariffChips } from "../components/checkout/quick-tariff-chips";
 
 import { CheckoutAnalyticsPanel } from "../components/checkout/checkout-analytics-panel";
+import { AgendaAnalyticsPanel } from "../components/checkout/agenda-analytics-panel";
 import { CheckoutViewTabs } from "../components/checkout/checkout-view-tabs";
 
 import { MarkPaidDialog } from "../components/checkout/mark-paid-dialog";
@@ -83,41 +84,30 @@ function HandoffAmountForm({
 
 }) {
 
-  const [amount, setAmount] = useState("");
-
+  const [amount, setAmount] = useState(
+    handoff.amountCents != null && handoff.amountCents > 0
+      ? (handoff.amountCents / 100).toFixed(2)
+      : ""
+  );
+  const [serviceNote, setServiceNote] = useState(handoff.notes ?? "");
   const [saving, setSaving] = useState(false);
 
-
-
   const applyTariff = (tariff: CheckoutQuickTariff) => {
-
     setAmount((tariff.amountCents / 100).toFixed(2));
-
+    setServiceNote(tariff.label);
   };
-
-
 
   const handleSave = async () => {
-
     const amountCents = parseAmountToCents(amount);
-
     if (amountCents == null || amountCents <= 0) return;
-
     setSaving(true);
-
     const res = await api.patch<{ success: boolean }>(`/checkout-handoffs/${handoff.id}`, {
-
       amountCents,
-
+      notes: serviceNote.trim() || undefined,
     });
-
     setSaving(false);
-
     if (res.success && res.data?.success) onSaved();
-
   };
-
-
 
   return (
 
@@ -196,7 +186,14 @@ const CheckoutPage = () => {
 
 
   const canAccess = hasPermission("view_checkout_handoffs");
-  const showAnalytics = isPodiatrist || isClinicAdmin;
+  const showFullAnalytics = isPodiatrist || isClinicAdmin;
+  const showAgendaTab = isPodiatrist || isClinicAdmin || isReceptionist;
+  const showViewTabs = showFullAnalytics || showAgendaTab;
+  const checkoutTabModes: CheckoutViewMode[] | undefined = isReceptionist
+    ? ["operations", "agenda"]
+    : showFullAnalytics
+      ? ["operations", "sales", "collections", "profit", "agenda"]
+      : undefined;
 
   const tariffPodiatristId =
 
@@ -414,18 +411,35 @@ const CheckoutPage = () => {
 
     <MainLayout title={t.checkout.title}>
 
-      <div className={`space-y-6 ${showAnalytics && viewMode !== "operations" ? "max-w-5xl" : "max-w-3xl"}`}>
+      <div className={`space-y-6 ${showViewTabs ? "max-w-5xl" : "max-w-3xl"}`}>
 
         <p className="text-sm text-brand-muted">{subtitle}</p>
 
-        {showAnalytics && (
-          <CheckoutViewTabs view={viewMode} onViewChange={setViewMode} />
+        {showViewTabs && (
+          <CheckoutViewTabs
+            view={viewMode}
+            onViewChange={setViewMode}
+            modes={checkoutTabModes}
+          />
+        )}
+        {showViewTabs && viewMode !== "operations" && (
+          <p className="text-xs text-brand-muted -mt-3">
+            {viewMode === "agenda"
+              ? t.checkout.viewHintAgenda
+              : viewMode === "collections"
+                ? t.checkout.viewHintCollections
+                : viewMode === "profit"
+                  ? t.checkout.viewHintProfit
+                  : isClinicAdmin
+                    ? t.checkout.viewHintClinicSales
+                    : t.checkout.viewHintSales}
+          </p>
         )}
 
         {isClinicAdmin && showPodiatristFilter && (
           <div className="flex flex-wrap items-center gap-2">
             <label htmlFor="checkout-doctor-filter" className="text-sm text-brand-muted shrink-0">
-              Ver datos de:
+              {t.checkout.viewDataOf}
             </label>
             <select
               id="checkout-doctor-filter"
@@ -433,7 +447,7 @@ const CheckoutPage = () => {
               onChange={(e) => setPodiatristFilter(e.target.value)}
               className="flex-1 min-w-[180px] max-w-md px-3 py-2 text-sm bg-brand-surface border border-brand-border rounded-lg text-brand-ink min-h-[44px]"
             >
-              <option value="all">Toda la clínica</option>
+              <option value="all">{t.checkout.entireClinic}</option>
               {doctorFilterOptions.map((p) => (
                 <option key={p.id} value={p.id}>
                   {p.name}
@@ -443,7 +457,43 @@ const CheckoutPage = () => {
           </div>
         )}
 
-        {showAnalytics && viewMode !== "operations" && (
+        {isReceptionist && showPodiatristFilter && viewMode === "agenda" && (
+          <div className="flex flex-wrap items-center gap-2">
+            <label htmlFor="checkout-agenda-doctor" className="text-sm text-brand-muted shrink-0">
+              {t.checkout.podiatristLabel}
+            </label>
+            <select
+              id="checkout-agenda-doctor"
+              value={podiatristFilter === "all" ? doctorFilterOptions[0]?.id ?? "all" : podiatristFilter}
+              onChange={(e) => setPodiatristFilter(e.target.value)}
+              className="flex-1 min-w-[180px] max-w-md px-3 py-2 text-sm bg-brand-surface border border-brand-border rounded-lg text-brand-ink min-h-[44px]"
+            >
+              {doctorFilterOptions.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.name}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
+
+        {viewMode === "agenda" && showAgendaTab && (
+          <AgendaAnalyticsPanel
+            podiatristId={
+              isPodiatrist
+                ? user?.id
+                : podiatristFilter !== "all"
+                  ? podiatristFilter
+                  : isReceptionist
+                    ? doctorFilterOptions[0]?.id
+                    : undefined
+            }
+            canEditSchedule={isPodiatrist || isClinicAdmin}
+            canCloseDay={isPodiatrist || isClinicAdmin || isReceptionist}
+          />
+        )}
+
+        {showFullAnalytics && viewMode !== "operations" && viewMode !== "agenda" && (
           <CheckoutAnalyticsPanel
             view={viewMode}
             isClinicAdmin={isClinicAdmin}
@@ -457,7 +507,7 @@ const CheckoutPage = () => {
           />
         )}
 
-        {(viewMode === "operations" || !showAnalytics) && (
+        {(viewMode === "operations" || !showViewTabs) && (
         <>
         {canEditTariffs && (
 

@@ -33,7 +33,7 @@ const OFFICIAL_LINKS_ES: SetupGuideLink[] = [
   { label: "Permisos de token del sistema", href: "https://developers.facebook.com/docs/marketing-api/system-users/overview" },
 ];
 
-export const whatsappSetupGuideContent: Record<"es" | "en" | "pt", WhatsAppSetupGuideContent> = {
+export const whatsappSetupGuideContent: Record<"es" | "en" | "pt" | "fr", WhatsAppSetupGuideContent> = {
   es: {
     title: "Guía completa: WhatsApp Cloud API y token permanente",
     intro:
@@ -463,6 +463,136 @@ export const whatsappSetupGuideContent: Record<"es" | "en" | "pt", WhatsAppSetup
       },
     ],
     officialLinksTitle: "Links oficiais da Meta",
+  },
+  fr: {
+    title: "Guide complet : WhatsApp Cloud API et jeton permanent",
+    intro:
+      "Commencez sur Meta for Developers : créez l'app, ajoutez WhatsApp et liez-la à votre Page et portfolio Facebook Business. Vérifiez ensuite les permissions dans Business Manager, puis continuez avec l'utilisateur système. Si vous êtes bloqué sur « Utilisateurs système », lisez d'abord la section dépannage.",
+    expandAll: "Tout développer",
+    collapseAll: "Tout réduire",
+    checklistTitle: "Prérequis (à vérifier avant de commencer)",
+    checklistItems: [
+      "Compte Facebook personnel avec authentification à deux facteurs (2FA) activée.",
+      "Un Meta Business Manager (portfolio commercial) sur business.facebook.com — une Page Facebook seule ne suffit pas.",
+      "Votre compte personnel doit être Administrateur de ce Business Manager (pas Employé ni Analyste).",
+      "App de type « Entreprise » sur developers.facebook.com avec le produit WhatsApp ajouté.",
+      "Numéro de téléphone pour WhatsApp Business API (Cloud API). Ce n'est pas WhatsApp classique sur le téléphone.",
+    ],
+    troubleshootingTitle: "Impossible de créer un utilisateur système ?",
+    troubleshootingIntro:
+      "C'est le blocage le plus courant. Meta n'autorise les utilisateurs système qu'avec le bon portfolio et les bonnes permissions. Vérifiez chaque point :",
+    troubleshootingItems: [
+      "Permissions insuffisantes : dans Business Settings → Utilisateurs → Personnes, votre compte doit être Administrateur. Si vous êtes Employé, demandez au propriétaire de vous promouvoir ou de créer l'utilisateur système.",
+      "Mauvais portfolio : en haut à gauche sur business.facebook.com doit apparaître le nom de VOTRE entreprise. Changez de portfolio si vous voyez un profil personnel ou une autre entreprise.",
+      "Pas de Business Manager : allez sur business.facebook.com/overview et cliquez sur Créer un compte. Sans portfolio commercial, il n'y a pas de section utilisateurs système.",
+      "Mauvaise session : ouvrez https://business.facebook.com/settings/system-users connecté avec le compte Facebook admin de l'entreprise.",
+      "URL alternative (nouvelle interface Meta) : essayez business.facebook.com/latest/settings/system_users ou Paramètres → Utilisateurs → Utilisateurs système.",
+      "Bouton Ajouter absent ou désactivé : souvent dû à un rôle Admin manquant. Les comptes nouveaux peuvent exiger une vérification de l'entreprise.",
+      "App non liée au Business Manager : liez-la sous Paramètres → Comptes → Applications avant d'attribuer des actifs à l'utilisateur système.",
+      "Confusion WhatsApp personnel / Business API : vous avez besoin de WhatsApp → Configuration API dans votre app Developers.",
+      "Limites régionales ou compte nouveau : terminez l'assistant WhatsApp dans l'app (numéro test ou production) avant que les actifs n'apparaissent.",
+      "Dernier recours : demandez à l'admin principal du Business Manager de créer l'utilisateur système et de partager le jeton (affiché une seule fois).",
+    ],
+    phases: [
+      {
+        id: "developer-app",
+        title: "Phase 1 — Créer l'app et connecter WhatsApp à votre entreprise",
+        steps: [
+          {
+            text: "Ouvrez Meta for Developers → Mes apps → Créer une app → type Entreprise (Business).",
+            links: [{ label: "developers.facebook.com/apps", href: "https://developers.facebook.com/apps/" }],
+          },
+          { text: "Ajoutez le produit WhatsApp (panneau gauche → Ajouter un produit → WhatsApp → Configurer)." },
+          {
+            text: "Dans WhatsApp → Configuration API : sélectionnez votre portfolio Business Manager. Si vous n'en avez pas, Meta vous guidera sur business.facebook.com.",
+            links: [{ label: "business.facebook.com", href: "https://business.facebook.com/" }],
+          },
+          { text: "Liez votre Page Facebook professionnelle quand l'assistant le demande." },
+          {
+            text: "Ajoutez un numéro (numéro test Meta pour le développement, ou ligne entreprise vérifiée pour la production).",
+            links: [{ label: "Cloud API", href: "https://developers.facebook.com/docs/whatsapp/cloud-api/get-started" }],
+          },
+          { text: "Notez votre App ID — vous en aurez besoin pour générer le jeton." },
+          {
+            text: "Dans Paramètres → Comptes → Applications, confirmez que l'app est liée au portfolio.",
+            links: [{ label: "Comptes → Apps", href: "https://business.facebook.com/settings/accounts/applications" }],
+          },
+          {
+            text: "Sous Comptes → Comptes WhatsApp, confirmez que votre WABA est visible.",
+            links: [{ label: "Comptes WhatsApp", href: "https://business.facebook.com/settings/whatsapp-business-accounts" }],
+          },
+        ],
+        callout: {
+          variant: "info",
+          text: "Le numéro test Meta sert au développement ; la production exige l'enregistrement de la ligne dans WhatsApp Manager.",
+        },
+      },
+      {
+        id: "business-manager",
+        title: "Phase 2 — Vérifier les permissions Business Manager",
+        steps: [
+          {
+            text: "Ouvrez business.facebook.com et confirmez que le sélecteur en haut à gauche affiche VOTRE entreprise.",
+            links: [{ label: "business.facebook.com", href: "https://business.facebook.com/" }],
+          },
+          { text: "Sans portfolio : Créer un compte → nom de l'entreprise → vos coordonnées." },
+          {
+            text: "Paramètres → Utilisateurs → Personnes — confirmez que vous êtes Administrateur.",
+            links: [{ label: "Personnes", href: "https://business.facebook.com/settings/people" }],
+          },
+          { text: "Activez la 2FA sur votre Facebook personnel — Meta l'exige pour créer des utilisateurs système." },
+          { text: "Sans rôle Admin et actifs (app + WABA) dans ce portfolio, l'utilisateur système n'aura rien à assigner." },
+        ],
+      },
+      {
+        id: "system-user",
+        title: "Phase 3 — Utilisateur système et jeton permanent",
+        steps: [
+          {
+            text: "Paramètres → Utilisateurs → Utilisateurs système → Ajouter. Nom : PodoAdmin API. Rôle : Administrateur.",
+            links: [{ label: "Utilisateurs système", href: "https://business.facebook.com/settings/system-users" }],
+          },
+          { text: "Ajouter des actifs → Applications → votre app → Contrôle total." },
+          { text: "Ajouter des actifs → Comptes WhatsApp → WABA → Contrôle total." },
+          { text: "Générer un jeton → app → permissions whatsapp_business_messaging et whatsapp_business_management." },
+          { text: "Copiez le jeton immédiatement. Il n'expire pas tant qu'il n'est pas révoqué." },
+        ],
+        callout: {
+          variant: "warning",
+          text: "N'utilisez pas le jeton temporaire de Graph API Explorer. Utilisez le jeton de l'utilisateur système.",
+        },
+      },
+      {
+        id: "ids",
+        title: "Phase 4 — Phone Number ID et WABA ID",
+        steps: [
+          { text: "App → WhatsApp → Configuration API : copiez Phone number ID et WABA ID." },
+          { text: "Optionnel : téléphone E.164 de l'entreprise." },
+        ],
+      },
+      {
+        id: "template",
+        title: "Phase 5 — Modèle de message approuvé",
+        steps: [
+          {
+            text: "WhatsApp Manager → Modèles de message → Créer (Utilité).",
+            links: [{ label: "WhatsApp Manager", href: "https://business.facebook.com/wa/manage/message-templates/" }],
+          },
+          { text: "Corps avec {{1}} nom, {{2}} date, {{3}} heure, {{4}} notes." },
+          { text: "Attendez le statut Approuvé." },
+          { text: "Copiez le nom exact et la langue (ex. fr ou es)." },
+        ],
+      },
+      {
+        id: "podoadmin",
+        title: "Phase 6 — Connecter dans PodoAdmin",
+        steps: [
+          { text: "Collez Phone Number ID, WABA ID et le jeton dans le formulaire ci-dessous." },
+          { text: "Indiquez le modèle approuvé et testez la connexion." },
+        ],
+      },
+    ],
+    officialLinksTitle: "Liens officiels Meta",
   },
 };
 

@@ -18,29 +18,25 @@ import { useClinicalListPage } from "../hooks/use-clinical-list-page";
 import { fetchPatientById } from "../hooks/use-patient-picker";
 import { invalidateClinicalListCache } from "../lib/clinical-list-cache";
 import { ClinicalListError, ClinicalListLoading } from "../components/clinical/clinical-list-states";
-
-type PatientSegment = "new" | "recurrent" | "recovered";
-
-const SEGMENT_LABELS: Record<PatientSegment, string> = {
-  new: "Nuevos",
-  recurrent: "Recurrentes",
-  recovered: "Recuperados",
-};
-
-const AGE_RANGE_OPTIONS = [
-  { id: "all", label: "Todas las edades" },
-  { id: "0-17", label: "0-17 años", ageMin: 0, ageMax: 17 },
-  { id: "18-35", label: "18-35 años", ageMin: 18, ageMax: 35 },
-  { id: "36-55", label: "36-55 años", ageMin: 36, ageMax: 55 },
-  { id: "56+", label: "56+ años", ageMin: 56, ageMax: 130 },
-] as const;
-
-type DemographicsSummary = {
-  new: number;
-  recurrent: number;
-  recovered: number;
-  total: number;
-};
+import {
+  AGE_RANGE_OPTIONS,
+  LTV_PERIOD_STORAGE_KEY,
+  ageRangeLabel,
+  buildPatientListFilters,
+  formatInactivityHint,
+  formatLtvPaidCount,
+  formatVisitCount,
+  inactiveLabel,
+  ltvPeriodLabel,
+  parseStoredLtvPeriod,
+  segmentLabel,
+  type AgeRangeId,
+  type DemographicsSummary,
+  type PatientInactiveFilter,
+  type PatientLtvPeriod,
+  type PatientSegmentFilter,
+} from "../lib/patient-engagement";
+import { formatCheckoutAmount } from "../types/checkout-handoff";
 import { AppModal, AppModalBody, AppModalFooter, AppModalHeader } from "../components/ui/app-modal";
 import { isPatientFieldEnabled } from "../types/clinical-layout";
 import { createDefaultMedicalHistory, normalizeMedicalHistory } from "../types/medical-history";
@@ -94,7 +90,8 @@ const emptyForm: PatientFormData = {
 };
 
 const PatientsPage = () => {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
+  const eng = t.patients.engagement;
   const { user, getAllUsers } = useAuth();
   const tenantCountry = useTenantCountry(user);
   const { isSuperAdmin, isPodiatrist, isClinicAdmin, isReceptionist } = usePermissions();
@@ -118,9 +115,27 @@ const PatientsPage = () => {
   
   const [searchQuery, setSearchQuery] = useState("");
   const [debouncedQ, setDebouncedQ] = useState("");
-  const [segmentFilter, setSegmentFilter] = useState<"all" | PatientSegment>("all");
-  const [ageRangeFilter, setAgeRangeFilter] = useState<(typeof AGE_RANGE_OPTIONS)[number]["id"]>("all");
+  const [segmentFilter, setSegmentFilter] = useState<"all" | PatientSegmentFilter>("all");
+  const [ageRangeFilter, setAgeRangeFilter] = useState<AgeRangeId>("all");
+  const [inactiveFilter, setInactiveFilter] = useState<"all" | PatientInactiveFilter>("all");
+  const [minVisitsFilter, setMinVisitsFilter] = useState("");
+  const [maxVisitsFilter, setMaxVisitsFilter] = useState("");
+  const [ltvPeriod, setLtvPeriod] = useState<PatientLtvPeriod>(() => {
+    try {
+      return parseStoredLtvPeriod(localStorage.getItem(LTV_PERIOD_STORAGE_KEY));
+    } catch {
+      return "lifetime";
+    }
+  });
   const [demographicsSummary, setDemographicsSummary] = useState<DemographicsSummary | null>(null);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(LTV_PERIOD_STORAGE_KEY, ltvPeriod);
+    } catch {
+      /* ignore */
+    }
+  }, [ltvPeriod]);
 
   useEffect(() => {
     const trimmed = searchQuery.trim();
@@ -132,17 +147,27 @@ const PatientsPage = () => {
     return () => clearTimeout(timer);
   }, [searchQuery]);
 
-  const patientFilters = useMemo(() => {
-    const filters: Record<string, string | undefined> = {};
-    if (debouncedQ) filters.q = debouncedQ;
-    if (segmentFilter !== "all") filters.segment = segmentFilter;
-    const ageRange = AGE_RANGE_OPTIONS.find((o) => o.id === ageRangeFilter);
-    if (ageRange && ageRange.id !== "all" && "ageMin" in ageRange) {
-      filters.ageMin = String(ageRange.ageMin);
-      filters.ageMax = String(ageRange.ageMax);
-    }
-    return filters;
-  }, [debouncedQ, segmentFilter, ageRangeFilter]);
+  const patientFilters = useMemo(
+    () =>
+      buildPatientListFilters({
+        q: debouncedQ || undefined,
+        segment: segmentFilter,
+        ageRangeId: ageRangeFilter,
+        inactive: inactiveFilter,
+        minVisits: minVisitsFilter,
+        maxVisits: maxVisitsFilter,
+        ltvPeriod,
+      }),
+    [
+      debouncedQ,
+      segmentFilter,
+      ageRangeFilter,
+      inactiveFilter,
+      minVisitsFilter,
+      maxVisitsFilter,
+      ltvPeriod,
+    ]
+  );
 
   useEffect(() => {
     void api.get<{ success?: boolean; demographics?: DemographicsSummary }>("/patients/demographics-summary").then((r) => {
@@ -247,15 +272,15 @@ const PatientsPage = () => {
     }
     // Validación rápida en frontend para evitar "error interno" cuando algo viene vacío/undefined (especialmente en móviles)
     const localErrors: Record<string, string> = {};
-    if (!formData.firstName.trim()) localErrors.firstName = "Nombre es requerido";
-    if (!formData.lastName.trim()) localErrors.lastName = "Apellidos son requeridos";
-    if (!formData.dateOfBirth) localErrors.dateOfBirth = "Fecha de nacimiento es requerida";
-    if (!formData.gender) localErrors.gender = "Género es requerido";
-    if (!formData.idNumber.trim()) localErrors.idNumber = "DNI/NIE es requerido";
-    if (!formData.phone.trim()) localErrors.phone = "Teléfono es requerido";
+    if (!formData.firstName.trim()) localErrors.firstName = t.patients.firstNameRequired;
+    if (!formData.lastName.trim()) localErrors.lastName = t.patients.lastNameRequired;
+    if (!formData.dateOfBirth) localErrors.dateOfBirth = t.patients.dateOfBirthRequired;
+    if (!formData.gender) localErrors.gender = t.patients.genderRequired;
+    if (!formData.idNumber.trim()) localErrors.idNumber = t.patients.idNumberRequired;
+    if (!formData.phone.trim()) localErrors.phone = t.patients.phoneRequired;
     // Email es opcional, pero si se rellena, validamos formato básico
     if (formData.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
-      localErrors.email = "Email inválido";
+      localErrors.email = t.patients.emailInvalid;
     }
     if (Object.keys(localErrors).length > 0) {
       setFormErrors(localErrors);
@@ -335,7 +360,7 @@ const PatientsPage = () => {
             }
             setFormErrors(fieldErrors);
           }
-          alert(response.error || errData?.message || "No se pudo actualizar el paciente.");
+          alert(response.error || errData?.message || t.patients.updateFailed);
           return;
         }
       } else {
@@ -369,8 +394,7 @@ const PatientsPage = () => {
 
           if (errorCode === "usuario_en_periodo_gracia") {
             setGraceError(
-              errData?.message ||
-                "Tu cuenta está en período de gracia por exceso de pago. Durante 30 días puedes ver tus datos, pero no crear nuevos pacientes."
+              errData?.message || t.patients.gracePeriodMessage
             );
             return;
           }
@@ -385,13 +409,13 @@ const PatientsPage = () => {
             }
             setFormErrors(fieldErrors);
           }
-          alert(response.error || errData?.message || "No se pudo crear el paciente.");
+          alert(response.error || errData?.message || t.patients.createFailed);
           return;
         }
       }
     } catch (error) {
       console.error("Error guardando paciente:", error);
-      alert("Ha ocurrido un error al guardar el paciente.");
+      alert(t.patients.saveError);
       return;
     }
 
@@ -462,19 +486,19 @@ const PatientsPage = () => {
         if (err?.error === "patient_has_records") {
           setDeleteCascadeMode(true);
         } else {
-          alert(err?.message || response.error || "No se pudo eliminar el paciente.");
+          alert(err?.message || response.error || t.patients.deleteFailed);
         }
       }
     } catch (error) {
       console.error("Error eliminando paciente:", error);
-      alert("Ha ocurrido un error al eliminar el paciente.");
+      alert(t.patients.deleteError);
     } finally {
       setDeleteInProgress(false);
     }
   };
 
   const formatDate = (dateStr: string) => {
-    return new Date(dateStr).toLocaleDateString("es-ES");
+    return new Date(dateStr).toLocaleDateString(language === "en" ? "en-US" : language === "pt" ? "pt-BR" : language === "fr" ? "fr-FR" : "es-ES");
   };
 
   const closePatientDetail = () => {
@@ -503,7 +527,7 @@ const PatientsPage = () => {
                     {t.patients.patientDetails}
                   </h3>
                   <div className="flex items-center gap-2 bg-brand-canvas px-3 py-2 rounded-lg mt-2">
-                    <span className="text-sm text-brand-muted font-medium">FOLIO:</span>
+                    <span className="text-sm text-brand-muted font-medium">{t.patients.folio}</span>
                     <span className="text-base font-bold text-brand-ink tracking-wide truncate">
                       {selectedPatient.folio || "—"}
                     </span>
@@ -525,7 +549,7 @@ const PatientsPage = () => {
             <AppModalBody className="space-y-6">
               {/* Demographics */}
               <div>
-                <h4 className="font-medium text-brand-ink mb-3">Datos personales</h4>
+                <h4 className="font-medium text-brand-ink mb-3">{t.patients.personalData}</h4>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 text-sm">
                   <div>
                     <span className="text-gray-500">{t.patients.firstName}:</span>
@@ -579,7 +603,7 @@ const PatientsPage = () => {
                   allergies: t.patients.allergies,
                   medications: t.patients.medications,
                   conditions: t.patients.conditions,
-                  none: "Ninguna",
+                  none: t.patients.none,
                 }}
               />
               )}
@@ -625,7 +649,7 @@ const PatientsPage = () => {
                       <svg className="w-5 h-5 text-semantic-error" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                       </svg>
-                      <span className={formErrorClass}>Sin consentimiento</span>
+                      <span className={formErrorClass}>{t.patients.noConsent}</span>
                     </>
                   )}
                 </div>
@@ -695,15 +719,15 @@ const PatientsPage = () => {
               </div>
               <div className="flex-1 min-w-0">
                 <h3 className="text-lg font-semibold text-brand-ink mb-2">
-                  {deleteCascadeMode ? "Eliminar paciente y todo su historial" : "¿Eliminar paciente?"}
+                  {deleteCascadeMode ? t.patients.deleteCascadeTitle : t.patients.deleteTitle}
                 </h3>
                 {deleteCascadeMode ? (
                   <p className="text-brand-muted text-sm">
-                    Este paciente tiene sesiones clínicas y/o citas asociadas. Si continúa, se eliminará el paciente, todas sus sesiones y citas. Esta acción no se puede deshacer.
+                    {t.patients.deleteCascadeBody}
                   </p>
                 ) : (
                   <p className="text-brand-muted text-sm">
-                    Se eliminará el paciente <strong>{deleteConfirmPatient.firstName} {deleteConfirmPatient.lastName}</strong> y no se podrá recuperar. Esta acción es permanente.
+                    {t.patients.deleteConfirmBody.replace("{name}", `${deleteConfirmPatient.firstName} ${deleteConfirmPatient.lastName}`)}
                   </p>
                 )}
               </div>
@@ -716,7 +740,7 @@ const PatientsPage = () => {
                 onClick={closeDeleteConfirm}
                 className="flex-1 py-2.5 bg-brand-canvas text-brand-ink rounded-lg hover:bg-gray-200 transition-colors font-medium"
               >
-                Cancelar
+                {t.common.cancel}
               </button>
               <button
                 type="button"
@@ -724,7 +748,7 @@ const PatientsPage = () => {
                 disabled={deleteInProgress}
                 className="flex-1 py-2.5 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {deleteInProgress ? "Eliminando…" : (deleteCascadeMode ? "Eliminar todo" : "Eliminar")}
+                {deleteInProgress ? t.patients.deleting : (deleteCascadeMode ? t.patients.deleteAll : t.common.delete)}
               </button>
             </div>
           </AppModalFooter>
@@ -762,9 +786,9 @@ const PatientsPage = () => {
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
                     </svg>
                     <div>
-                      <p className="text-sm font-medium">Campos protegidos</p>
+                      <p className="text-sm font-medium">{t.patients.protectedFieldsTitle}</p>
                       <p className="text-sm mt-0.5">
-                        Los campos con 🔒 no pueden ser modificados después de la creación para garantizar la integridad de los datos.
+                        {t.patients.protectedFieldsBody}
                       </p>
                     </div>
                   </div>
@@ -774,19 +798,19 @@ const PatientsPage = () => {
               {/* Podólogo asignado (solo recepcionista al crear) */}
               {isReceptionist && !editingPatient && assignedPodiatrists.length > 0 && (
                 <div>
-                  <label className="block text-sm font-medium text-brand-ink mb-1">Podólogo para el paciente *</label>
+                  <label className="block text-sm font-medium text-brand-ink mb-1">{t.patients.podiatristForPatient}</label>
                   <select
                     value={receptionistPodiatristId}
                     onChange={(e) => setReceptionistPodiatristId(e.target.value)}
                     className="w-full px-3 py-2 border border-brand-border rounded-lg bg-brand-surface text-brand-ink focus:outline-none focus:border-brand-ink focus:ring-1 focus:ring-brand-ink placeholder:text-gray-400 dark:placeholder:text-gray-500"
                     required
                   >
-                    <option value="">Seleccionar podólogo</option>
+                    <option value="">{t.patients.selectPodiatrist}</option>
                     {assignedPodiatrists.map((p) => (
                       <option key={p.id} value={p.id}>{p.name}</option>
                     ))}
                   </select>
-                  <p className={`text-xs ${formHintClass} mt-0.5`}>El paciente quedará asignado a este podólogo.</p>
+                  <p className={`text-xs ${formHintClass} mt-0.5`}>{t.patients.patientAssignedHint}</p>
                 </div>
               )}
 
@@ -795,7 +819,7 @@ const PatientsPage = () => {
                 <div>
                   <label className="block text-sm font-medium text-brand-ink mb-1 flex items-center gap-1">
                     {t.patients.firstName} *
-                    {editingPatient && <span title="Este campo no puede ser modificado">🔒</span>}
+                    {editingPatient && <span title={t.patients.fieldLockedTitle}>🔒</span>}
                   </label>
                   <input
                     type="text"
@@ -810,7 +834,7 @@ const PatientsPage = () => {
                         ? "border-semantic-error focus:border-semantic-error focus:ring-1 focus:ring-semantic-error"
                         : "border-brand-border bg-brand-surface text-brand-ink focus:border-brand-ink focus:ring-1 focus:ring-brand-ink placeholder:text-gray-400 dark:placeholder:text-gray-500"
                     }`}
-                    title={editingPatient ? "Este campo no puede ser modificado después de la creación del paciente" : ""}
+                    title={editingPatient ? t.patients.fieldLockedAfterCreate : ""}
                   />
                   {formErrors.firstName && (
                     <p className={`mt-1 text-xs ${formErrorClass}`}>{formErrors.firstName}</p>
@@ -819,7 +843,7 @@ const PatientsPage = () => {
                 <div>
                   <label className="block text-sm font-medium text-brand-ink mb-1 flex items-center gap-1">
                     {t.patients.lastName} *
-                    {editingPatient && <span title="Este campo no puede ser modificado">🔒</span>}
+                    {editingPatient && <span title={t.patients.fieldLockedTitle}>🔒</span>}
                   </label>
                   <input
                     type="text"
@@ -834,7 +858,7 @@ const PatientsPage = () => {
                         ? "border-semantic-error focus:border-semantic-error focus:ring-1 focus:ring-semantic-error"
                         : "border-brand-border bg-brand-surface text-brand-ink focus:border-brand-ink focus:ring-1 focus:ring-brand-ink placeholder:text-gray-400 dark:placeholder:text-gray-500"
                     }`}
-                    title={editingPatient ? "Este campo no puede ser modificado después de la creación del paciente" : ""}
+                    title={editingPatient ? t.patients.fieldLockedAfterCreate : ""}
                   />
                   {formErrors.lastName && (
                     <p className={`mt-1 text-xs ${formErrorClass}`}>{formErrors.lastName}</p>
@@ -843,7 +867,7 @@ const PatientsPage = () => {
                 <div>
                   <label className="block text-sm font-medium text-brand-ink mb-1 flex items-center gap-1">
                     {t.patients.dateOfBirth} *
-                    {editingPatient && <span title="Este campo no puede ser modificado">🔒</span>}
+                    {editingPatient && <span title={t.patients.fieldLockedTitle}>🔒</span>}
                   </label>
                   <input
                     type="date"
@@ -858,7 +882,7 @@ const PatientsPage = () => {
                         ? "border-semantic-error focus:border-semantic-error focus:ring-1 focus:ring-semantic-error"
                         : "border-brand-border bg-brand-surface text-brand-ink focus:border-brand-ink focus:ring-1 focus:ring-brand-ink placeholder:text-gray-400 dark:placeholder:text-gray-500"
                     }`}
-                    title={editingPatient ? "Este campo no puede ser modificado después de la creación del paciente" : ""}
+                    title={editingPatient ? t.patients.fieldLockedAfterCreate : ""}
                   />
                   {formErrors.dateOfBirth && (
                     <p className={`mt-1 text-xs ${formErrorClass}`}>{formErrors.dateOfBirth}</p>
@@ -867,7 +891,7 @@ const PatientsPage = () => {
                 <div>
                   <label className="block text-sm font-medium text-brand-ink mb-1 flex items-center gap-1">
                     {t.patients.gender} *
-                    {editingPatient && <span title="Este campo no puede ser modificado">🔒</span>}
+                    {editingPatient && <span title={t.patients.fieldLockedTitle}>🔒</span>}
                   </label>
                   <select
                     required
@@ -881,7 +905,7 @@ const PatientsPage = () => {
                         ? "border-semantic-error focus:border-semantic-error focus:ring-1 focus:ring-semantic-error"
                         : "border-brand-border bg-brand-surface text-brand-ink focus:border-brand-ink focus:ring-1 focus:ring-brand-ink placeholder:text-gray-400 dark:placeholder:text-gray-500"
                     }`}
-                    title={editingPatient ? "Este campo no puede ser modificado después de la creación del paciente" : ""}
+                    title={editingPatient ? t.patients.fieldLockedAfterCreate : ""}
                   >
                     <option value="male">{t.patients.male}</option>
                     <option value="female">{t.patients.female}</option>
@@ -891,7 +915,7 @@ const PatientsPage = () => {
                 <div>
                   <label className="block text-sm font-medium text-brand-ink mb-1 flex items-center gap-1">
                     {t.patients.idNumber} *
-                    {editingPatient && editingPatient.idNumber?.trim() && <span title="Este campo no puede ser modificado">🔒</span>}
+                    {editingPatient && editingPatient.idNumber?.trim() && <span title={t.patients.fieldLockedTitle}>🔒</span>}
                   </label>
                   <input
                     type="text"
@@ -902,7 +926,7 @@ const PatientsPage = () => {
                       if (canEditIdNumber) setFormData({ ...formData, idNumber: e.target.value });
                     }}
                     disabled={!!editingPatient && !!editingPatient.idNumber?.trim()}
-                    placeholder="Para menores, DNI del padre o tutor"
+                    placeholder={t.patients.idNumberPlaceholder}
                     className={`w-full px-3 py-2 border rounded-lg focus:outline-none ${
                       editingPatient && editingPatient.idNumber?.trim()
                         ? "bg-brand-canvas border-brand-border text-brand-muted cursor-not-allowed"
@@ -910,10 +934,10 @@ const PatientsPage = () => {
                         ? "border-semantic-error focus:border-semantic-error focus:ring-1 focus:ring-semantic-error"
                         : "border-brand-border bg-brand-surface text-brand-ink focus:border-brand-ink focus:ring-1 focus:ring-brand-ink placeholder:text-gray-400 dark:placeholder:text-gray-500"
                     }`}
-                    title={editingPatient && editingPatient.idNumber?.trim() ? "Este campo no puede ser modificado" : "Obligatorio. Para menores de edad, indicar el DNI del padre o tutor legal."}
+                    title={editingPatient && editingPatient.idNumber?.trim() ? t.patients.fieldLockedTitle : t.patients.idNumberFieldTitle}
                   />
                   <p className={`text-xs ${formHintClass} mt-1`}>
-                    Obligatorio para crear sesiones. Si el paciente es menor de edad, indicar el DNI del padre o tutor.
+                    {t.patients.idNumberHint}
                   </p>
                   {formErrors.idNumber && (
                     <p className={`mt-1 text-xs ${formErrorClass}`}>{formErrors.idNumber}</p>
@@ -924,7 +948,7 @@ const PatientsPage = () => {
                   <label className="block text-sm font-medium text-brand-ink mb-1 flex items-center gap-1">
                     {t.patients.curp}
                     {editingPatient && editingPatient.curp?.trim() && (
-                      <span title="Este campo no puede ser modificado">🔒</span>
+                      <span title={t.patients.fieldLockedTitle}>🔒</span>
                     )}
                   </label>
                   <p className="text-xs text-brand-muted mb-1">{t.patients.curpHint}</p>
@@ -945,7 +969,7 @@ const PatientsPage = () => {
                     }`}
                     title={
                       editingPatient && editingPatient.curp?.trim()
-                        ? "La CURP no puede modificarse una vez registrada"
+                        ? t.patients.curpLockedTitle
                         : undefined
                     }
                   />
@@ -988,7 +1012,7 @@ const PatientsPage = () => {
                       const v = e.target.value.replace(/[^\w@.\-+]/g, "");
                       setFormData({ ...formData, email: v });
                     }}
-                    placeholder="paciente@ejemplo.com"
+                    placeholder={t.patients.emailPlaceholder}
                     className={`w-full px-3 py-2 border rounded-lg focus:outline-none ${
                       formErrors.email
                         ? "border-semantic-error focus:border-semantic-error focus:ring-1 focus:ring-semantic-error"
@@ -1047,12 +1071,12 @@ const PatientsPage = () => {
                 onChange={(patch) => setFormData({ ...formData, ...patch })}
                 labels={{
                   title: t.patients.medicalHistory,
-                  allergies: `${t.patients.allergies} (separadas por coma)`,
-                  medications: `${t.patients.medications} (separados por coma)`,
-                  conditions: `${t.patients.conditions} (separadas por coma)`,
-                  allergiesPlaceholder: "Penicilina, Látex...",
-                  medicationsPlaceholder: "Ibuprofeno, Omeprazol...",
-                  conditionsPlaceholder: "Diabetes, Hipertensión...",
+                  allergies: t.patients.allergiesComma,
+                  medications: t.patients.medicationsComma,
+                  conditions: t.patients.conditionsComma,
+                  allergiesPlaceholder: t.patients.allergiesPlaceholder,
+                  medicationsPlaceholder: t.patients.medicationsPlaceholder,
+                  conditionsPlaceholder: t.patients.conditionsPlaceholder,
                 }}
               />
               )}
@@ -1089,7 +1113,7 @@ const PatientsPage = () => {
                     ) : (
                       <div className={semanticAlertWarningClass}>
                         <p className="text-sm">
-                          No hay términos configurados. Configúralos en <strong>Configuración</strong> para que el paciente pueda aceptarlos.
+                          {t.patients.noConsentTerms}
                         </p>
                       </div>
                     )}
@@ -1123,7 +1147,7 @@ const PatientsPage = () => {
                       <span className={`text-sm font-medium text-brand-ink`}>
                         {t.patients.consentGiven}
                         {consentLocked && " 🔒"}
-                        {needsReconsent && " (modificado – acepte de nuevo)"}
+                        {needsReconsent && ` ${t.patients.needsReconsentBadge}`}
                       </span>
                     </div>
                     {needsReconsent && (
@@ -1131,7 +1155,7 @@ const PatientsPage = () => {
                         <svg className="w-4 h-4 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                         </svg>
-                        El consentimiento informado fue modificado. Es necesario que el paciente (o tutor) vuelva a aceptarlo. Marque la casilla para registrar la nueva aceptación.
+                        {t.patients.needsReconsentHint}
                       </p>
                     )}
                   </>
@@ -1156,7 +1180,7 @@ const PatientsPage = () => {
                   </svg>
                   <div>
                     <p className="text-sm font-semibold">
-                      No puedes crear nuevos pacientes en este momento
+                      {t.patients.gracePeriodTitle}
                     </p>
                     <p className="mt-1 text-sm">
                       {graceError}
@@ -1236,39 +1260,105 @@ const PatientsPage = () => {
                 {t.patients.addPatient}
               </button>
               <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-gray-800 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-10">
-                Solo los podólogos pueden crear pacientes
+                {t.patients.onlyPodiatristsCanCreate}
               </div>
             </div>
           )}
         </div>
 
         {demographicsSummary && (
-          <div className="flex flex-col sm:flex-row sm:items-center gap-3">
-            <div className="flex flex-wrap gap-2">
-              {(["new", "recurrent", "recovered"] as PatientSegment[]).map((segment) => (
-                <button
-                  key={segment}
-                  type="button"
-                  onClick={() => setSegmentFilter(segmentFilter === segment ? "all" : segment)}
-                  className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${
-                    segmentFilter === segment
-                      ? "border-brand-ink bg-brand-canvas text-brand-ink"
-                      : "border-brand-border bg-brand-surface text-brand-muted hover:text-brand-ink"
-                  }`}
+          <div className="space-y-3">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-3 flex-wrap">
+              <div className="flex flex-wrap gap-2">
+                {(["new", "recurrent", "recovered"] as PatientSegmentFilter[]).map((segment) => (
+                  <button
+                    key={segment}
+                    type="button"
+                    onClick={() => setSegmentFilter(segmentFilter === segment ? "all" : segment)}
+                    className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${
+                      segmentFilter === segment
+                        ? "border-brand-ink bg-brand-canvas text-brand-ink"
+                        : "border-brand-border bg-brand-surface text-brand-muted hover:text-brand-ink"
+                    }`}
+                  >
+                    {segmentLabel(eng, segment)} ({demographicsSummary[segment]})
+                  </button>
+                ))}
+                {(["3m", "6m"] as PatientInactiveFilter[]).map((key) => (
+                  <button
+                    key={key}
+                    type="button"
+                    onClick={() => setInactiveFilter(inactiveFilter === key ? "all" : key)}
+                    className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${
+                      inactiveFilter === key
+                        ? "border-brand-ink bg-brand-canvas text-brand-ink"
+                        : "border-brand-border bg-brand-surface text-brand-muted hover:text-brand-ink"
+                    }`}
+                  >
+                    {inactiveLabel(eng, key)} (
+                    {key === "3m"
+                      ? demographicsSummary.inactive3m ?? 0
+                      : demographicsSummary.inactive6m ?? 0}
+                    )
+                  </button>
+                ))}
+              </div>
+              <select
+                value={ageRangeFilter}
+                onChange={(e) => setAgeRangeFilter(e.target.value as AgeRangeId)}
+                className="px-3 py-2 rounded-lg border border-brand-border bg-brand-surface text-sm"
+              >
+                {AGE_RANGE_OPTIONS.map((opt) => (
+                  <option key={opt.id} value={opt.id}>{ageRangeLabel(eng, opt.id)}</option>
+                ))}
+              </select>
+              <input
+                type="number"
+                min={0}
+                inputMode="numeric"
+                placeholder={eng.minVisits}
+                value={minVisitsFilter}
+                onChange={(e) => setMinVisitsFilter(e.target.value)}
+                className="w-28 px-3 py-2 rounded-lg border border-brand-border bg-brand-surface text-sm"
+              />
+              <input
+                type="number"
+                min={0}
+                inputMode="numeric"
+                placeholder={eng.maxVisits}
+                value={maxVisitsFilter}
+                onChange={(e) => setMaxVisitsFilter(e.target.value)}
+                className="w-28 px-3 py-2 rounded-lg border border-brand-border bg-brand-surface text-sm"
+              />
+              <label className="flex items-center gap-2 text-sm text-brand-muted">
+                <span className="shrink-0">{eng.ltvLabel}</span>
+                <select
+                  value={ltvPeriod}
+                  onChange={(e) => setLtvPeriod(e.target.value as PatientLtvPeriod)}
+                  className="px-3 py-2 rounded-lg border border-brand-border bg-brand-surface text-sm text-brand-ink"
+                  aria-label={eng.ltvPeriodAria}
                 >
-                  {SEGMENT_LABELS[segment]} ({demographicsSummary[segment]})
-                </button>
-              ))}
+                  {(["day", "week", "month", "year", "lifetime"] as PatientLtvPeriod[]).map((key) => (
+                    <option key={key} value={key}>
+                      {ltvPeriodLabel(eng, key)}
+                    </option>
+                  ))}
+                </select>
+              </label>
             </div>
-            <select
-              value={ageRangeFilter}
-              onChange={(e) => setAgeRangeFilter(e.target.value as (typeof AGE_RANGE_OPTIONS)[number]["id"])}
-              className="px-3 py-2 rounded-lg border border-brand-border bg-brand-surface text-sm"
-            >
-              {AGE_RANGE_OPTIONS.map((opt) => (
-                <option key={opt.id} value={opt.id}>{opt.label}</option>
-              ))}
-            </select>
+
+            <div className="bg-brand-surface rounded-xl border border-brand-border p-4">
+              <p className="text-sm font-semibold text-brand-ink mb-1">{eng.agendaDemandTitle}</p>
+              <p className="text-xs text-brand-muted mb-2">
+                {eng.agendaDemandHint}
+              </p>
+              <Link
+                href="/checkout"
+                className="text-sm font-medium text-brand-ink underline-offset-2 hover:underline"
+              >
+                {eng.goToCheckoutAgenda}
+              </Link>
+            </div>
           </div>
         )}
 
@@ -1277,7 +1367,7 @@ const PatientsPage = () => {
           <ClinicalListError message={clinicalListError} onRetry={() => void reloadClinicalLists()} />
         )}
         {clinicalListLoading && patients.length === 0 ? (
-          <ClinicalListLoading label="Cargando pacientes…" />
+          <ClinicalListLoading label={t.patients.loadingPatients} />
         ) : patients.length === 0 ? (
           <div className="bg-brand-surface rounded-xl border border-brand-border p-12 text-center">
             <div className="w-16 h-16 bg-brand-canvas rounded-full flex items-center justify-center mx-auto mb-4">
@@ -1288,8 +1378,8 @@ const PatientsPage = () => {
             <h3 className="text-lg font-semibold text-brand-ink mb-2">{t.patients.noPatients}</h3>
             <p className="text-brand-muted mb-6">
               {canCreatePatient 
-                ? "Añade tu primer paciente para comenzar" 
-                : "Solo los podólogos pueden crear pacientes"}
+                ? t.patients.addFirstPatient 
+                : t.patients.onlyPodiatristsCanCreate}
             </p>
             {canCreatePatient && (
               <button
@@ -1324,7 +1414,7 @@ const PatientsPage = () => {
                         <p className="font-medium text-brand-ink">
                           {patient.firstName} {patient.lastName}
                         </p>
-                        <p className="text-xs text-gray-500">{patient.email || "Sin email"}</p>
+                        <p className="text-xs text-gray-500">{patient.email || t.patients.noEmail}</p>
                       </div>
                     </button>
                   </div>
@@ -1336,7 +1426,21 @@ const PatientsPage = () => {
                     </div>
                     <div className="mobile-card-row">
                       <span className="mobile-card-label">{t.patients.totalSessions}</span>
-                      <span className="mobile-card-value">{sessionCountByPatient[patient.id] ?? 0}</span>
+                      <span className="mobile-card-value">
+                        {formatVisitCount(sessionCountByPatient[patient.id], eng)}
+                        <span className="block text-xs text-brand-muted font-normal">
+                          {formatInactivityHint(patient.daysSinceLastSession, patient.sessionCount, eng)}
+                        </span>
+                      </span>
+                    </div>
+                    <div className="mobile-card-row">
+                      <span className="mobile-card-label">{eng.ltvLabel} ({ltvPeriodLabel(eng, ltvPeriod)})</span>
+                      <span className="mobile-card-value">
+                        {formatCheckoutAmount(patient.ltvCents ?? 0)}
+                        <span className="block text-xs text-brand-muted font-normal">
+                          {formatLtvPaidCount(patient.ltvPaidCount, eng)}
+                        </span>
+                      </span>
                     </div>
                   </div>
                   
@@ -1345,7 +1449,7 @@ const PatientsPage = () => {
                       onClick={() => setSelectedPatient(patient)}
                       className="flex-1 py-2.5 bg-brand-canvas text-brand-ink rounded-lg hover:bg-gray-200 active:bg-gray-300 transition-colors text-sm font-medium min-h-[44px]"
                     >
-                      Ver
+                      {t.common.view}
                     </button>
                     <button
                       onClick={() => handleEdit(patient)}
@@ -1374,12 +1478,15 @@ const PatientsPage = () => {
                 <table className="w-full">
                   <thead>
                     <tr className="border-b border-gray-50 dark:border-gray-800">
-                      <th className="text-left px-6 py-4 text-sm font-semibold text-brand-ink">Paciente</th>
+                      <th className="text-left px-6 py-4 text-sm font-semibold text-brand-ink">{eng.tablePatient}</th>
                       <th className="text-left px-6 py-4 text-sm font-semibold text-brand-ink">{t.patients.email}</th>
                       <th className="text-left px-6 py-4 text-sm font-semibold text-brand-ink">{t.patients.phone}</th>
-                      <th className="text-left px-6 py-4 text-sm font-semibold text-brand-ink">Edad</th>
-                      <th className="text-left px-6 py-4 text-sm font-semibold text-brand-ink">Segmento</th>
+                      <th className="text-left px-6 py-4 text-sm font-semibold text-brand-ink">{eng.tableAge}</th>
+                      <th className="text-left px-6 py-4 text-sm font-semibold text-brand-ink">{eng.tableSegment}</th>
                       <th className="text-left px-6 py-4 text-sm font-semibold text-brand-ink">{t.patients.totalSessions}</th>
+                      <th className="text-left px-6 py-4 text-sm font-semibold text-brand-ink">
+                        {eng.ltvLabel} ({ltvPeriodLabel(eng, ltvPeriod)})
+                      </th>
                       <th className="text-right px-6 py-4 text-sm font-semibold text-brand-ink">{t.common.actions}</th>
                     </tr>
                   </thead>
@@ -1406,13 +1513,26 @@ const PatientsPage = () => {
                         <td className="px-6 py-4 text-sm text-brand-muted">{patient.email}</td>
                         <td className="px-6 py-4 text-sm text-brand-muted">{formatPhoneDisplay(patient.phone, tenantCountry)}</td>
                         <td className="px-6 py-4 text-sm text-brand-muted">
-                          {patient.ageYears != null ? `${patient.ageYears} años` : "—"}
+                          {patient.ageYears != null ? `${patient.ageYears} ${eng.yearsSuffix}` : "—"}
                         </td>
                         <td className="px-6 py-4 text-sm text-brand-muted">
-                          {patient.patientSegment ? SEGMENT_LABELS[patient.patientSegment] : "—"}
+                          {patient.patientSegment ? segmentLabel(eng, patient.patientSegment) : "—"}
                         </td>
                         <td className="px-6 py-4 text-sm text-brand-muted">
-                          {sessionCountByPatient[patient.id] ?? 0}
+                          <p className="font-medium text-brand-ink">
+                            {formatVisitCount(sessionCountByPatient[patient.id], eng)}
+                          </p>
+                          <p className="text-xs text-brand-muted">
+                            {formatInactivityHint(patient.daysSinceLastSession, patient.sessionCount, eng)}
+                          </p>
+                        </td>
+                        <td className="px-6 py-4 text-sm text-brand-muted">
+                          <p className="font-medium text-brand-ink">
+                            {formatCheckoutAmount(patient.ltvCents ?? 0)}
+                          </p>
+                          <p className="text-xs text-brand-muted">
+                            {formatLtvPaidCount(patient.ltvPaidCount, eng)}
+                          </p>
                         </td>
                         <td className="px-6 py-4">
                           <div className="flex items-center justify-end gap-2">
@@ -1452,7 +1572,7 @@ const PatientsPage = () => {
                   disabled={isLoadingMore}
                   className="px-6 py-2.5 border border-brand-border rounded-lg text-sm font-medium text-brand-ink hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-50"
                 >
-                  {isLoadingMore ? "Cargando…" : "Cargar más pacientes"}
+                  {isLoadingMore ? t.patients.loadingMore : t.patients.loadMorePatients}
                 </button>
               </div>
             )}

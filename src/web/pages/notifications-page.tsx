@@ -62,9 +62,10 @@ const formatTimeAgo = (dateStr: string, t: any): string => {
   return t.notifications.agoDays.replace("{n}", diffDays.toString());
 };
 
-const formatFullDate = (dateStr: string): string => {
+const formatFullDate = (dateStr: string, language: string): string => {
   const date = new Date(dateStr);
-  return date.toLocaleDateString("es-ES", {
+  const localeMap: Record<string, string> = { es: "es-ES", en: "en-US", pt: "pt-BR", fr: "fr-FR" };
+  return date.toLocaleDateString(localeMap[language] || "es-ES", {
     year: "numeric",
     month: "long",
     day: "numeric",
@@ -74,7 +75,7 @@ const formatFullDate = (dateStr: string): string => {
 };
 
 const NotificationsPage = () => {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const { notifications, refresh, setNotificationsLocal } = useNotifications();
   const [filterTab, setFilterTab] = useState<FilterTab>("all");
   const [typeFilter, setTypeFilter] = useState<TypeFilter>("all");
@@ -268,7 +269,7 @@ const NotificationsPage = () => {
           {selectedNotifications.size > 0 && (
             <div className="flex items-center gap-4 mt-4 pt-4 border-t border-gray-100">
               <span className="text-sm text-gray-600">
-                {selectedNotifications.size} seleccionadas
+                {t.notifications.selectedCount.replace("{n}", String(selectedNotifications.size))}
               </span>
               <button
                 onClick={handleBulkMarkAsRead}
@@ -309,7 +310,7 @@ const NotificationsPage = () => {
                   {t.notifications.title}
                 </span>
                 <span className="text-xs font-medium text-gray-500 uppercase tracking-wider w-24 text-center">
-                  Tipo
+                  {t.notifications.type}
                 </span>
                 <span className="text-xs font-medium text-gray-500 uppercase tracking-wider w-32 text-right">
                   {t.common.date}
@@ -366,17 +367,17 @@ const NotificationsPage = () => {
                       <div className="mt-2 text-xs text-gray-500 space-y-1">
                         {notification.metadata.patientName && (
                           <p>
-                            <span className="font-medium">Paciente:</span> {notification.metadata.patientName}
+                            <span className="font-medium">{t.notifications.patient}:</span> {notification.metadata.patientName}
                           </p>
                         )}
                         {notification.metadata.fromUserName && (
                           <p>
-                            <span className="font-medium">De:</span> {notification.metadata.fromUserName}
+                            <span className="font-medium">{t.notifications.from}:</span> {notification.metadata.fromUserName}
                           </p>
                         )}
                         {notification.metadata.toUserName && (
                           <p>
-                            <span className="font-medium">A:</span> {notification.metadata.toUserName}
+                            <span className="font-medium">{t.notifications.to}:</span> {notification.metadata.toUserName}
                           </p>
                         )}
                         {notification.metadata.reassignedByName && (
@@ -407,7 +408,9 @@ const NotificationsPage = () => {
                         )}
                         {notification.metadata.sentAt && (
                           <p className="text-[10px] text-purple-500 mt-1">
-                            {new Date(notification.metadata.sentAt).toLocaleString("es-ES")}
+                            {new Date(notification.metadata.sentAt).toLocaleString(
+                              ({ es: "es-ES", en: "en-US", pt: "pt-BR", fr: "fr-FR" } as Record<string, string>)[language] || "es-ES"
+                            )}
                           </p>
                         )}
                       </div>
@@ -434,7 +437,7 @@ const NotificationsPage = () => {
                         {formatTimeAgo(notification.createdAt, t)}
                       </p>
                       <p className="text-[10px] text-gray-400 mt-0.5">
-                        {formatFullDate(notification.createdAt)}
+                        {formatFullDate(notification.createdAt, language)}
                       </p>
                     </div>
                     <div className="flex items-center justify-end gap-2 md:w-20 md:flex md:justify-end">

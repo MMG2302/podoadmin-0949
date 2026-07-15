@@ -38,6 +38,12 @@ import {
 } from '../utils/checkout-analytics-service';
 import { getClientIP } from '../utils/ip-tracking';
 import { getSafeUserAgent } from '../utils/request-headers';
+import {
+  createDailyClose,
+  getTodayCloseStatus,
+  listDailyCloses,
+  resolveDefaultClosePodiatristId,
+} from '../utils/daily-sales-closes';
 
 const checkoutHandoffsRoutes = new Hono();
 
@@ -614,5 +620,83 @@ checkoutHandoffsRoutes.patch('/:id', requirePermission('manage_checkout_handoffs
 
   return c.json({ success: true, handoff: enriched });
 });
+
+const dailyCloseBodySchema = z.object({
+  podiatristId: z.string().trim().min(1).max(128).optional(),
+  closeDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  notes: z.string().max(500).optional(),
+});
+
+/** GET /checkout-handoffs/daily-closes/today */
+checkoutHandoffsRoutes.get('/daily-closes/today', async (c) => {
+  const user = c.get('user')!;
+  const queryPodiatristId = c.req.query('podiatristId')?.trim();
+  const podiatristId = await resolveDefaultClosePodiatristId(user, queryPodiatristId);
+  if (!podiatristId) {
+    return c.json({ success: false, error: 'Podólogo no disponible' }, 400);
+  }
+  const status = await getTodayCloseStatus(podiatristId);
+  return c.json({ success: true, podiatristId, ...status });
+});
+
+/** GET /checkout-handoffs/daily-closes */
+checkoutHandoffsRoutes.get('/daily-closes', async (c) => {
+  const user = c.get('user')!;
+  const closes = await listDailyCloses({
+    user,
+    podiatristId: c.req.query('podiatristId')?.trim(),
+    from: c.req.query('from')?.trim(),
+    to: c.req.query('to')?.trim(),
+    limit: Number(c.req.query('limit') ?? 30) || 30,
+  });
+  return c.json({ success: true, closes });
+});
+
+/** POST /checkout-handoffs/daily-closes */
+checkoutHandoffsRoutes.post(
+  '/daily-closes',
+  requirePermission('manage_checkout_handoffs'),
+  async (c) => {
+    const user = c.get('user')!;
+    const body = await c.req.json().catch(() => ({}));
+    const parsed = dailyCloseBodySchema.safeParse(body);
+    if (!parsed.success) {
+      return c.json({ success: false, error: 'Datos inválidos' }, 400);
+    }
+
+    const podiatristId =
+      (await resolveDefaultClosePodiatristId(user, parsed.data.podiatristId)) ?? null;
+    if (!podiatristId) {
+      return c.json({ success: false, error: 'Podólogo no disponible' }, 400);
+    }
+
+    const result = await createDailyClose({
+      user,
+      podiatristId,
+      closeDate: parsed.data.closeDate,
+      notes: parsed.data.notes,
+    });
+    if ('error' in result) {
+      return c.json({ success: false, error: result.error }, result.status as 400 | 403 | 409 | 500);
+    }
+
+    await logAuditEvent({
+      userId: user.userId,
+      action: 'CREATE',
+      resourceType: 'daily_sales_close',
+      resourceId: result.close.id,
+      details: {
+        closeDate: result.close.closeDate,
+        podiatristId,
+        paidCents: result.close.paidCents,
+      },
+      ipAddress: getClientIP(c.req.raw.headers),
+      userAgent: getSafeUserAgent(c),
+      clinicId: result.close.clinicId ?? user.clinicId ?? undefined,
+    });
+
+    return c.json({ success: true, close: result.close }, 201);
+  }
+);
 
 export default checkoutHandoffsRoutes;

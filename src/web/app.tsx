@@ -16,6 +16,7 @@ import Terms from "./pages/terms";
 import Privacy from "./pages/privacy";
 import GoogleCallbackPage from "./pages/google-callback";
 import Dashboard from "./pages/dashboard";
+import LandingPage from "./pages/landing-page";
 
 const ProtectedRoute = ({ component: Component, path }: { component: React.ComponentType; path?: string }) => {
   const { user, isLoading } = useAuth();
@@ -72,6 +73,28 @@ const PublicRoute = ({ component: Component }: { component: React.ComponentType 
   return <Component />;
 };
 
+/** `/` pública para visitantes; dashboard para usuarios autenticados. */
+const HomeRoute = () => {
+  const { user, isLoading } = useAuth();
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-white flex items-center justify-center">
+        <svg className="animate-spin h-8 w-8 text-brand-ink" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+        </svg>
+      </div>
+    );
+  }
+
+  if (user) {
+    return <ProtectedRoute component={Dashboard} path="/" />;
+  }
+
+  return <LandingPage />;
+};
+
 function AppRoutes() {
   return (
     <Switch>
@@ -103,7 +126,7 @@ function AppRoutes() {
         <ProtectedRoute component={ChangePassword} path="/change-password" />
       </Route>
       <Route path="/">
-        <ProtectedRoute component={Dashboard} />
+        <HomeRoute />
       </Route>
       <Route path="/:rest*">
         <ProtectedRoute component={Dashboard} />

@@ -1,5 +1,6 @@
 import { Hono } from 'hono';
 import { and, desc, eq, gte, inArray, sql } from 'drizzle-orm';
+import { z } from 'zod';
 import { requireAuth } from '../middleware/auth';
 import { requireActiveSubscription } from '../middleware/subscription';
 import { database } from '../database';
@@ -7,7 +8,13 @@ import { clinicalSessions, patients, createdUsers, professionalLicenses } from '
 import { mergeScopeWhere, resolveClinicalListScope } from '../utils/clinical-list-scope';
 import { fetchAppointmentMetrics } from '../utils/clinic-appointment-metrics';
 import { sanitizePathParam } from '../utils/sanitization';
-
+import {
+  canAccessAgendaSettingsForPodiatrist,
+  getAgendaSettingsTarget,
+  resolveAgendaSettingsForPodiatrist,
+  saveAgendaSettings,
+} from '../utils/agenda-settings';
+import { getAssignedPodiatristUserIds } from '../utils/tenant-isolation';
 const clinicalDashboardRoutes = new Hono();
 
 clinicalDashboardRoutes.use('*', requireAuth, requireActiveSubscription);
@@ -174,11 +181,25 @@ clinicalDashboardRoutes.get('/appointment-metrics', async (c) => {
         fromDate: '',
         toDate: '',
         attendedPerDay: [],
+        demandPerDay: [],
+        demandByWeekday: [],
+        topDemandDays: [],
+        busyHours: [],
+        topBusyHours: [],
+        occupancy: {
+          occupiedMinutes: 0,
+          availableMinutes: 0,
+          percent: 0,
+          workdayStartHour: 7,
+          workdayEndHour: 21,
+        },
+        avgDurationByReason: [],
         totals: {
           attended: 0,
           noShow: 0,
           cancelled: 0,
           scheduled: 0,
+          demand: 0,
           cancellationRate: 0,
           noShowRate: 0,
         },
@@ -198,6 +219,120 @@ clinicalDashboardRoutes.get('/appointment-metrics', async (c) => {
   });
 
   return c.json({ success: true, metrics });
+});
+
+const agendaSettingsBodySchema = z.object({
+  workdayStartHour: z.number().int().min(0).max(23).optional(),
+  workdayEndHour: z.number().int().min(0).max(23).optional(),
+  allowOvertime: z.boolean().optional(),
+  overtimeStartHour: z.number().int().min(0).max(23).optional(),
+  overtimeEndHour: z.number().int().min(0).max(23).optional(),
+  podiatristId: z.string().trim().min(1).max(128).optional(),
+});
+
+/** GET /clinical-dashboard/agenda-settings */
+clinicalDashboardRoutes.get('/agenda-settings', async (c) => {
+  const user = c.get('user')!;
+  const podiatristId = sanitizePathParam(c.req.query('podiatristId') ?? '', 128) || undefined;
+
+  if (user.role === 'podiatrist') {
+    const resolved = await resolveAgendaSettingsForPodiatrist(user.userId);
+    return c.json({
+      success: true,
+      settings: resolved.settings,
+      source: resolved.source,
+      editable: true,
+      scopeLabel: 'Mi consulta',
+      podiatristId: user.userId,
+    });
+  }
+
+  if (user.role === 'clinic_admin') {
+    if (!user.clinicId) {
+      return c.json({ success: false, error: 'Sin clínica asignada' }, 400);
+    }
+    if (podiatristId) {
+      const ok = await canAccessAgendaSettingsForPodiatrist(user, podiatristId);
+      if (!ok) return c.json({ success: false, error: 'No autorizado' }, 403);
+      const resolved = await resolveAgendaSettingsForPodiatrist(podiatristId);
+      return c.json({
+        success: true,
+        settings: resolved.settings,
+        source: resolved.source,
+        editable: false,
+        scopeLabel: 'Podólogo',
+        podiatristId,
+      });
+    }
+    const settings = await getAgendaSettingsTarget({ kind: 'clinic', clinicId: user.clinicId });
+    return c.json({
+      success: true,
+      settings,
+      source: 'clinic' as const,
+      editable: true,
+      scopeLabel: 'Toda la clínica',
+      podiatristId: null,
+    });
+  }
+
+  if (user.role === 'receptionist') {
+    const targetId =
+      podiatristId ||
+      (await getAssignedPodiatristUserIds(user.userId))[0] ||
+      null;
+    if (!targetId) {
+      return c.json({ success: false, error: 'Sin podólogo asignado' }, 400);
+    }
+    const ok = await canAccessAgendaSettingsForPodiatrist(user, targetId);
+    if (!ok) return c.json({ success: false, error: 'No autorizado' }, 403);
+    const resolved = await resolveAgendaSettingsForPodiatrist(targetId);
+    return c.json({
+      success: true,
+      settings: resolved.settings,
+      source: resolved.source,
+      editable: false,
+      scopeLabel: 'Podólogo asignado',
+      podiatristId: targetId,
+    });
+  }
+
+  return c.json({ success: false, error: 'No autorizado' }, 403);
+});
+
+/** PUT /clinical-dashboard/agenda-settings */
+clinicalDashboardRoutes.put('/agenda-settings', async (c) => {
+  const user = c.get('user')!;
+  const body = await c.req.json().catch(() => ({}));
+  const parsed = agendaSettingsBodySchema.safeParse(body);
+  if (!parsed.success) {
+    return c.json({ success: false, error: 'Datos inválidos' }, 400);
+  }
+
+  const { podiatristId: bodyPodId, ...patch } = parsed.data;
+
+  if (user.role === 'podiatrist') {
+    const settings = await saveAgendaSettings(
+      { kind: 'podiatrist', podiatristId: user.userId },
+      patch
+    );
+    return c.json({ success: true, settings });
+  }
+
+  if (user.role === 'clinic_admin') {
+    if (!user.clinicId) {
+      return c.json({ success: false, error: 'Sin clínica asignada' }, 400);
+    }
+    if (bodyPodId) {
+      return c.json(
+        { success: false, error: 'El admin de clínica solo edita el horario default de la clínica' },
+        403
+      );
+    }
+    const settings = await saveAgendaSettings({ kind: 'clinic', clinicId: user.clinicId }, patch);
+    return c.json({ success: true, settings });
+  }
+
+  return c.json({ success: false, error: 'No autorizado' }, 403);
 });
 
 export default clinicalDashboardRoutes;

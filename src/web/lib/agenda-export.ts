@@ -102,9 +102,10 @@ export type AgendaWhatsAppMessageLabels = {
 
 export function buildAgendaWhatsAppMessage(
   preview: AgendaExportPreview,
-  labels: AgendaWhatsAppMessageLabels
+  labels: AgendaWhatsAppMessageLabels,
+  locale = 'es-MX'
 ): string {
-  const dateLabel = formatDisplayDate(preview.date);
+  const dateLabel = formatDisplayDate(preview.date, locale);
   const header = labels.header
     .replace(/\{\{fecha\}\}/gi, dateLabel)
     .replace(/\{\{podólogo\}\}/gi, preview.podiatristName ?? '')

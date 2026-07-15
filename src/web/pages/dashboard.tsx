@@ -1,13 +1,34 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Route, Switch, Link, Redirect, useLocation } from "wouter";
-import { Users, Stethoscope, Building2, UserCircle, CalendarCheck, Settings, UserPlus, Building, Calendar, FileText, Shield, MapPin } from "lucide-react";
+import {
+  Users,
+  Stethoscope,
+  Building2,
+  UserCircle,
+  CalendarCheck,
+  Settings,
+  UserPlus,
+  Building,
+  Calendar,
+  FileText,
+  Shield,
+  MapPin,
+  CalendarClock,
+  Percent,
+  Wallet,
+  Banknote,
+  UserRoundPlus,
+  UserX,
+} from "lucide-react";
 import { MainLayout } from "../components/layout/main-layout";
-import { ClinicalRoleDashboardBento, RoleDashboardBento } from "../components/ui/bento-grid";
+import { ClinicalRoleDashboardBento, RoleDashboardBento, type StatItem } from "../components/ui/bento-grid";
 import { useLanguage } from "../contexts/language-context";
 import { useAuth, getPostLoginPath, hasActiveSystemAccess, isClinicalAppPath } from "../contexts/auth-context";
 import { usePermissions } from "../hooks/use-permissions";
+import { useClinicalDashboardSnapshot } from "../hooks/use-clinical-dashboard-snapshot";
 import { api } from "../lib/api-client";
 import { semanticChipSuccessClass, semanticChipWarningClass } from "../lib/form-field-classes";
+import { formatCheckoutAmount } from "../types/checkout-handoff";
 import PatientsPage from "./patients-page";
 import SessionsPage from "./sessions-page";
 import SettingsPage from "./settings-page";
@@ -47,22 +68,22 @@ const SuperAdminDashboard = () => {
         welcomeDescription={t.roles.superAdminDesc}
         statItems={[
           { Icon: Users, label: t.nav.users, value: allUsers.length.toString(), path: "/users" },
-          { Icon: Stethoscope, label: "Podólogos", value: podiatrists.length.toString(), path: "/users" },
-          { Icon: Building2, label: "Administradores de clínica", value: clinicAdmins.length.toString(), path: "/users" },
+          { Icon: Stethoscope, label: t.dashboard.podiatrists, value: podiatrists.length.toString(), path: "/users" },
+          { Icon: Building2, label: t.dashboard.clinicAdmins, value: clinicAdmins.length.toString(), path: "/users" },
         ]}
         actionItems={[
-          { Icon: Users, name: t.nav.users, description: "Gestionar usuarios y clínicas", href: "/users" },
-          { Icon: Settings, name: t.settings.title, description: "Configuración del sistema", href: "/settings" },
-          { Icon: Shield, name: t.nav.securityMetrics, description: "Métricas y alertas de seguridad", href: "/security-metrics" },
-          { Icon: MapPin, name: "Anuncios patrocinados", description: "Campañas por estado/provincia", href: "/sponsored-announcements" },
+          { Icon: Users, name: t.nav.users, description: t.dashboard.actions.usersDesc, href: "/users" },
+          { Icon: Settings, name: t.settings.title, description: t.dashboard.actions.settingsDesc, href: "/settings" },
+          { Icon: Shield, name: t.nav.securityMetrics, description: t.dashboard.actions.securityDesc, href: "/security-metrics" },
+          { Icon: MapPin, name: t.dashboard.sponsoredAnnouncements, description: t.dashboard.actions.sponsoredDesc, href: "/sponsored-announcements" },
         ]}
       >
         {/* Users Overview - full width */}
         <div className="bg-brand-surface rounded-xl border border-brand-border overflow-hidden">
           <div className="flex items-center justify-between p-4 border-b border-gray-50 dark:border-gray-800">
-            <h3 className="text-lg font-semibold text-brand-ink">Usuarios del Sistema</h3>
+            <h3 className="text-lg font-semibold text-brand-ink">{t.dashboard.systemUsers}</h3>
             <Link href="/users" className="text-sm text-brand-muted hover:text-brand-ink dark:hover:text-white transition-colors">
-              Ver todos →
+              {t.common.seeAll}
             </Link>
           </div>
           <div className="divide-y divide-gray-50 dark:divide-gray-800">
@@ -103,82 +124,128 @@ const SuperAdminDashboard = () => {
   );
 };
 
-type DashboardOverview = {
-  patientCount: number;
-  sessionsThisMonth: number;
-  recentSessions: {
-    id: string;
-    patientId: string;
-    patientName: string;
-    sessionDate: string;
-    status: string;
-    createdAt: string;
-  }[];
-};
+function formatRelativeActivity(
+  dateStr: string,
+  labels: {
+    relativeMinutesAgo: string;
+    relativeHoursAgo: string;
+    relativeYesterday: string;
+    relativeDaysAgo: string;
+  }
+) {
+  const date = new Date(dateStr);
+  const now = new Date();
+  const diffMs = now.getTime() - date.getTime();
+  const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
 
-// Podiatrist Dashboard - resumen ligero (sin cargar todos los pacientes)
+  if (diffHours < 1) return labels.relativeMinutesAgo;
+  if (diffHours < 24) return labels.relativeHoursAgo.replace("{n}", String(diffHours));
+  if (diffDays === 1) return labels.relativeYesterday;
+  return labels.relativeDaysAgo.replace("{n}", String(diffDays));
+}
+
+// Podiatrist Dashboard - métricas de agenda, cobros y demografía
 const PodiatristDashboard = () => {
   const { t } = useLanguage();
   const { user } = useAuth();
-  const [overview, setOverview] = useState<DashboardOverview | null>(null);
-
-  useEffect(() => {
-    if (!user?.id) return;
-    api
-      .get<{ success?: boolean } & DashboardOverview>("/clinical-dashboard/overview")
-      .then((r) => {
-        if (r.success && r.data) {
-          setOverview({
-            patientCount: r.data.patientCount ?? 0,
-            sessionsThisMonth: r.data.sessionsThisMonth ?? 0,
-            recentSessions: r.data.recentSessions ?? [],
-          });
-        }
-      });
-  }, [user?.id]);
+  const { hasPermission } = usePermissions();
+  const canCheckout = hasPermission("view_checkout_handoffs");
+  const { overview, metrics, demographics, analytics } = useClinicalDashboardSnapshot({
+    enabled: Boolean(user?.id),
+    includeCheckout: canCheckout,
+  });
 
   const recentSessions = overview?.recentSessions ?? [];
+  const currency = analytics?.currency ?? "MXN";
 
-  const formatDate = (dateStr: string) => {
-    const date = new Date(dateStr);
-    const now = new Date();
-    const diffMs = now.getTime() - date.getTime();
-    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
-    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-    
-    if (diffHours < 1) return "Hace unos minutos";
-    if (diffHours < 24) return `Hace ${diffHours} horas`;
-    if (diffDays === 1) return "Ayer";
-    return `Hace ${diffDays} días`;
-  };
+  const statItems = useMemo((): StatItem[] => {
+    const items: StatItem[] = [
+      {
+        Icon: UserCircle,
+        label: t.dashboard.totalPatients,
+        value: String(overview?.patientCount ?? 0),
+        path: "/patients",
+      },
+      {
+        Icon: CalendarCheck,
+        label: t.dashboard.sessionsThisMonth,
+        value: String(overview?.sessionsThisMonth ?? 0),
+        path: "/sessions",
+      },
+      {
+        Icon: CalendarClock,
+        label: t.dashboard.attendedAppointments,
+        value: String(metrics?.totals.attended ?? 0),
+        path: "/calendar",
+        hint: t.dashboard.last30Days,
+      },
+      {
+        Icon: Percent,
+        label: t.dashboard.agendaOccupancy,
+        value: `${Math.round(metrics?.occupancy.percent ?? 0)}%`,
+        path: "/calendar",
+        hint: t.dashboard.last30Days,
+      },
+    ];
 
-  const getPatientName = (patientId: string, fallback?: string) => {
-    const fromRecent = recentSessions.find((s) => s.patientId === patientId)?.patientName;
-    return fromRecent ?? fallback ?? "Paciente";
-  };
+    if (canCheckout) {
+      items.push(
+        {
+          Icon: Wallet,
+          label: t.dashboard.salesThisMonth,
+          value: formatCheckoutAmount(analytics?.sales.currentTotalCents ?? 0, currency),
+          path: "/checkout",
+        },
+        {
+          Icon: Banknote,
+          label: t.dashboard.pendingCollections,
+          value: formatCheckoutAmount(analytics?.collections.pendingTotalCents ?? 0, currency),
+          path: "/checkout",
+          hint:
+            analytics?.collections.pendingCount != null
+              ? String(analytics.collections.pendingCount)
+              : undefined,
+        }
+      );
+    } else {
+      items.push(
+        {
+          Icon: UserRoundPlus,
+          label: t.dashboard.newPatients,
+          value: String(demographics?.new ?? 0),
+          path: "/patients",
+        },
+        {
+          Icon: UserX,
+          label: t.dashboard.inactivePatients,
+          value: String(demographics?.inactive3m ?? 0),
+          path: "/patients",
+        }
+      );
+    }
+
+    return items;
+  }, [analytics, canCheckout, currency, demographics, metrics, overview, t]);
 
   return (
     <MainLayout title={t.dashboard.title}>
       <ClinicalRoleDashboardBento
         welcomeTitle={<>{t.auth.welcomeBack}, <span className="font-semibold">{user?.name}</span></>}
         welcomeDescription={t.roles.podiatristDesc}
-        statItems={[
-          { Icon: UserCircle, label: t.dashboard.totalPatients, value: String(overview?.patientCount ?? 0), path: "/patients" },
-          { Icon: CalendarCheck, label: t.dashboard.sessionsThisMonth, value: String(overview?.sessionsThisMonth ?? 0), path: "/sessions" },
-        ]}
+        statItems={statItems}
         actionItems={[
-          { Icon: UserPlus, name: t.patients.addPatient, description: "Registrar nuevo paciente", href: "/patients" },
-          { Icon: FileText, name: t.sessions.newSession, description: "Iniciar consulta clínica", href: "/sessions" },
-          { Icon: Settings, name: t.settings.title, description: "Personalizar sistema", href: "/settings" },
+          { Icon: UserPlus, name: t.patients.addPatient, description: t.dashboard.actions.addPatientDesc, href: "/patients" },
+          { Icon: FileText, name: t.sessions.newSession, description: t.dashboard.actions.newSessionDesc, href: "/sessions" },
+          { Icon: Calendar, name: t.calendar.title, description: t.dashboard.actions.calendarDesc, href: "/calendar" },
         ]}
         gridClassName="md:grid-cols-2 lg:grid-cols-3"
       >
-        {/* Recent Activity */}
         <div>
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-lg font-semibold text-brand-ink">{t.dashboard.recentActivity}</h3>
             <Link href="/sessions" className="text-sm text-brand-muted hover:text-brand-ink dark:hover:text-white transition-colors">
-              Ver todo →
+              {t.common.seeAllShort}
             </Link>
           </div>
           <div className="bg-brand-surface rounded-xl border border-brand-border divide-y divide-gray-50 dark:divide-gray-800">
@@ -209,9 +276,12 @@ const PodiatristDashboard = () => {
                     </div>
                     <div className="flex-1">
                       <p className="text-sm font-medium text-brand-ink">
-                        {session.patientName ?? getPatientName(session.patientId)} - {session.status === "completed" ? "Sesión completada" : "Borrador"}
+                        {session.patientName ?? t.dashboard.patientFallback} -{" "}
+                        {session.status === "completed"
+                          ? t.dashboard.sessionCompletedActivity
+                          : t.dashboard.draftActivity}
                       </p>
-                      <p className="text-xs text-brand-muted">{formatDate(session.createdAt)}</p>
+                      <p className="text-xs text-brand-muted">{formatRelativeActivity(session.createdAt, t.dashboard)}</p>
                     </div>
                     <span className={
                       session.status === "completed"
@@ -242,8 +312,8 @@ const AdminDashboard = () => {
         welcomeTitle={<>{t.auth.welcomeBack}, <span className="font-semibold">{user?.name}</span></>}
         welcomeDescription={t.roles.adminDesc}
         actionItems={[
-          { Icon: Users, name: t.nav.users, description: "Ver usuarios del sistema", href: "/users" },
-          { Icon: Settings, name: t.settings.title, description: "Configuración de cuenta", href: "/settings" },
+          { Icon: Users, name: t.nav.users, description: t.dashboard.actions.usersDesc, href: "/users" },
+          { Icon: Settings, name: t.settings.title, description: t.dashboard.actions.settingsDesc, href: "/settings" },
         ]}
       />
     </MainLayout>
@@ -254,17 +324,93 @@ const AdminDashboard = () => {
 const ClinicAdminDashboard = () => {
   const { t } = useLanguage();
   const { user } = useAuth();
+  const { hasPermission } = usePermissions();
+  const canCheckout = hasPermission("view_checkout_handoffs");
+  const { overview, metrics, demographics, analytics, clinicTotals } = useClinicalDashboardSnapshot({
+    enabled: Boolean(user?.id),
+    includeCheckout: canCheckout,
+    includeClinicStats: true,
+  });
+
+  const currency = analytics?.currency ?? "MXN";
+  const patientCount = clinicTotals?.patients ?? overview?.patientCount ?? 0;
+  const sessionsThisMonth = clinicTotals?.sessionsThisMonth ?? overview?.sessionsThisMonth ?? 0;
+
+  const statItems = useMemo((): StatItem[] => {
+    const items: StatItem[] = [
+      {
+        Icon: UserCircle,
+        label: t.dashboard.totalPatients,
+        value: String(patientCount),
+        path: "/patients",
+      },
+      {
+        Icon: CalendarCheck,
+        label: t.dashboard.sessionsThisMonth,
+        value: String(sessionsThisMonth),
+        path: "/sessions",
+      },
+      {
+        Icon: Stethoscope,
+        label: t.dashboard.podiatristsCount,
+        value: String(clinicTotals?.podiatrists ?? 0),
+        path: "/clinic",
+      },
+      {
+        Icon: CalendarClock,
+        label: t.dashboard.attendedAppointments,
+        value: String(metrics?.totals.attended ?? 0),
+        path: "/calendar",
+        hint: t.dashboard.last30Days,
+      },
+      {
+        Icon: Percent,
+        label: t.dashboard.agendaOccupancy,
+        value: `${Math.round(metrics?.occupancy.percent ?? 0)}%`,
+        path: "/calendar",
+        hint: t.dashboard.last30Days,
+      },
+    ];
+
+    if (canCheckout) {
+      items.push({
+        Icon: Wallet,
+        label: t.dashboard.salesThisMonth,
+        value: formatCheckoutAmount(analytics?.sales.currentTotalCents ?? 0, currency),
+        path: "/checkout",
+      });
+    } else {
+      items.push({
+        Icon: UserRoundPlus,
+        label: t.dashboard.newPatients,
+        value: String(demographics?.new ?? 0),
+        path: "/patients",
+      });
+    }
+
+    return items;
+  }, [
+    analytics,
+    canCheckout,
+    clinicTotals,
+    currency,
+    demographics,
+    metrics,
+    patientCount,
+    sessionsThisMonth,
+    t,
+  ]);
 
   return (
     <MainLayout title={t.dashboard.title}>
       <ClinicalRoleDashboardBento
         welcomeTitle={<>{t.auth.welcomeBack}, <span className="font-semibold">{user?.name}</span></>}
         welcomeDescription={t.roles.clinicAdminDesc}
+        statItems={statItems}
         actionItems={[
-          { Icon: Building, name: t.nav.clinicManagement, description: "Gestión de la clínica", href: "/clinic" },
-          { Icon: UserCircle, name: t.nav.patients, description: "Ver todos los pacientes", href: "/patients" },
-          { Icon: FileText, name: t.nav.clinicalSessions, description: "Ver todas las sesiones", href: "/sessions" },
-          { Icon: Settings, name: t.settings.title, description: "Configuración", href: "/settings" },
+          { Icon: Building, name: t.nav.clinicManagement, description: t.dashboard.actions.clinicDesc, href: "/clinic" },
+          { Icon: UserCircle, name: t.nav.patients, description: t.dashboard.actions.patientsDesc, href: "/patients" },
+          { Icon: Calendar, name: t.calendar.title, description: t.dashboard.actions.calendarDesc, href: "/calendar" },
         ]}
         gridClassName="md:grid-cols-2 lg:grid-cols-3"
       />
@@ -272,19 +418,21 @@ const ClinicAdminDashboard = () => {
   );
 };
 
-// Receptionist Dashboard - datos desde API (pacientes, clínica, podólogos asignados)
+// Receptionist Dashboard - pacientes, agenda y cobros pendientes
 const ReceptionistDashboard = () => {
   const { t } = useLanguage();
   const { user } = useAuth();
-  const [patientCount, setPatientCount] = useState(0);
+  const { hasPermission } = usePermissions();
+  const canCheckout = hasPermission("view_checkout_handoffs");
   const [clinic, setClinic] = useState<{ clinicName: string } | null>(null);
   const [assignedPodiatrists, setAssignedPodiatrists] = useState<{ id: string; name: string }[]>([]);
+  const { overview, metrics, demographics, analytics } = useClinicalDashboardSnapshot({
+    enabled: Boolean(user?.id),
+    includeCheckout: canCheckout,
+  });
 
   useEffect(() => {
     if (!user?.id) return;
-    api.get<{ success?: boolean; patientCount?: number }>("/clinical-dashboard/overview").then((r) => {
-      if (r.success) setPatientCount(r.data?.patientCount ?? 0);
-    });
     api
       .get<{ success?: boolean; assignedPodiatristIds?: string[]; podiatrists?: { id: string; name: string }[] }>(
         `/receptionists/assigned-podiatrists/${user.id}`
@@ -301,35 +449,112 @@ const ReceptionistDashboard = () => {
     }
   }, [user?.id, user?.clinicId]);
 
+  const currency = analytics?.currency ?? "MXN";
+
   const welcomeDescription = (
     <>
       <span className="text-gray-400">{t.roles.receptionistDesc}</span>
       {clinic && (
         <p className="text-gray-300 text-sm mt-1">
-          Clínica asignada: <span className="font-semibold">{clinic.clinicName}</span>
+          {t.dashboard.assignedClinic}: <span className="font-semibold">{clinic.clinicName}</span>
         </p>
       )}
       {assignedPodiatrists.length > 0 && (
         <p className="text-gray-300 text-sm mt-1">
-          Podólogos asignados:{" "}
+          {t.dashboard.assignedPodiatrists}:{" "}
           <span className="font-semibold">{assignedPodiatrists.map((p) => p.name).join(", ")}</span>
         </p>
       )}
     </>
   );
 
+  const statItems = useMemo((): StatItem[] => {
+    const items: StatItem[] = [
+      {
+        Icon: UserCircle,
+        label: t.dashboard.totalPatients,
+        value: String(overview?.patientCount ?? 0),
+        path: "/patients",
+      },
+      {
+        Icon: CalendarClock,
+        label: t.dashboard.attendedAppointments,
+        value: String(metrics?.totals.attended ?? 0),
+        path: "/calendar",
+        hint: t.dashboard.last30Days,
+      },
+      {
+        Icon: Percent,
+        label: t.dashboard.agendaOccupancy,
+        value: `${Math.round(metrics?.occupancy.percent ?? 0)}%`,
+        path: "/calendar",
+        hint: t.dashboard.last30Days,
+      },
+    ];
+
+    if (canCheckout) {
+      items.push(
+        {
+          Icon: Banknote,
+          label: t.dashboard.pendingCollections,
+          value: formatCheckoutAmount(analytics?.collections.pendingTotalCents ?? 0, currency),
+          path: "/checkout",
+          hint:
+            analytics?.collections.pendingCount != null
+              ? String(analytics.collections.pendingCount)
+              : undefined,
+        },
+        {
+          Icon: Wallet,
+          label: t.dashboard.salesThisMonth,
+          value: formatCheckoutAmount(analytics?.sales.currentTotalCents ?? 0, currency),
+          path: "/checkout",
+        },
+        {
+          Icon: UserRoundPlus,
+          label: t.dashboard.newPatients,
+          value: String(demographics?.new ?? 0),
+          path: "/patients",
+        }
+      );
+    } else {
+      items.push(
+        {
+          Icon: UserRoundPlus,
+          label: t.dashboard.newPatients,
+          value: String(demographics?.new ?? 0),
+          path: "/patients",
+        },
+        {
+          Icon: UserX,
+          label: t.dashboard.inactivePatients,
+          value: String(demographics?.inactive3m ?? 0),
+          path: "/patients",
+        },
+        {
+          Icon: Stethoscope,
+          label: t.dashboard.podiatristsCount,
+          value: String(assignedPodiatrists.length),
+          path: "/settings",
+        }
+      );
+    }
+
+    return items;
+  }, [analytics, assignedPodiatrists.length, canCheckout, currency, demographics, metrics, overview, t]);
+
   return (
     <MainLayout title={t.dashboard.title}>
       <ClinicalRoleDashboardBento
         welcomeTitle={<>{t.auth.welcomeBack}, <span className="font-semibold">{user?.name}</span></>}
         welcomeDescription={welcomeDescription}
-        statItems={[
-          { Icon: UserCircle, label: "Pacientes de podólogos asignados", value: patientCount.toString(), path: "/patients" },
-        ]}
+        statItems={statItems}
         actionItems={[
-          { Icon: UserPlus, name: t.patients.addPatient, description: "Crear y gestionar pacientes", href: "/patients" },
-          { Icon: Calendar, name: "Calendario", description: "Crear y editar citas", href: "/calendar" },
-          { Icon: Settings, name: t.settings.title, description: "Podólogos asignados y preferencias", href: "/settings" },
+          { Icon: UserPlus, name: t.patients.addPatient, description: t.dashboard.actions.patientsDesc, href: "/patients" },
+          { Icon: Calendar, name: t.calendar.title, description: t.dashboard.actions.calendarDesc, href: "/calendar" },
+          ...(canCheckout
+            ? [{ Icon: Wallet, name: t.nav.checkout, description: t.dashboard.actions.checkoutDesc, href: "/checkout" }]
+            : [{ Icon: Settings, name: t.settings.title, description: t.dashboard.actions.settingsDesc, href: "/settings" }]),
         ]}
         gridClassName="md:grid-cols-2 lg:grid-cols-3"
       />

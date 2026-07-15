@@ -5,6 +5,7 @@ import { useAuth } from "../contexts/auth-context";
 import { api } from "../lib/api-client";
 import { Shield, AlertTriangle, LogIn, Lock, RefreshCw } from "lucide-react";
 import { semanticAlertErrorClass } from "../lib/form-field-classes";
+import type { Language } from "../i18n/translations";
 
 type SecurityStats = Record<string, number>;
 
@@ -23,20 +24,15 @@ interface AlertNotification {
   createdAt: string;
 }
 
-const METRIC_LABELS: Record<string, string> = {
-  failed_login: "Logins fallidos",
-  successful_login: "Logins exitosos",
-  "2fa_failed": "2FA fallido",
-  captcha_failed: "CAPTCHA fallido",
-  suspicious_activity: "Actividad sospechosa",
+const DATE_LOCALE: Record<Language, string> = {
+  es: "es-ES",
+  en: "en-US",
+  pt: "pt-BR",
+  fr: "fr-FR",
 };
 
-function formatDate(iso: string): string {
-  return new Date(iso).toLocaleString();
-}
-
 const SecurityMetricsPage = () => {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const { user } = useAuth();
   const [stats, setStats] = useState<SecurityStats>({});
   const [recentFailedLogins, setRecentFailedLogins] = useState<SecurityMetricRow[]>([]);
@@ -54,6 +50,17 @@ const SecurityMetricsPage = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [days, setDays] = useState(7);
+
+  const metricLabel = (type: string): string => {
+    const labels = t.securityMetrics.metricLabels;
+    if (type === "2fa_failed") return labels.twoFaFailed;
+    const map = labels as Record<string, string>;
+    return map[type] || type;
+  };
+
+  const formatDate = (iso: string): string => {
+    return new Date(iso).toLocaleString(DATE_LOCALE[language] || "es-ES");
+  };
 
   const loadData = async () => {
     if (!user || user.role !== "super_admin") return;
@@ -77,7 +84,7 @@ const SecurityMetricsPage = () => {
     if (statsRes.success && statsRes.data?.success) {
       setStats(statsRes.data.stats || {});
     } else {
-      setError(statsRes.error || "No se pudieron cargar las métricas");
+      setError(statsRes.error || t.securityMetrics.loadError);
     }
 
     if (failedRes.success && failedRes.data?.success) {
@@ -94,7 +101,8 @@ const SecurityMetricsPage = () => {
           (n) =>
             n.title.includes("⚠️") ||
             n.title.toLowerCase().includes("alerta") ||
-            n.title.toLowerCase().includes("incumplimiento")
+            n.title.toLowerCase().includes("incumplimiento") ||
+            n.title.toLowerCase().includes("alert")
         )
       );
     }
@@ -129,7 +137,7 @@ const SecurityMetricsPage = () => {
               {t.nav.securityMetrics}
             </h2>
             <p className="text-sm text-brand-muted mt-1">
-              Métricas de seguridad, alertas activas y eventos recientes
+              {t.securityMetrics.subtitle}
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -138,9 +146,9 @@ const SecurityMetricsPage = () => {
               onChange={(e) => setDays(Number(e.target.value))}
               className="px-3 py-2 text-sm border border-brand-border rounded-lg bg-brand-surface"
             >
-              <option value={1}>Últimas 24 h</option>
-              <option value={7}>Últimos 7 días</option>
-              <option value={30}>Últimos 30 días</option>
+              <option value={1}>{t.securityMetrics.last24h}</option>
+              <option value={7}>{t.securityMetrics.last7days}</option>
+              <option value={30}>{t.securityMetrics.last30days}</option>
             </select>
             <button
               type="button"
@@ -149,7 +157,7 @@ const SecurityMetricsPage = () => {
               className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium bg-brand-ink text-brand-ink-fg rounded-lg hover:bg-[#333] disabled:opacity-50"
             >
               <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
-              Actualizar
+              {t.securityMetrics.refresh}
             </button>
           </div>
         </div>
@@ -161,22 +169,22 @@ const SecurityMetricsPage = () => {
         )}
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <StatCard icon={<AlertTriangle className="w-5 h-5 text-amber-600" />} iconBg="bg-amber-100 dark:bg-amber-900/30" label="Eventos críticos" value={criticalCount} />
-          <StatCard icon={<LogIn className="w-5 h-5 text-red-600" />} iconBg="bg-red-100 dark:bg-red-900/30" label="Logins fallidos" value={stats.failed_login || 0} />
-          <StatCard icon={<Lock className="w-5 h-5 text-blue-600" />} iconBg="bg-blue-100 dark:bg-blue-900/30" label="Alertas sin leer" value={unreadAlerts} />
+          <StatCard icon={<AlertTriangle className="w-5 h-5 text-amber-600" />} iconBg="bg-amber-100 dark:bg-amber-900/30" label={t.securityMetrics.criticalEvents} value={criticalCount} />
+          <StatCard icon={<LogIn className="w-5 h-5 text-red-600" />} iconBg="bg-red-100 dark:bg-red-900/30" label={t.securityMetrics.failedLogins} value={stats.failed_login || 0} />
+          <StatCard icon={<Lock className="w-5 h-5 text-blue-600" />} iconBg="bg-blue-100 dark:bg-blue-900/30" label={t.securityMetrics.unreadAlerts} value={unreadAlerts} />
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <Panel title="Resumen por tipo">
+          <Panel title={t.securityMetrics.summaryByType}>
             {loading ? (
-              <p className="text-sm text-gray-500">Cargando...</p>
+              <p className="text-sm text-gray-500">{t.securityMetrics.loading}</p>
             ) : topStats.length === 0 ? (
-              <p className="text-sm text-gray-500">Sin eventos en el periodo seleccionado.</p>
+              <p className="text-sm text-gray-500">{t.securityMetrics.noEventsInPeriod}</p>
             ) : (
               <ul className="space-y-2">
                 {topStats.map(([type, count]) => (
                   <li key={type} className="flex justify-between text-sm">
-                    <span className="text-brand-muted">{METRIC_LABELS[type] || type}</span>
+                    <span className="text-brand-muted">{metricLabel(type)}</span>
                     <span className="font-medium text-brand-ink">{count}</span>
                   </li>
                 ))}
@@ -184,10 +192,10 @@ const SecurityMetricsPage = () => {
             )}
           </Panel>
 
-          <Panel title="Alertas activas">
+          <Panel title={t.securityMetrics.activeAlerts}>
             <div className="divide-y divide-gray-50 dark:divide-gray-800 max-h-80 overflow-y-auto -mx-4">
               {alerts.length === 0 ? (
-                <p className="px-4 text-sm text-gray-500">No hay alertas de sistema recientes.</p>
+                <p className="px-4 text-sm text-gray-500">{t.securityMetrics.noSystemAlerts}</p>
               ) : (
                 alerts.map((alert) => (
                   <div key={alert.id} className={`px-4 py-3 ${!alert.read ? "bg-amber-50/50 dark:bg-amber-900/10" : ""}`}>
@@ -201,28 +209,34 @@ const SecurityMetricsPage = () => {
           </Panel>
         </div>
 
-        <Panel title="Accesos recientes (geolocalización)">
+        <Panel title={t.securityMetrics.recentAccessGeo}>
           <div className="overflow-x-auto -mx-4">
             <table className="w-full text-sm">
               <thead className="bg-brand-canvas/50">
                 <tr>
-                  <th className="text-left p-3 font-medium text-gray-500">Fecha</th>
-                  <th className="text-left p-3 font-medium text-gray-500">Evento</th>
-                  <th className="text-left p-3 font-medium text-gray-500">Usuario / rol</th>
-                  <th className="text-left p-3 font-medium text-gray-500">IP</th>
-                  <th className="text-left p-3 font-medium text-gray-500">Ubicación</th>
+                  <th className="text-left p-3 font-medium text-gray-500">{t.securityMetrics.date}</th>
+                  <th className="text-left p-3 font-medium text-gray-500">{t.securityMetrics.event}</th>
+                  <th className="text-left p-3 font-medium text-gray-500">{t.securityMetrics.userRole}</th>
+                  <th className="text-left p-3 font-medium text-gray-500">{t.securityMetrics.ip}</th>
+                  <th className="text-left p-3 font-medium text-gray-500">{t.securityMetrics.location}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50 dark:divide-gray-800">
                 {accessEvents.length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="p-4 text-gray-500">Sin accesos registrados aún. Inicia sesión para generar datos.</td>
+                    <td colSpan={5} className="p-4 text-gray-500">{t.securityMetrics.noAccessYet}</td>
                   </tr>
                 ) : (
                   accessEvents.map((row) => (
                     <tr key={row.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/30">
                       <td className="p-3 whitespace-nowrap">{formatDate(row.createdAt)}</td>
-                      <td className="p-3 text-xs">{row.eventType === "login_success" ? "Login OK" : row.eventType === "login_failed" ? "Login fallido" : row.eventType}</td>
+                      <td className="p-3 text-xs">
+                        {row.eventType === "login_success"
+                          ? t.securityMetrics.loginOk
+                          : row.eventType === "login_failed"
+                          ? t.securityMetrics.loginFailed
+                          : row.eventType}
+                      </td>
                       <td className="p-3 text-xs">{row.userId ? `${row.userId.slice(0, 12)}…` : "—"} {row.role ? `(${row.role})` : ""}</td>
                       <td className="p-3 font-mono text-xs">{row.ipAddress || "—"}</td>
                       <td className="p-3 text-xs">
@@ -237,20 +251,20 @@ const SecurityMetricsPage = () => {
           </div>
         </Panel>
 
-        <Panel title="Últimos logins fallidos">
+        <Panel title={t.securityMetrics.recentFailedLogins}>
           <div className="overflow-x-auto -mx-4">
             <table className="w-full text-sm">
               <thead className="bg-brand-canvas/50">
                 <tr>
-                  <th className="text-left p-3 font-medium text-gray-500">Fecha</th>
-                  <th className="text-left p-3 font-medium text-gray-500">IP</th>
-                  <th className="text-left p-3 font-medium text-gray-500">Email / detalle</th>
+                  <th className="text-left p-3 font-medium text-gray-500">{t.securityMetrics.date}</th>
+                  <th className="text-left p-3 font-medium text-gray-500">{t.securityMetrics.ip}</th>
+                  <th className="text-left p-3 font-medium text-gray-500">{t.securityMetrics.emailDetail}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50 dark:divide-gray-800">
                 {recentFailedLogins.length === 0 ? (
                   <tr>
-                    <td colSpan={3} className="p-4 text-gray-500">Sin registros recientes.</td>
+                    <td colSpan={3} className="p-4 text-gray-500">{t.securityMetrics.noRecentRecords}</td>
                   </tr>
                 ) : (
                   recentFailedLogins.map((row) => (
@@ -259,7 +273,9 @@ const SecurityMetricsPage = () => {
                       <td className="p-3 font-mono text-xs">{row.ipAddress || "—"}</td>
                       <td className="p-3">
                         {(row.details?.email as string) ||
-                          (row.details?.attemptCount != null ? `Intento #${String(row.details.attemptCount)}` : "—")}
+                          (row.details?.attemptCount != null
+                            ? t.securityMetrics.attemptNumber.replace("{n}", String(row.details.attemptCount))
+                            : "—")}
                       </td>
                     </tr>
                   ))

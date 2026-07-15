@@ -58,8 +58,8 @@ interface ClinicInfoForm {
 }
 
 // Nombre de clínica desde datos cargados o fallback
-const getClinicNameFrom = (clinic: Clinic | null, clinicId: string): string =>
-  clinic?.clinicName ?? (clinicId ? `Clínica ${clinicId}` : "");
+const getClinicNameFrom = (clinic: Clinic | null, clinicId: string, fallbackTpl: string): string =>
+  clinic?.clinicName ?? (clinicId ? fallbackTpl.replace("{id}", clinicId) : "");
 
 // Get logo for a user (considering clinic membership) - exported for PDF/async use (API)
 export async function getLogoForUser(userId: string, clinicId?: string): Promise<string | null> {
@@ -374,7 +374,7 @@ const SettingsPage = () => {
     void loadMyReceptionists();
   }, [loadMyReceptionists]);
 
-  const clinicName = userClinic?.clinicName ?? getClinicNameFrom(userClinic, user?.clinicId ?? "");
+  const clinicName = userClinic?.clinicName ?? getClinicNameFrom(userClinic, user?.clinicId ?? "", t.settings.clinic.fallbackName);
   const isInfoBlocked = !!infoBlockedUntil && new Date(infoBlockedUntil) > new Date();
   const isLogoBlocked = !!logoBlockedUntil && new Date(logoBlockedUntil) > new Date();
   const isProfessionalInfoBlocked =
@@ -384,21 +384,21 @@ const SettingsPage = () => {
     return d.toLocaleDateString(undefined, { day: "numeric", month: "long", year: "numeric" });
   };
   const logoCooldownPolicy =
-    "Tras guardar, el logo queda fijo durante 15 días. Pasado ese período podrás subirlo o cambiarlo de nuevo.";
+    t.settings.cooldown.logoPolicy;
   const logoCooldownBlocked = (date: string) =>
-    `El logo solo puede modificarse cada 15 días. Próximo cambio permitido: ${date}.`;
+    `${t.settings.logo.errors.cooldown} ${date}`;
   const clinicInfoCooldownPolicy =
-    "Tras guardar, los datos de la clínica quedan fijos durante 15 días. Pasado ese período podrás modificarlos de nuevo.";
+    t.settings.cooldown.clinicInfoPolicy;
   const clinicInfoCooldownBlocked = (date: string) =>
-    `Los datos de la clínica solo pueden modificarse cada 15 días. Próximo cambio permitido: ${date}.`;
+    `${t.settings.cooldown.clinicInfoBlocked} ${date}`;
   const professionalInfoCooldownPolicy =
-    "Tras guardar, estos datos quedan fijos durante 15 días. Pasado ese período podrás modificarlos de nuevo.";
+    t.settings.cooldown.professionalInfoPolicy;
   const professionalInfoCooldownBlocked = (date: string) =>
-    `Estos datos solo pueden modificarse cada 15 días. Próximo cambio permitido: ${date}.`;
+    `${t.settings.cooldown.professionalInfoBlocked} ${date}`;
   const profileCooldownPolicy =
-    "Nombre y correo electrónico solo pueden modificarse por un administrador. Tras cada cambio deben transcurrir 15 días antes de una nueva modificación.";
+    t.settings.cooldown.profilePolicy;
   const clinicReadOnlyPolicy =
-    "La información de la clínica la gestiona tu administrador. Tras cada cambio deben transcurrir 15 días antes de una nueva modificación.";
+    t.settings.cooldown.clinicReadOnlyPolicy;
   const proInfoInputClass = isProfessionalInfoBlocked
     ? "w-full px-4 py-2.5 bg-brand-canvas text-brand-muted border border-brand-border rounded-lg cursor-not-allowed"
     : "w-full px-4 py-2.5 bg-brand-surface text-brand-ink border border-brand-border rounded-lg focus:ring-2 focus:ring-brand-ink focus:border-transparent transition-all";
@@ -413,7 +413,7 @@ const SettingsPage = () => {
     const clinicName = (clinicInfoForm.clinicName || "").trim();
     const clinicCode = (clinicInfoForm.clinicCode || "").trim();
     if (!clinicName || !clinicCode) {
-      setClinicInfoError("Nombre y código de la clínica son obligatorios.");
+      setClinicInfoError(t.settings.clinic.errors.nameCodeRequired);
       return;
     }
     try {
@@ -442,7 +442,7 @@ const SettingsPage = () => {
         setTimeout(() => setClinicInfoSaved(false), 2000);
       } else if (res.error === "cooldown" && res.data?.infoBlockedUntil) {
         setInfoBlockedUntil(res.data.infoBlockedUntil);
-        setClinicInfoError(res.message ?? "Los datos solo pueden modificarse cada 15 días.");
+        setClinicInfoError(res.message ?? t.settings.cooldown.clinicInfoBlocked);
       }
     } catch (err) {
       // Error ya se muestra en consola desde api-client; no marcamos como guardado
@@ -465,12 +465,12 @@ const SettingsPage = () => {
         setTimeout(() => setClinicConsentSaved(false), 2000);
       } else if (res.error === "cooldown" && (res.data as { infoBlockedUntil?: string })?.infoBlockedUntil) {
         setInfoBlockedUntil((res.data as { infoBlockedUntil: string }).infoBlockedUntil);
-        setClinicConsentError(res.message ?? "Los datos solo pueden modificarse cada 15 días.");
+        setClinicConsentError(res.message ?? t.settings.cooldown.genericBlocked);
       } else {
-        setClinicConsentError(res.message ?? res.error ?? "Error al guardar el consentimiento.");
+        setClinicConsentError(res.message ?? res.error ?? t.settings.consent.saveError);
       }
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Error de conexión al guardar.";
+      const message = err instanceof Error ? err.message : t.settings.errors.connectionSave;
       setClinicConsentError(message);
     }
   };
@@ -551,7 +551,7 @@ const SettingsPage = () => {
       setReceptionistSuccess(true);
       setTimeout(() => setReceptionistSuccess(false), 3000);
     } else {
-      setReceptionistError(res.error ?? (res.data as { error?: string; message?: string })?.error ?? (res.data as { message?: string })?.message ?? "Error al crear recepcionista");
+      setReceptionistError(res.error ?? (res.data as { error?: string; message?: string })?.error ?? (res.data as { message?: string })?.message ?? t.settings.receptionist.createError);
     }
   };
 
@@ -600,10 +600,7 @@ const SettingsPage = () => {
   };
 
   const handleDeleteMyReceptionist = async (rec: { id: string; name: string; email: string }) => {
-    const confirmed = window.confirm(
-      `¿Eliminar a la recepcionista ${rec.name} (${rec.email})? Esta acción no se puede deshacer.`
-    );
-    if (!confirmed) return;
+    if (!window.confirm(t.settings.receptionist.confirmDelete)) return;
     try {
       setReceptionistActionLoadingId(rec.id);
       await api.delete(`/users/${rec.id}`);
@@ -623,12 +620,12 @@ const SettingsPage = () => {
 
     const validTypes = ["image/png", "image/jpeg", "image/jpg", "image/webp"];
     if (!validTypes.includes(file.type)) {
-      setLogoError("Formato no válido. Use PNG, JPG o WebP (máx. 2MB).");
+      setLogoError(t.settings.logo.errors.invalidFormat);
       return;
     }
 
     if (file.size > 2 * 1024 * 1024) {
-      setLogoError("El archivo es demasiado grande. Máximo 2MB.");
+      setLogoError(t.settings.logo.errors.tooLarge);
       return;
     }
 
@@ -637,7 +634,7 @@ const SettingsPage = () => {
       const base64 = await compressImageForLogo(file);
       setLogoPreview(base64);
     } catch (err) {
-      setLogoError(err instanceof Error ? err.message : "No se pudo procesar la imagen.");
+      setLogoError(err instanceof Error ? err.message : t.settings.logo.errors.processFailed);
     }
   };
 
@@ -659,7 +656,7 @@ const SettingsPage = () => {
         window.dispatchEvent(new CustomEvent("clinic-logo:updated"));
       } else if (res.error === "cooldown" && res.data?.logoBlockedUntil) {
         setLogoBlockedUntil(res.data.logoBlockedUntil);
-        setLogoError(res.message ?? "El logo solo puede modificarse cada 15 días.");
+        setLogoError(res.message ?? t.settings.logo.errors.cooldown);
       }
     } catch {
       // No marcar como guardado si falla
@@ -677,7 +674,7 @@ const SettingsPage = () => {
       window.dispatchEvent(new CustomEvent("clinic-logo:updated"));
     } else if (res.error === "cooldown" && res.data?.logoBlockedUntil) {
       setLogoBlockedUntil(res.data.logoBlockedUntil);
-      setLogoError(res.message ?? "El logo solo puede modificarse cada 15 días.");
+      setLogoError(res.message ?? t.settings.logo.errors.cooldown);
     }
   };
 
@@ -691,13 +688,13 @@ const SettingsPage = () => {
 
     const validTypes = ["image/png", "image/jpeg", "image/jpg", "image/webp"];
     if (!validTypes.includes(file.type)) {
-      setLogoError("Formato no válido. Use PNG, JPG o WebP (máx. 2MB).");
+      setLogoError(t.settings.logo.errors.invalidFormat);
       input.value = "";
       return;
     }
 
     if (file.size > 2 * 1024 * 1024) {
-      setLogoError("El archivo es demasiado grande. Máximo 2MB.");
+      setLogoError(t.settings.logo.errors.tooLarge);
       input.value = "";
       return;
     }
@@ -707,7 +704,7 @@ const SettingsPage = () => {
       const base64 = await compressImageForLogo(file);
       setLogoPreview(base64);
     } catch (err) {
-      setLogoError(err instanceof Error ? err.message : "No se pudo procesar la imagen.");
+      setLogoError(err instanceof Error ? err.message : t.settings.logo.errors.processFailed);
     } finally {
       input.value = "";
     }
@@ -732,9 +729,9 @@ const SettingsPage = () => {
       window.dispatchEvent(new CustomEvent("clinic-logo:updated"));
     } else if (res.error === "cooldown" && res.data?.logoBlockedUntil) {
       setLogoBlockedUntil(res.data.logoBlockedUntil);
-      setLogoError(res.message ?? "El logo solo puede modificarse cada 15 días.");
+      setLogoError(res.message ?? t.settings.logo.errors.cooldown);
     } else {
-      setLogoError(res.message ?? "No se pudo guardar el logo. Inténtalo de nuevo.");
+      setLogoError(res.message ?? t.settings.logo.errors.saveFailed);
     }
   };
 
@@ -751,7 +748,7 @@ const SettingsPage = () => {
       window.dispatchEvent(new CustomEvent("clinic-logo:updated"));
     } else if (res.error === "cooldown" && res.data?.logoBlockedUntil) {
       setLogoBlockedUntil(res.data.logoBlockedUntil);
-      setLogoError(res.message ?? "El logo solo puede modificarse cada 15 días.");
+      setLogoError(res.message ?? t.settings.logo.errors.cooldown);
     }
   };
 
@@ -830,11 +827,11 @@ const SettingsPage = () => {
           active={activeTab}
           onChange={handleTabChange}
           tabs={[
-            { id: "general", label: "General" },
-            { id: "clinical", label: "Historia clínica", visible: showClinicalTab },
-            { id: "integrations", label: "Integraciones", visible: canConfigureWhatsApp },
-            { id: "clinic", label: "Clínica", visible: showClinicTab },
-            { id: "billing", label: t.nav.billing ?? "Facturación", visible: showBillingTab },
+            { id: "general", label: t.settings.tabs.profile },
+            { id: "clinical", label: t.settings.tabs.clinicalHistory, visible: showClinicalTab },
+            { id: "integrations", label: t.settings.tabs.integrations, visible: canConfigureWhatsApp },
+            { id: "clinic", label: t.settings.tabs.clinic, visible: showClinicTab },
+            { id: "billing", label: t.settings.tabs.billing, visible: showBillingTab },
           ]}
         />
 
@@ -891,7 +888,7 @@ const SettingsPage = () => {
 
         {/* Profile Settings */}
         <div className="bg-brand-surface rounded-xl border border-brand-border p-6">
-          <h3 className="text-lg font-semibold text-brand-ink mb-4">Perfil de usuario</h3>
+          <h3 className="text-lg font-semibold text-brand-ink mb-4">{t.settings.profile.title}</h3>
 
           <EditCooldownNotice policyText={profileCooldownPolicy} className="!mb-4" />
           
@@ -901,7 +898,7 @@ const SettingsPage = () => {
             <div className="pt-4 border-t border-brand-border">
               <div className="grid gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-500 mb-1">Nombre</label>
+                  <label className="block text-sm font-medium text-gray-500 mb-1">{t.settings.profile.name}</label>
                   <input
                     type="text"
                     value={user?.name || ""}
@@ -910,7 +907,7 @@ const SettingsPage = () => {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-500 mb-1">Email</label>
+                  <label className="block text-sm font-medium text-gray-500 mb-1">{t.settings.profile.email}</label>
                   <input
                     type="email"
                     value={user?.email || ""}
@@ -920,7 +917,7 @@ const SettingsPage = () => {
                 </div>
               </div>
               <p className="text-xs text-brand-muted mt-3">
-                Los datos del perfil no pueden editarse aquí. Contacte con el administrador si necesita realizar cambios.
+                {t.settings.profile.readOnlyHint}
               </p>
             </div>
           </div>
@@ -967,7 +964,7 @@ const SettingsPage = () => {
                     disabled={supportSending}
                     className="px-4 py-2.5 bg-brand-ink text-brand-ink-fg rounded-lg font-medium hover:bg-brand-ink-hover disabled:opacity-50"
                   >
-                    {supportSending ? "..." : t.support.send}
+                    {supportSending ? t.settings.common.ellipsis : t.support.send}
                   </button>
                 </form>
 
@@ -1011,7 +1008,7 @@ const SettingsPage = () => {
                       key={m.id}
                       className={`p-3 rounded-lg ${m.isFromSupport ? "bg-blue-50 ml-4" : "bg-gray-50 mr-4"}`}
                     >
-                      <p className="text-xs text-gray-500 mb-1">{m.isFromSupport ? "PodoAdmin" : user?.name} · {new Date(m.createdAt).toLocaleString()}</p>
+                      <p className="text-xs text-gray-500 mb-1">{m.isFromSupport ? t.settings.supportSenderLabel : user?.name} · {new Date(m.createdAt).toLocaleString()}</p>
                       <p className="text-sm text-brand-ink whitespace-pre-wrap">{m.body}</p>
                     </div>
                   ))}
@@ -1030,7 +1027,7 @@ const SettingsPage = () => {
                       disabled={supportSending || !supportReply.trim()}
                       className="px-4 py-2.5 bg-brand-ink text-brand-ink-fg rounded-lg font-medium hover:bg-brand-ink-hover disabled:opacity-50 self-end"
                     >
-                      {supportSending ? "..." : t.support.reply}
+                      {supportSending ? t.settings.common.ellipsis : t.support.reply}
                     </button>
                   </div>
                 )}
@@ -1049,11 +1046,11 @@ const SettingsPage = () => {
           const isFromClinic = !!user.clinicId;
           return (
             <div className="bg-brand-surface rounded-xl border border-brand-border p-6">
-              <h3 className="text-lg font-semibold text-brand-ink mb-2">Podólogos asignados</h3>
+              <h3 className="text-lg font-semibold text-brand-ink mb-2">{t.settings.assignedPodiatrists.title}</h3>
               <p className="text-sm text-gray-500 mb-4">
                 {isFromClinic
-                  ? "Podólogos de tu clínica a los que puedes dar servicio. Marca o desmarca para gestionar citas y pacientes de cada uno."
-                  : "Podólogo que te asignó. Puedes crear pacientes y gestionar su calendario."}
+                  ? t.settings.assignedPodiatrists.clinicHint
+                  : t.settings.assignedPodiatrists.independentHint}
               </p>
               {isFromClinic ? (
                 <div className="space-y-4">
@@ -1084,17 +1081,17 @@ const SettingsPage = () => {
                     })}
                   </div>
                   {clinicPodiatrists.length === 0 ? (
-                    <p className="text-sm text-gray-500">No hay podólogos en tu clínica.</p>
+                    <p className="text-sm text-gray-500">{t.settings.assignedPodiatrists.emptyClinic}</p>
                   ) : (
                     <div className="flex items-center gap-4 pt-2">
                       <button
                         onClick={handleSaveAssignedPodiatrists}
                         className="px-4 py-2.5 bg-brand-ink text-brand-ink-fg rounded-lg text-sm font-medium hover:bg-brand-ink-hover transition-colors"
                       >
-                        Guardar asignación
+                        {t.settings.assignedPodiatrists.save}
                       </button>
                       {assignedPodiatristsSaved && (
-                        <span className={`${formSuccessClass} font-medium`}>Guardado</span>
+                        <span className={`${formSuccessClass} font-medium`}>{t.settings.common.saved}</span>
                       )}
                     </div>
                   )}
@@ -1110,7 +1107,7 @@ const SettingsPage = () => {
                         </p>
                       ))
                   ) : (
-                    <p className="text-sm text-gray-500">Sin podólogo asignado.</p>
+                    <p className="text-sm text-gray-500">{t.settings.assignedPodiatrists.empty}</p>
                   )}
                 </div>
               )}
@@ -1126,9 +1123,9 @@ const SettingsPage = () => {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
               <div>
-                <p className="text-sm text-gray-600 font-medium">Logo de clínica</p>
+                <p className="text-sm text-gray-600 font-medium">{t.settings.adminLogo.title}</p>
                 <p className="text-sm text-gray-500 mt-1">
-                  Los logos de clínica son gestionados por los administradores de cada clínica. Como {user?.role === "super_admin" ? "Super Administrador" : "Administrador"}, no necesitas un logo personal.
+                  {t.settings.adminLogo.body.replace("{role}", user?.role === "super_admin" ? t.roles.superAdmin : t.roles.admin)}
                 </p>
               </div>
             </div>
@@ -1152,7 +1149,7 @@ const SettingsPage = () => {
         {/* Clinic Logo Upload - Only for Clinic Admin and Podiatrist with clinic */}
         {(canUploadLogo || isPodiatristWithClinic) && (
           <div className="bg-brand-surface rounded-xl border border-brand-border p-6">
-            <h3 className="text-lg font-semibold text-brand-ink mb-2">Logo de la clínica</h3>
+            <h3 className="text-lg font-semibold text-brand-ink mb-2">{t.settings.clinicLogo.title}</h3>
 
             {isPodiatristWithClinic ? (
               <div className="space-y-4">
@@ -1161,9 +1158,9 @@ const SettingsPage = () => {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
                   <div>
-                    <p className="font-medium">Logo compartido de la clínica</p>
+                    <p className="font-medium">{t.settings.clinicLogo.sharedTitle}</p>
                     <p className="mt-1">
-                      Este logo pertenece a <strong>{clinicName}</strong>. Todos los doctores de esta clínica lo utilizan. Solo el administrador de la clínica puede modificarlo.
+                      {t.settings.clinicLogo.sharedBody}
                     </p>
                   </div>
                 </div>
@@ -1173,7 +1170,7 @@ const SettingsPage = () => {
                     {currentLogo ? (
                       <img 
                         src={currentLogo} 
-                        alt="Clinic Logo" 
+                        alt={t.settings.clinicLogo.alt} 
                         className="max-w-full max-h-full object-contain"
                       />
                     ) : (
@@ -1181,7 +1178,7 @@ const SettingsPage = () => {
                         <svg className="w-8 h-8 text-gray-300 mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                         </svg>
-                        <span className="text-xs text-gray-400 mt-1 block">Sin logo</span>
+                        <span className="text-xs text-gray-400 mt-1 block">{t.settings.logo.empty}</span>
                       </div>
                     )}
                   </div>
@@ -1191,7 +1188,7 @@ const SettingsPage = () => {
                       <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
                       </svg>
-                      <span className="text-sm">Solo lectura</span>
+                      <span className="text-sm">{t.settings.common.readOnly}</span>
                     </div>
                   </div>
                 </div>
@@ -1208,7 +1205,7 @@ const SettingsPage = () => {
                   }
                 />
                 <p className="text-sm text-gray-500 mb-4">
-                  Sube el logo de tu clínica. Este logo se mostrará en los documentos PDF de todos los podólogos de tu clínica. Dimensiones recomendadas: 200x80px
+                  {t.settings.clinicLogo.uploadHint}
                 </p>
                 
                 <div className="space-y-4">
@@ -1218,13 +1215,13 @@ const SettingsPage = () => {
                       {logoPreview ? (
                         <img 
                           src={logoPreview} 
-                          alt="Preview" 
+                          alt={t.settings.logo.previewAlt} 
                           className="max-w-full max-h-full object-contain"
                         />
                       ) : currentLogo ? (
                         <img 
                           src={currentLogo} 
-                          alt="Clinic Logo" 
+                          alt={t.settings.clinicLogo.alt} 
                           className="max-w-full max-h-full object-contain"
                         />
                       ) : (
@@ -1232,7 +1229,7 @@ const SettingsPage = () => {
                           <svg className="w-8 h-8 text-gray-300 mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                           </svg>
-                          <span className="text-xs text-gray-400 mt-1 block">Sin logo</span>
+                          <span className="text-xs text-gray-400 mt-1 block">{t.settings.logo.empty}</span>
                         </div>
                       )}
                     </div>
@@ -1254,7 +1251,7 @@ const SettingsPage = () => {
                         <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
                         </svg>
-                        Subir imagen
+                        {t.settings.logo.upload}
                       </label>
                       
                       {logoError && (
@@ -1262,7 +1259,7 @@ const SettingsPage = () => {
                       )}
                       
                       <p className="text-xs text-gray-400 mt-2">
-                        PNG, JPG o SVG. Máximo 2MB.
+                        {t.settings.logo.formatHint}
                       </p>
                     </div>
                   </div>
@@ -1276,7 +1273,7 @@ const SettingsPage = () => {
                           disabled={isLogoBlocked}
                           className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${isLogoBlocked ? "bg-gray-300 text-gray-500 cursor-not-allowed" : "bg-brand-ink text-brand-ink-fg hover:bg-brand-ink-hover"}`}
                         >
-                          Guardar logo
+                          {t.settings.logo.save}
                         </button>
                       )}
                       {logoPreview && (
@@ -1287,7 +1284,7 @@ const SettingsPage = () => {
                           }}
                           className="px-4 py-2 bg-brand-canvas text-brand-ink rounded-lg text-sm font-medium hover:bg-gray-200 transition-colors"
                         >
-                          Cancelar
+                          {t.common.cancel}
                         </button>
                       )}
                       {currentLogo && !logoPreview && (
@@ -1296,7 +1293,7 @@ const SettingsPage = () => {
                           disabled={isLogoBlocked}
                           className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${isLogoBlocked ? "text-gray-400 cursor-not-allowed" : semanticDestructiveTextClass}`}
                         >
-                          Eliminar logo
+                          {t.settings.logo.remove}
                         </button>
                       )}
                     </div>
@@ -1311,7 +1308,7 @@ const SettingsPage = () => {
         {/* Professional Logo Upload - Only for Independent Podiatrists (no clinic) */}
         {isPodiatristIndependent && (
           <div className="bg-brand-surface rounded-xl border border-brand-border p-6">
-            <h3 className="text-lg font-semibold text-brand-ink mb-2">Logo Profesional</h3>
+            <h3 className="text-lg font-semibold text-brand-ink mb-2">{t.settings.professionalLogo.title}</h3>
             <EditCooldownNotice
               policyText={logoCooldownPolicy}
               blockedUntil={logoBlockedUntil}
@@ -1320,7 +1317,7 @@ const SettingsPage = () => {
               }
             />
             <p className="text-sm text-gray-500 mb-4">
-              Sube tu logo profesional personal. Este logo se mostrará en los documentos PDF que generes. Dimensiones recomendadas: 200x80px
+              {t.settings.professionalLogo.uploadHint}
             </p>
             
             <div className="space-y-4">
@@ -1330,13 +1327,13 @@ const SettingsPage = () => {
                   {logoPreview ? (
                     <img 
                       src={logoPreview} 
-                      alt="Preview" 
+                      alt={t.settings.logo.previewAlt} 
                       className="max-w-full max-h-full object-contain"
                     />
                   ) : currentLogo ? (
                     <img 
                       src={currentLogo} 
-                      alt="Professional Logo" 
+                      alt={t.settings.professionalLogo.alt} 
                       className="max-w-full max-h-full object-contain"
                     />
                   ) : (
@@ -1344,7 +1341,7 @@ const SettingsPage = () => {
                       <svg className="w-8 h-8 text-gray-300 mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                       </svg>
-                      <span className="text-xs text-gray-400 mt-1 block">Sin logo</span>
+                      <span className="text-xs text-gray-400 mt-1 block">{t.settings.logo.empty}</span>
                     </div>
                   )}
                 </div>
@@ -1366,7 +1363,7 @@ const SettingsPage = () => {
                     <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
                     </svg>
-                    Subir imagen
+                    {t.settings.logo.upload}
                   </label>
                   
                   {logoError && (
@@ -1374,7 +1371,7 @@ const SettingsPage = () => {
                   )}
                   
                   <p className="text-xs text-gray-400 mt-2">
-                    PNG, JPG o SVG. Máximo 2MB.
+                    {t.settings.logo.formatHint}
                   </p>
                 </div>
               </div>
@@ -1388,7 +1385,7 @@ const SettingsPage = () => {
                       disabled={isLogoBlocked}
                       className="px-4 py-2 bg-brand-ink text-brand-ink-fg rounded-lg text-sm font-medium hover:bg-brand-ink-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                      Guardar logo
+                      {t.settings.logo.save}
                     </button>
                   )}
                   {logoPreview && (
@@ -1399,7 +1396,7 @@ const SettingsPage = () => {
                       }}
                       className="px-4 py-2 bg-brand-canvas text-brand-ink rounded-lg text-sm font-medium hover:bg-gray-200 transition-colors"
                     >
-                      Cancelar
+                      {t.common.cancel}
                     </button>
                   )}
                   {currentLogo && !logoPreview && (
@@ -1408,7 +1405,7 @@ const SettingsPage = () => {
                       disabled={isLogoBlocked}
                       className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${isLogoBlocked ? "text-gray-400 cursor-not-allowed" : semanticDestructiveTextClass}`}
                     >
-                      Eliminar logo
+                      {t.settings.logo.remove}
                     </button>
                   )}
                 </div>
@@ -1421,7 +1418,7 @@ const SettingsPage = () => {
         {/* Consentimiento informado - Misma lógica que Logo: clinic_admin edita, podólogo clínica solo lectura, independiente edita */}
         {(canUploadLogo || isPodiatristWithClinic || isPodiatristIndependent) && (
           <div className="bg-brand-surface rounded-xl border border-brand-border p-6">
-            <h3 className="text-lg font-semibold text-brand-ink mb-2">Consentimiento informado</h3>
+            <h3 className="text-lg font-semibold text-brand-ink mb-2">{t.settings.consent.title}</h3>
 
             {/* Clínica: admin edita, podólogo con clínica solo lectura */}
             {isPodiatristWithClinic && userClinic && (
@@ -1432,18 +1429,18 @@ const SettingsPage = () => {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
                   <div>
-                    <p className="font-medium">Texto compartido de la clínica</p>
+                    <p className="font-medium">{t.settings.consent.sharedTitle}</p>
                     <p className="mt-1">
-                      Este consentimiento pertenece a <strong>{clinicName}</strong>. Solo el administrador de la clínica puede modificarlo.
+                      {t.settings.consent.sharedBody}
                     </p>
                   </div>
                 </div>
                 {(userClinic.consentTextVersion ?? 0) > 0 && (
-                  <p className="text-xs text-gray-500">Versión actual: {userClinic.consentTextVersion}</p>
+                  <p className="text-xs text-gray-500">{t.settings.consent.currentVersion.replace("{version}", String(userClinic.consentTextVersion))}</p>
                 )}
                 <div className="rounded-lg border border-brand-border bg-brand-canvas p-4 text-brand-ink">
                   <p className="text-sm text-brand-ink whitespace-pre-wrap">
-                    {userClinic.consentText?.trim() || "Sin texto configurado."}
+                    {userClinic.consentText?.trim() || t.settings.consent.empty}
                   </p>
                 </div>
               </div>
@@ -1458,15 +1455,15 @@ const SettingsPage = () => {
                   }
                 />
                 <p className="text-sm text-gray-500 mb-4">
-                  Texto que el paciente leerá y aceptará al crear la ficha. Si lo editas, los pacientes con versión anterior deberán volver a aceptar.
+                  {t.settings.consent.editHint}
                 </p>
                 {(userClinic?.consentTextVersion ?? 0) > 0 && (
-                  <p className="text-xs text-gray-500 mb-2">Versión actual: {userClinic?.consentTextVersion}</p>
+                  <p className="text-xs text-gray-500 mb-2">{t.settings.consent.currentVersion.replace("{version}", String(userClinic?.consentTextVersion ?? ""))}</p>
                 )}
                 <textarea
                   value={clinicInfoForm.consentText ?? ""}
                   onChange={(e) => handleClinicInfoChange("consentText", e.target.value)}
-                  placeholder="Redacta aquí los términos y el consentimiento informado que el paciente debe aceptar."
+                  placeholder={t.settings.consent.placeholder}
                   rows={6}
                   disabled={isInfoBlocked}
                   className={`w-full px-4 py-2.5 border border-gray-200 rounded-lg transition-all resize-y ${isInfoBlocked ? "bg-brand-canvas text-brand-muted cursor-not-allowed" : "bg-brand-surface text-brand-ink focus:ring-2 focus:ring-brand-ink focus:border-transparent"}`}
@@ -1481,14 +1478,14 @@ const SettingsPage = () => {
                     disabled={isInfoBlocked}
                     className={`px-4 py-2.5 rounded-lg text-sm font-medium transition-colors ${isInfoBlocked ? "bg-gray-300 text-gray-500 cursor-not-allowed" : "bg-brand-ink text-brand-ink-fg hover:bg-brand-ink-hover"}`}
                   >
-                    Guardar consentimiento
+                    {t.settings.consent.save}
                   </button>
                   {clinicConsentSaved && (
                     <span className={`flex items-center gap-2 ${formSuccessClass} font-medium`}>
                       <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                       </svg>
-                      Guardado
+                      {t.settings.common.saved}
                     </span>
                   )}
                 </div>
@@ -1508,15 +1505,15 @@ const SettingsPage = () => {
                   }
                 />
                 <p className="text-sm text-gray-500 mb-4">
-                  Texto que el paciente leerá y aceptará al crear la ficha. Si lo editas, los pacientes con versión anterior deberán volver a aceptar.
+                  {t.settings.consent.editHint}
                 </p>
                 {(professionalInfoForm.consentTextVersion ?? 0) > 0 && (
-                  <p className="text-xs text-gray-500 mb-2">Versión actual: {professionalInfoForm.consentTextVersion}</p>
+                  <p className="text-xs text-gray-500 mb-2">{t.settings.consent.currentVersion.replace("{version}", String(professionalInfoForm.consentTextVersion))}</p>
                 )}
                 <textarea
                   value={professionalInfoForm.consentText ?? ""}
                   onChange={(e) => handleProfessionalInfoChange("consentText", e.target.value)}
-                  placeholder="Redacta aquí los términos y el consentimiento informado que el paciente debe aceptar."
+                  placeholder={t.settings.consent.placeholder}
                   rows={6}
                   disabled={isProfessionalInfoBlocked}
                   className={`w-full px-4 py-2.5 border border-brand-border rounded-lg transition-all resize-y ${isProfessionalInfoBlocked ? "bg-brand-canvas text-brand-muted cursor-not-allowed" : "bg-brand-surface text-brand-ink focus:ring-2 focus:ring-brand-ink focus:border-transparent"}`}
@@ -1527,14 +1524,14 @@ const SettingsPage = () => {
                     disabled={isProfessionalInfoBlocked}
                     className={`px-4 py-2.5 rounded-lg text-sm font-medium transition-colors ${isProfessionalInfoBlocked ? "bg-gray-300 text-gray-500 cursor-not-allowed" : "bg-brand-ink text-brand-ink-fg hover:bg-brand-ink-hover"}`}
                   >
-                    Guardar consentimiento
+                    {t.settings.consent.save}
                   </button>
                   {professionalInfoSaved && (
                     <span className={`flex items-center gap-2 ${formSuccessClass} font-medium`}>
                       <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                       </svg>
-                      Guardado
+                      {t.settings.common.saved}
                     </span>
                   )}
                 </div>
@@ -1549,9 +1546,9 @@ const SettingsPage = () => {
           const rec = myReceptionists[0];
           return (
             <div className="bg-brand-surface rounded-xl border border-brand-border p-6">
-              <h3 className="text-lg font-semibold text-brand-ink mb-2">Recepcionista</h3>
+              <h3 className="text-lg font-semibold text-brand-ink mb-2">{t.settings.receptionist.title}</h3>
               <p className="text-sm text-gray-500 mb-4">
-                Como podólogo independiente puedes crear una recepcionista vinculada a tu cuenta. Tendrá acceso sin créditos a crear pacientes, crear y editar citas en tu calendario. Deberá cambiar la contraseña en su primer acceso.
+                {t.settings.receptionist.description}
               </p>
               {hasReceptionist && rec ? (
                 <div className="space-y-4">
@@ -1560,11 +1557,11 @@ const SettingsPage = () => {
                     <p className="text-sm text-gray-600">{rec.email}</p>
                     <div className="flex flex-wrap gap-2 mt-3">
                       {rec.isBlocked ? (
-                        <span className={semanticChipErrorClass}>Bloqueada</span>
+                        <span className={semanticChipErrorClass}>{t.settings.receptionist.status.blocked}</span>
                       ) : rec.isEnabled === false ? (
-                        <span className={semanticChipWarningClass}>Deshabilitada</span>
+                        <span className={semanticChipWarningClass}>{t.settings.receptionist.status.disabled}</span>
                       ) : (
-                        <span className={semanticChipSuccessClass}>Activa</span>
+                        <span className={semanticChipSuccessClass}>{t.settings.receptionist.status.active}</span>
                       )}
                     </div>
                   </div>
@@ -1575,7 +1572,7 @@ const SettingsPage = () => {
                       disabled={receptionistActionLoadingId === rec.id}
                       className="px-3 py-1.5 text-xs rounded-lg border border-gray-200 text-gray-700 hover:bg-gray-50 disabled:opacity-50"
                     >
-                      {rec.isBlocked ? "Desbloquear" : "Bloquear"}
+                      {rec.isBlocked ? t.settings.receptionist.unblock : t.settings.receptionist.block}
                     </button>
                     <button
                       type="button"
@@ -1583,7 +1580,7 @@ const SettingsPage = () => {
                       disabled={receptionistActionLoadingId === rec.id}
                       className="px-3 py-1.5 text-xs rounded-lg border border-gray-200 text-gray-700 hover:bg-gray-50 disabled:opacity-50"
                     >
-                      {rec.isEnabled === false ? "Habilitar" : "Deshabilitar"}
+                      {rec.isEnabled === false ? t.settings.receptionist.enable : t.settings.receptionist.disable}
                     </button>
                     <button
                       type="button"
@@ -1591,15 +1588,15 @@ const SettingsPage = () => {
                       disabled={receptionistActionLoadingId === rec.id}
                       className={`px-3 py-1.5 text-xs rounded-lg border border-semantic-error/30 ${semanticDestructiveTextClass} disabled:opacity-50`}
                     >
-                      Eliminar
+                      {t.settings.receptionist.delete}
                     </button>
                   </div>
-                  <p className="text-xs text-gray-500">Solo puedes tener una recepcionista vinculada. Elimínala para crear otra.</p>
+                  <p className="text-xs text-gray-500">{t.settings.receptionist.oneOnlyHint}</p>
                 </div>
               ) : (
                 <form onSubmit={handleCreateReceptionist} className="space-y-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Nombre</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">{t.settings.receptionist.fields.name}</label>
                     <input
                       type="text"
                       value={receptionistForm.name}
@@ -1609,7 +1606,7 @@ const SettingsPage = () => {
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">{t.settings.receptionist.fields.email}</label>
                     <input
                       type="email"
                       value={receptionistForm.email}
@@ -1619,7 +1616,7 @@ const SettingsPage = () => {
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Contraseña inicial</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">{t.settings.receptionist.fields.initialPassword}</label>
                     <input
                       type="password"
                       value={receptionistForm.password}
@@ -1634,14 +1631,14 @@ const SettingsPage = () => {
                   )}
                   {receptionistSuccess && (
                     <div className={`${semanticAlertSuccessClass} !p-3`}>
-                      Recepcionista creada. Deberá iniciar sesión y cambiar la contraseña en el primer acceso.
+                      {t.settings.receptionist.createdSuccess}
                     </div>
                   )}
                   <button
                     type="submit"
                     className="px-4 py-2.5 bg-brand-ink text-brand-ink-fg rounded-lg text-sm font-medium hover:bg-brand-ink-hover transition-colors"
                   >
-                    Crear recepcionista
+                    {t.settings.receptionist.create}
                   </button>
                 </form>
               )}
@@ -1652,7 +1649,7 @@ const SettingsPage = () => {
         {/* Clinic Information - Only for Clinic Admin (editable) or Podiatrists with clinic (read-only) */}
         {(canUploadLogo || isPodiatristWithClinic) && userClinic && (
           <div className="bg-brand-surface rounded-xl border border-brand-border p-6">
-            <h3 className="text-lg font-semibold text-brand-ink mb-2">Información de la Clínica</h3>
+            <h3 className="text-lg font-semibold text-brand-ink mb-2">{t.settings.clinicInfo.title}</h3>
             
             {canUploadLogo ? (
               // Clinic Admin can edit clinic information
@@ -1666,55 +1663,55 @@ const SettingsPage = () => {
                   className="!mb-0"
                 />
                 <p className="text-sm text-gray-500">
-                  Completa la información de tu clínica. Estos datos aparecerán en los documentos PDF generados.
+                  {t.settings.clinicInfo.subtitle}
                 </p>
                 {(clinicInfoForm.clinicName === "Clínica pendiente de configuración" || !clinicInfoForm.phone && !clinicInfoForm.email && !clinicInfoForm.address) && (
                   <div className={`${semanticAlertInfoClass} !p-3`}>
-                    Completa los datos de tu clínica. Aparecerán en facturas, recetas y otros documentos.
+                    {t.settings.clinicInfo.setupBanner}
                   </div>
                 )}
                 
                 <div className="grid gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Nombre de la clínica *</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">{t.settings.clinicInfo.clinicName}</label>
                     <input
                       type="text"
                       value={clinicInfoForm.clinicName}
                       onChange={(e) => handleClinicInfoChange("clinicName", e.target.value)}
-                      placeholder="Mi Clínica Podológica"
+                      placeholder={t.settings.clinicInfo.clinicNamePlaceholder}
                       disabled={isInfoBlocked}
                       className={`w-full px-4 py-2.5 border border-gray-200 rounded-lg transition-all ${isInfoBlocked ? "bg-brand-canvas text-brand-muted cursor-not-allowed" : "bg-brand-surface text-brand-ink focus:ring-2 focus:ring-brand-ink focus:border-transparent"}`}
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Código (para folios) *</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">{t.settings.clinicInfo.clinicCode}</label>
                     <input
                       type="text"
                       value={clinicInfoForm.clinicCode}
                       onChange={(e) => handleClinicInfoChange("clinicCode", e.target.value.toUpperCase())}
-                      placeholder="MICP"
+                      placeholder={t.settings.clinicInfo.clinicCodePlaceholder}
                       maxLength={8}
                       disabled={isInfoBlocked}
                       className={`w-full px-4 py-2.5 border border-gray-200 rounded-lg transition-all ${isInfoBlocked ? "bg-brand-canvas text-brand-muted cursor-not-allowed" : "bg-brand-surface text-brand-ink focus:ring-2 focus:ring-brand-ink focus:border-transparent"}`}
                     />
-                    <p className="text-xs text-gray-500 mt-1">Máx. 8 caracteres. Se usa en folios (ej: MICP-2025-001)</p>
+                    <p className="text-xs text-gray-500 mt-1">{t.settings.clinicInfo.clinicCodeHint}</p>
                   </div>
                   
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">País (prefijo telefónico)</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">{t.settings.clinicInfo.country}</label>
                     <CountrySelect
                       value={clinicInfoForm.countryCode}
                       onChange={(code) => handleClinicInfoChange("countryCode", code)}
                       disabled={isInfoBlocked}
                     />
                     <p className="text-xs text-gray-500 mt-1">
-                      Se usa para WhatsApp y teléfonos de pacientes sin prefijo internacional.
+                      {t.settings.clinicInfo.countryHint}
                     </p>
                   </div>
 
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Teléfono</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">{t.settings.clinicInfo.phone}</label>
                       <input
                         type="tel"
                         value={clinicInfoForm.phone}
@@ -1725,12 +1722,12 @@ const SettingsPage = () => {
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">{t.settings.receptionist.fields.email}</label>
                       <input
                         type="email"
                         value={clinicInfoForm.email}
                         onChange={(e) => handleClinicInfoChange("email", e.target.value)}
-                        placeholder="info@clinica.es"
+                        placeholder={t.settings.clinicInfo.emailPlaceholder}
                         disabled={isInfoBlocked}
                         className={`w-full px-4 py-2.5 border border-gray-200 rounded-lg transition-all ${isInfoBlocked ? "bg-brand-canvas text-brand-muted cursor-not-allowed" : "bg-brand-surface text-brand-ink focus:ring-2 focus:ring-brand-ink focus:border-transparent"}`}
                       />
@@ -1738,12 +1735,12 @@ const SettingsPage = () => {
                   </div>
                   
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Dirección</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">{t.settings.clinicInfo.address}</label>
                     <input
                       type="text"
                       value={clinicInfoForm.address}
                       onChange={(e) => handleClinicInfoChange("address", e.target.value)}
-                      placeholder="Calle Gran Vía, 45, 2º Izquierda"
+                      placeholder={t.settings.clinicInfo.addressPlaceholder}
                       disabled={isInfoBlocked}
                       className={`w-full px-4 py-2.5 border border-gray-200 rounded-lg transition-all ${isInfoBlocked ? "bg-brand-canvas text-brand-muted cursor-not-allowed" : "bg-brand-surface text-brand-ink focus:ring-2 focus:ring-brand-ink focus:border-transparent"}`}
                     />
@@ -1751,23 +1748,23 @@ const SettingsPage = () => {
                   
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Ciudad</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">{t.settings.clinicInfo.city}</label>
                       <input
                         type="text"
                         value={clinicInfoForm.city}
                         onChange={(e) => handleClinicInfoChange("city", e.target.value)}
-                        placeholder="Madrid"
+                        placeholder={t.settings.clinicInfo.cityPlaceholder}
                         disabled={isInfoBlocked}
                         className={`w-full px-4 py-2.5 border border-gray-200 rounded-lg transition-all ${isInfoBlocked ? "bg-brand-canvas text-brand-muted cursor-not-allowed" : "bg-brand-surface text-brand-ink focus:ring-2 focus:ring-brand-ink focus:border-transparent"}`}
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Código Postal</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">{t.settings.clinicInfo.postalCode}</label>
                       <input
                         type="text"
                         value={clinicInfoForm.postalCode}
                         onChange={(e) => handleClinicInfoChange("postalCode", e.target.value)}
-                        placeholder="28001"
+                        placeholder={t.settings.clinicInfo.postalCodePlaceholder}
                         disabled={isInfoBlocked}
                         className={`w-full px-4 py-2.5 border border-gray-200 rounded-lg transition-all ${isInfoBlocked ? "bg-brand-canvas text-brand-muted cursor-not-allowed" : "bg-brand-surface text-brand-ink focus:ring-2 focus:ring-brand-ink focus:border-transparent"}`}
                       />
@@ -1776,23 +1773,23 @@ const SettingsPage = () => {
                   
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Nº Licencia/Registro</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">{t.settings.clinicInfo.licenseNumber}</label>
                       <input
                         type="text"
                         value={clinicInfoForm.licenseNumber}
                         onChange={(e) => handleClinicInfoChange("licenseNumber", e.target.value)}
-                        placeholder="CS-28/2024-POD-001"
+                        placeholder={t.settings.clinicInfo.licensePlaceholder}
                         disabled={isInfoBlocked}
                         className={`w-full px-4 py-2.5 border border-gray-200 rounded-lg transition-all ${isInfoBlocked ? "bg-brand-canvas text-brand-muted cursor-not-allowed" : "bg-brand-surface text-brand-ink focus:ring-2 focus:ring-brand-ink focus:border-transparent"}`}
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Sitio Web (opcional)</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">{t.settings.clinicInfo.website}</label>
                       <input
                         type="url"
                         value={clinicInfoForm.website}
                         onChange={(e) => handleClinicInfoChange("website", e.target.value)}
-                        placeholder="https://www.clinica.es"
+                        placeholder={t.settings.clinicInfo.websitePlaceholder}
                         disabled={isInfoBlocked}
                         className={`w-full px-4 py-2.5 border border-gray-200 rounded-lg transition-all ${isInfoBlocked ? "bg-brand-canvas text-brand-muted cursor-not-allowed" : "bg-brand-surface text-brand-ink focus:ring-2 focus:ring-brand-ink focus:border-transparent"}`}
                       />
@@ -1801,7 +1798,7 @@ const SettingsPage = () => {
 
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Razón social (NOM)</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">{t.settings.clinicInfo.legalName}</label>
                       <input
                         type="text"
                         value={clinicInfoForm.legalName}
@@ -1811,7 +1808,7 @@ const SettingsPage = () => {
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">RFC</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">{t.settings.clinicInfo.rfc}</label>
                       <input
                         type="text"
                         value={clinicInfoForm.rfc}
@@ -1821,7 +1818,7 @@ const SettingsPage = () => {
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">CLUES</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">{t.settings.clinicInfo.clues}</label>
                       <input
                         type="text"
                         value={clinicInfoForm.clues}
@@ -1831,7 +1828,7 @@ const SettingsPage = () => {
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Registro COFEPRIS</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">{t.settings.clinicInfo.cofepris}</label>
                       <input
                         type="text"
                         value={clinicInfoForm.cofeprisRegistration}
@@ -1852,14 +1849,14 @@ const SettingsPage = () => {
                       disabled={isInfoBlocked}
                       className={`px-6 py-2.5 rounded-lg text-sm font-medium transition-colors ${isInfoBlocked ? "bg-gray-300 text-gray-500 cursor-not-allowed" : "bg-brand-ink text-brand-ink-fg hover:bg-brand-ink-hover"}`}
                     >
-                      Guardar información
+                      {t.settings.common.saveInfo}
                     </button>
                     {clinicInfoSaved && (
                       <span className={`flex items-center gap-2 ${formSuccessClass} font-medium`}>
                         <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                         </svg>
-                        Guardado
+                        {t.settings.common.saved}
                       </span>
                     )}
                     </div>
@@ -1875,33 +1872,33 @@ const SettingsPage = () => {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
                   <div>
-                    <p className="font-medium">Detalles de tu clínica</p>
+                    <p className="font-medium">{t.settings.clinicInfo.readOnlyTitle}</p>
                     <p className="mt-1">
-                      Esta información es gestionada por el administrador de la clínica.
+                      {t.settings.clinicInfo.readOnlyBody}
                     </p>
                   </div>
                 </div>
                 
                 <div className="grid gap-3 text-sm">
                   <div className="flex">
-                    <span className="w-32 text-gray-500">Nombre:</span>
+                    <span className="w-32 text-gray-500">{t.settings.clinicInfo.labels.name}</span>
                     <span className="font-medium text-brand-ink">{userClinic.clinicName}</span>
                   </div>
                   {userClinic.phone && (
                     <div className="flex">
-                      <span className="w-32 text-gray-500">Teléfono:</span>
+                      <span className="w-32 text-gray-500">{t.settings.clinicInfo.labels.phone}</span>
                       <span className="font-medium text-brand-ink">{userClinic.phone}</span>
                     </div>
                   )}
                   {userClinic.email && (
                     <div className="flex">
-                      <span className="w-32 text-gray-500">Email:</span>
+                      <span className="w-32 text-gray-500">{t.settings.clinicInfo.labels.email}</span>
                       <span className="font-medium text-brand-ink">{userClinic.email}</span>
                     </div>
                   )}
                   {userClinic.address && (
                     <div className="flex">
-                      <span className="w-32 text-gray-500">Dirección:</span>
+                      <span className="w-32 text-gray-500">{t.settings.clinicInfo.labels.address}</span>
                       <span className="font-medium text-brand-ink">
                         {userClinic.address}{userClinic.city && `, ${userClinic.city}`}{userClinic.postalCode && ` ${userClinic.postalCode}`}
                       </span>
@@ -1909,26 +1906,26 @@ const SettingsPage = () => {
                   )}
                   {userClinic.licenseNumber && (
                     <div className="flex">
-                      <span className="w-32 text-gray-500">Licencia:</span>
+                      <span className="w-32 text-gray-500">{t.settings.clinicInfo.labels.license}</span>
                       <span className="font-medium text-brand-ink">{userClinic.licenseNumber}</span>
                     </div>
                   )}
                   {userClinic.consentDocumentUrl && (
                     <div className="flex">
-                      <span className="w-32 text-gray-500">Consentimiento:</span>
+                      <span className="w-32 text-gray-500">{t.settings.clinicInfo.labels.consent}</span>
                       <a
                         href={userClinic.consentDocumentUrl.startsWith('http') ? userClinic.consentDocumentUrl : `https://${userClinic.consentDocumentUrl}`}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="font-medium text-blue-600 hover:underline"
                       >
-                        Ver documento
+                        {t.settings.clinicInfo.viewDocument}
                       </a>
                     </div>
                   )}
                   {userClinic.website && (
                     <div className="flex">
-                      <span className="w-32 text-gray-500">Web:</span>
+                      <span className="w-32 text-gray-500">{t.settings.clinicInfo.labels.web}</span>
                       <a 
                         href={
                           userClinic.website.startsWith('http://') || userClinic.website.startsWith('https://')
@@ -1948,7 +1945,7 @@ const SettingsPage = () => {
                             new URL(url);
                           } catch (error) {
                             e.preventDefault();
-                            alert('La URL del sitio web no es válida. Por favor, verifica que esté correctamente configurada.');
+                            alert(t.settings.clinic.errors.invalidWebsite);
                           }
                         }}
                       >
@@ -1965,7 +1962,7 @@ const SettingsPage = () => {
         {/* Consultorio Information - Only for Independent Podiatrists (no clinic) */}
         {isPodiatristIndependent && (
           <div className="bg-brand-surface rounded-xl border border-brand-border p-6">
-            <h3 className="text-lg font-semibold text-brand-ink mb-2">Información del Consultorio</h3>
+            <h3 className="text-lg font-semibold text-brand-ink mb-2">{t.settings.practice.title}</h3>
             <EditCooldownNotice
               policyText={professionalInfoCooldownPolicy}
               blockedUntil={professionalInfoBlockedUntil}
@@ -1976,38 +1973,38 @@ const SettingsPage = () => {
               }
             />
             <p className="text-sm text-gray-500 mb-4">
-              Completa la información de tu consultorio profesional. Estos datos aparecerán en los documentos PDF que generes.
+              {t.settings.practice.subtitle}
             </p>
             
             <div className="space-y-4">
               <div className="grid gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Nombre Profesional</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">{t.settings.practice.professionalName}</label>
                   <input
                     type="text"
                     value={professionalInfoForm.name}
                     onChange={(e) => handleProfessionalInfoChange("name", e.target.value)}
-                    placeholder="Dr. Juan Pérez García"
+                    placeholder={t.settings.practice.namePlaceholder}
                     disabled={isProfessionalInfoBlocked}
                     className={proInfoInputClass}
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">País (prefijo telefónico)</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">{t.settings.clinicInfo.country}</label>
                   <CountrySelect
                     value={professionalInfoForm.countryCode || DEFAULT_TENANT_COUNTRY}
                     onChange={(code) => handleProfessionalInfoChange("countryCode", code)}
                     disabled={isProfessionalInfoBlocked}
                   />
                   <p className="text-xs text-gray-500 mt-1">
-                    Se aplica a teléfonos de pacientes y enlaces de WhatsApp sin prefijo +.
+                    {t.settings.practice.countryHint}
                   </p>
                 </div>
                 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Teléfono</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">{t.settings.clinicInfo.phone}</label>
                     <input
                       type="tel"
                       value={professionalInfoForm.phone}
@@ -2020,12 +2017,12 @@ const SettingsPage = () => {
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">{t.settings.receptionist.fields.email}</label>
                     <input
                       type="email"
                       value={professionalInfoForm.email}
                       onChange={(e) => handleProfessionalInfoChange("email", e.target.value)}
-                      placeholder="doctor@consultorio.es"
+                      placeholder={t.settings.practice.emailPlaceholder}
                       className={proInfoInputClass}
                       disabled={isProfessionalInfoBlocked}
                     />
@@ -2033,12 +2030,12 @@ const SettingsPage = () => {
                 </div>
                 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Dirección</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">{t.settings.clinicInfo.address}</label>
                   <input
                     type="text"
                     value={professionalInfoForm.address}
                     onChange={(e) => handleProfessionalInfoChange("address", e.target.value)}
-                    placeholder="Calle Gran Vía, 45, 2º Izquierda"
+                    placeholder={t.settings.clinicInfo.addressPlaceholder}
                     disabled={isProfessionalInfoBlocked}
                     className={proInfoInputClass}
                   />
@@ -2046,23 +2043,23 @@ const SettingsPage = () => {
                 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Ciudad</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">{t.settings.clinicInfo.city}</label>
                     <input
                       type="text"
                       value={professionalInfoForm.city}
                       onChange={(e) => handleProfessionalInfoChange("city", e.target.value)}
-                      placeholder="Madrid"
+                      placeholder={t.settings.clinicInfo.cityPlaceholder}
                       disabled={isProfessionalInfoBlocked}
                       className={proInfoInputClass}
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Código Postal</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">{t.settings.clinicInfo.postalCode}</label>
                     <input
                       type="text"
                       value={professionalInfoForm.postalCode}
                       onChange={(e) => handleProfessionalInfoChange("postalCode", e.target.value)}
-                      placeholder="28001"
+                      placeholder={t.settings.clinicInfo.postalCodePlaceholder}
                       disabled={isProfessionalInfoBlocked}
                       className={proInfoInputClass}
                     />
@@ -2071,23 +2068,23 @@ const SettingsPage = () => {
                 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Nº Registro Sanitario</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">{t.settings.practice.sanitaryRegistry}</label>
                     <input
                       type="text"
                       value={professionalInfoForm.licenseNumber}
                       onChange={(e) => handleProfessionalInfoChange("licenseNumber", e.target.value)}
-                      placeholder="CS-28/2024-POD-001"
+                      placeholder={t.settings.clinicInfo.licensePlaceholder}
                       disabled={isProfessionalInfoBlocked}
                       className={proInfoInputClass}
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Cédula Profesional</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">{t.settings.practice.cedula}</label>
                     <input
                       type="text"
                       value={professionalInfoForm.professionalLicense}
                       onChange={(e) => handleProfessionalInfoChange("professionalLicense", e.target.value)}
-                      placeholder="12345678"
+                      placeholder={t.settings.practice.cedulaPlaceholder}
                       disabled={isProfessionalInfoBlocked}
                       className={proInfoInputClass}
                     />
@@ -2100,14 +2097,14 @@ const SettingsPage = () => {
                     disabled={isProfessionalInfoBlocked}
                     className={`px-6 py-2.5 rounded-lg text-sm font-medium transition-colors ${isProfessionalInfoBlocked ? "bg-gray-300 text-gray-500 cursor-not-allowed" : "bg-brand-ink text-brand-ink-fg hover:bg-brand-ink-hover"}`}
                   >
-                    Guardar información
+                    {t.settings.common.saveInfo}
                   </button>
                   {professionalInfoSaved && (
                     <span className={`flex items-center gap-2 ${formSuccessClass} font-medium`}>
                       <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                       </svg>
-                      Guardado
+                      {t.settings.common.saved}
                     </span>
                   )}
                 </div>
@@ -2119,7 +2116,7 @@ const SettingsPage = () => {
         {/* Professional Credentials - For Podiatrists with Clinic */}
         {isPodiatristWithClinic && userClinic && (
           <div className="bg-brand-surface rounded-xl border border-brand-border p-6">
-            <h3 className="text-lg font-semibold text-brand-ink mb-2">Credenciales Profesionales</h3>
+            <h3 className="text-lg font-semibold text-brand-ink mb-2">{t.settings.credentials.title}</h3>
             <EditCooldownNotice
               policyText={professionalInfoCooldownPolicy}
               blockedUntil={professionalInfoBlockedUntil}
@@ -2130,19 +2127,19 @@ const SettingsPage = () => {
               }
             />
             <p className="text-sm text-gray-500 mb-4">
-              Ingresa tus credenciales profesionales individuales. La información de la clínica es gestionada por tu administrador.
+              {t.settings.credentials.subtitle}
             </p>
             
             <div className="space-y-6">
               <div className={`${whatsappPanelInnerClass} space-y-4`}>
                 <div>
-                  <h4 className="text-sm font-semibold text-brand-ink">Teléfono de contacto</h4>
+                  <h4 className="text-sm font-semibold text-brand-ink">{t.settings.credentials.contactPhoneTitle}</h4>
                   <p className="text-xs text-brand-muted mt-1">
-                    Aparece en documentos PDF. La recepción puede enviarte la agenda por WhatsApp directamente a este número si está configurado.
+                    {t.settings.credentials.contactPhoneHint}
                   </p>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">País (prefijo)</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">{t.settings.credentials.country}</label>
                   <CountrySelect
                     value={professionalInfoForm.countryCode || DEFAULT_TENANT_COUNTRY}
                     onChange={(code) => handleProfessionalInfoChange("countryCode", code)}
@@ -2150,7 +2147,7 @@ const SettingsPage = () => {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Teléfono móvil</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">{t.settings.credentials.mobile}</label>
                   <input
                     type="tel"
                     value={professionalInfoForm.phone}
@@ -2169,10 +2166,10 @@ const SettingsPage = () => {
                     disabled={isProfessionalInfoBlocked}
                     className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${isProfessionalInfoBlocked ? "bg-gray-300 text-gray-500 cursor-not-allowed" : "bg-brand-ink text-brand-ink-fg hover:bg-brand-ink-hover"}`}
                   >
-                    Guardar teléfono
+                    {t.settings.credentials.savePhone}
                   </button>
                   {professionalInfoSaved && (
-                    <span className={`${formSuccessClass} font-medium`}>Guardado</span>
+                    <span className={`${formSuccessClass} font-medium`}>{t.settings.common.saved}</span>
                   )}
                 </div>
               </div>
@@ -2180,23 +2177,23 @@ const SettingsPage = () => {
               {/* Editable credentials */}
               <div className="grid gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Cédula Profesional</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">{t.settings.practice.cedula}</label>
                   <input
                     type="text"
                     value={credentialsCedula}
                     onChange={(e) => setCredentialsCedula(e.target.value)}
-                    placeholder="12345678"
+                    placeholder={t.settings.practice.cedulaPlaceholder}
                     disabled={isProfessionalInfoBlocked}
                     className={proInfoInputClass}
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Número de Registro</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">{t.settings.credentials.registryNumber}</label>
                   <input
                     type="text"
                     value={credentialsRegistro}
                     onChange={(e) => setCredentialsRegistro(e.target.value)}
-                    placeholder="REG-2024-001"
+                    placeholder={t.settings.credentials.registryPlaceholder}
                     disabled={isProfessionalInfoBlocked}
                     className={proInfoInputClass}
                   />
@@ -2209,14 +2206,14 @@ const SettingsPage = () => {
                   disabled={isProfessionalInfoBlocked}
                   className={`px-6 py-2.5 rounded-lg text-sm font-medium transition-colors ${isProfessionalInfoBlocked ? "bg-gray-300 text-gray-500 cursor-not-allowed" : "bg-brand-ink text-brand-ink-fg hover:bg-brand-ink-hover"}`}
                 >
-                  Guardar credenciales
+                  {t.settings.credentials.save}
                 </button>
                 {credentialsSaved && (
                   <span className={`flex items-center gap-2 ${formSuccessClass} font-medium`}>
                     <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                     </svg>
-                    Guardado
+                    {t.settings.common.saved}
                   </span>
                 )}
               </div>
@@ -2228,9 +2225,9 @@ const SettingsPage = () => {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
                   <div>
-                    <p className="font-medium">Información de tu clínica</p>
+                    <p className="font-medium">{t.settings.credentials.clinicInfoTitle}</p>
                     <p className="mt-1">
-                      El resto de tu información es gestionada por el administrador de tu clínica.
+                      {t.settings.credentials.clinicInfoBody}
                     </p>
                   </div>
                 </div>
@@ -2239,7 +2236,7 @@ const SettingsPage = () => {
                   {/* Read-only clinic fields */}
                   <div>
                     <label className="block text-sm font-medium text-gray-500 mb-1 flex items-center gap-2">
-                      Nombre de la Clínica
+                      {t.settings.credentials.clinicName}
                       <svg className="w-3.5 h-3.5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
                       </svg>
@@ -2255,7 +2252,7 @@ const SettingsPage = () => {
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="block text-sm font-medium text-gray-500 mb-1 flex items-center gap-2">
-                        País (prefijo)
+                        {t.settings.credentials.country}
                         <svg className="w-3.5 h-3.5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
                         </svg>
@@ -2269,28 +2266,28 @@ const SettingsPage = () => {
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-500 mb-1 flex items-center gap-2">
-                        Teléfono
+                        {t.common.phone}
                         <svg className="w-3.5 h-3.5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
                         </svg>
                       </label>
                       <input
                         type="text"
-                        value={userClinic.phone || "—"}
+                        value={userClinic.phone || t.settings.common.emDash}
                         disabled
                         className="w-full px-4 py-2.5 bg-brand-canvas border border-brand-border rounded-lg text-brand-muted cursor-not-allowed"
                       />
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-500 mb-1 flex items-center gap-2">
-                        Email
+                        {t.common.email}
                         <svg className="w-3.5 h-3.5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
                         </svg>
                       </label>
                       <input
                         type="text"
-                        value={userClinic.email || "—"}
+                        value={userClinic.email || t.settings.common.emDash}
                         disabled
                         className="w-full px-4 py-2.5 bg-brand-canvas border border-brand-border rounded-lg text-brand-muted cursor-not-allowed"
                       />
@@ -2299,14 +2296,14 @@ const SettingsPage = () => {
                   
                   <div>
                     <label className="block text-sm font-medium text-gray-500 mb-1 flex items-center gap-2">
-                      Dirección
+                      {t.common.address}
                       <svg className="w-3.5 h-3.5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
                       </svg>
                     </label>
                     <input
                       type="text"
-                      value={userClinic.address || "—"}
+                      value={userClinic.address || t.settings.common.emDash}
                       disabled
                       className="w-full px-4 py-2.5 bg-brand-canvas border border-brand-border rounded-lg text-brand-muted cursor-not-allowed"
                     />
@@ -2315,28 +2312,28 @@ const SettingsPage = () => {
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="block text-sm font-medium text-gray-500 mb-1 flex items-center gap-2">
-                        Ciudad
+                        {t.settings.clinicInfo.city}
                         <svg className="w-3.5 h-3.5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
                         </svg>
                       </label>
                       <input
                         type="text"
-                        value={userClinic.city || "—"}
+                        value={userClinic.city || t.settings.common.emDash}
                         disabled
                         className="w-full px-4 py-2.5 bg-brand-canvas border border-brand-border rounded-lg text-brand-muted cursor-not-allowed"
                       />
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-500 mb-1 flex items-center gap-2">
-                        Código Postal
+                        {t.settings.clinicInfo.postalCode}
                         <svg className="w-3.5 h-3.5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
                         </svg>
                       </label>
                       <input
                         type="text"
-                        value={userClinic.postalCode || "—"}
+                        value={userClinic.postalCode || t.settings.common.emDash}
                         disabled
                         className="w-full px-4 py-2.5 bg-brand-canvas border border-brand-border rounded-lg text-brand-muted cursor-not-allowed"
                       />

@@ -2,6 +2,7 @@ import * as React from "react";
 import { Link } from "wouter";
 import { cn } from "@/lib/utils";
 import { useDashboardLogo } from "@/hooks/use-dashboard-logo";
+import { useLanguage } from "@/contexts/language-context";
 import type { DashboardLogoConfig } from "@/types/dashboard-logo";
 import { DashboardLogoDisplay } from "@/components/ui/dashboard-logo-display";
 
@@ -20,14 +21,14 @@ const BentoCard = ({
   name,
   description,
   href,
-  cta = "Ver más",
+  cta,
   background,
   className,
 }: BentoCardProps) => (
-    <Link href={href}>
+  <Link href={href}>
     <div
       className={cn(
-        "group relative overflow-hidden rounded-xl border border-brand-border bg-brand-surface p-6 transition-all hover:border-brand-ink dark:hover:border-gray-600 hover:shadow-lg",
+        "group relative h-full overflow-hidden rounded-xl border border-brand-border bg-brand-surface p-6 transition-all hover:border-brand-ink dark:hover:border-gray-600 hover:shadow-lg",
         "cursor-pointer",
         className
       )}
@@ -65,6 +66,7 @@ interface BentoStatCardProps {
   name: string;
   value: string;
   href: string;
+  hint?: string;
   cta?: string;
   className?: string;
 }
@@ -74,25 +76,33 @@ const BentoStatCard = ({
   name,
   value,
   href,
-  cta = "Ver más",
+  hint,
+  cta,
   className,
 }: BentoStatCardProps) => (
   <Link href={href}>
     <div
       className={cn(
-        "group relative overflow-hidden rounded-xl border border-brand-border bg-brand-surface p-6 transition-all hover:border-brand-ink dark:hover:border-gray-600 hover:shadow-lg",
+        "group relative h-full overflow-hidden rounded-xl border border-brand-border bg-brand-surface p-5 sm:p-6 transition-all hover:border-brand-ink dark:hover:border-gray-600 hover:shadow-lg",
         "cursor-pointer",
         className
       )}
     >
-      <div className="relative z-10 flex flex-col justify-between h-full min-h-[120px]">
-        <div className="space-y-4 transition-transform duration-300 group-hover:-translate-y-1">
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-brand-canvas text-brand-muted transition-colors group-hover:bg-brand-ink dark:group-hover:bg-white group-hover:text-white dark:group-hover:text-gray-900">
-            <Icon className="h-5 w-5" />
+      <div className="relative z-10 flex flex-col justify-between h-full min-h-[132px]">
+        <div className="space-y-3 transition-transform duration-300 group-hover:-translate-y-1">
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-brand-canvas text-brand-muted transition-colors group-hover:bg-brand-ink dark:group-hover:bg-white group-hover:text-white dark:group-hover:text-gray-900">
+              <Icon className="h-5 w-5" strokeWidth={1.5} />
+            </div>
+            {hint ? (
+              <span className="text-[11px] sm:text-xs text-brand-muted text-right leading-tight pt-0.5">
+                {hint}
+              </span>
+            ) : null}
           </div>
           <div>
             <p className="text-sm text-brand-muted">{name}</p>
-            <p className="mt-1 text-3xl font-semibold text-brand-ink group-hover:text-brand-ink dark:hover:text-white/90 dark:group-hover:text-white/90 transition-colors">
+            <p className="mt-1 text-2xl sm:text-3xl font-semibold tabular-nums tracking-tight text-brand-ink transition-colors dark:group-hover:text-white/90">
               {value}
             </p>
           </div>
@@ -126,7 +136,7 @@ const BentoLogoCard = ({ logoUrl, config, alt = "Logo", className }: BentoLogoCa
     logoUrl={logoUrl}
     config={config}
     alt={alt}
-    className={cn("transition-all", className)}
+    className={cn("h-full min-h-[180px] transition-all", className)}
   />
 );
 
@@ -138,7 +148,7 @@ interface BentoGridProps {
 const BentoGrid = ({ children, className }: BentoGridProps) => (
   <div
     className={cn(
-      "grid w-full auto-rows-[minmax(140px,auto)] grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3",
+      "grid w-full grid-cols-1 gap-4 auto-rows-[minmax(140px,auto)] md:grid-cols-2 lg:grid-cols-3",
       className
     )}
   >
@@ -157,11 +167,11 @@ const BentoWelcomeCard = ({ title, description, className }: BentoWelcomeCardPro
   <div
     className={cn(
       "relative overflow-hidden rounded-xl border border-transparent dark:border-gray-700 bg-brand-ink dark:bg-gray-900 p-6 text-white",
-      "flex flex-col justify-center min-h-[160px] md:min-h-[180px]",
+      "flex flex-col justify-center h-full min-h-[180px]",
       className
     )}
   >
-    <div className="absolute inset-0 opacity-5">
+    <div className="absolute inset-0 opacity-5" aria-hidden>
       <svg width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
         <defs>
           <pattern id="bento-welcome-grid" width="40" height="40" patternUnits="userSpaceOnUse">
@@ -173,7 +183,7 @@ const BentoWelcomeCard = ({ title, description, className }: BentoWelcomeCardPro
     </div>
     <div className="relative z-10">
       <h2 className="text-xl font-light md:text-2xl mb-2">{title}</h2>
-      <p className="text-gray-400 text-sm md:text-base">{description}</p>
+      <div className="text-gray-400 text-sm md:text-base [&_p]:mt-1">{description}</div>
     </div>
   </div>
 );
@@ -184,6 +194,7 @@ export type StatItem = {
   label: string;
   value: string;
   path: string;
+  hint?: string;
 };
 
 export type ActionItem = {
@@ -217,41 +228,49 @@ const RoleDashboardBento = ({
   logoConfig,
   children,
   gridClassName,
-}: RoleDashboardBentoProps) => (
-  <div className="space-y-4">
-    <BentoGrid className={cn("auto-rows-[minmax(140px,auto)]", gridClassName)}>
-      <BentoWelcomeCard
-        title={welcomeTitle}
-        description={welcomeDescription}
-        className="lg:col-span-2 lg:row-span-2"
-      />
-      {logoUrl && logoConfig ? (
-        <BentoLogoCard key={`logo-${logoConfig.size}-${logoConfig.zoom}`} logoUrl={logoUrl} config={logoConfig} />
-      ) : null}
-      {statItems.map((stat, index) => (
-        <BentoStatCard
-          key={index}
-          Icon={stat.Icon}
-          name={stat.label}
-          value={stat.value}
-          href={stat.path}
-          cta="Ver más"
+}: RoleDashboardBentoProps) => {
+  const { t } = useLanguage();
+  const hasLogo = Boolean(logoUrl && logoConfig);
+  const viewMoreCta = t.common.viewMore;
+  const goCta = t.common.go;
+
+  return (
+    <div className="space-y-4">
+      <BentoGrid className={cn("items-stretch", gridClassName)}>
+        <BentoWelcomeCard
+          title={welcomeTitle}
+          description={welcomeDescription}
+          className={hasLogo ? "lg:col-span-2" : "lg:col-span-3"}
         />
-      ))}
-      {actionItems.map((action, index) => (
-        <BentoCard
-          key={index}
-          Icon={action.Icon}
-          name={action.name}
-          description={action.description}
-          href={action.href}
-          cta={action.cta ?? "Ir"}
-        />
-      ))}
-    </BentoGrid>
-    {children}
-  </div>
-);
+        {hasLogo && logoUrl && logoConfig ? (
+          <BentoLogoCard key={`logo-${logoConfig.size}-${logoConfig.zoom}`} logoUrl={logoUrl} config={logoConfig} />
+        ) : null}
+        {statItems.map((stat, index) => (
+          <BentoStatCard
+            key={`stat-${stat.label}-${index}`}
+            Icon={stat.Icon}
+            name={stat.label}
+            value={stat.value}
+            href={stat.path}
+            hint={stat.hint}
+            cta={viewMoreCta}
+          />
+        ))}
+        {actionItems.map((action, index) => (
+          <BentoCard
+            key={`action-${action.href}-${index}`}
+            Icon={action.Icon}
+            name={action.name}
+            description={action.description}
+            href={action.href}
+            cta={action.cta ?? goCta}
+          />
+        ))}
+      </BentoGrid>
+      {children}
+    </div>
+  );
+};
 
 /** Dashboard Bento con logo clínico/profesional cuando está habilitado en configuración */
 const ClinicalRoleDashboardBento = ({

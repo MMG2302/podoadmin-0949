@@ -1,10 +1,12 @@
 import { useRef, useState, useEffect } from "react";
 import { useAuth } from "../../contexts/auth-context";
+import { useLanguage } from "../../contexts/language-context";
 import { api } from "../../lib/api-client";
 import { compressImageForAvatar } from "../../lib/image-compress";
 import { UserAvatar } from "../ui/user-avatar";
 
 export function ProfileAvatarSettingsSection() {
+  const { t } = useLanguage();
   const { user, updateUser } = useAuth();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
@@ -29,11 +31,11 @@ export function ProfileAvatarSettingsSection() {
 
     const validTypes = ["image/png", "image/jpeg", "image/jpg", "image/webp"];
     if (!validTypes.includes(file.type)) {
-      setError("Formato no válido. Use PNG, JPG o WebP.");
+      setError(t.settings.profileAvatar.invalidFormat);
       return;
     }
     if (file.size > 2 * 1024 * 1024) {
-      setError("La imagen no puede superar 2 MB.");
+      setError(t.settings.profileAvatar.tooLarge);
       return;
     }
 
@@ -51,14 +53,14 @@ export function ProfileAvatarSettingsSection() {
       if (res.success && res.data?.success) {
         updateUser({ avatarUrl: res.data.avatar ?? avatar });
       } else {
-        setError(res.message || res.data?.error || "No se pudo guardar la foto.");
+        setError(res.message || res.data?.error || t.settings.profileAvatar.saveFailed);
         const reload = await api.get<{ success?: boolean; avatar?: string | null }>("/users/me/avatar");
         if (reload.success && reload.data?.success) {
           updateUser({ avatarUrl: reload.data.avatar ?? null });
         }
       }
     } catch {
-      setError("No se pudo procesar la imagen.");
+      setError(t.settings.profileAvatar.processFailed);
     } finally {
       setUploading(false);
     }
@@ -73,7 +75,7 @@ export function ProfileAvatarSettingsSection() {
       if (res.success && res.data?.success) {
         updateUser({ avatarUrl: null });
       } else {
-        setError("No se pudo quitar la foto.");
+        setError(t.settings.profileAvatar.removeFailed);
       }
     } finally {
       setUploading(false);
@@ -87,7 +89,7 @@ export function ProfileAvatarSettingsSection() {
         onClick={() => fileInputRef.current?.click()}
         disabled={uploading}
         className="relative group rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-ink focus-visible:ring-offset-2 disabled:opacity-60"
-        title="Cambiar foto de perfil"
+        title={t.settings.profileAvatar.changeTitle}
       >
         <UserAvatar name={user.name} avatarUrl={user.avatarUrl} size="md" variant="settings" />
         <span className="absolute inset-0 rounded-full bg-black/0 group-hover:bg-black/35 transition-colors flex items-center justify-center">
@@ -124,7 +126,7 @@ export function ProfileAvatarSettingsSection() {
             disabled={uploading}
             className="text-sm font-medium text-brand-ink hover:underline disabled:opacity-50"
           >
-            {uploading ? "Guardando…" : user.avatarUrl ? "Cambiar foto" : "Subir foto"}
+            {uploading ? t.settings.profileAvatar.saving : user.avatarUrl ? t.settings.profileAvatar.changePhoto : t.settings.profileAvatar.uploadPhoto}
           </button>
           {user.avatarUrl && (
             <button
@@ -133,12 +135,12 @@ export function ProfileAvatarSettingsSection() {
               disabled={uploading}
               className="text-sm font-medium text-brand-muted hover:text-semantic-error disabled:opacity-50"
             >
-              Quitar foto
+              {t.settings.profileAvatar.removePhoto}
             </button>
           )}
         </div>
         <p className="text-xs text-brand-muted mt-1">
-          JPG, PNG o WebP. Máx. 2 MB. Se muestra en el menú lateral.
+          {t.settings.profileAvatar.hint}
         </p>
         {error && <p className="text-xs text-semantic-error mt-1">{error}</p>}
       </div>

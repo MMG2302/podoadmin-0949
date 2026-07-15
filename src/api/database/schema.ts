@@ -154,6 +154,7 @@ export const clinics = sqliteTable('clinics', {
   dashboardLogoJson: text('dashboard_logo_json'),
   checkoutTariffsJson: text('checkout_tariffs_json'),
   checkoutAnalyticsJson: text('checkout_analytics_json'),
+  agendaSettingsJson: text('agenda_settings_json'),
   printPreferencesJson: text('print_preferences_json'),
   createdAt: text('created_at').notNull(),
 });
@@ -327,6 +328,7 @@ export const professionalInfo = sqliteTable('professional_info', {
   dashboardLogoJson: text('dashboard_logo_json'),
   checkoutTariffsJson: text('checkout_tariffs_json'),
   checkoutAnalyticsJson: text('checkout_analytics_json'),
+  agendaSettingsJson: text('agenda_settings_json'),
   printPreferencesJson: text('print_preferences_json'),
   infoUpdatedAt: text('info_updated_at'),
 });
@@ -606,6 +608,22 @@ export const appointmentWaitlist = sqliteTable('appointment_waitlist', {
   createdBy: text('created_by').notNull(),
   createdAt: text('created_at').notNull(),
   updatedAt: text('updated_at').notNull(),
+});
+
+/** Cierre de ventas diario por podólogo (snapshot al momento del cierre). */
+export const dailySalesCloses = sqliteTable('daily_sales_closes', {
+  id: text('id').primaryKey(),
+  closeDate: text('close_date').notNull(),
+  podiatristId: text('podiatrist_id').notNull(),
+  clinicId: text('clinic_id'),
+  paidCents: integer('paid_cents').notNull().default(0),
+  paidCount: integer('paid_count').notNull().default(0),
+  pendingCents: integer('pending_cents').notNull().default(0),
+  pendingCount: integer('pending_count').notNull().default(0),
+  byMethodJson: text('by_method_json'),
+  notes: text('notes'),
+  closedBy: text('closed_by').notNull(),
+  closedAt: text('closed_at').notNull(),
 });
 
 /** Handoff podólogo → recepción: importe a cobrar al paciente al salir de consulta. */

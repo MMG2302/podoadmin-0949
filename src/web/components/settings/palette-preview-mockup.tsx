@@ -1,5 +1,6 @@
 import type { PaletteMode } from "../../types/color-palette";
 import { contrastForeground } from "../../lib/color-utils";
+import { useLanguage } from "../../contexts/language-context";
 
 interface PalettePreviewMockupProps {
   mode: PaletteMode;
@@ -8,6 +9,8 @@ interface PalettePreviewMockupProps {
 
 /** Miniatura de la interfaz con la paleta aplicada. */
 export function PalettePreviewMockup({ mode, className = "" }: PalettePreviewMockupProps) {
+  const { t } = useLanguage();
+  const ui = t.settings.palettePreviewUi;
   const sidebarFg = contrastForeground(mode.sidebar);
   const primaryFg = contrastForeground(mode.primary);
   const activeFg = contrastForeground(mode.surface);
@@ -22,14 +25,14 @@ export function PalettePreviewMockup({ mode, className = "" }: PalettePreviewMoc
           className="w-16 shrink-0 flex flex-col p-2 gap-1"
           style={{ backgroundColor: mode.sidebar, color: sidebarFg }}
         >
-          <div className="text-[8px] font-light opacity-80">Podo</div>
+          <div className="text-[8px] font-light opacity-80">{ui.brandShort}</div>
           <div
             className="text-[7px] px-1 py-0.5 rounded"
             style={{ backgroundColor: mode.surface, color: activeFg }}
           >
-            Inicio
+            {ui.home}
           </div>
-          <div className="text-[7px] px-1 py-0.5 opacity-70">Pacientes</div>
+          <div className="text-[7px] px-1 py-0.5 opacity-70">{ui.patients}</div>
         </div>
         <div className="flex-1 flex flex-col min-w-0">
           <div
@@ -40,7 +43,7 @@ export function PalettePreviewMockup({ mode, className = "" }: PalettePreviewMoc
               borderColor: mode.border,
             }}
           >
-            Vista previa
+            {ui.preview}
           </div>
           <div className="flex-1 p-2 space-y-1.5">
             <div
@@ -51,16 +54,16 @@ export function PalettePreviewMockup({ mode, className = "" }: PalettePreviewMoc
                 color: mode.primary,
               }}
             >
-              <p className="text-[8px] font-semibold">Tarjeta de ejemplo</p>
+              <p className="text-[8px] font-semibold">{ui.sampleCard}</p>
               <p className="text-[7px]" style={{ color: mode.muted }}>
-                Texto secundario
+                {ui.secondaryText}
               </p>
               <button
                 type="button"
                 className="mt-1 text-[7px] px-2 py-0.5 rounded"
                 style={{ backgroundColor: mode.primary, color: primaryFg }}
               >
-                Acción
+                {ui.action}
               </button>
             </div>
             <div className="flex gap-1">
@@ -68,7 +71,7 @@ export function PalettePreviewMockup({ mode, className = "" }: PalettePreviewMoc
                 className="text-[6px] px-1 py-0.5 rounded"
                 style={{ backgroundColor: mode.primary, color: primaryFg }}
               >
-                Botón
+                {ui.button}
               </span>
             </div>
           </div>

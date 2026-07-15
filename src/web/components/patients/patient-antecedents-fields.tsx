@@ -2,8 +2,9 @@ import type { AntecedentEntry, FamilyAntecedentId, PatientMedicalHistory } from 
 import {
   createDefaultMedicalHistory,
   FAMILY_ANTECEDENT_IDS,
-  FAMILY_ANTECEDENT_LABELS,
 } from "../../types/medical-history";
+import { useLanguage } from "../../contexts/language-context";
+import { getFamilyAntecedentLabel } from "../../i18n/clinical-labels";
 
 type PersonalFieldsProps = {
   allergies: string;
@@ -93,6 +94,8 @@ function FamilyAntecedentRow({
   variant?: "standard" | "other";
   onChange: (patch: Partial<AntecedentEntry>) => void;
 }) {
+  const { t } = useLanguage();
+  const pc = t.patientsClinical;
   const inputClass =
     "w-full px-3 py-2 border border-brand-border rounded-lg bg-brand-surface text-sm focus:outline-none focus:border-brand-ink disabled:bg-gray-100 dark:disabled:bg-gray-900";
 
@@ -100,9 +103,7 @@ function FamilyAntecedentRow({
     <div className="rounded-lg border border-brand-border p-3 space-y-2">
       <p className="text-sm font-medium text-brand-ink">{label}</p>
       {variant === "other" && (
-        <p className="text-xs text-brand-muted">
-          Indique si algún familiar tuvo otra enfermedad que considere relevante.
-        </p>
+        <p className="text-xs text-brand-muted">{pc.familyOtherHint}</p>
       )}
       <div className="flex flex-wrap items-center gap-4">
         <label className="inline-flex items-center gap-1.5 text-sm">
@@ -113,7 +114,7 @@ function FamilyAntecedentRow({
             disabled={readOnly}
             onChange={() => onChange({ present: true })}
           />
-          SI
+          {pc.yes}
         </label>
         <label className="inline-flex items-center gap-1.5 text-sm">
           <input
@@ -123,7 +124,7 @@ function FamilyAntecedentRow({
             disabled={readOnly}
             onChange={() => onChange({ present: false, condition: "", notes: "" })}
           />
-          NO
+          {pc.no}
         </label>
       </div>
       {variant === "other" && entry.present === true && (
@@ -132,7 +133,7 @@ function FamilyAntecedentRow({
           value={entry.condition}
           disabled={readOnly}
           onChange={(e) => onChange({ condition: e.target.value })}
-          placeholder="Enfermedad o condición del familiar"
+          placeholder={pc.otherConditionPlaceholder}
           className={inputClass}
         />
       )}
@@ -142,7 +143,7 @@ function FamilyAntecedentRow({
           value={entry.notes}
           disabled={readOnly || (variant === "other" && entry.present !== true)}
           onChange={(e) => onChange({ notes: e.target.value })}
-          placeholder={variant === "other" ? "Observaciones (opcional)" : "Observaciones (opcional)"}
+          placeholder={pc.notesOptional}
           className={inputClass}
         />
       )}
@@ -151,16 +152,16 @@ function FamilyAntecedentRow({
 }
 
 export function PatientFamilyAntecedentsFields({ family, onChange, readOnly }: FamilyFieldsProps) {
+  const { t } = useLanguage();
+  const pc = t.patientsClinical;
   return (
     <div className="space-y-3">
-      <h4 className="font-medium text-brand-ink">Antecedentes familiares</h4>
-      <p className="text-xs text-brand-muted">
-        Indique si algún familiar directo padece estas enfermedades.
-      </p>
+      <h4 className="font-medium text-brand-ink">{pc.familyTitle}</h4>
+      <p className="text-xs text-brand-muted">{pc.familyHint}</p>
       {FAMILY_ANTECEDENT_IDS.map((id) => (
         <FamilyAntecedentRow
           key={id}
-          label={FAMILY_ANTECEDENT_LABELS[id]}
+          label={getFamilyAntecedentLabel(t, id)}
           variant={id === "other" ? "other" : "standard"}
           entry={family[id] ?? createDefaultMedicalHistory().family[id]}
           readOnly={readOnly}
@@ -212,19 +213,22 @@ export function PatientFamilyAntecedentsSummary({
 }: {
   medicalHistory: PatientMedicalHistory;
 }) {
+  const { t } = useLanguage();
+  const pc = t.patientsClinical;
   return (
     <div>
-      <h4 className="font-medium text-brand-ink mb-3">Antecedentes familiares</h4>
+      <h4 className="font-medium text-brand-ink mb-3">{pc.familyTitle}</h4>
       <div className="space-y-2 text-sm">
         {FAMILY_ANTECEDENT_IDS.map((id) => {
           const entry = medicalHistory.family[id];
-          const siNo = entry?.present === true ? "SI" : "NO";
+          const siNo = entry?.present === true ? pc.yes : pc.no;
+          const label = getFamilyAntecedentLabel(t, id);
           if (id === "other") {
             const condition = entry?.condition?.trim();
             const notes = entry?.notes?.trim();
             return (
               <div key={id} className="flex flex-wrap gap-x-2">
-                <span className="text-gray-500">{FAMILY_ANTECEDENT_LABELS.other}:</span>
+                <span className="text-gray-500">{label}:</span>
                 <span className="font-medium">{siNo}</span>
                 {entry?.present === true && condition ? (
                   <span className="text-gray-600">— {condition}</span>
@@ -237,7 +241,7 @@ export function PatientFamilyAntecedentsSummary({
           }
           return (
             <div key={id} className="flex flex-wrap gap-x-2">
-              <span className="text-gray-500">{FAMILY_ANTECEDENT_LABELS[id]}:</span>
+              <span className="text-gray-500">{label}:</span>
               <span className="font-medium">{siNo}</span>
               {entry?.notes ? <span className="text-gray-600">— {entry.notes}</span> : null}
             </div>

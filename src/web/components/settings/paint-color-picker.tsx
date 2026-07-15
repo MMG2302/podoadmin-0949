@@ -16,6 +16,7 @@ import {
   addToCustomSwatches,
   getCustomSwatches,
 } from "../../lib/palette-preferences";
+import { useLanguage } from "../../contexts/language-context";
 
 interface PaintColorPickerProps {
   value: string;
@@ -24,6 +25,8 @@ interface PaintColorPickerProps {
 }
 
 export function PaintColorPicker({ value, onAccept, onCancel }: PaintColorPickerProps) {
+  const { t } = useLanguage();
+  const p = t.settings.paintColorPicker;
   const initial = normalizeHex(value) ?? "#1a1a1a";
   const [hsl, setHsl] = useState<Hsl>(() => hexToHsl(initial) ?? { h: 0, s: 0, l: 10 });
   const [hex, setHex] = useState(initial);
@@ -114,7 +117,7 @@ export function PaintColorPicker({ value, onAccept, onCancel }: PaintColorPicker
       className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 p-4"
       role="dialog"
       aria-modal="true"
-      aria-label="Selector de color"
+      aria-label={p.ariaLabel}
       onClick={onCancel}
     >
       <div
@@ -124,7 +127,7 @@ export function PaintColorPicker({ value, onAccept, onCancel }: PaintColorPicker
         <div className="flex flex-col sm:flex-row gap-4">
           <div className="flex-1 space-y-3">
             <div>
-              <p className="text-xs font-medium text-brand-muted mb-1">Colores básicos:</p>
+              <p className="text-xs font-medium text-brand-muted mb-1">{p.basicColors}</p>
               <div className="grid grid-cols-8 gap-0.5">
                 {PAINT_BASIC_COLORS.map((c, i) => (
                   <button
@@ -139,7 +142,7 @@ export function PaintColorPicker({ value, onAccept, onCancel }: PaintColorPicker
               </div>
             </div>
             <div>
-              <p className="text-xs font-medium text-brand-muted mb-1">Colores personalizados:</p>
+              <p className="text-xs font-medium text-brand-muted mb-1">{p.customColors}</p>
               <div className="grid grid-cols-8 gap-0.5">
                 {customSwatches.map((c, i) => (
                   <button
@@ -163,7 +166,7 @@ export function PaintColorPicker({ value, onAccept, onCancel }: PaintColorPicker
               className="text-xs text-brand-ink underline hover:no-underline"
               onClick={() => setAdvanced((v) => !v)}
             >
-              {advanced ? "« Ocultar colores personalizados" : "Definir colores personalizados »"}
+              {advanced ? p.hideCustom : p.defineCustom}
             </button>
           </div>
 
@@ -208,10 +211,10 @@ export function PaintColorPicker({ value, onAccept, onCancel }: PaintColorPicker
                 <div
                   className="w-full h-10 border border-brand-border rounded"
                   style={{ backgroundColor: hex }}
-                  title="Color | Sólido"
+                  title={p.colorSolid}
                 />
                 <label className="block text-[10px] text-brand-muted">
-                  Matiz
+                  {p.hue}
                   <input
                     type="number"
                     min={0}
@@ -222,7 +225,7 @@ export function PaintColorPicker({ value, onAccept, onCancel }: PaintColorPicker
                   />
                 </label>
                 <label className="block text-[10px] text-brand-muted">
-                  Sat.
+                  {p.sat}
                   <input
                     type="number"
                     min={0}
@@ -233,7 +236,7 @@ export function PaintColorPicker({ value, onAccept, onCancel }: PaintColorPicker
                   />
                 </label>
                 <label className="block text-[10px] text-brand-muted">
-                  Lum.
+                  {p.lum}
                   <input
                     type="number"
                     min={0}
@@ -284,7 +287,7 @@ export function PaintColorPicker({ value, onAccept, onCancel }: PaintColorPicker
                     setCustomSwatches(updated);
                   }}
                 >
-                  Agregar a personalizados
+                  {p.addToCustom}
                 </button>
               </div>
             </div>
@@ -308,14 +311,14 @@ export function PaintColorPicker({ value, onAccept, onCancel }: PaintColorPicker
             className="px-3 py-1.5 text-xs border border-brand-border rounded hover:bg-brand-canvas"
             onClick={onCancel}
           >
-            Cancelar
+            {t.common.cancel}
           </button>
           <button
             type="button"
             className="px-3 py-1.5 text-xs bg-brand-ink text-brand-ink-fg rounded hover:bg-brand-ink-hover"
             onClick={() => onAccept(hex)}
           >
-            Aceptar
+            {p.accept}
           </button>
         </div>
       </div>

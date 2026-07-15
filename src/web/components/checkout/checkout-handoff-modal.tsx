@@ -144,7 +144,7 @@ export function CheckoutHandoffModal({
         res.message ||
           res.data?.error ||
           (res.httpStatus === 500
-            ? "Error del servidor. Si acabas de actualizar el proyecto, ejecuta npm run db:migrate y reinicia npm run dev."
+            ? t.checkout.serverMigrateHint
             : t.checkout.saveFailed)
       );
     } finally {

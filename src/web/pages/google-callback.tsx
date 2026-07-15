@@ -2,15 +2,17 @@ import { useEffect, useState } from "react";
 import { formErrorClass } from "../lib/form-field-classes";
 import { api } from "../lib/api-client";
 import { getPostLoginPath, normalizeUserSystemAccess, type User } from "../contexts/auth-context";
+import { useLanguage } from "../contexts/language-context";
 
 const GoogleCallbackPage = () => {
+  const { t } = useLanguage();
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const code = params.get("code");
     if (!code) {
-      setError("No se recibió código de Google");
+      setError(t.auth.googleNoCode);
       return;
     }
 
@@ -26,10 +28,10 @@ const GoogleCallbackPage = () => {
           window.location.href = getPostLoginPath(userData);
           return;
         }
-        setError(res.data?.message || res.error || "Error al iniciar sesión con Google");
+        setError(res.data?.message || res.error || t.auth.googleLoginError);
       })
-      .catch(() => setError("Error de conexión con el servidor"));
-  }, []);
+      .catch(() => setError(t.auth.serverConnectionError));
+  }, [t]);
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-white p-8">
@@ -38,11 +40,11 @@ const GoogleCallbackPage = () => {
           <>
             <p className={`${formErrorClass} mb-4`}>{error}</p>
             <a href="/login" className="text-brand-ink underline">
-              Volver al inicio de sesión
+              {t.auth.backToLogin}
             </a>
           </>
         ) : (
-          <p className="text-gray-600">Completando inicio de sesión con Google…</p>
+          <p className="text-gray-600">{t.auth.googleCompleting}</p>
         )}
       </div>
     </div>

@@ -332,7 +332,7 @@ const Register = () => {
                       type="button"
                       onClick={() => setShowPassword((v) => !v)}
                       className="absolute inset-y-0 right-0 flex items-center px-3 text-brand-muted hover:text-brand-ink dark:hover:text-white"
-                      aria-label={showPassword ? "Ocultar" : "Mostrar"}
+                      aria-label={showPassword ? t.common.hideShort : t.common.showShort}
                     >
                       {showPassword ? "🙈" : "👁"}
                     </button>

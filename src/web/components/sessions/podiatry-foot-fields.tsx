@@ -7,6 +7,8 @@ import {
   formPanelMutedClass,
   formPanelTitleClass,
 } from "../../lib/form-field-classes";
+import { useLanguage } from "../../contexts/language-context";
+import { getPodiatryArchLabel, getPodiatryFootLabel } from "../../i18n/clinical-labels";
 
 type Props = {
   footType: PodiatryFootType | null;
@@ -25,17 +27,18 @@ export function PodiatryFootFields({
   onArchTypeChange,
   disabled = false,
 }: Props) {
+  const { t } = useLanguage();
+  const exam = t.podiatry.exam;
+
   return (
     <div className={`${formPanelMutedClass} space-y-3`}>
       <div>
-        <p className={formPanelTitleClass}>Morfología podológica</p>
-        <p className={`${formHintClass} mt-0.5`}>
-          Se usa en la historia imprimible (prioridad sobre texto libre en notas).
-        </p>
+        <p className={formPanelTitleClass}>{exam.morphologyTitle}</p>
+        <p className={`${formHintClass} mt-0.5`}>{exam.morphologyHint}</p>
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div>
-          <label className={`${formLabelClassXs} mb-1`}>Tipo de pie</label>
+          <label className={`${formLabelClassXs} mb-1`}>{exam.footType}</label>
           <select
             disabled={disabled}
             value={footType ?? ""}
@@ -44,16 +47,16 @@ export function PodiatryFootFields({
             }
             className={selectClass}
           >
-            <option value="">Sin especificar</option>
+            <option value="">{exam.unspecified}</option>
             {PODIATRY_FOOT_OPTIONS.map((o) => (
               <option key={o.value} value={o.value}>
-                {o.label}
+                {getPodiatryFootLabel(t, o.value)}
               </option>
             ))}
           </select>
         </div>
         <div>
-          <label className={`${formLabelClassXs} mb-1`}>Tipo de planta / arco</label>
+          <label className={`${formLabelClassXs} mb-1`}>{exam.archType}</label>
           <select
             disabled={disabled}
             value={archType ?? ""}
@@ -62,10 +65,10 @@ export function PodiatryFootFields({
             }
             className={selectClass}
           >
-            <option value="">Sin especificar</option>
+            <option value="">{exam.unspecified}</option>
             {PODIATRY_ARCH_OPTIONS.map((o) => (
               <option key={o.value} value={o.value}>
-                {o.label}
+                {getPodiatryArchLabel(t, o.value)}
               </option>
             ))}
           </select>

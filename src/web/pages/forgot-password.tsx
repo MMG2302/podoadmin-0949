@@ -111,7 +111,7 @@ const ForgotPassword = () => {
                   <p>
                     {t.auth.contactToVerifyRecovery}{" "}
                     <a
-                      href={`mailto:${supportEmail || "soporte@podoadmin.com"}?subject=${encodeURIComponent("Verificación de identidad - Recuperación de contraseña")}`}
+                      href={`mailto:${supportEmail || "soporte@podoadmin.com"}?subject=${encodeURIComponent(t.auth.recoveryVerifySubject)}`}
                       className="font-medium text-brand-ink hover:underline"
                     >
                       {supportEmail || "soporte@podoadmin.com"}

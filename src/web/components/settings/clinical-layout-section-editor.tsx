@@ -1,10 +1,11 @@
 import type { ClinicalLayoutSection } from "../../types/clinical-layout";
 import {
-  CUSTOM_KIND_META,
   getSectionOptions,
   getTableColumns,
   MAX_TABLE_COLUMNS,
 } from "../../types/clinical-layout";
+import { useLanguage } from "../../contexts/language-context";
+import { getCustomKindHint, getCustomKindLabel } from "../../i18n/clinical-labels";
 
 type Props = {
   section: ClinicalLayoutSection;
@@ -27,7 +28,9 @@ function OptionListEditor({
   onUpdate,
   onRemove,
   addLabel,
+  removeTitle,
   maxItems,
+  maxColumnsLabel,
 }: {
   label: string;
   hint?: string;
@@ -37,7 +40,9 @@ function OptionListEditor({
   onUpdate: (index: number, value: string) => void;
   onRemove: (index: number) => void;
   addLabel: string;
+  removeTitle: string;
   maxItems?: number;
+  maxColumnsLabel?: string;
 }) {
   const atMax = maxItems != null && items.length >= maxItems;
 
@@ -62,7 +67,7 @@ function OptionListEditor({
                   onClick={() => onRemove(index)}
                   disabled={items.length <= 1}
                   className="p-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-lg disabled:opacity-30"
-                  title="Quitar"
+                  title={removeTitle}
                 >
                   ×
                 </button>
@@ -83,8 +88,8 @@ function OptionListEditor({
           >
             {addLabel}
           </button>
-          {atMax && maxItems != null && (
-            <p className="text-xs text-gray-400 mt-1">Máximo {maxItems} columnas.</p>
+          {atMax && maxItems != null && maxColumnsLabel && (
+            <p className="text-xs text-gray-400 mt-1">{maxColumnsLabel}</p>
           )}
         </>
       )}
@@ -103,15 +108,19 @@ export function ClinicalLayoutSectionEditor({
   onUpdateTableColumn,
   onRemoveTableColumn,
 }: Props) {
+  const { t } = useLanguage();
+  const ed = t.clinicalLayout.editor;
+  const defaults = t.clinicalLayout.defaults;
+
   if (section.kind === "builtin") return null;
 
-  const meta = CUSTOM_KIND_META[section.kind];
   const options = getSectionOptions(section);
 
   return (
     <div className="space-y-4">
       <p className="text-xs text-gray-500 bg-brand-canvas/50 rounded-lg p-2 border border-brand-border">
-        <strong className="text-brand-muted">{meta.label}:</strong> {meta.hint}
+        <strong className="text-brand-muted">{getCustomKindLabel(t, section.kind)}:</strong>{" "}
+        {getCustomKindHint(t, section.kind)}
       </p>
 
       {(section.kind === "custom_checklist" ||
@@ -121,39 +130,36 @@ export function ClinicalLayoutSectionEditor({
         <OptionListEditor
           label={
             section.kind === "custom_checklist"
-              ? "Ítems del checklist"
+              ? ed.checklistItems
               : section.kind === "custom_yes_no_na"
-                ? "Filas SI / NO / N/A"
-                : "Opciones"
+                ? ed.yesNoNaRows
+                : ed.options
           }
-          hint={
-            section.kind === "custom_yes_no_na"
-              ? "Cada fila será una pregunta en la sesión."
-              : undefined
-          }
+          hint={section.kind === "custom_yes_no_na" ? ed.yesNoNaRowsHint : undefined}
           items={options}
           canEdit={canEdit}
           onAdd={onAddOption}
           onUpdate={onUpdateOption}
           onRemove={onRemoveOption}
+          removeTitle={ed.remove}
           addLabel={
             section.kind === "custom_checklist"
-              ? "+ Añadir ítem"
+              ? ed.addItem
               : section.kind === "custom_yes_no_na"
-                ? "+ Añadir fila"
-                : "+ Añadir opción"
+                ? ed.addRow
+                : ed.addOption
           }
         />
       )}
 
       {section.kind === "custom_number" && canEdit && (
         <div>
-          <label className="block text-xs font-medium text-gray-500 mb-1">Unidad</label>
+          <label className="block text-xs font-medium text-gray-500 mb-1">{ed.unit}</label>
           <input
             type="text"
-            value={section.unit ?? "unidad"}
+            value={section.unit ?? defaults.unit}
             onChange={(e) => onPatch({ unit: e.target.value })}
-            placeholder="min, ml, mm, %…"
+            placeholder={ed.unitPlaceholder}
             className="w-full max-w-xs px-3 py-2 text-sm border rounded-lg dark:bg-gray-950"
             maxLength={20}
           />
@@ -162,7 +168,7 @@ export function ClinicalLayoutSectionEditor({
 
       {section.kind === "custom_scale" && canEdit && (
         <div>
-          <label className="block text-xs font-medium text-gray-500 mb-1">Escala máxima</label>
+          <label className="block text-xs font-medium text-gray-500 mb-1">{ed.scaleMax}</label>
           <select
             value={section.scaleMax ?? 10}
             onChange={(e) => onPatch({ scaleMax: Number(e.target.value) })}
@@ -176,12 +182,12 @@ export function ClinicalLayoutSectionEditor({
 
       {section.kind === "custom_conditional" && canEdit && (
         <div>
-          <label className="block text-xs font-medium text-gray-500 mb-1">Pregunta SI/NO</label>
+          <label className="block text-xs font-medium text-gray-500 mb-1">{ed.conditionalPrompt}</label>
           <input
             type="text"
             value={section.conditionalPrompt ?? ""}
             onChange={(e) => onPatch({ conditionalPrompt: e.target.value })}
-            placeholder="¿Hubo complicación?"
+            placeholder={defaults.complication}
             className="w-full px-3 py-2 text-sm border rounded-lg dark:bg-gray-950"
             maxLength={200}
           />
@@ -191,18 +197,20 @@ export function ClinicalLayoutSectionEditor({
       {section.kind === "custom_table" && (
         <>
           <OptionListEditor
-            label="Columnas de la tabla"
-            hint="Nombre de cada columna (p. ej. producto, cantidad, lote)."
+            label={ed.tableColumns}
+            hint={ed.tableColumnsHint}
             items={getTableColumns(section)}
             canEdit={canEdit}
             onAdd={onAddTableColumn}
             onUpdate={onUpdateTableColumn}
             onRemove={onRemoveTableColumn}
-            addLabel="+ Añadir columna"
+            removeTitle={ed.remove}
+            addLabel={ed.addColumn}
             maxItems={MAX_TABLE_COLUMNS}
+            maxColumnsLabel={ed.maxColumns.replace("{n}", String(MAX_TABLE_COLUMNS))}
           />
           <div>
-            <label className="block text-xs font-medium text-gray-500 mb-1">Filas en sesión</label>
+            <label className="block text-xs font-medium text-gray-500 mb-1">{ed.tableRows}</label>
             {canEdit ? (
               <input
                 type="number"

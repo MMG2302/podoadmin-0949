@@ -8,6 +8,7 @@ import {
   semanticChipSuccessClass,
   semanticChipWarningClass,
 } from "../../lib/form-field-classes";
+import { useLanguage } from "../../contexts/language-context";
 
 interface PaletteSemanticPreviewMockupProps {
   className?: string;
@@ -28,24 +29,41 @@ interface PaletteSemanticPreviewMockupProps {
 /** Vista previa de alertas semánticas con las mismas clases que el resto de la app. */
 export function PaletteSemanticPreviewMockup({
   className = "",
-  labels = {
-    error: "Error",
-    warning: "Advertencia",
-    success: "Éxito",
-    info: "Info",
-  },
-  messages = {
-    error: "No se pudo guardar el registro.",
-    warning: "Revisa los datos antes de continuar.",
-    success: "Cambios guardados correctamente.",
-    info: "La sesión expira en 5 minutos.",
-  },
+  labels,
+  messages,
 }: PaletteSemanticPreviewMockupProps) {
+  const { t } = useLanguage();
+  const resolvedLabels = labels ?? t.settings.palettePreviewLabels;
+  const resolvedMessages = messages ?? t.settings.palettePreviewMessages;
   const items = [
-    { key: "error" as const, label: labels.error, message: messages.error, box: semanticAlertErrorClass, chip: semanticChipErrorClass },
-    { key: "warning" as const, label: labels.warning, message: messages.warning, box: semanticAlertWarningClass, chip: semanticChipWarningClass },
-    { key: "success" as const, label: labels.success, message: messages.success, box: semanticAlertSuccessClass, chip: semanticChipSuccessClass },
-    { key: "info" as const, label: labels.info, message: messages.info, box: semanticAlertInfoClass, chip: semanticChipInfoClass },
+    {
+      key: "error" as const,
+      label: resolvedLabels.error,
+      message: resolvedMessages.error,
+      box: semanticAlertErrorClass,
+      chip: semanticChipErrorClass,
+    },
+    {
+      key: "warning" as const,
+      label: resolvedLabels.warning,
+      message: resolvedMessages.warning,
+      box: semanticAlertWarningClass,
+      chip: semanticChipWarningClass,
+    },
+    {
+      key: "success" as const,
+      label: resolvedLabels.success,
+      message: resolvedMessages.success,
+      box: semanticAlertSuccessClass,
+      chip: semanticChipSuccessClass,
+    },
+    {
+      key: "info" as const,
+      label: resolvedLabels.info,
+      message: resolvedMessages.info,
+      box: semanticAlertInfoClass,
+      chip: semanticChipInfoClass,
+    },
   ];
 
   return (

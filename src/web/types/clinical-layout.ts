@@ -85,6 +85,7 @@ export type CustomSectionValue = {
 
 export type CustomSectionsData = Record<string, CustomSectionValue>;
 
+/** Etiquetas en español como fallback de persistencia / legacy; UI vía t.clinicalLayout.kinds.* */
 export const CUSTOM_KIND_META: Record<
   CustomSectionKind,
   { label: string; hint: string }
@@ -131,6 +132,7 @@ export const CUSTOM_KIND_META: Record<
   },
 };
 
+/** Etiquetas en español como fallback de persistencia / legacy; UI vía t.clinicalLayout.builtins.* */
 export const BUILTIN_SECTION_META: Record<
   BuiltInClinicalSectionId,
   { label: string; hint?: string; group: "sesion" | "podiatry" | "paciente" }

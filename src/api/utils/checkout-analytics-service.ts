@@ -119,13 +119,17 @@ async function loadPatientNameMap(patientIds: string[]): Promise<Map<string, str
   return map;
 }
 
+function toIsoDate(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
 function monthKey(d: Date): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
 }
 
+/** Clave estable YYYY-MM; el cliente formatea según idioma. */
 function monthLabel(key: string): string {
-  const [y, m] = key.split('-').map(Number);
-  return new Date(y, m - 1, 1).toLocaleDateString('es-MX', { month: 'short', year: '2-digit' });
+  return key;
 }
 
 type HandoffRow = {
@@ -368,7 +372,7 @@ async function computeCheckoutAnalytics(
       dayEnd.setHours(23, 59, 59, 999);
       const bucket = sumCountPaidIn(paidRows, dayStart, dayEnd);
       series.push({
-        label: dayStart.toLocaleDateString('es-MX', { weekday: 'short' }),
+        label: toIsoDate(dayStart),
         paidCents: bucket.total,
         count: bucket.count,
       });
@@ -382,7 +386,7 @@ async function computeCheckoutAnalytics(
       weekEnd.setHours(23, 59, 59, 999);
       const bucket = sumCountPaidIn(paidRows, weekStart, weekEnd);
       series.push({
-        label: `S${w + 1}`,
+        label: `W${w + 1}`,
         paidCents: bucket.total,
         count: bucket.count,
       });
@@ -394,14 +398,19 @@ async function computeCheckoutAnalytics(
       const monthEnd = new Date(from.getFullYear(), m + 1, 0, 23, 59, 59, 999);
       const bucket = sumCountPaidIn(paidRows, monthStart, monthEnd);
       series.push({
-        label: monthStart.toLocaleDateString('es-MX', { month: 'short' }),
+        label: monthKey(monthStart),
         paidCents: bucket.total,
         count: bucket.count,
       });
     }
   }
 
-  const comparisonSeries: { label: string; currentCents: number; previousCents: number }[] = [];
+  const comparisonSeries: {
+    label: string;
+    previousLabel: string;
+    currentCents: number;
+    previousCents: number;
+  }[] = [];
   if (period === 'month') {
     for (let m = 0; m < 6; m++) {
       const curStart = new Date(now.getFullYear(), now.getMonth() - m, 1);
@@ -412,6 +421,7 @@ async function computeCheckoutAnalytics(
       prevEnd.setMonth(prevEnd.getMonth() - 1);
       comparisonSeries.unshift({
         label: monthLabel(monthKey(curStart)),
+        previousLabel: monthLabel(monthKey(prevStart)),
         currentCents: sumPaidIn(curStart, curEnd),
         previousCents: sumPaidIn(prevStart, prevEnd),
       });
@@ -496,20 +506,48 @@ async function computeCheckoutAnalytics(
       : null;
 
   const tariffByAmount = new Map<number, string>();
+  const tariffLabels = new Set<string>();
   for (const t of tariffs) {
+    tariffLabels.add(t.label);
     if (!tariffByAmount.has(t.amountCents)) {
       tariffByAmount.set(t.amountCents, t.label);
     }
   }
 
-  const marginByServiceMap = new Map<string, { totalCents: number; count: number }>();
-  for (const r of filterPaidIn(paidRows, monthStart, now)) {
-    const amount = r.amountCents ?? 0;
-    const label = tariffByAmount.get(amount) ?? (r.notes?.trim() || 'Otros servicios');
-    const prev = marginByServiceMap.get(label) ?? { totalCents: 0, count: 0 };
-    marginByServiceMap.set(label, { totalCents: prev.totalCents + amount, count: prev.count + 1 });
-  }
+  const resolveServiceLabel = (amountCents: number, notes: string | null | undefined): string => {
+    const note = notes?.trim();
+    if (note && tariffLabels.has(note)) return note;
+    const byAmount = tariffByAmount.get(amountCents);
+    if (byAmount) return byAmount;
+    if (note) return note;
+    return 'Otros servicios';
+  };
 
+  const aggregateByService = (rows: PaidIndexed[]) => {
+    const map = new Map<string, { totalCents: number; count: number }>();
+    for (const r of rows) {
+      const amount = r.amountCents ?? 0;
+      const label = resolveServiceLabel(amount, r.notes);
+      const prev = map.get(label) ?? { totalCents: 0, count: 0 };
+      map.set(label, { totalCents: prev.totalCents + amount, count: prev.count + 1 });
+    }
+    return map;
+  };
+
+  const salesByServiceMap = aggregateByService(paidInPeriod);
+  const salesByService = [...salesByServiceMap.entries()]
+    .map(([label, data]) => ({
+      label,
+      totalCents: data.totalCents,
+      count: data.count,
+      sharePercent:
+        currentTotalCents > 0
+          ? Math.round((data.totalCents / currentTotalCents) * 1000) / 10
+          : 0,
+    }))
+    .sort((a, b) => b.totalCents - a.totalCents);
+
+  const marginByServiceMap = aggregateByService(filterPaidIn(paidRows, monthStart, now));
   const marginByService = [...marginByServiceMap.entries()]
     .map(([label, data]) => ({
       label,
@@ -626,6 +664,7 @@ async function computeCheckoutAnalytics(
         previousAverageSalePerPatientCents
       ),
       salesByPatient,
+      salesByService,
       salesByPodiatrist,
       series,
       comparisonSeries,

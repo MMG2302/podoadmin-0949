@@ -11,17 +11,19 @@ import {
   formSuccessClass,
   semanticDestructiveTextClass,
 } from "../../lib/form-field-classes";
+import { useLanguage } from "../../contexts/language-context";
 
 const MAX_FILE_BYTES = 2 * 1024 * 1024;
 
 async function readImageFile(file: File): Promise<string> {
   if (file.size > MAX_FILE_BYTES) {
-    throw new Error("La imagen no puede superar 2 MB.");
+    throw new Error("__IMG_TOO_LARGE__");
   }
   return compressImageForLogo(file);
 }
 
 export function WorkspaceWatermarkSettingsSection() {
+  const { t } = useLanguage();
   const { config: initial, displayImage, scope, canEdit, loading, reload } = useWorkspaceWatermark();
   const [config, setConfig] = useState<WorkspaceWatermarkConfig>(DEFAULT_WORKSPACE_WATERMARK);
   const [preview, setPreview] = useState<string | null>(null);
@@ -43,7 +45,7 @@ export function WorkspaceWatermarkSettingsSection() {
   if (loading) {
     return (
       <div className="bg-brand-surface rounded-xl border border-brand-border p-8 text-center text-sm text-gray-500">
-        Cargando marca de agua…
+        {t.settings.watermark.loading}
       </div>
     );
   }
@@ -63,7 +65,7 @@ export function WorkspaceWatermarkSettingsSection() {
 
     const validTypes = ["image/png", "image/jpeg", "image/jpg", "image/webp"];
     if (file.type && !validTypes.includes(file.type)) {
-      setError("Formato no válido. Use PNG, JPG o WebP (máx. 2 MB).");
+      setError(t.settings.watermark.invalidFormat);
       return;
     }
 
@@ -72,7 +74,7 @@ export function WorkspaceWatermarkSettingsSection() {
       setPreview(dataUri);
       patch({ source: "custom", image: dataUri, enabled: true });
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Error al cargar imagen.");
+      setError(e instanceof Error && e.message === "__IMG_TOO_LARGE__" ? t.settings.watermark.imageTooLarge : (e instanceof Error ? e.message : t.settings.watermark.loadImageError));
     }
   };
 
@@ -83,12 +85,12 @@ export function WorkspaceWatermarkSettingsSection() {
     const res = await saveWorkspaceWatermark(config);
     setSaving(false);
     if (res.ok) {
-      setMessage("Marca de agua guardada.");
+      setMessage(t.settings.watermark.saved);
       setPreview(null);
       await reload();
       window.dispatchEvent(new CustomEvent("workspace-watermark:updated"));
     } else {
-      setError(res.error || "Error al guardar.");
+      setError(res.error || t.settings.watermark.saveFailed);
     }
   };
 
@@ -103,12 +105,12 @@ export function WorkspaceWatermarkSettingsSection() {
   return (
     <div className="bg-brand-surface rounded-xl border border-brand-border p-6 space-y-4">
       <div>
-        <h3 className="text-lg font-semibold text-brand-ink">Marca de agua del fondo</h3>
+        <h3 className="text-lg font-semibold text-brand-ink">{t.settings.watermark.title}</h3>
         <p className="text-sm text-brand-muted mt-1">
-          Imagen sutil en el área principal. Ajusta tamaño, posición e intensidad.{" "}
+          {t.settings.watermark.hint}{" "}
           {scope === "clinic"
-            ? "Aplica a toda la clínica."
-            : "Aplica a tu consultorio independiente."}
+            ? t.settings.settingsScope.appliesClinic
+            : t.settings.settingsScope.appliesIndependent}
         </p>
       </div>
 
@@ -118,11 +120,11 @@ export function WorkspaceWatermarkSettingsSection() {
               checked={config.enabled}
               onChange={(e) => patch({ enabled: e.target.checked })}
             />
-            Mostrar marca de agua en el fondo
+            {t.settings.watermark.show}
           </label>
 
           <div className="space-y-2">
-            <p className="text-xs font-medium text-gray-500">Imagen</p>
+            <p className="text-xs font-medium text-gray-500">{t.settings.watermark.imageLabel}</p>
             <div className="flex flex-wrap gap-3">
               <label className="inline-flex items-center gap-2 text-sm cursor-pointer">
                 <input
@@ -131,7 +133,7 @@ export function WorkspaceWatermarkSettingsSection() {
                   checked={config.source === "custom"}
                   onChange={() => patch({ source: "custom" as WorkspaceWatermarkSource })}
                 />
-                Imagen personalizada
+                {t.settings.watermark.customImage}
               </label>
               <label className="inline-flex items-center gap-2 text-sm cursor-pointer">
                 <input
@@ -140,7 +142,7 @@ export function WorkspaceWatermarkSettingsSection() {
                   checked={config.source === "clinic_logo"}
                   onChange={() => patch({ source: "clinic_logo" as WorkspaceWatermarkSource, enabled: true })}
                 />
-                Usar logo {scope === "clinic" ? "de la clínica" : "profesional"}
+                {t.settings.watermark.useProfessionalLogo}
               </label>
             </div>
           </div>
@@ -157,7 +159,7 @@ export function WorkspaceWatermarkSettingsSection() {
                   />
                 ) : (
                   <span className="text-xs text-gray-400 px-2 text-center">
-                    {config.source === "clinic_logo" ? "Sin logo configurado" : "Sin imagen"}
+                    {config.source === "clinic_logo" ? t.settings.watermark.noLogo : t.settings.watermark.noImage}
                   </span>
                 )}
               </div>
@@ -174,9 +176,9 @@ export function WorkspaceWatermarkSettingsSection() {
                     htmlFor="workspace-watermark-upload"
                     className="inline-block px-3 py-2 text-sm border border-brand-border rounded-lg cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800"
                   >
-                    Subir imagen
+                    {t.settings.watermark.upload}
                   </label>
-                  <p className="text-xs text-gray-400">JPEG, PNG o WebP · máx. 2 MB</p>
+                  <p className="text-xs text-gray-400">{t.settings.watermark.formatHint}</p>
                   {(displayPreview || config.image) && (
                     <button
                       type="button"
@@ -186,14 +188,13 @@ export function WorkspaceWatermarkSettingsSection() {
                       }}
                       className={`text-xs ${semanticDestructiveTextClass} hover:underline`}
                     >
-                      Quitar imagen
+                      {t.settings.watermark.removeImage}
                     </button>
                   )}
                 </div>
               ) : (
                 <p className="text-xs text-gray-400 max-w-xs">
-                  Se usará el logo {scope === "clinic" ? "de la clínica" : "profesional"} configurado en esta
-                  pantalla. Si no ves vista previa, sube el logo primero en la sección correspondiente.
+                  {t.settings.watermark.logoHint}
                 </p>
               )}
             </div>
@@ -202,7 +203,7 @@ export function WorkspaceWatermarkSettingsSection() {
           <div className="grid gap-4 sm:grid-cols-1 max-w-md">
             <div>
               <label className="block text-xs font-medium text-gray-500 mb-2">
-                Intensidad ({Math.round(config.opacity * 100)}%)
+                {t.settings.watermark.intensity.replace("{pct}", String(Math.round(config.opacity * 100)))}
               </label>
               <input
                 type="range"
@@ -213,12 +214,12 @@ export function WorkspaceWatermarkSettingsSection() {
                 onChange={(e) => patch({ opacity: Number(e.target.value) / 100 })}
                 className="w-full"
               />
-              <p className="text-xs text-gray-400 mt-1">6–10% suele verse bien como marca de agua sutil.</p>
+              <p className="text-xs text-gray-400 mt-1">{t.settings.watermark.intensityHint}</p>
             </div>
 
             <div>
               <label className="block text-xs font-medium text-gray-500 mb-2">
-                Tamaño ({config.size}% del panel)
+                {t.settings.watermark.size.replace("{pct}", String(config.size))}
               </label>
               <input
                 type="range"
@@ -233,7 +234,7 @@ export function WorkspaceWatermarkSettingsSection() {
 
             <div>
               <label className="block text-xs font-medium text-gray-500 mb-2">
-                Zoom ({config.zoom}%)
+                {t.settings.watermark.zoom.replace("{pct}", String(config.zoom))}
               </label>
               <input
                 type="range"
@@ -245,13 +246,13 @@ export function WorkspaceWatermarkSettingsSection() {
                 className="w-full"
               />
               <p className="text-xs text-gray-400 mt-1">
-                Sube el zoom (200% o más) para cubrir toda el área visible. Combina con posición centrada.
+                {t.settings.watermark.zoomHint}
               </p>
             </div>
 
             <div>
               <label className="block text-xs font-medium text-gray-500 mb-2">
-                Posición horizontal ({config.positionX}%)
+                {t.settings.watermark.positionX.replace("{pct}", String(config.positionX))}
               </label>
               <input
                 type="range"
@@ -263,15 +264,15 @@ export function WorkspaceWatermarkSettingsSection() {
                 className="w-full"
               />
               <p className="text-xs text-gray-400 mt-1 flex justify-between">
-                <span>Izquierda</span>
-                <span>Centro</span>
-                <span>Derecha</span>
+                <span>{t.settings.watermark.left}</span>
+                <span>{t.settings.watermark.center}</span>
+                <span>{t.settings.watermark.right}</span>
               </p>
             </div>
 
             <div>
               <label className="block text-xs font-medium text-gray-500 mb-2">
-                Posición vertical ({config.positionY}%)
+                {t.settings.watermark.positionY.replace("{pct}", String(config.positionY))}
               </label>
               <input
                 type="range"
@@ -283,9 +284,9 @@ export function WorkspaceWatermarkSettingsSection() {
                 className="w-full"
               />
               <p className="text-xs text-gray-400 mt-1 flex justify-between">
-                <span>Arriba</span>
-                <span>Centro</span>
-                <span>Abajo</span>
+                <span>{t.settings.watermark.top}</span>
+                <span>{t.settings.watermark.center}</span>
+                <span>{t.settings.watermark.bottom}</span>
               </p>
             </div>
           </div>
@@ -296,7 +297,7 @@ export function WorkspaceWatermarkSettingsSection() {
             disabled={saving}
             className="px-4 py-2 text-sm bg-brand-ink text-brand-ink-fg rounded-lg disabled:opacity-50"
           >
-            {saving ? "Guardando…" : "Guardar marca de agua"}
+            {saving ? t.settings.watermark.saving : t.settings.watermark.save}
         </button>
 
       {message && <p className={formSuccessClass}>{message}</p>}

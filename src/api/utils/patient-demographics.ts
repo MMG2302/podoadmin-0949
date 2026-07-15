@@ -5,7 +5,38 @@ import { clinicalSessions as sessionsTable, patients as patientsTable } from '..
 /** Días sin cita para considerar un paciente "recuperado". */
 export const RECOVERED_GAP_DAYS = 180;
 
+export const INACTIVE_3M_DAYS = 90;
+export const INACTIVE_6M_DAYS = 180;
+
 export type PatientSegment = 'new' | 'recurrent' | 'recovered';
+export type PatientInactiveFilter = '3m' | '6m';
+
+export function inactiveDaysForFilter(inactive: PatientInactiveFilter): number {
+  return inactive === '3m' ? INACTIVE_3M_DAYS : INACTIVE_6M_DAYS;
+}
+
+/** Días desde la última sesión; null si nunca tuvo. */
+export function daysSinceLastSession(
+  lastSessionDate: string | null | undefined,
+  today: Date = new Date()
+): number | null {
+  if (!lastSessionDate?.trim()) return null;
+  const last = new Date(`${lastSessionDate.trim()}T12:00:00`);
+  if (Number.isNaN(last.getTime())) return null;
+  const todayNoon = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 12, 0, 0);
+  return Math.max(0, Math.round((todayNoon.getTime() - last.getTime()) / (1000 * 60 * 60 * 24)));
+}
+
+/** Inactivo: sin sesiones, o última sesión hace >= thresholdDays. */
+export function isPatientInactive(
+  stats: { sessionCount: number; lastSessionDate: string | null },
+  thresholdDays: number,
+  today: Date = new Date()
+): boolean {
+  if (stats.sessionCount <= 0 || !stats.lastSessionDate) return true;
+  const days = daysSinceLastSession(stats.lastSessionDate, today);
+  return days == null || days >= thresholdDays;
+}
 
 export function computeAgeYears(dateOfBirth: string | null | undefined): number | null {
   if (!dateOfBirth?.trim()) return null;
@@ -137,6 +168,8 @@ export type DemographicsSummary = {
   recovered: number;
   total: number;
   withAge: number;
+  inactive3m: number;
+  inactive6m: number;
   ageBuckets: Array<{ label: string; min: number; max: number; count: number }>;
 };
 
@@ -151,12 +184,15 @@ export function buildDemographicsSummary(
   patients: Array<{ id: string; dateOfBirth: string }>,
   sessionStats: Map<string, PatientSessionStats>
 ): DemographicsSummary {
+  const today = new Date();
   const summary: DemographicsSummary = {
     new: 0,
     recurrent: 0,
     recovered: 0,
     total: patients.length,
     withAge: 0,
+    inactive3m: 0,
+    inactive6m: 0,
     ageBuckets: AGE_BUCKETS.map((b) => ({ ...b, count: 0 })),
   };
 
@@ -172,6 +208,9 @@ export function buildDemographicsSummary(
       stats.previousSessionDate
     );
     summary[segment] += 1;
+
+    if (isPatientInactive(stats, INACTIVE_3M_DAYS, today)) summary.inactive3m += 1;
+    if (isPatientInactive(stats, INACTIVE_6M_DAYS, today)) summary.inactive6m += 1;
 
     const age = computeAgeYears(patient.dateOfBirth);
     if (age != null) {
@@ -195,6 +234,9 @@ export function patientMatchesDemographicsFilters(
     segment?: PatientSegment;
     ageMin?: number;
     ageMax?: number;
+    inactive?: PatientInactiveFilter;
+    minVisits?: number;
+    maxVisits?: number;
   }
 ): boolean {
   if (filters.segment) {
@@ -211,5 +253,10 @@ export function patientMatchesDemographicsFilters(
     if (filters.ageMin !== undefined && age < filters.ageMin) return false;
     if (filters.ageMax !== undefined && age > filters.ageMax) return false;
   }
+  if (filters.inactive) {
+    if (!isPatientInactive(stats, inactiveDaysForFilter(filters.inactive))) return false;
+  }
+  if (filters.minVisits !== undefined && stats.sessionCount < filters.minVisits) return false;
+  if (filters.maxVisits !== undefined && stats.sessionCount > filters.maxVisits) return false;
   return true;
 }

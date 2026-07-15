@@ -1,11 +1,5 @@
 import type { CheckoutViewMode } from "../../types/checkout-analytics";
-
-const VIEW_LABELS: Record<CheckoutViewMode, string> = {
-  operations: "Operación",
-  sales: "Ventas",
-  collections: "Cobranza",
-  profit: "Utilidad",
-};
+import { useLanguage } from "../../contexts/language-context";
 
 function SegmentedTabs<T extends string>({
   value,
@@ -41,17 +35,18 @@ function SegmentedTabs<T extends string>({
 type Props = {
   view: CheckoutViewMode;
   onViewChange: (view: CheckoutViewMode) => void;
+  /** Si se omite, muestra todas las pestañas. */
+  modes?: CheckoutViewMode[];
 };
 
-export function CheckoutViewTabs({ view, onViewChange }: Props) {
+export function CheckoutViewTabs({ view, onViewChange, modes }: Props) {
+  const { t } = useLanguage();
+  const ids = modes ?? (Object.keys(t.checkout.views) as CheckoutViewMode[]);
   return (
     <SegmentedTabs
       value={view}
       onChange={onViewChange}
-      options={(Object.entries(VIEW_LABELS) as [CheckoutViewMode, string][]).map(([id, label]) => ({
-        id,
-        label,
-      }))}
+      options={ids.map((id) => ({ id, label: t.checkout.views[id] }))}
     />
   );
 }

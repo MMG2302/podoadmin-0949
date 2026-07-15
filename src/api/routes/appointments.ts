@@ -32,8 +32,7 @@ import {
   getSessionAccessDeniedReason,
   isClinicAdminWithoutClinic,
 } from '../utils/tenant-isolation';
-
-const appointmentsRoutes = new Hono();
+import { assertReceptionistAgendaSlot, getAgendaOutsideHoursAdvisory } from '../utils/agenda-settings';const appointmentsRoutes = new Hono();
 
 appointmentsRoutes.use('*', requireAuth);
 
@@ -392,6 +391,16 @@ appointmentsRoutes.post('/', requirePermission('manage_appointments'), async (c)
       );
     }
 
+    const agendaBlock = await assertReceptionistAgendaSlot(user, podiatristUserId, time, duration);
+    if (agendaBlock) {
+      return c.json(
+        { error: 'Fuera de horario', message: agendaBlock.message, code: agendaBlock.code },
+        403
+      );
+    }
+
+    const agendaWarning = await getAgendaOutsideHoursAdvisory(user, podiatristUserId, time, duration);
+
     const id = generateId();
     const now = new Date().toISOString();
 
@@ -441,7 +450,11 @@ appointmentsRoutes.post('/', requirePermission('manage_appointments'), async (c)
       }).catch((err) => console.error('Error enviando notificación de cita:', err));
     }
 
-    return c.json({ success: true, appointment: mapDbToAppointment(row!) });
+    return c.json({
+      success: true,
+      appointment: mapDbToAppointment(row!),
+      ...(agendaWarning ? { agendaWarning } : {}),
+    });
   } catch (err) {
     console.error('Error creando cita:', err);
     const message = err instanceof Error ? err.message : String(err);
@@ -510,6 +523,32 @@ appointmentsRoutes.put('/:id', requirePermission('manage_appointments'), async (
       );
     }
 
+    const schedulingTouched =
+      body.date != null ||
+      body.time != null ||
+      body.duration != null ||
+      (body.podiatristId !== undefined && body.podiatristId !== null && String(body.podiatristId).trim() !== '');
+
+    if (schedulingTouched) {
+      const agendaBlock = await assertReceptionistAgendaSlot(
+        user,
+        effectivePodiatristId,
+        effectiveTime,
+        duration
+      );
+      if (agendaBlock) {
+        return c.json(
+          { error: 'Fuera de horario', message: agendaBlock.message, code: agendaBlock.code },
+          403
+        );
+      }
+    }
+
+    const agendaWarning =
+      schedulingTouched
+        ? await getAgendaOutsideHoursAdvisory(user, effectivePodiatristId, effectiveTime, duration)
+        : null;
+
     await database
       .update(appointmentsTable)
       .set({
@@ -556,7 +595,11 @@ appointmentsRoutes.put('/:id', requirePermission('manage_appointments'), async (
       }).catch((err) => console.error('Error enviando notificación de reasignación de cita:', err));
     }
 
-    return c.json({ success: true, appointment: mapDbToAppointment(updated!) });
+    return c.json({
+      success: true,
+      appointment: mapDbToAppointment(updated!),
+      ...(agendaWarning ? { agendaWarning } : {}),
+    });
   } catch (err) {
     console.error('Error actualizando cita:', err);
     return c.json({ error: 'Error interno' }, 500);

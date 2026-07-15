@@ -1,32 +1,62 @@
 import { useState } from "react";
+import { useLanguage } from "../../contexts/language-context";
 import { useCheckoutAnalytics, useCheckoutAnalyticsPrefs } from "../../hooks/use-checkout-analytics";
 import { formatCheckoutAmount, parseAmountToCents } from "../../types/checkout-handoff";
 import type { CheckoutAnalyticsPeriod, CheckoutViewMode } from "../../types/checkout-analytics";
 import {
-  PAYMENT_METHOD_LABELS,
   changeTone,
   formatChangePercent,
   type CheckoutPaymentMethod,
 } from "../../types/checkout-analytics";
+import type { Translations } from "../../i18n/translations";
+import { translateSystemScopeLabel } from "../../lib/system-scope-label";
+import { formatAnalyticsSeriesLabel } from "../../lib/format-analytics-label";
 import { SimpleBarChart } from "./simple-bar-chart";
+import { ServiceSalesBreakdown } from "./service-sales-breakdown";
 
-const PERIOD_LABELS: Record<CheckoutAnalyticsPeriod, string> = {
-  day: "Día",
-  week: "Semana",
-  month: "Mes",
-  year: "Año",
+const LOCALE_BY_LANG: Record<string, string> = {
+  es: "es-MX",
+  en: "en-US",
+  pt: "pt-PT",
+  fr: "fr-FR",
 };
+
+function periodLabels(t: Translations["checkout"]["analytics"]): Record<CheckoutAnalyticsPeriod, string> {
+  return {
+    day: t.periodDay,
+    week: t.periodWeek,
+    month: t.periodMonth,
+    year: t.periodYear,
+  };
+}
+
+function paymentMethodLabel(
+  analytics: Translations["checkout"]["analytics"],
+  method: string
+): string {
+  const key = method as CheckoutPaymentMethod;
+  const map: Record<CheckoutPaymentMethod, string> = {
+    cash: analytics.cash,
+    card: analytics.card,
+    transfer: analytics.transfer,
+    other: analytics.other,
+    unknown: analytics.unknown,
+  };
+  return map[key] ?? method;
+}
 
 function MetricCard({
   label,
   value,
   sub,
   change,
+  vsPrevious,
 }: {
   label: string;
   value: string;
   sub?: string;
   change?: number | null;
+  vsPrevious: string;
 }) {
   const tone = changeTone(change ?? null);
   return (
@@ -43,7 +73,7 @@ function MetricCard({
                 : "text-brand-muted"
           }`}
         >
-          {formatChangePercent(change)} vs periodo anterior
+          {formatChangePercent(change)} {vsPrevious}
         </p>
       )}
       {sub && <p className="text-xs text-brand-muted mt-1">{sub}</p>}
@@ -108,6 +138,12 @@ export function CheckoutAnalyticsPanel({
   podiatristFilterLabel,
   onSelectPodiatrist,
 }: Props) {
+  const { t, language } = useLanguage();
+  const a = t.checkout.analytics;
+  const locale = LOCALE_BY_LANG[language] ?? "es-MX";
+  const seriesLabel = (label: string, p: CheckoutAnalyticsPeriod = period) =>
+    formatAnalyticsSeriesLabel(label, p, locale, t.checkout.weekBucket);
+  const periods = periodLabels(a);
   const [period, setPeriod] = useState<CheckoutAnalyticsPeriod>("month");
   const queryPeriod = view === "sales" ? period : "month";
   const { analytics, loading, error, reload } = useCheckoutAnalytics(
@@ -126,6 +162,8 @@ export function CheckoutAnalyticsPanel({
   const [prefsSaved, setPrefsSaved] = useState(false);
 
   const fmt = (cents: number) => formatCheckoutAmount(cents, analytics?.currency ?? "MXN");
+  const periodLabel = periods[period];
+  const periodLabelLower = periodLabel.toLowerCase();
 
   const handleSavePrefs = async () => {
     const monthlyGoalCents = parseAmountToCents(goalInput);
@@ -141,16 +179,34 @@ export function CheckoutAnalyticsPanel({
     }
   };
 
-  const scopeText =
-    analytics?.scope?.label ??
-    scopeLabel ??
-    (podiatristFilterLabel ? podiatristFilterLabel : null);
+  const scopeText = (() => {
+    if (analytics?.scope?.kind === "clinic") return t.checkout.entireClinic;
+    if (analytics?.scope?.kind === "podiatrist") {
+      if (podiatristFilterLabel) return podiatristFilterLabel;
+      const fromScope = translateSystemScopeLabel(analytics.scope.label, t.checkout);
+      if (fromScope && fromScope !== analytics.scope.label) return fromScope;
+      if (
+        analytics.scope.label &&
+        analytics.scope.label !== "Mi consulta" &&
+        analytics.scope.label !== "Toda la clínica"
+      ) {
+        return analytics.scope.label;
+      }
+      return t.checkout.myPractice;
+    }
+    return (
+      translateSystemScopeLabel(scopeLabel, t.checkout) ??
+      (podiatristFilterLabel ? podiatristFilterLabel : null)
+    );
+  })();
 
   return (
     <div className="space-y-4 sm:space-y-6">
       {scopeText && (
         <p className="text-sm text-brand-muted">
-          Alcance: <span className="font-medium text-brand-ink">{scopeText}</span>
+          {a.scope.split("{label}")[0]}
+          <span className="font-medium text-brand-ink">{scopeText}</span>
+          {a.scope.split("{label}")[1] ?? ""}
           {isClinicAdmin && analyticsPodiatristId && onSelectPodiatrist && (
             <>
               {" · "}
@@ -159,7 +215,7 @@ export function CheckoutAnalyticsPanel({
                 onClick={() => onSelectPodiatrist("all")}
                 className="text-brand-ink underline-offset-2 hover:underline font-medium"
               >
-                Ver toda la clínica
+                {t.checkout.entireClinic}
               </button>
             </>
           )}
@@ -171,59 +227,73 @@ export function CheckoutAnalyticsPanel({
           <SegmentedTabs
             value={period}
             onChange={setPeriod}
-            options={(Object.entries(PERIOD_LABELS) as [CheckoutAnalyticsPeriod, string][]).map(
+            options={(Object.entries(periods) as [CheckoutAnalyticsPeriod, string][]).map(
               ([id, label]) => ({ id, label })
             )}
           />
 
           {loading && !analytics ? (
-            <p className="text-sm text-brand-muted">Cargando ventas…</p>
+            <p className="text-sm text-brand-muted">{a.loadingSales}</p>
           ) : error ? (
-            <p className="text-sm text-semantic-error">{error}</p>
+            <div className="rounded-xl border border-semantic-error/30 bg-semantic-error-bg/40 p-4 space-y-2">
+              <p className="text-sm text-semantic-error">{error}</p>
+              <button
+                type="button"
+                onClick={() => void reload()}
+                className="text-sm font-medium text-brand-ink underline-offset-2 hover:underline"
+              >
+                {a.retry}
+              </button>
+            </div>
           ) : analytics ? (
             <>
+              {analytics.sales.count === 0 && (
+                <div className="rounded-xl border border-brand-border bg-brand-canvas p-4 text-sm text-brand-muted">
+                  {a.emptyPaidPeriod.replace("{period}", periodLabelLower)}
+                </div>
+              )}
               <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
                 <MetricCard
-                  label={`Ventas (${PERIOD_LABELS[period].toLowerCase()})`}
+                  label={a.salesTitle.replace("{period}", periodLabelLower)}
                   value={fmt(analytics.sales.currentTotalCents)}
                   change={analytics.sales.changePercent}
-                  sub={`${analytics.sales.count} cobros`}
+                  vsPrevious={a.vsPrevious}
+                  sub={a.checkoutsCount.replace("{n}", String(analytics.sales.count))}
                 />
                 <MetricCard
-                  label="Venta prom. por paciente"
+                  label={a.avgSalePerPatient}
                   value={fmt(analytics.sales.averageSalePerPatientCents)}
                   change={analytics.sales.averageSalePerPatientChangePercent}
-                  sub={`${analytics.sales.uniquePatientsCount} pacientes`}
+                  vsPrevious={a.vsPrevious}
+                  sub={a.patientsCount.replace("{n}", String(analytics.sales.uniquePatientsCount))}
                 />
                 <MetricCard
-                  label="Periodo anterior"
+                  label={a.previousPeriod}
                   value={fmt(analytics.sales.previousTotalCents)}
-                  sub={`${analytics.sales.previousCount} cobros`}
+                  vsPrevious={a.vsPrevious}
+                  sub={a.checkoutsCount.replace("{n}", String(analytics.sales.previousCount))}
                 />
                 <MetricCard
-                  label="Variación semanal"
+                  label={a.weeklyChange}
                   value={formatChangePercent(analytics.profitability.weeklyChangePercent)}
+                  vsPrevious={a.vsPrevious}
                 />
                 <MetricCard
-                  label="Variación anual"
+                  label={a.annualChange}
                   value={formatChangePercent(analytics.profitability.annualChangePercent)}
+                  vsPrevious={a.vsPrevious}
                 />
               </div>
 
-              <SectionCard title="Venta promedio por paciente">
+              <SectionCard title={a.avgSalePerPatientChart}>
                 {analytics.sales.salesByPatient.length === 0 ? (
-                  <p className="text-sm text-brand-muted">
-                    No hay cobros en este periodo para calcular promedios por paciente.
-                  </p>
+                  <p className="text-sm text-brand-muted">{a.emptyAvgByPatient}</p>
                 ) : (
                   <>
                     <p className="text-sm text-brand-muted">
-                      Promedio del periodo:{" "}
-                      <strong className="text-brand-ink">
-                        {fmt(analytics.sales.averageSalePerPatientCents)}
-                      </strong>{" "}
-                      entre {analytics.sales.uniquePatientsCount} paciente
-                      {analytics.sales.uniquePatientsCount === 1 ? "" : "s"}.
+                      {a.periodAverageAmong
+                        .replace("{avg}", fmt(analytics.sales.averageSalePerPatientCents))
+                        .replace("{n}", String(analytics.sales.uniquePatientsCount))}
                     </p>
                     <SimpleBarChart
                       data={analytics.sales.salesByPatient.map((row) => ({
@@ -239,8 +309,9 @@ export function CheckoutAnalyticsPanel({
                           <div className="min-w-0">
                             <p className="font-medium text-brand-ink truncate">{row.patientName}</p>
                             <p className="text-xs text-brand-muted">
-                              {row.visitCount} visita{row.visitCount === 1 ? "" : "s"} · Total{" "}
-                              {fmt(row.totalCents)}
+                              {a.visitsTotal
+                                .replace("{n}", String(row.visitCount))
+                                .replace("{amount}", fmt(row.totalCents))}
                             </p>
                           </div>
                           <span className="font-semibold text-brand-ink shrink-0">
@@ -253,22 +324,30 @@ export function CheckoutAnalyticsPanel({
                 )}
               </SectionCard>
 
-              <SectionCard title={`Ventas por ${PERIOD_LABELS[period].toLowerCase()}`}>
+              <SectionCard title={a.salesByDay.replace("{period}", periodLabelLower)}>
                 <SimpleBarChart
                   data={analytics.sales.series.map((s) => ({
-                    label: s.label,
+                    label: seriesLabel(s.label),
                     value: s.paidCents,
                   }))}
                   formatValue={fmt}
                 />
               </SectionCard>
 
+              <SectionCard title={a.byService}>
+                <ServiceSalesBreakdown
+                  items={analytics.sales.salesByService ?? []}
+                  formatMoney={fmt}
+                />
+              </SectionCard>
+
               {analytics.sales.comparisonSeries.length > 0 && (
-                <SectionCard title="Comparativo mes a mes">
+                <SectionCard title={a.comparisonMonth}>
                   <SimpleBarChart
                     compareMode
                     data={analytics.sales.comparisonSeries.map((s) => ({
-                      label: s.label,
+                      label: seriesLabel(s.label, "month"),
+                      secondaryLabel: seriesLabel(s.previousLabel, "month"),
                       value: s.currentCents,
                       secondaryValue: s.previousCents,
                     }))}
@@ -278,10 +357,14 @@ export function CheckoutAnalyticsPanel({
               )}
 
               {analytics.sales.salesByPodiatrist.length > 0 && (
-                <SectionCard title="Ventas por podólogo">
+                <SectionCard title={a.byPodiatrist}>
                   <SimpleBarChart
                     data={analytics.sales.salesByPodiatrist.map((row) => ({
-                      label: row.podiatristName.split(" ")[0] ?? row.podiatristName,
+                      label: (
+                        translateSystemScopeLabel(row.podiatristName, t.checkout) ??
+                        row.podiatristName
+                      )
+                        .split(" ")[0],
                       value: row.totalCents,
                     }))}
                     formatValue={fmt}
@@ -297,14 +380,19 @@ export function CheckoutAnalyticsPanel({
                               onClick={() => onSelectPodiatrist(row.podiatristId)}
                               className="font-medium text-brand-ink text-left hover:underline underline-offset-2"
                             >
-                              {row.podiatristName}
+                              {translateSystemScopeLabel(row.podiatristName, t.checkout) ??
+                                row.podiatristName}
                             </button>
                           ) : (
-                            <p className="font-medium text-brand-ink">{row.podiatristName}</p>
+                            <p className="font-medium text-brand-ink">
+                              {translateSystemScopeLabel(row.podiatristName, t.checkout) ??
+                                row.podiatristName}
+                            </p>
                           )}
                           <p className="text-xs text-brand-muted">
-                            {row.count} cobro{row.count === 1 ? "" : "s"} · Prom. {fmt(row.averageCents)}
-                            {onSelectPodiatrist ? " · Ver detalle" : ""}
+                            {a.checkoutsCount.replace("{n}", String(row.count))} · {a.avgAbbrev}{" "}
+                            {fmt(row.averageCents)}
+                            {onSelectPodiatrist ? ` · ${a.viewDetail}` : ""}
                           </p>
                         </div>
                         <span className="font-semibold text-brand-ink shrink-0">{fmt(row.totalCents)}</span>
@@ -314,10 +402,10 @@ export function CheckoutAnalyticsPanel({
                 </SectionCard>
               )}
 
-              <SectionCard title="Tendencia últimos 12 meses">
+              <SectionCard title={a.growth12m}>
                 <SimpleBarChart
                   data={analytics.profitability.growthTrend12Months.map((m) => ({
-                    label: m.label,
+                    label: seriesLabel(m.month || m.label, "month"),
                     value: m.paidCents,
                   }))}
                   formatValue={fmt}
@@ -325,35 +413,59 @@ export function CheckoutAnalyticsPanel({
                 />
               </SectionCard>
             </>
-          ) : null}
+          ) : (
+            <div className="rounded-xl border border-brand-border p-4 space-y-2">
+              <p className="text-sm text-brand-muted">{a.emptySalesData}</p>
+              <button
+                type="button"
+                onClick={() => void reload()}
+                className="text-sm font-medium text-brand-ink underline-offset-2 hover:underline"
+              >
+                {a.retry}
+              </button>
+            </div>
+          )}
         </>
       )}
 
       {view === "collections" && (
         <>
           {loading && !analytics ? (
-            <p className="text-sm text-brand-muted">Cargando cobranza…</p>
+            <p className="text-sm text-brand-muted">{a.loadingCollections}</p>
           ) : error ? (
             <p className="text-sm text-semantic-error">{error}</p>
           ) : analytics ? (
             <>
               <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-                <MetricCard label="Cobrado (mes)" value={fmt(analytics.collections.paidTotalCents)} />
-                <MetricCard label="Pendiente" value={fmt(analytics.collections.pendingTotalCents)} />
                 <MetricCard
-                  label="Cuentas por cobrar"
-                  value={fmt(analytics.collections.accountsReceivableCents)}
-                  sub={`${analytics.collections.pendingCount} handoffs abiertos`}
+                  label={a.paidThisPeriod}
+                  value={fmt(analytics.collections.paidTotalCents)}
+                  vsPrevious={a.vsPrevious}
                 />
-                <MetricCard label="Cobrado vs pendiente" value={`${analytics.collections.paidCount} / ${analytics.collections.pendingCount}`} />
+                <MetricCard
+                  label={a.pending}
+                  value={fmt(analytics.collections.pendingTotalCents)}
+                  vsPrevious={a.vsPrevious}
+                />
+                <MetricCard
+                  label={a.accountsReceivable}
+                  value={fmt(analytics.collections.accountsReceivableCents)}
+                  vsPrevious={a.vsPrevious}
+                  sub={a.openHandoffs.replace("{n}", String(analytics.collections.pendingCount))}
+                />
+                <MetricCard
+                  label={a.paidVsPending}
+                  value={`${analytics.collections.paidCount} / ${analytics.collections.pendingCount}`}
+                  vsPrevious={a.vsPrevious}
+                />
               </div>
 
               <div className="grid lg:grid-cols-2 gap-4">
-                <SectionCard title="Cobrado vs pendiente">
+                <SectionCard title={a.paidVsPending}>
                   <div className="space-y-3">
                     {[
-                      { label: "Cobrado", cents: analytics.collections.paidTotalCents, color: "bg-semantic-success" },
-                      { label: "Pendiente", cents: analytics.collections.pendingTotalCents, color: "bg-semantic-warning" },
+                      { label: a.paidLabel, cents: analytics.collections.paidTotalCents, color: "bg-semantic-success" },
+                      { label: a.pending, cents: analytics.collections.pendingTotalCents, color: "bg-semantic-warning" },
                     ].map((row) => {
                       const total =
                         analytics.collections.paidTotalCents + analytics.collections.pendingTotalCents;
@@ -373,11 +485,9 @@ export function CheckoutAnalyticsPanel({
                   </div>
                 </SectionCard>
 
-                <SectionCard title="Formas de pago">
+                <SectionCard title={a.paymentMethods}>
                   {analytics.collections.byPaymentMethod.length === 0 ? (
-                    <p className="text-sm text-brand-muted">
-                      Al marcar cobrado, selecciona efectivo, tarjeta o transferencia para ver el desglose.
-                    </p>
+                    <p className="text-sm text-brand-muted">{a.paymentMethodsHint}</p>
                   ) : (
                     <ul className="space-y-2">
                       {analytics.collections.byPaymentMethod.map((row) => (
@@ -385,9 +495,7 @@ export function CheckoutAnalyticsPanel({
                           key={row.method}
                           className="flex items-center justify-between gap-3 text-sm py-2 border-b border-brand-border last:border-0"
                         >
-                          <span className="text-brand-ink">
-                            {PAYMENT_METHOD_LABELS[row.method as CheckoutPaymentMethod] ?? row.method}
-                          </span>
+                          <span className="text-brand-ink">{paymentMethodLabel(a, row.method)}</span>
                           <span className="font-medium text-brand-ink">{fmt(row.totalCents)}</span>
                         </li>
                       ))}
@@ -396,10 +504,10 @@ export function CheckoutAnalyticsPanel({
                 </SectionCard>
               </div>
 
-              <SectionCard title="Flujo de efectivo mensual">
+              <SectionCard title={a.monthlyCashFlow}>
                 <SimpleBarChart
                   data={analytics.collections.monthlyCashFlow.map((m) => ({
-                    label: m.label,
+                    label: seriesLabel(m.month || m.label, "month"),
                     value: m.paidCents,
                   }))}
                   formatValue={fmt}
@@ -408,7 +516,7 @@ export function CheckoutAnalyticsPanel({
               </SectionCard>
 
               {(analytics.collections.collectionsByPodiatrist?.length ?? 0) > 0 && (
-                <SectionCard title="Cobranza por podólogo">
+                <SectionCard title={a.collectionsByPodiatrist}>
                   <ul className="divide-y divide-brand-border text-sm">
                     {analytics.collections.collectionsByPodiatrist.map((row) => (
                       <li key={row.podiatristId} className="flex justify-between gap-3 py-2.5">
@@ -419,15 +527,22 @@ export function CheckoutAnalyticsPanel({
                               onClick={() => onSelectPodiatrist(row.podiatristId)}
                               className="font-medium text-brand-ink text-left hover:underline underline-offset-2"
                             >
-                              {row.podiatristName}
+                              {translateSystemScopeLabel(row.podiatristName, t.checkout) ??
+                                row.podiatristName}
                             </button>
                           ) : (
-                            <p className="font-medium text-brand-ink">{row.podiatristName}</p>
+                            <p className="font-medium text-brand-ink">
+                              {translateSystemScopeLabel(row.podiatristName, t.checkout) ??
+                                row.podiatristName}
+                            </p>
                           )}
                           <p className="text-xs text-brand-muted">
-                            Cobrado {fmt(row.paidCents)} ({row.paidCount}) · Pendiente{" "}
-                            {fmt(row.pendingCents)} ({row.pendingCount})
-                            {onSelectPodiatrist ? " · Ver detalle" : ""}
+                            {a.collectionsPodiatristRow
+                              .replace("{paid}", fmt(row.paidCents))
+                              .replace("{paidCount}", String(row.paidCount))
+                              .replace("{pending}", fmt(row.pendingCents))
+                              .replace("{pendingCount}", String(row.pendingCount))}
+                            {onSelectPodiatrist ? ` · ${a.viewDetail}` : ""}
                           </p>
                         </div>
                         <span className="font-semibold text-brand-ink shrink-0">
@@ -439,16 +554,18 @@ export function CheckoutAnalyticsPanel({
                 </SectionCard>
               )}
 
-              <SectionCard title="Adeudos por paciente">
+              <SectionCard title={a.receivablesByPatient}>
                 {analytics.collections.receivablesByPatient.length === 0 ? (
-                  <p className="text-sm text-brand-muted">No hay adeudos pendientes.</p>
+                  <p className="text-sm text-brand-muted">{a.noReceivables}</p>
                 ) : (
                   <ul className="divide-y divide-brand-border">
                     {analytics.collections.receivablesByPatient.map((row) => (
                       <li key={row.patientId} className="flex justify-between gap-3 py-3 text-sm">
                         <div className="min-w-0">
                           <p className="font-medium text-brand-ink truncate">{row.patientName}</p>
-                          <p className="text-xs text-brand-muted">{row.count} pendiente(s)</p>
+                          <p className="text-xs text-brand-muted">
+                            {a.pendingItems.replace("{n}", String(row.count))}
+                          </p>
                         </div>
                         <span className="font-semibold text-brand-ink shrink-0">{fmt(row.totalCents)}</span>
                       </li>
@@ -464,21 +581,18 @@ export function CheckoutAnalyticsPanel({
       {view === "profit" && (
         <>
           {loading && !analytics ? (
-            <p className="text-sm text-brand-muted">Cargando utilidad…</p>
+            <p className="text-sm text-brand-muted">{a.loadingProfit}</p>
           ) : error ? (
             <p className="text-sm text-semantic-error">{error}</p>
           ) : analytics ? (
             <>
-              <SectionCard title="Metas y gastos mensuales">
+              <SectionCard title={a.goalsAndExpenses}>
                 {!editable && (
-                  <p className="text-sm text-brand-muted">
-                    Metas del podólogo seleccionado (solo lectura). Para editar metas de la clínica, elige
-                    &quot;Toda la clínica&quot;.
-                  </p>
+                  <p className="text-sm text-brand-muted">{a.goalsReadOnlyHint}</p>
                 )}
                 <div className="grid sm:grid-cols-2 gap-3">
                   <label className="block">
-                    <span className="text-sm text-brand-muted">Meta mensual (MXN)</span>
+                    <span className="text-sm text-brand-muted">{a.monthlyGoal}</span>
                     <input
                       type="text"
                       inputMode="decimal"
@@ -488,12 +602,12 @@ export function CheckoutAnalyticsPanel({
                           : ""
                       }
                       onChange={(e) => setGoalInput(e.target.value)}
-                      placeholder="Ej. 50000"
+                      placeholder={a.goalPlaceholder}
                       className="mt-1 w-full px-3 py-2.5 text-sm bg-brand-canvas border border-brand-border rounded-lg min-h-[44px]"
                     />
                   </label>
                   <label className="block">
-                    <span className="text-sm text-brand-muted">Gastos mensuales (MXN)</span>
+                    <span className="text-sm text-brand-muted">{a.monthlyExpenses}</span>
                     <input
                       type="text"
                       inputMode="decimal"
@@ -503,7 +617,7 @@ export function CheckoutAnalyticsPanel({
                           : ""
                       }
                       onChange={(e) => setExpensesInput(e.target.value)}
-                      placeholder="Ej. 15000"
+                      placeholder={a.expensesPlaceholder}
                       className="mt-1 w-full px-3 py-2.5 text-sm bg-brand-canvas border border-brand-border rounded-lg min-h-[44px]"
                     />
                   </label>
@@ -514,74 +628,84 @@ export function CheckoutAnalyticsPanel({
                   onClick={() => void handleSavePrefs()}
                   className="px-4 py-2.5 bg-brand-ink text-brand-ink-fg rounded-lg text-sm font-medium disabled:opacity-50 min-h-[44px]"
                 >
-                  {saving ? "Guardando…" : prefsSaved ? "Guardado" : editable ? "Guardar metas" : "Solo lectura"}
+                  {saving ? a.saving : prefsSaved ? a.saved : editable ? a.saveGoals : a.readOnly}
                 </button>
               </SectionCard>
 
               <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-                <MetricCard label="Ventas reales" value={fmt(analytics.profitability.actualSalesCents)} />
-                <MetricCard label="Utilidad estimada" value={fmt(analytics.profitability.estimatedProfitCents)} />
                 <MetricCard
-                  label="Meta vs real"
+                  label={a.realSales}
+                  value={fmt(analytics.profitability.actualSalesCents)}
+                  vsPrevious={a.vsPrevious}
+                />
+                <MetricCard
+                  label={a.estimatedProfit}
+                  value={fmt(analytics.profitability.estimatedProfitCents)}
+                  vsPrevious={a.vsPrevious}
+                />
+                <MetricCard
+                  label={a.goalVsActual}
                   value={
                     analytics.profitability.goalProgressPercent != null
                       ? `${analytics.profitability.goalProgressPercent}%`
-                      : "Sin meta"
+                      : a.noGoal
                   }
+                  vsPrevious={a.vsPrevious}
                 />
                 <MetricCard
-                  label="Proyección cierre"
+                  label={a.monthEndProjection}
                   value={fmt(analytics.profitability.monthEndProjectionCents)}
+                  vsPrevious={a.vsPrevious}
                 />
               </div>
 
-              <div className="grid lg:grid-cols-2 gap-4">
-                <SectionCard title="Gastos vs ingresos">
-                  <div className="space-y-3 text-sm">
-                    <div className="flex justify-between">
-                      <span className="text-brand-muted">Ingresos</span>
-                      <span className="font-semibold text-semantic-success">
-                        {fmt(analytics.profitability.actualSalesCents)}
-                      </span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-brand-muted">Gastos</span>
-                      <span className="font-semibold text-semantic-error">
-                        {fmt(analytics.profitability.monthlyExpensesCents)}
-                      </span>
-                    </div>
-                    <div className="flex justify-between pt-2 border-t border-brand-border font-medium">
-                      <span>Utilidad</span>
-                      <span>{fmt(analytics.profitability.estimatedProfitCents)}</span>
-                    </div>
+              <SectionCard title={a.expensesVsIncome}>
+                <div className="space-y-3 text-sm max-w-md">
+                  <div className="flex justify-between">
+                    <span className="text-brand-muted">{a.income}</span>
+                    <span className="font-semibold text-semantic-success">
+                      {fmt(analytics.profitability.actualSalesCents)}
+                    </span>
                   </div>
-                </SectionCard>
+                  <div className="flex justify-between">
+                    <span className="text-brand-muted">{a.expenses}</span>
+                    <span className="font-semibold text-semantic-error">
+                      {fmt(analytics.profitability.monthlyExpensesCents)}
+                    </span>
+                  </div>
+                  <div className="flex justify-between pt-2 border-t border-brand-border font-medium">
+                    <span>{a.profit}</span>
+                    <span>{fmt(analytics.profitability.estimatedProfitCents)}</span>
+                  </div>
+                </div>
+              </SectionCard>
 
-                <SectionCard title="Margen por servicio">
-                  {analytics.profitability.marginByService.length === 0 ? (
-                    <p className="text-sm text-brand-muted">Sin cobros este mes.</p>
-                  ) : (
-                    <ul className="space-y-2 max-h-64 overflow-y-auto text-sm">
-                      {analytics.profitability.marginByService.map((row) => (
-                        <li key={row.label} className="flex justify-between gap-2 py-1 border-b border-brand-border last:border-0">
-                          <div className="min-w-0">
-                            <span className="text-brand-ink">{row.label}</span>
-                            <p className="text-xs text-brand-muted">
-                              {fmt(row.totalCents)} ingreso · {row.marginPercent}% margen
-                            </p>
-                          </div>
-                          <span className="text-brand-muted shrink-0">{fmt(row.estimatedProfitCents)}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                </SectionCard>
-              </div>
+              <SectionCard title={a.marginByService}>
+                <ServiceSalesBreakdown
+                  items={(analytics.profitability.marginByService ?? []).map((row) => ({
+                    label: row.label,
+                    totalCents: row.totalCents,
+                    count: row.count,
+                    sharePercent:
+                      analytics.profitability.actualSalesCents > 0
+                        ? Math.round(
+                            (row.totalCents / analytics.profitability.actualSalesCents) * 1000
+                          ) / 10
+                        : 0,
+                    secondaryLabel: a.marginRow
+                      .replace("{pct}", String(row.marginPercent))
+                      .replace("{amount}", fmt(row.estimatedProfitCents)),
+                  }))}
+                  formatMoney={fmt}
+                  emptyMessage={a.emptyMonthSales}
+                  showSecondary
+                />
+              </SectionCard>
 
-              <SectionCard title="Tendencia 12 meses">
+              <SectionCard title={a.growth12m}>
                 <SimpleBarChart
                   data={analytics.profitability.growthTrend12Months.map((m) => ({
-                    label: m.label,
+                    label: seriesLabel(m.month || m.label, "month"),
                     value: m.paidCents,
                   }))}
                   formatValue={fmt}
@@ -590,7 +714,7 @@ export function CheckoutAnalyticsPanel({
                 <ul className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 pt-3">
                   {analytics.profitability.growthTrend12Months.slice(-6).map((m) => (
                     <li key={m.month} className="text-xs bg-brand-canvas rounded-lg p-2">
-                      <p className="text-brand-muted">{m.label}</p>
+                      <p className="text-brand-muted">{seriesLabel(m.month || m.label, "month")}</p>
                       <p className="font-semibold text-brand-ink">{fmt(m.paidCents)}</p>
                       <p
                         className={

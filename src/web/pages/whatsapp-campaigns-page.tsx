@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { MainLayout } from "../components/layout/main-layout";
 import { usePermissions } from "../hooks/use-permissions";
 import { useAuth } from "../contexts/auth-context";
+import { useLanguage } from "../contexts/language-context";
 import { api } from "../lib/api-client";
 import { fetchAllClinicalPages } from "../lib/clinical-list-fetch";
 import type { Patient } from "../types/clinical";
@@ -36,11 +37,15 @@ interface Campaign {
 }
 
 const WhatsAppCampaignsPage = () => {
+  const { t } = useLanguage();
   const { canViewWhatsAppWeb, isReceptionist, canConfigureWhatsApp } = usePermissions();
   const { user } = useAuth();
   const tenantCountry = useTenantCountry(user);
+  const c = t.whatsapp.campaigns;
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [patients, setPatients] = useState<Patient[]>([]);
+  const [patientsLoaded, setPatientsLoaded] = useState(false);
+  const [patientsLoadError, setPatientsLoadError] = useState(false);
   const [name, setName] = useState("");
   const [messageBody, setMessageBody] = useState("");
   const [filterClinicOnly, setFilterClinicOnly] = useState(true);
@@ -53,15 +58,22 @@ const WhatsAppCampaignsPage = () => {
   const [apiConnected, setApiConnected] = useState(false);
   const [canUseApi, setCanUseApi] = useState(false);
 
-  const ensurePatients = useCallback(async () => {
-    if (patients.length > 0) return;
-    const patientList = await fetchAllClinicalPages<Patient>(
-      "/patients",
-      "patients",
-      () => "Error pacientes"
-    );
-    setPatients(patientList);
-  }, [patients.length]);
+  const loadPatients = useCallback(async () => {
+    setPatientsLoadError(false);
+    try {
+      const patientList = await fetchAllClinicalPages<Patient>(
+        "/patients",
+        "patients",
+        () => c.patientsLoadError
+      );
+      setPatients(patientList);
+      setPatientsLoaded(true);
+    } catch {
+      setPatients([]);
+      setPatientsLoaded(true);
+      setPatientsLoadError(true);
+    }
+  }, [c.patientsLoadError]);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -83,12 +95,10 @@ const WhatsAppCampaignsPage = () => {
   }, [isReceptionist]);
 
   useEffect(() => {
-    if (canViewWhatsAppWeb) load();
-  }, [canViewWhatsAppWeb, load]);
-
-  useEffect(() => {
-    if (messageBody.trim() || expandedWebId) void ensurePatients();
-  }, [messageBody, expandedWebId, ensurePatients]);
+    if (!canViewWhatsAppWeb) return;
+    void load();
+    void loadPatients();
+  }, [canViewWhatsAppWeb, load, loadPatients]);
 
   const previewRecipients = useMemo(
     () =>
@@ -119,8 +129,8 @@ const WhatsAppCampaignsPage = () => {
 
   if (!canViewWhatsAppWeb) {
     return (
-      <MainLayout title="Campañas WhatsApp">
-        <p className="text-brand-muted">Sin permiso para campañas WhatsApp.</p>
+      <MainLayout title={c.title}>
+        <p className="text-brand-muted">{c.denied}</p>
       </MainLayout>
     );
   }
@@ -139,25 +149,25 @@ const WhatsAppCampaignsPage = () => {
     if (res.success) {
       setName("");
       setMessageBody("");
-      setFeedback("Campaña creada en borrador");
+      setFeedback(c.draftCreated);
       load();
     } else {
-      setFeedback(res.error || "Error al crear");
+      setFeedback(res.error || c.createError);
     }
   };
 
   const sendCampaignApi = async (id: string) => {
-    if (!confirm("¿Enviar esta campaña por API Meta a todos los pacientes con teléfono?")) return;
+    if (!confirm(c.sendConfirm)) return;
     setSendingId(id);
     const res = await api.post<{ success?: boolean; sent?: number; failed?: number }>(
       `/whatsapp-campaigns/${id}/send`
     );
     setSendingId(null);
     if (res.success && res.data) {
-      setFeedback(`API: enviados ${res.data.sent ?? 0}, fallidos ${res.data.failed ?? 0}`);
+      setFeedback(c.apiSendResult.replace("{sent}", String(res.data.sent ?? 0)).replace("{failed}", String(res.data.failed ?? 0)));
       load();
     } else {
-      setFeedback(res.error || "Error al enviar por API");
+      setFeedback(res.error || c.apiSendError);
     }
   };
 
@@ -173,11 +183,8 @@ const WhatsAppCampaignsPage = () => {
       : null;
 
   return (
-    <MainLayout title="Campañas WhatsApp">
-      <p className="text-sm text-brand-muted mb-4">
-        Difunde mensajes a pacientes con teléfono. Puedes usar WhatsApp Web (manual, sin API) o el envío
-        automático por API Meta si lo tienes configurado.
-      </p>
+    <MainLayout title={c.title}>
+      <p className="text-sm text-brand-muted mb-4">{c.pageHint}</p>
 
       {feedback && (
         <div className="mb-4 p-3 bg-semantic-info-bg text-blue-900 dark:text-blue-200 rounded-lg text-sm border border-blue-100 dark:border-blue-900/60">
@@ -188,11 +195,8 @@ const WhatsAppCampaignsPage = () => {
       <div className={`${whatsappPanelClass} mb-6 space-y-4`}>
         <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
           <div>
-            <h3 className="font-semibold text-brand-ink">Campañas por WhatsApp Web</h3>
-            <p className={`text-sm mt-1 max-w-2xl opacity-90 ${whatsappMutedTextClass}`}>
-              Crea el borrador del mensaje y envíalo paciente a paciente con{" "}
-              <code className="text-xs">wa.me</code>. Sin configurar Meta: tú pulsas Enviar en WhatsApp.
-            </p>
+            <h3 className="font-semibold text-brand-ink">{c.webTitle}</h3>
+            <p className={`text-sm mt-1 max-w-2xl opacity-90 ${whatsappMutedTextClass}`}>{c.webHint}</p>
           </div>
           <a
             href="https://web.whatsapp.com"
@@ -200,28 +204,27 @@ const WhatsAppCampaignsPage = () => {
             rel="noopener noreferrer"
             className={`shrink-0 ${whatsappButtonClass}`}
           >
-            Abrir WhatsApp Web
+            {c.openWeb}
           </a>
         </div>
 
         <div className={`${whatsappPanelInnerClass} space-y-3`}>
-          <h4 className="text-sm font-medium text-brand-ink">Nueva campaña (borrador)</h4>
+          <h4 className="text-sm font-medium text-brand-ink">{c.newDraft}</h4>
           <input
             value={name}
             onChange={(e) => setName(e.target.value)}
-            placeholder="Nombre interno (ej. Promo verano)"
+            placeholder={c.namePlaceholder}
             className={`w-full px-3 py-2 ${whatsappInputBorderClass} bg-brand-surface text-brand-ink`}
           />
           <textarea
             value={messageBody}
             onChange={(e) => setMessageBody(e.target.value)}
-            placeholder={`Mensaje con variables, ej:\nHola {{nombre}}, le informamos que...`}
+            placeholder={c.messagePlaceholder}
             rows={5}
             className={`w-full px-3 py-2 ${whatsappInputBorderClass} bg-brand-surface text-sm text-brand-ink`}
           />
           <p className="text-xs text-brand-muted">
-            Variables: <code>{"{{nombre}}"}</code>, <code>{"{{apellido}}"}</code>,{" "}
-            <code>{"{{nombre_completo}}"}</code>
+            {c.variablesHint} {c.variablesList}
           </p>
           <label className="flex items-center gap-2 text-sm text-brand-muted">
             <input
@@ -230,19 +233,20 @@ const WhatsAppCampaignsPage = () => {
               onChange={(e) => setFilterClinicOnly(e.target.checked)}
               className="rounded border-gray-300 dark:border-gray-600"
             />
-            Solo pacientes de mi clínica
+            {c.clinicOnlyFilter}
           </label>
           <p className={`text-sm ${whatsappMutedTextClass}`}>
-            Destinatarios con teléfono válido: <strong>{previewRecipients.length}</strong>
+            {c.recipientsWithPhone} <strong>{previewRecipients.length}</strong>
             {previewRecipients.length === 0 && patients.length > 0 && (
               <span className="block text-xs text-amber-700 dark:text-amber-300 mt-1">
-                Hay {patients.length} paciente(s) en tu listado; revisa que tengan teléfono con al menos 8
-                dígitos o desmarca «Solo pacientes de mi clínica».
+                {c.recipientsMismatchHint.replace("{count}", String(patients.length))}
               </span>
             )}
-            {patients.length === 0 && !loading && (
+            {patientsLoaded && patients.length === 0 && !loading && (
               <span className="block text-xs text-amber-700 dark:text-amber-300 mt-1">
-                No se cargaron pacientes. Comprueba permisos o recarga la página.
+                {patientsLoadError
+                  ? c.patientsLoadFailed
+                  : c.noPatientsYet}
               </span>
             )}
           </p>
@@ -252,17 +256,17 @@ const WhatsAppCampaignsPage = () => {
             disabled={!name.trim() || !messageBody.trim()}
             className="px-4 py-2 bg-brand-ink text-brand-ink-fg rounded-lg text-sm font-medium disabled:opacity-50"
           >
-            Guardar borrador
+            {c.saveDraft}
           </button>
         </div>
 
         {webAssistant && activeAssistantCampaign && assistantCurrent && (
           <div className={`${whatsappPanelInnerClass} space-y-3`}>
             <p className="text-sm font-medium text-brand-ink">
-              Asistente de envío — {activeAssistantCampaign.name}
+              {c.assistantTitle.replace("{name}", activeAssistantCampaign.name)}
             </p>
             <p className="text-sm text-brand-muted">
-              Paciente {webAssistant.index + 1} de {assistantRecipients.length}:{" "}
+              {c.assistantPatientOf.replace("{current}", String(webAssistant.index + 1)).replace("{total}", String(assistantRecipients.length))}{" "}
               <strong>
                 {assistantCurrent.firstName} {assistantCurrent.lastName}
               </strong>{" "}
@@ -277,7 +281,7 @@ const WhatsAppCampaignsPage = () => {
                 onClick={() => openWaMe(activeAssistantCampaign, assistantCurrent)}
                 className={whatsappButtonClass}
               >
-                Abrir WhatsApp
+                {c.openWhatsApp}
               </button>
               <button
                 type="button"
@@ -285,69 +289,69 @@ const WhatsAppCampaignsPage = () => {
                   const next = webAssistant.index + 1;
                   if (next >= assistantRecipients.length) {
                     setWebAssistant(null);
-                    setFeedback(`Asistente completado: ${assistantRecipients.length} pacientes.`);
+                    setFeedback(c.assistantDone.replace("{count}", String(assistantRecipients.length)));
                   } else {
                     setWebAssistant({ campaignId: webAssistant.campaignId, index: next });
                   }
                 }}
                 className="px-4 py-2 border border-brand-border rounded-lg text-sm"
               >
-                {webAssistant.index + 1 >= assistantRecipients.length ? "Finalizar" : "Siguiente paciente"}
+                {webAssistant.index + 1 >= assistantRecipients.length ? c.finish : c.nextPatient}
               </button>
               <button
                 type="button"
                 onClick={() => setWebAssistant(null)}
                 className="px-4 py-2 text-sm text-gray-500"
               >
-                Cancelar
+                {t.common.cancel}
               </button>
             </div>
           </div>
         )}
 
         <div>
-          <h4 className="text-sm font-semibold text-brand-ink mb-2">Borradores para enviar</h4>
+          <h4 className="text-sm font-semibold text-brand-ink mb-2">{c.draftsToSend}</h4>
           {loading ? (
-            <p className="text-sm text-gray-500">Cargando…</p>
+            <p className="text-sm text-gray-500">{c.loading}</p>
           ) : (
             <ul className={whatsappListClass}>
               {campaigns
-                .filter((c) => c.status === "draft")
-                .map((c) => {
-                  const recipients = recipientsForCampaign(c);
-                  const expanded = expandedWebId === c.id;
+                .filter((campaign) => campaign.status === "draft")
+                .map((campaign) => {
+                  const recipients = recipientsForCampaign(campaign);
+                  const expanded = expandedWebId === campaign.id;
                   return (
-                    <li key={c.id} className="p-4">
+                    <li key={campaign.id} className="p-4">
                       <div className="flex flex-wrap items-start justify-between gap-3">
                         <div className="min-w-0 flex-1">
-                          <p className="font-medium text-brand-ink">{c.name}</p>
-                          <p className="text-sm text-brand-muted line-clamp-2">{c.messageBody}</p>
+                          <p className="font-medium text-brand-ink">{campaign.name}</p>
+                          <p className="text-sm text-brand-muted line-clamp-2">{campaign.messageBody}</p>
                           <p className="text-xs text-gray-400 mt-1">
-                            {recipients.length} destinatario(s) con WhatsApp
+                            {c.recipientsCount.replace("{count}", String(recipients.length))}
                           </p>
                         </div>
                         <div className="flex flex-wrap gap-2 shrink-0">
                           <button
                             type="button"
                             disabled={recipients.length === 0}
-                            onClick={() => setWebAssistant({ campaignId: c.id, index: 0 })}
+                            onClick={() => setWebAssistant({ campaignId: campaign.id, index: 0 })}
                             className={whatsappButtonSmClass}
                           >
-                            Asistente de envío
+                            {c.sendAssistant}
                           </button>
                           <button
                             type="button"
-                            onClick={() => setExpandedWebId(expanded ? null : c.id)}
+                            onClick={() => setExpandedWebId(expanded ? null : campaign.id)}
                             className={whatsappOutlineButtonClass}
                           >
-                            {expanded ? "Ocultar lista" : "Ver lista"}
+                            {expanded ? c.hideList : c.showList}
                           </button>
                         </div>
                       </div>
                       {expanded && (
                         <ul className="mt-4 max-h-64 overflow-y-auto divide-y divide-gray-100 dark:divide-gray-800 border border-brand-border rounded-lg">
                           {recipients.length === 0 ? (
-                            <li className="p-3 text-sm text-gray-500">Sin destinatarios válidos.</li>
+                            <li className="p-3 text-sm text-gray-500">{c.noValidRecipients}</li>
                           ) : (
                             recipients.map((r) => (
                               <li
@@ -359,7 +363,7 @@ const WhatsAppCampaignsPage = () => {
                                 </span>
                                 <button
                                   type="button"
-                                  onClick={() => openWaMe(c, r)}
+                                  onClick={() => openWaMe(campaign, r)}
                                   className={whatsappButtonXsClass}
                                 >
                                   WhatsApp
@@ -372,8 +376,8 @@ const WhatsAppCampaignsPage = () => {
                     </li>
                   );
                 })}
-              {campaigns.filter((c) => c.status === "draft").length === 0 && (
-                <li className="p-4 text-sm text-gray-500">No hay borradores. Crea una campaña arriba.</li>
+              {campaigns.filter((campaign) => campaign.status === "draft").length === 0 && (
+                <li className="p-4 text-sm text-gray-500">{c.noDrafts}</li>
               )}
             </ul>
           )}
@@ -389,12 +393,12 @@ const WhatsAppCampaignsPage = () => {
         >
           <div>
             <h3 className="font-semibold text-brand-ink">
-              Envío automático por API Meta {apiConnected ? "(conectado)" : "(opcional)"}
+              {c.metaApiTitle} {apiConnected ? c.connected : c.optional}
             </h3>
             <p className="text-sm text-brand-muted mt-0.5">
               {isReceptionist
-                ? "Envío automático habilitado por tu podólogo."
-                : "Requiere WhatsApp Business configurado en Ajustes. Puedes ignorar esta sección."}
+                ? c.receptionistApiHint
+                : c.metaApiHint}
             </p>
           </div>
           {!isReceptionist && (
@@ -407,39 +411,41 @@ const WhatsAppCampaignsPage = () => {
             {!canUseApi ? (
               <p className="text-sm text-gray-500">
                 {isReceptionist
-                  ? "Tu podólogo aún no ha habilitado el envío automático por API Meta para recepción."
-                  : "Configura WhatsApp Business en Ajustes para enviar campañas por API Meta."}
+                  ? c.receptionistApiDisabled
+                  : c.configureApiHint}
               </p>
             ) : (
               <>
-            <h4 className="font-semibold mb-3 text-brand-ink">Todas las campañas</h4>
+            <h4 className="font-semibold mb-3 text-brand-ink">{c.allCampaigns}</h4>
             {loading ? (
-              <p className="text-gray-500 text-sm">Cargando…</p>
+              <p className="text-gray-500 text-sm">{c.loading}</p>
             ) : (
               <ul className="divide-y divide-gray-100 dark:divide-gray-800">
-                {campaigns.map((c) => (
-                  <li key={c.id} className="py-4 flex flex-wrap items-center justify-between gap-3">
+                {campaigns.map((campaign) => (
+                  <li key={campaign.id} className="py-4 flex flex-wrap items-center justify-between gap-3">
                     <div>
-                      <p className="font-medium text-brand-ink">{c.name}</p>
+                      <p className="font-medium text-brand-ink">{campaign.name}</p>
                       <p className="text-xs text-gray-400 mt-1">
-                        {c.status}
-                        {c.sentAt ? ` · enviada ${new Date(c.sentAt).toLocaleString("es-ES")}` : ""}
+                        {campaign.status}
+                        {campaign.sentAt
+                          ? ` · ${c.sentAt.replace("{date}", new Date(campaign.sentAt).toLocaleString())}`
+                          : ""}
                       </p>
                     </div>
-                    {c.status === "draft" && (
+                    {campaign.status === "draft" && (
                       <button
                         type="button"
-                        disabled={sendingId === c.id}
-                        onClick={() => sendCampaignApi(c.id)}
+                        disabled={sendingId === campaign.id}
+                        onClick={() => sendCampaignApi(campaign.id)}
                         className="px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm disabled:opacity-50"
                       >
-                        {sendingId === c.id ? "Enviando…" : "Enviar por API"}
+                        {sendingId === campaign.id ? c.sending : c.sendByApi}
                       </button>
                     )}
                   </li>
                 ))}
                 {campaigns.length === 0 && (
-                  <li className="py-4 text-sm text-gray-400">No hay campañas</li>
+                  <li className="py-4 text-sm text-gray-400">{c.noCampaigns}</li>
                 )}
               </ul>
             )}

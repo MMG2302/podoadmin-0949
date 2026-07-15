@@ -3,6 +3,7 @@
 export type PodiatryFootType = "egyptian" | "roman" | "greek" | "germanic" | "celtic";
 export type PodiatryArchType = "flat" | "normal" | "cavus";
 
+/** IDs canónicos + etiqueta ES para normalización legacy; UI vía t.podiatry.foot.* */
 export const PODIATRY_FOOT_OPTIONS: { value: PodiatryFootType; label: string }[] = [
   { value: "egyptian", label: "Egipcio" },
   { value: "roman", label: "Romano" },

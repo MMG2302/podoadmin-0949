@@ -7,6 +7,7 @@ import { AnimatedThemeToggler } from "../ui/animated-theme-toggler";
 import { Dock, DockIcon } from "../ui/dock";
 import { getSidebarSettings, saveSidebarSettings } from "../../lib/ui-preferences";
 import { useAuth, getPostLoginPath, hasActiveSystemAccess } from "../../contexts/auth-context";
+import { useLanguage } from "../../contexts/language-context";
 import { isBillingSettingsView, BILLING_SETTINGS_PATH } from "../../lib/billing-settings-path";
 import { useMainWorkspaceWatermark } from "../../hooks/use-main-workspace-watermark";
 import { LocationAnnouncementBanner } from "../location-announcement-banner";
@@ -20,6 +21,8 @@ interface MainLayoutProps {
 export const MainLayout = ({ children, title }: MainLayoutProps) => {
   const [location, setLocation] = useLocation();
   const { user } = useAuth();
+  const { t } = useLanguage();
+  const L = t.layout;
   const watermark = useMainWorkspaceWatermark();
   const pendingAccess = user != null && !hasActiveSystemAccess(user);
   const [subscriptionBanner, setSubscriptionBanner] = useState(false);
@@ -104,12 +107,12 @@ export const MainLayout = ({ children, title }: MainLayoutProps) => {
                 }`}
                 title={
                   sidebarLocked === "visible"
-                    ? "Desbloquear (bloqueado visible)"
+                    ? L.unlockSidebarVisible
                     : sidebarLocked === "hidden"
-                      ? "Desbloquear (bloqueado oculto)"
-                      : "Bloquear sidebar visible"
+                      ? L.unlockSidebarHidden
+                      : L.lockSidebarVisible
                 }
-                aria-label="Alternar bloqueo de sidebar"
+                aria-label={L.toggleSidebarLock}
               >
                 <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
@@ -125,7 +128,7 @@ export const MainLayout = ({ children, title }: MainLayoutProps) => {
                   }
                 }}
                 className="shrink-0 p-2 ml-0 rounded-lg hover:bg-brand-canvas active:bg-gray-200 dark:active:bg-gray-700 transition-colors w-11 h-11 min-w-[44px] min-h-[44px] flex items-center justify-center"
-                aria-label={sidebarVisibleOnDesktop ? "Ocultar menú" : "Mostrar menú"}
+                aria-label={sidebarVisibleOnDesktop ? L.hideMenu : L.showMenu}
               >
                 <svg className="w-6 h-6 text-brand-ink shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
@@ -134,7 +137,7 @@ export const MainLayout = ({ children, title }: MainLayoutProps) => {
 
               {/* Page title - truncate on small screens */}
               <h1 className="text-base sm:text-lg md:text-xl font-semibold text-brand-ink truncate min-w-0">
-                {title || "PodoAdmin"}
+                {title || L.brandFallback}
               </h1>
             </div>
 
@@ -185,26 +188,26 @@ export const MainLayout = ({ children, title }: MainLayoutProps) => {
           {pendingAccess && !isBillingSettingsView(location) && !location.startsWith("/support") && (
             <div className={`mb-4 ${semanticAlertWarningClass} !p-3 flex flex-wrap items-center justify-between gap-2`}>
               <span>
-                Tu acceso clínico está pendiente. Activa el pago en Facturación o espera a que un administrador habilite tu cuenta.
+                {L.pendingAccessBanner}
               </span>
               <button
                 type="button"
                 className="px-3 py-1 bg-brand-ink text-brand-ink-fg rounded-lg text-xs font-medium"
                 onClick={() => setLocation(getPostLoginPath(user!))}
               >
-                {user?.role === "clinic_admin" || user?.role === "podiatrist" ? "Ir a facturación" : "Ir a soporte"}
+                {user?.role === "clinic_admin" || user?.role === "podiatrist" ? L.goToBilling : L.goToSupport}
               </button>
             </div>
           )}
           {subscriptionBanner && !isBillingSettingsView(location) && (
             <div className={`mb-4 ${semanticAlertWarningClass} !p-3 flex flex-wrap items-center justify-between gap-2`}>
-              <span>Tu suscripción no está activa. Renueva para seguir usando la plataforma.</span>
+              <span>{L.subscriptionInactiveBanner}</span>
               <button
                 type="button"
                 className="px-3 py-1 bg-brand-ink text-brand-ink-fg rounded-lg text-xs font-medium"
                 onClick={() => setLocation(BILLING_SETTINGS_PATH)}
               >
-                Ir a facturación
+                {L.goToBilling}
               </button>
             </div>
           )}

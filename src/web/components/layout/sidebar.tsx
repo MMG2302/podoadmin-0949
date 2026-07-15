@@ -80,8 +80,8 @@ export const Sidebar = ({
                   <button
                     onClick={onToggleDesktop}
                     className="hidden md:flex p-2 rounded-lg text-white/70 hover:text-white hover:bg-white/10 transition-colors min-w-[40px] min-h-[40px] items-center justify-center"
-                    title="Ocultar menú"
-                    aria-label="Ocultar menú"
+                    title={t.layout.hideMenu}
+                    aria-label={t.layout.hideMenu}
                   >
                     <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M11 19l-7-7 7-7m8 14l-7-7 7-7" />
@@ -91,7 +91,7 @@ export const Sidebar = ({
                 <button
                   onClick={onClose}
                   className="md:hidden p-2 -mr-2 text-white/70 hover:text-white hover:bg-white/10 rounded-lg transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center"
-                  aria-label="Cerrar menú"
+                  aria-label={t.layout.closeMenu}
                 >
                   <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />

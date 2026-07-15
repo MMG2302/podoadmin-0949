@@ -7,10 +7,8 @@ import type {
 } from "../../types/clinical-layout";
 import {
   BUILTIN_SECTION_META,
-  CUSTOM_KIND_META,
   CUSTOM_SECTION_KINDS,
   createCustomSection,
-  getCustomKindLabel,
   getSectionOptions,
   getTableColumns,
   MAX_TABLE_COLUMNS,
@@ -31,6 +29,13 @@ import {
   PodiatryExaminationFields,
   createDefaultPodiatryExamination,
 } from "../sessions/podiatry-examination-fields";
+import { useLanguage } from "../../contexts/language-context";
+import {
+  getCustomKindHint,
+  getCustomKindLabel,
+  getSectionGroupLabel,
+  resolveSectionDisplayLabel,
+} from "../../i18n/clinical-labels";
 
 type Props = {
   globalLayout: ClinicalLayoutConfig;
@@ -84,18 +89,22 @@ const PODIATRY_BLOCK_BY_BUILTIN: Partial<Record<BuiltInClinicalSectionId, Podiat
   podiatry_onychopathies: "onychopathies",
 };
 
-function sectionTypeLabel(section: ClinicalLayoutSection): string {
-  if (section.kind === "builtin") {
-    const group =
-      section.builtinKey && BUILTIN_SECTION_META[section.builtinKey]
-        ? BUILTIN_SECTION_META[section.builtinKey].group
-        : "custom";
-    return group;
-  }
-  return getCustomKindLabel(section.kind);
-}
-
 export function SessionTemplateDesigner({ globalLayout, fields, onChange }: Props) {
+  const { t } = useLanguage();
+  const d = t.clinicalLayout.designer;
+  const defaults = t.clinicalLayout.defaults;
+
+  const sectionTypeLabel = (section: ClinicalLayoutSection): string => {
+    if (section.kind === "builtin") {
+      const group =
+        section.builtinKey && BUILTIN_SECTION_META[section.builtinKey]
+          ? BUILTIN_SECTION_META[section.builtinKey].group
+          : "custom";
+      return getSectionGroupLabel(t, group);
+    }
+    return getCustomKindLabel(t, section.kind);
+  };
+
   const sectionLayout = ensureTemplateSectionLayout(fields, globalLayout);
   const [selectedId, setSelectedId] = useState<string | null>(
     sectionLayout.sections.find((s) => s.enabled)?.id ?? sectionLayout.sections[0]?.id ?? null
@@ -168,7 +177,10 @@ export function SessionTemplateDesigner({ globalLayout, fields, onChange }: Prop
   };
 
   const addCustomSection = () => {
-    const section = createCustomSection(newSectionKind, newSectionLabel || "Nueva sección");
+    const section = createCustomSection(
+      newSectionKind,
+      newSectionLabel || defaults.newSection
+    );
     const enabledSection = { ...section, enabled: true, showInSession: true, order: sectionLayout.sections.length };
     patchLayout({
       ...sectionLayout,
@@ -191,7 +203,10 @@ export function SessionTemplateDesigner({ globalLayout, fields, onChange }: Prop
   const addOption = (sectionId: string) => {
     const section = sectionLayout.sections.find((s) => s.id === sectionId);
     if (!section) return;
-    const items = [...getSectionOptions(section), `Ítem ${getSectionOptions(section).length + 1}`];
+    const items = [
+      ...getSectionOptions(section),
+      defaults.itemN.replace("{n}", String(getSectionOptions(section).length + 1)),
+    ];
     patchOptions(sectionId, items);
   };
 
@@ -207,7 +222,7 @@ export function SessionTemplateDesigner({ globalLayout, fields, onChange }: Prop
     const section = sectionLayout.sections.find((s) => s.id === sectionId);
     if (!section) return;
     const items = getSectionOptions(section).filter((_, i) => i !== index);
-    patchOptions(sectionId, items.length > 0 ? items : ["Ítem 1"]);
+    patchOptions(sectionId, items.length > 0 ? items : [defaults.item1]);
   };
 
   const addTableColumn = (sectionId: string) => {
@@ -215,7 +230,9 @@ export function SessionTemplateDesigner({ globalLayout, fields, onChange }: Prop
     if (!section) return;
     const cols = getTableColumns(section);
     if (cols.length >= MAX_TABLE_COLUMNS) return;
-    patchSection(sectionId, { tableColumns: [...cols, `Columna ${cols.length + 1}`] });
+    patchSection(sectionId, {
+      tableColumns: [...cols, defaults.columnN.replace("{n}", String(cols.length + 1))],
+    });
   };
 
   const updateTableColumn = (sectionId: string, index: number, value: string) => {
@@ -230,7 +247,7 @@ export function SessionTemplateDesigner({ globalLayout, fields, onChange }: Prop
     const section = sectionLayout.sections.find((s) => s.id === sectionId);
     if (!section) return;
     const cols = getTableColumns(section).filter((_, i) => i !== index);
-    patchSection(sectionId, { tableColumns: cols.length > 0 ? cols : ["Columna 1"] });
+    patchSection(sectionId, { tableColumns: cols.length > 0 ? cols : [defaults.column1] });
   };
 
   const renderBuiltinContent = (section: ClinicalLayoutSection) => {
@@ -243,7 +260,10 @@ export function SessionTemplateDesigner({ globalLayout, fields, onChange }: Prop
           value={String(fields[fieldKey] ?? "")}
           onChange={(e) => patchFields({ [fieldKey]: e.target.value })}
           className="w-full px-3 py-2 text-sm border border-brand-border rounded-lg bg-white dark:bg-gray-950 text-brand-ink"
-          placeholder={`Contenido predeterminado para ${section.label}`}
+          placeholder={d.defaultContentPlaceholder.replace(
+            "{label}",
+            resolveSectionDisplayLabel(t, section)
+          )}
         />
       );
     }
@@ -268,26 +288,22 @@ export function SessionTemplateDesigner({ globalLayout, fields, onChange }: Prop
       );
     }
 
-    return (
-      <p className="text-xs text-brand-muted">
-        Esta sección no admite contenido predefinido en plantillas.
-      </p>
-    );
+    return <p className="text-xs text-brand-muted">{d.noPresetContent}</p>;
   };
 
   return (
     <div className="space-y-3">
-      <p className="text-xs text-brand-muted">
-        Marca «Incluir en plantilla» solo en los bloques que correspondan (p. ej. sin helomas en cirugía).
-        Al cargar la plantilla en una sesión, solo aparecerán esas secciones; las personalizadas creadas aquí
-        se muestran automáticamente sin pasar por Configuración.
-      </p>
+      <p className="text-xs text-brand-muted">{d.intro}</p>
 
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
         <div className="lg:col-span-2 bg-brand-surface rounded-xl border border-brand-border overflow-hidden">
           <div className="px-4 py-3 border-b border-brand-border bg-brand-canvas flex items-center justify-between gap-2">
-            <p className="text-sm font-medium text-brand-ink">Secciones ({sorted.length})</p>
-            <span className="text-xs text-brand-muted">{includedCount} incluidas</span>
+            <p className="text-sm font-medium text-brand-ink">
+              {d.sectionsCount.replace("{n}", String(sorted.length))}
+            </p>
+            <span className="text-xs text-brand-muted">
+              {d.includedCount.replace("{n}", String(includedCount))}
+            </span>
           </div>
           <ul className="max-h-[380px] overflow-y-auto divide-y divide-gray-100 dark:divide-gray-800">
             {sorted.map((section, index) => (
@@ -302,7 +318,9 @@ export function SessionTemplateDesigner({ globalLayout, fields, onChange }: Prop
               >
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0">
-                    <p className="text-sm font-medium text-brand-ink truncate">{section.label}</p>
+                    <p className="text-sm font-medium text-brand-ink truncate">
+                      {resolveSectionDisplayLabel(t, section)}
+                    </p>
                     <p className="text-xs text-gray-400 capitalize">{sectionTypeLabel(section)}</p>
                   </div>
                   <div className="flex flex-col gap-0.5 shrink-0">
@@ -335,7 +353,7 @@ export function SessionTemplateDesigner({ globalLayout, fields, onChange }: Prop
           </ul>
 
           <div className="p-3 border-t border-brand-border space-y-2">
-            <p className="text-xs font-medium text-brand-muted">Añadir sección personalizada</p>
+            <p className="text-xs font-medium text-brand-muted">{d.addCustomSection}</p>
             <select
               value={newSectionKind}
               onChange={(e) => setNewSectionKind(e.target.value as CustomSectionKind)}
@@ -343,15 +361,15 @@ export function SessionTemplateDesigner({ globalLayout, fields, onChange }: Prop
             >
               {CUSTOM_SECTION_KINDS.map((kind) => (
                 <option key={kind} value={kind}>
-                  {CUSTOM_KIND_META[kind].label}
+                  {getCustomKindLabel(t, kind)}
                 </option>
               ))}
             </select>
-            <p className="text-xs text-gray-400">{CUSTOM_KIND_META[newSectionKind].hint}</p>
+            <p className="text-xs text-gray-400">{getCustomKindHint(t, newSectionKind)}</p>
             <input
               value={newSectionLabel}
               onChange={(e) => setNewSectionLabel(e.target.value)}
-              placeholder="Título de la sección"
+              placeholder={d.sectionTitlePlaceholder}
               className="w-full text-xs px-2 py-1.5 border rounded-lg dark:bg-gray-950"
             />
             <button
@@ -359,7 +377,7 @@ export function SessionTemplateDesigner({ globalLayout, fields, onChange }: Prop
               onClick={addCustomSection}
               className="w-full py-1.5 text-xs border border-dashed border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800"
             >
-              + Añadir sección personalizada
+              {d.addCustomSectionBtn}
             </button>
           </div>
         </div>
@@ -367,11 +385,11 @@ export function SessionTemplateDesigner({ globalLayout, fields, onChange }: Prop
         <div className="lg:col-span-3 space-y-4">
           {selected ? (
             <div className="bg-brand-surface rounded-xl border border-brand-border p-4 space-y-4">
-              <h4 className="font-medium text-brand-ink">Editar sección</h4>
+              <h4 className="font-medium text-brand-ink">{d.editSection}</h4>
               <div>
-                <label className="block text-xs font-medium text-gray-500 mb-1">Título</label>
+                <label className="block text-xs font-medium text-gray-500 mb-1">{d.titleLabel}</label>
                 <input
-                  value={selected.label}
+                  value={resolveSectionDisplayLabel(t, selected)}
                   onChange={(e) => patchSection(selected.id, { label: e.target.value })}
                   className="w-full px-3 py-2 text-sm border rounded-lg dark:bg-gray-950"
                 />
@@ -379,14 +397,14 @@ export function SessionTemplateDesigner({ globalLayout, fields, onChange }: Prop
 
               <div className="space-y-2">
                 <Toggle
-                  label="Incluir en plantilla"
+                  label={d.includeInTemplate}
                   checked={selected.enabled}
                   onChange={(enabled) =>
                     patchSection(selected.id, { enabled, showInSession: enabled })
                   }
                 />
                 <p className="text-xs text-brand-muted bg-brand-canvas/50 rounded-lg p-3 border border-brand-border">
-                  Solo las secciones incluidas se cargarán al aplicar esta plantilla en una sesión.
+                  {d.includeHint}
                 </p>
               </div>
 
@@ -406,7 +424,7 @@ export function SessionTemplateDesigner({ globalLayout, fields, onChange }: Prop
 
               {selected.enabled && (
                 <div className="space-y-2 border-t border-brand-border pt-4">
-                  <p className="text-xs font-medium text-brand-muted">Contenido predeterminado</p>
+                  <p className="text-xs font-medium text-brand-muted">{d.defaultContent}</p>
                   {selected.kind === "builtin" ? (
                     renderBuiltinContent(selected)
                   ) : (
@@ -432,19 +450,19 @@ export function SessionTemplateDesigner({ globalLayout, fields, onChange }: Prop
                   onClick={() => removeSection(selected.id)}
                   className="text-sm text-red-600 hover:underline"
                 >
-                  Eliminar sección personalizada
+                  {d.removeCustomSection}
                 </button>
               )}
             </div>
           ) : (
             <div className="bg-brand-canvas rounded-xl border border-dashed border-brand-border p-8 text-center text-sm text-gray-500">
-              Selecciona una sección de la lista
+              {d.selectSection}
             </div>
           )}
 
           <div className="bg-brand-surface rounded-xl border border-brand-border p-4">
             <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-3">
-              Vista previa — plantilla
+              {d.previewTitle}
             </p>
             <div className="space-y-2 max-h-64 overflow-y-auto">
               {getIncludedTemplateSections(sectionLayout).map((s) => (
@@ -454,14 +472,14 @@ export function SessionTemplateDesigner({ globalLayout, fields, onChange }: Prop
                 >
                   <p className="text-sm font-medium text-brand-ink">{s.label}</p>
                   {s.kind === "builtin" ? (
-                    <p className="text-xs text-gray-400 mt-0.5">Campo del sistema</p>
+                    <p className="text-xs text-gray-400 mt-0.5">{d.systemField}</p>
                   ) : (
                     <CustomSectionPreview section={s} />
                   )}
                 </div>
               ))}
               {includedCount === 0 && (
-                <p className="text-sm text-gray-400">Ninguna sección incluida en la plantilla.</p>
+                <p className="text-sm text-gray-400">{d.noneIncluded}</p>
               )}
             </div>
           </div>

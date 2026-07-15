@@ -40,10 +40,10 @@ export function applyWhatsAppWebTemplate(
   return out;
 }
 
-export function formatDisplayDate(isoDate: string): string {
+export function formatDisplayDate(isoDate: string, locale = 'es-MX'): string {
   try {
     const d = new Date(isoDate + 'T12:00:00');
-    return d.toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric', month: 'long' });
+    return d.toLocaleDateString(locale, { weekday: 'long', day: 'numeric', month: 'long' });
   } catch {
     return isoDate;
   }
@@ -127,8 +127,13 @@ export function filterCampaignWebRecipients(
 }
 
 export function applyCampaignWebMessage(template: string, recipient: CampaignWebRecipient): string {
+  const parts = recipient.name.trim().split(/\s+/).filter(Boolean);
+  const firstName = parts[0] ?? recipient.name;
+  const lastName = parts.slice(1).join(' ');
   return template
-    .replace(/\{\{nombre\}\}/gi, recipient.name)
+    .replace(/\{\{nombre_completo\}\}/gi, recipient.name)
+    .replace(/\{\{nombre\}\}/gi, firstName)
+    .replace(/\{\{apellido\}\}/gi, lastName)
     .replace(/\{\{telefono\}\}/gi, recipient.phone)
     .replace(/\{\{name\}\}/gi, recipient.name)
     .replace(/\{\{phone\}\}/gi, recipient.phone);

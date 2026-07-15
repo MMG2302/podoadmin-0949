@@ -8,6 +8,7 @@ import {
   getSectionOptions,
   getTableColumns,
 } from "../../types/clinical-layout";
+import { useLanguage } from "../../contexts/language-context";
 
 const inputClass =
   "w-full px-3 py-2 border border-brand-border rounded-lg bg-brand-surface text-brand-ink text-sm focus:outline-none focus:border-brand-ink focus:ring-1 focus:ring-brand-ink";
@@ -36,7 +37,10 @@ function TriStateRow({
   onChange: (v: TriStateValue) => void;
   onNoteChange: (v: string) => void;
 }) {
-  const display = value === "yes" ? "SI" : value === "na" ? "N/A" : "NO";
+  const { t } = useLanguage();
+  const ui = t.clinicalLayout.customUi;
+  const dash = t.podiatry.exam.dash;
+  const display = value === "yes" ? ui.yes : value === "na" ? ui.na : ui.no;
   if (readOnly) {
     const show = value === "yes" || note?.trim();
     if (!show) return null;
@@ -44,7 +48,7 @@ function TriStateRow({
       <tr>
         <td className="py-1 pr-2 text-sm text-gray-700">{label}</td>
         <td className="py-1 text-sm font-medium">{display}</td>
-        <td className="py-1 text-sm text-gray-500">{note?.trim() || "—"}</td>
+        <td className="py-1 text-sm text-gray-500">{note?.trim() || dash}</td>
       </tr>
     );
   }
@@ -61,7 +65,7 @@ function TriStateRow({
                 checked={value === opt}
                 onChange={() => onChange(opt)}
               />
-              {opt === "yes" ? "SI" : opt === "no" ? "NO" : "N/A"}
+              {opt === "yes" ? ui.yes : opt === "no" ? ui.no : ui.na}
             </label>
           ))}
         </div>
@@ -71,7 +75,7 @@ function TriStateRow({
           type="text"
           value={note ?? ""}
           onChange={(e) => onNoteChange(e.target.value)}
-          placeholder="Obs."
+          placeholder={ui.obsPlaceholder}
           className={inputSm}
         />
       </td>
@@ -80,12 +84,16 @@ function TriStateRow({
 }
 
 export function CustomSectionField({ section, value, readOnly = false, onPatch }: Props) {
+  const { t } = useLanguage();
+  const ui = t.clinicalLayout.customUi;
+  const defaults = t.clinicalLayout.defaults;
+  const dash = t.podiatry.exam.dash;
   const val = value ?? {};
 
   switch (section.kind) {
     case "custom_text":
       return readOnly ? (
-        <p className="text-sm text-gray-600 whitespace-pre-wrap">{val.text || "—"}</p>
+        <p className="text-sm text-gray-600 whitespace-pre-wrap">{val.text || dash}</p>
       ) : (
         <textarea
           rows={3}
@@ -97,7 +105,7 @@ export function CustomSectionField({ section, value, readOnly = false, onPatch }
 
     case "custom_short_text":
       return readOnly ? (
-        <p className="text-sm text-gray-600">{val.shortText || "—"}</p>
+        <p className="text-sm text-gray-600">{val.shortText || dash}</p>
       ) : (
         <input
           type="text"
@@ -141,18 +149,18 @@ export function CustomSectionField({ section, value, readOnly = false, onPatch }
           (row) => val.triState?.[row] === "yes" || val.triStateNotes?.[row]?.trim()
         );
         if (visible.length === 0) {
-          return <p className="text-sm text-gray-500 italic">Sin hallazgos positivos.</p>;
+          return <p className="text-sm text-gray-500 italic">{ui.noPositiveFindings}</p>;
         }
       }
       return (
         <div className="overflow-x-auto">
-          <p className="text-xs text-gray-500 mb-2">Marque SI solo si aplica. Sin marcar = NO al guardar.</p>
+          <p className="text-xs text-gray-500 mb-2">{ui.triStateHint}</p>
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="text-xs text-gray-500 border-b border-gray-200">
-                <th className="py-1 pr-2 font-medium">Ítem</th>
-                <th className="py-1 font-medium">Respuesta</th>
-                <th className="py-1 font-medium">Observación</th>
+                <th className="py-1 pr-2 font-medium">{ui.itemCol}</th>
+                <th className="py-1 font-medium">{ui.answerCol}</th>
+                <th className="py-1 font-medium">{ui.obsCol}</th>
               </tr>
             </thead>
             <tbody>
@@ -179,7 +187,7 @@ export function CustomSectionField({ section, value, readOnly = false, onPatch }
 
     case "custom_single_choice":
       return readOnly ? (
-        <p className="text-sm text-gray-600">{val.selected || "—"}</p>
+        <p className="text-sm text-gray-600">{val.selected || dash}</p>
       ) : (
         <div className="space-y-2">
           {getSectionOptions(section).map((opt) => (
@@ -199,7 +207,7 @@ export function CustomSectionField({ section, value, readOnly = false, onPatch }
     case "custom_number":
       return readOnly ? (
         <p className="text-sm text-gray-600">
-          {val.number != null ? `${val.number} ${section.unit ?? ""}`.trim() : "—"}
+          {val.number != null ? `${val.number} ${section.unit ?? ""}`.trim() : dash}
         </p>
       ) : (
         <div className="flex gap-2 items-center max-w-xs">
@@ -213,7 +221,7 @@ export function CustomSectionField({ section, value, readOnly = false, onPatch }
             }
             className={`${inputClass} flex-1`}
           />
-          <span className="text-sm text-gray-500 shrink-0">{section.unit ?? "unidad"}</span>
+          <span className="text-sm text-gray-500 shrink-0">{section.unit ?? defaults.unit}</span>
         </div>
       );
 
@@ -221,7 +229,7 @@ export function CustomSectionField({ section, value, readOnly = false, onPatch }
       const max = section.scaleMax ?? 10;
       return readOnly ? (
         <p className="text-sm text-gray-600">
-          {val.number != null ? `${val.number}/${max}` : "—"}
+          {val.number != null ? `${val.number}/${max}` : dash}
         </p>
       ) : (
         <div className="space-y-2 max-w-md">
@@ -248,10 +256,12 @@ export function CustomSectionField({ section, value, readOnly = false, onPatch }
     case "custom_conditional":
       return (
         <div className="space-y-3">
-          <p className="text-sm text-gray-700">{section.conditionalPrompt ?? "¿Aplica?"}</p>
+          <p className="text-sm text-gray-700">
+            {section.conditionalPrompt ?? defaults.applies}
+          </p>
           {readOnly ? (
             <>
-              <p className="text-sm font-medium">{val.conditionalYes ? "SI" : "NO"}</p>
+              <p className="text-sm font-medium">{val.conditionalYes ? ui.yes : ui.no}</p>
               {val.conditionalYes && val.text?.trim() && (
                 <p className="text-sm text-gray-600 whitespace-pre-wrap">{val.text}</p>
               )}
@@ -266,7 +276,7 @@ export function CustomSectionField({ section, value, readOnly = false, onPatch }
                     checked={val.conditionalYes === true}
                     onChange={() => onPatch({ conditionalYes: true })}
                   />
-                  SI
+                  {ui.yes}
                 </label>
                 <label className="inline-flex items-center gap-1.5 cursor-pointer">
                   <input
@@ -275,7 +285,7 @@ export function CustomSectionField({ section, value, readOnly = false, onPatch }
                     checked={val.conditionalYes === false || val.conditionalYes == null}
                     onChange={() => onPatch({ conditionalYes: false, text: "" })}
                   />
-                  NO
+                  {ui.no}
                 </label>
               </div>
               {val.conditionalYes && (
@@ -283,7 +293,7 @@ export function CustomSectionField({ section, value, readOnly = false, onPatch }
                   rows={2}
                   value={val.text ?? ""}
                   onChange={(e) => onPatch({ text: e.target.value })}
-                  placeholder="Detalle…"
+                  placeholder={ui.detailPlaceholder}
                   className={inputClass}
                 />
               )}
@@ -297,7 +307,7 @@ export function CustomSectionField({ section, value, readOnly = false, onPatch }
       const rows = ensureTableRows(section, val.tableRows);
       if (readOnly) {
         const hasData = rows.some((r) => r.some((c) => c.trim()));
-        if (!hasData) return <p className="text-sm text-gray-500">—</p>;
+        if (!hasData) return <p className="text-sm text-gray-500">{dash}</p>;
         return (
           <div className="overflow-x-auto">
             <table className="w-full text-sm border border-gray-200">
@@ -316,7 +326,7 @@ export function CustomSectionField({ section, value, readOnly = false, onPatch }
                     <tr key={ri} className="border-t border-gray-100">
                       {row.map((cell, ci) => (
                         <td key={ci} className="px-2 py-1 text-gray-700">
-                          {cell || "—"}
+                          {cell || dash}
                         </td>
                       ))}
                     </tr>
@@ -370,6 +380,11 @@ export function CustomSectionField({ section, value, readOnly = false, onPatch }
 }
 
 export function CustomSectionPreview({ section }: { section: ClinicalLayoutSection }) {
+  const { t } = useLanguage();
+  const ui = t.clinicalLayout.customUi;
+  const defaults = t.clinicalLayout.defaults;
+  const dash = t.podiatry.exam.dash;
+
   switch (section.kind) {
     case "custom_text":
       return <div className="mt-1 h-8 rounded border border-dashed border-brand-border" />;
@@ -380,14 +395,14 @@ export function CustomSectionPreview({ section }: { section: ClinicalLayoutSecti
       return (
         <ul className="mt-1 text-xs text-gray-500 space-y-0.5">
           {getSectionOptions(section).map((item) => (
-            <li key={item}>☐ {item || "—"}</li>
+            <li key={item}>☐ {item || dash}</li>
           ))}
         </ul>
       );
     case "custom_yes_no_na":
       return (
         <p className="mt-1 text-xs text-gray-500">
-          Tabla SI/NO/N/A · {getSectionOptions(section).length} filas
+          {ui.yesNoNaTable} · {ui.rowsCount.replace("{n}", String(getSectionOptions(section).length))}
         </p>
       );
     case "custom_single_choice":
@@ -401,21 +416,27 @@ export function CustomSectionPreview({ section }: { section: ClinicalLayoutSecti
     case "custom_number":
       return (
         <p className="mt-1 text-xs text-gray-500">
-          Número ({section.unit ?? "unidad"})
+          {ui.numberWithUnit.replace("{unit}", section.unit ?? defaults.unit)}
         </p>
       );
     case "custom_scale":
-      return <p className="mt-1 text-xs text-gray-500">Escala 0–{section.scaleMax ?? 10}</p>;
+      return (
+        <p className="mt-1 text-xs text-gray-500">
+          {ui.scaleLabel.replace("{max}", String(section.scaleMax ?? 10))}
+        </p>
+      );
     case "custom_conditional":
       return (
         <p className="mt-1 text-xs text-gray-500">
-          {section.conditionalPrompt ?? "¿Aplica?"} → nota si SI
+          {section.conditionalPrompt ?? defaults.applies} {ui.conditionalNoteIfYes}
         </p>
       );
     case "custom_table":
       return (
         <p className="mt-1 text-xs text-gray-500">
-          Tabla {section.tableRowCount ?? 3}×{getTableColumns(section).length}
+          {ui.tableSize
+            .replace("{rows}", String(section.tableRowCount ?? 3))
+            .replace("{cols}", String(getTableColumns(section).length))}
         </p>
       );
     default:

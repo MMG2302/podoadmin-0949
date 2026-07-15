@@ -4,12 +4,14 @@ export interface CheckoutQuickTariff {
   id: string;
   label: string;
   amountCents: number;
+  /** Pauta de duración en minutos (opcional). */
+  durationMinutes?: number;
 }
 
 export const DEFAULT_CHECKOUT_TARIFFS: CheckoutQuickTariff[] = [
-  { id: "consulta", label: "Consulta", amountCents: 60000 },
-  { id: "revision", label: "Revisión", amountCents: 40000 },
-  { id: "procedimiento", label: "Procedimiento", amountCents: 80000 },
+  { id: "consulta", label: "Consulta", amountCents: 60000, durationMinutes: 30 },
+  { id: "revision", label: "Revisión", amountCents: 40000, durationMinutes: 20 },
+  { id: "procedimiento", label: "Procedimiento", amountCents: 80000, durationMinutes: 45 },
 ];
 
 export function normalizeCheckoutTariffs(raw: unknown): CheckoutQuickTariff[] {
@@ -22,7 +24,17 @@ export function normalizeCheckoutTariffs(raw: unknown): CheckoutQuickTariff[] {
     const amountCents = Number(o.amountCents);
     if (!label || !Number.isFinite(amountCents) || amountCents < 0) continue;
     const id = String(o.id ?? label.toLowerCase().replace(/\s+/g, "_")).slice(0, 40);
-    out.push({ id, label, amountCents: Math.round(amountCents) });
+    const durationRaw = Number(o.durationMinutes);
+    const durationMinutes =
+      Number.isFinite(durationRaw) && durationRaw > 0
+        ? Math.min(480, Math.max(5, Math.round(durationRaw)))
+        : undefined;
+    out.push({
+      id,
+      label,
+      amountCents: Math.round(amountCents),
+      ...(durationMinutes != null ? { durationMinutes } : {}),
+    });
   }
   return out.length > 0 ? out.slice(0, 12) : [...DEFAULT_CHECKOUT_TARIFFS];
 }

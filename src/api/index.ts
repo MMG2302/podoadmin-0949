@@ -94,6 +94,28 @@ const originValidator = (origin: string | null): boolean => {
   return allowedOrigins.includes(origin);
 };
 
+// Redireccionar URLs sin trailing slash a versiones con trailing slash (para rutas no-API)
+app.use('*', async (c, next) => {
+  const url = new URL(c.req.url);
+  const pathname = url.pathname;
+
+  // Solo redirigir si:
+  // 1. La URL no es una ruta de API
+  // 2. La URL no termina en /
+  // 3. La URL no tiene una extensión de archivo
+  if (
+    !pathname.includes('/api/') &&
+    pathname !== '/' &&
+    !pathname.endsWith('/') &&
+    !pathname.includes('.')
+  ) {
+    url.pathname = pathname + '/';
+    return c.redirect(url.toString(), 301);
+  }
+
+  await next();
+});
+
 // Bloquear acceso por URL a archivos/carpetas sensibles (node_modules, .sql, migraciones, etc.)
 app.use('*', blockSensitivePaths);
 

@@ -11,6 +11,7 @@
     "clsx": "^2.1.1",
     "drizzle-orm": "^0.44.7",
     "hono": "4.8.2",
+    "jose": "^6.2.3",
     "lucide-react": "^0.555.0",
     "otpauth": "^9.4.1",
     "react": "19.0.0",

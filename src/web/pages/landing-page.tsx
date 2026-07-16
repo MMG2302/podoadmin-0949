@@ -19,6 +19,7 @@ import {
   ChevronDown,
 } from "lucide-react";
 import { useLanguage } from "../contexts/language-context";
+import { useAuth } from "../contexts/auth-context";
 import { landingByLang, type LandingPlan, type LandingSolution } from "../i18n/landing-i18n";
 import { LanguageSwitcher } from "../components/language-switcher";
 import { AnimatedThemeToggler } from "../components/ui/animated-theme-toggler";
@@ -220,6 +221,7 @@ function AudienceCard({
 
 const LandingPage = () => {
   const { language } = useLanguage();
+  const { user } = useAuth();
   const l = landingByLang[language] ?? landingByLang.es;
 
   const features = [
@@ -272,18 +274,29 @@ const LandingPage = () => {
           <div className="flex items-center gap-2">
             <AnimatedThemeToggler />
             <LanguageSwitcher />
-            <Link
-              href="/login"
-              className="hidden sm:inline-flex px-3 py-2 text-sm font-medium text-brand-ink hover:underline"
-            >
-              {l.navLogin}
-            </Link>
-            <Link
-              href="/register"
-              className="inline-flex items-center px-4 py-2 text-sm font-medium rounded-lg bg-brand-ink text-brand-ink-fg hover:bg-brand-ink-hover transition-colors min-h-[44px]"
-            >
-              {l.navRegister}
-            </Link>
+            {user ? (
+              <Link
+                href="/"
+                className="inline-flex items-center px-4 py-2 text-sm font-medium rounded-lg bg-brand-ink text-brand-ink-fg hover:bg-brand-ink-hover transition-colors min-h-[44px]"
+              >
+                Mi cuenta
+              </Link>
+            ) : (
+              <>
+                <Link
+                  href="/login"
+                  className="hidden sm:inline-flex px-3 py-2 text-sm font-medium text-brand-ink hover:underline"
+                >
+                  {l.navLogin}
+                </Link>
+                <Link
+                  href="/register"
+                  className="inline-flex items-center px-4 py-2 text-sm font-medium rounded-lg bg-brand-ink text-brand-ink-fg hover:bg-brand-ink-hover transition-colors min-h-[44px]"
+                >
+                  {l.navRegister}
+                </Link>
+              </>
+            )}
           </div>
         </div>
       </header>

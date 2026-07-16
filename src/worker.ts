@@ -55,6 +55,30 @@ async function runRateLimitCleanup(): Promise<void> {
   });
 }
 
+// Wrapper que redirige URLs sin trailing slash a versiones con trailing slash
+const trailingSlashMiddleware = (fetch: typeof app.fetch) => {
+  return async (request: Request): Promise<Response> => {
+    const url = new URL(request.url);
+    const pathname = url.pathname;
+
+    // Si no es una API route, no es la raíz, no termina en /, y no es un archivo
+    if (
+      !pathname.startsWith('/api/') &&
+      pathname !== '/' &&
+      !pathname.endsWith('/') &&
+      !pathname.match(/\.\w+$/) // No termina con extensión de archivo
+    ) {
+      url.pathname = pathname + '/';
+      return new Response(null, {
+        status: 301,
+        headers: { Location: url.toString() },
+      });
+    }
+
+    return fetch(request);
+  };
+};
+
 async function runD1BackupCron(env: D1BackupEnv): Promise<void> {
   const result = await runD1BackupToR2(env);
   if (result.skipped === 'disabled') {
@@ -69,7 +93,7 @@ async function runD1BackupCron(env: D1BackupEnv): Promise<void> {
 }
 
 const workerHandler = {
-  fetch: app.fetch,
+  fetch: trailingSlashMiddleware(app.fetch),
 
   async queue(
     batch: MessageBatch<NotificationJob>,

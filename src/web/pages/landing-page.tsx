@@ -285,7 +285,7 @@ const LandingPage = () => {
               <>
                 <Link
                   href="/login"
-                  className="hidden sm:inline-flex px-3 py-2 text-sm font-medium text-brand-ink hover:underline"
+                  className="inline-flex px-2 sm:px-3 py-2 text-xs sm:text-sm font-medium text-brand-ink hover:underline"
                 >
                   {l.navLogin}
                 </Link>
@@ -329,7 +329,7 @@ const LandingPage = () => {
             </div>
           </div>
 
-          <div className="relative bg-brand-ink text-white px-4 py-16 sm:px-6 sm:py-24 lg:py-32 flex flex-col items-center justify-center">
+          <div className="relative bg-[#1a1a1a] text-white px-4 py-16 sm:px-6 sm:py-24 lg:py-32 flex flex-col items-center justify-center">
             <div className="absolute inset-0 opacity-[0.04] text-white">{gridPattern}</div>
             <div className="relative z-10 flex flex-col items-center text-center">
               <img src="/favicon.svg" alt="" className="w-28 h-28 sm:w-36 sm:h-36 mb-8" />
@@ -337,15 +337,15 @@ const LandingPage = () => {
               <div className="mt-12 grid grid-cols-3 gap-6 sm:gap-10 w-full max-w-sm">
                 <div>
                   <div className="text-2xl sm:text-3xl font-light">100%</div>
-                  <div className="text-gray-500 text-xs sm:text-sm mt-1">{l.heroStatDigital}</div>
+                  <div className="text-gray-400 text-xs sm:text-sm mt-1">{l.heroStatDigital}</div>
                 </div>
                 <div>
                   <div className="text-2xl sm:text-3xl font-light">24/7</div>
-                  <div className="text-gray-500 text-xs sm:text-sm mt-1">{l.heroStatAccess}</div>
+                  <div className="text-gray-400 text-xs sm:text-sm mt-1">{l.heroStatAccess}</div>
                 </div>
                 <div>
                   <div className="text-2xl sm:text-3xl font-light">SSL</div>
-                  <div className="text-gray-500 text-xs sm:text-sm mt-1">{l.heroStatSecure}</div>
+                  <div className="text-gray-400 text-xs sm:text-sm mt-1">{l.heroStatSecure}</div>
                 </div>
               </div>
             </div>

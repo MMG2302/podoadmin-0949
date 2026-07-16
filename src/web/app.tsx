@@ -125,6 +125,8 @@ function AppRoutes() {
       <Route path="/change-password">
         <ProtectedRoute component={ChangePassword} path="/change-password" />
       </Route>
+      {/* Landing siempre accesible (también con sesión), p. ej. desde el logo del sidebar */}
+      <Route path="/landing" component={LandingPage} />
       <Route path="/">
         <HomeRoute />
       </Route>

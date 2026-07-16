@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "../contexts/auth-context";
 import { useLanguage } from "../contexts/language-context";
 import { AuthPublicToolbar } from "../components/auth/auth-public-toolbar";
+import { AuthBrandPanel, AuthBrandMobile } from "../components/auth/auth-brand-link";
 import { CaptchaWidget, type CaptchaProvider } from "../components/captcha-widget";
 import { useLocation } from "wouter";
 import { authPage as ap } from "../lib/auth-page-styles";
@@ -183,13 +184,7 @@ const Login = () => {
         </div>
         
         <div className="relative z-10 flex flex-col justify-center items-center w-full p-12">
-          <div className="mb-8">
-            <img src="/favicon.svg" alt="Logo" className="w-40 h-40" />
-          </div>
-          
-          <h1 className="text-white text-5xl font-light tracking-tight mb-4">
-            Podo<span className="font-bold">Admin</span>
-          </h1>
+          <AuthBrandPanel />
           <p className="text-gray-400 text-lg text-center max-w-md leading-relaxed">
             {t.branding.tagline}
           </p>
@@ -217,11 +212,8 @@ const Login = () => {
 
         <div className={ap.formScrollArea}>
           <div className={ap.formScrollInner}>
-            {/* Mobile Logo */}
             <div className="lg:hidden text-center mb-12">
-              <h1 className={ap.mobileLogo}>
-                Podo<span className="font-bold">Admin</span>
-              </h1>
+              <AuthBrandMobile />
             </div>
 
             <div className="mb-10">

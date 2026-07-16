@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useMemo } from "react";
 import { useLocation, Link } from "wouter";
 import { useLanguage } from "../contexts/language-context";
 import { AuthPublicToolbar } from "../components/auth/auth-public-toolbar";
+import { AuthBrandPanel, AuthBrandMobile } from "../components/auth/auth-brand-link";
 import { CaptchaWidget, type CaptchaProvider } from "../components/captcha-widget";
 import { api } from "../lib/api-client";
 import { authPage as ap } from "../lib/auth-page-styles";
@@ -161,12 +162,7 @@ const Register = () => {
         </div>
       </div>
       <div className="relative z-10 flex flex-col justify-center items-center w-full p-12">
-        <div className="mb-8">
-          <img src="/favicon.svg" alt="Logo" className="w-40 h-40" />
-        </div>
-        <h1 className="text-white text-5xl font-light tracking-tight mb-4">
-          Podo<span className="font-bold">Admin</span>
-        </h1>
+        <AuthBrandPanel />
         <p className="text-gray-400 text-lg text-center max-w-md leading-relaxed">{t.branding.tagline}</p>
       </div>
     </div>
@@ -217,9 +213,7 @@ const Register = () => {
         <div className={ap.formScrollArea}>
           <div className={ap.formScrollInner}>
             <div className="lg:hidden text-center mb-8">
-              <h1 className={ap.mobileLogo}>
-                Podo<span className="font-bold">Admin</span>
-              </h1>
+              <AuthBrandMobile />
             </div>
 
             <div className="mb-8">

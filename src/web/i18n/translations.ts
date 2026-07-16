@@ -545,6 +545,96 @@ export interface Translations {
     allStatuses: string;
     loadingSessions: string;
     createFirstSession: string;
+
+    reasons: {
+      routine_checkup: string;
+      treatment_continuation: string;
+      post_procedure_review: string;
+      new_symptoms: string;
+      follow_up: string;
+      other: string;
+    };
+    appointmentReason: string;
+    followUpInstructions: string;
+    followUpInstructionsPlaceholder: string;
+    unknownPatient: string;
+    podiatryExamTitle: string;
+    confirmApplyTemplate: string;
+    imageOnlyAllowed: string;
+    imageReadError: string;
+    imageProcessError: string;
+    saveFailed: string;
+    selectPatientAlert: string;
+    gracePeriodMessage: string;
+    gracePeriodTitle: string;
+    saveError: string;
+    confirmDelete: string;
+    deleteFailed: string;
+    deleteError: string;
+    exportOnlyPodiatrists: string;
+    exportFailed: string;
+    prescriptionRequireContent: string;
+    patientLoadFailed: string;
+    noPhotos: string;
+    imageAlt: string;
+    folioLabel: string;
+    medicationsLabel: string;
+    noPrescriptions: string;
+    patientPrefix: string;
+    professionalFallback: string;
+    userFallback: string;
+    printTitlePrefix: string;
+    weightPlaceholder: string;
+    heightPlaceholder: string;
+    anamnesisPlaceholder: string;
+    examPlaceholder: string;
+    diagnosisPlaceholder: string;
+    treatmentPlaceholder: string;
+    notesPlaceholder: string;
+    patientData: string;
+    idOrCurp: string;
+    age: string;
+    professionalData: string;
+    professional: string;
+    professionalLicense: string;
+    licensePlaceholder: string;
+    prescriptionIndications: string;
+    prescriptionIndicationsPlaceholder: string;
+    medicationsTreatments: string;
+    medicationsTreatmentsPlaceholder: string;
+    additionalNotes: string;
+    prescriptionMinContent: string;
+    loadingPatients: string;
+    selectEllipsis: string;
+    incompleteData: string;
+    incompletePatientWarning: string;
+    editPatientLink: string;
+    refreshPatientData: string;
+    vitalsHint: string;
+    sessionTemplate: string;
+    noTemplate: string;
+    templateClinic: string;
+    templatePersonal: string;
+    noTemplatesBefore: string;
+    noTemplatesAfter: string;
+    clinicalToolsLink: string;
+    templateApplyHint: string;
+    templateFilteredView: string;
+    templateNoSections: string;
+    selectPatientTitle: string;
+    completePatientDataTitle: string;
+    completePatientDataHint: string;
+    loadMoreSessions: string;
+    loadingMore: string;
+    reschedule: string;
+    rescheduleTitle: string;
+    daysOverdue: string;
+    scheduleAppointment: string;
+    todayRel: string;
+    tomorrowRel: string;
+    inDays: string;
+    exportJson: string;
+    yearsOld: string;
     followUp: {
       overdueBanner: string;
       upcomingBanner: string;
@@ -2580,6 +2670,96 @@ views: {
       allStatuses: "Todas",
       loadingSessions: "Cargando sesiones…",
       createFirstSession: "Crea tu primera sesión clínica",
+      
+      reasons: {
+        routine_checkup: "Revisión rutinaria",
+        treatment_continuation: "Continuación de tratamiento",
+        post_procedure_review: "Revisión post-procedimiento",
+        new_symptoms: "Nuevos síntomas",
+        follow_up: "Seguimiento",
+        other: "Otro",
+      },
+      appointmentReason: "Motivo de la cita",
+      followUpInstructions: "Instrucciones de seguimiento",
+      followUpInstructionsPlaceholder: "Instrucciones para el paciente, medicación, cuidados...",
+      unknownPatient: "Paciente desconocido",
+      podiatryExamTitle: "Exploración podológica",
+      confirmApplyTemplate: "¿Aplicar esta plantilla? Se reemplazarán los campos clínicos actuales (texto, exploración podológica y secciones personalizadas).",
+      imageOnlyAllowed: "Solo se permiten imágenes (JPEG, PNG, WebP).",
+      imageReadError: "No se pudo leer la imagen",
+      imageProcessError: "Error al procesar la imagen.",
+      saveFailed: "No se pudo guardar la sesión.",
+      selectPatientAlert: "Seleccione un paciente.",
+      gracePeriodMessage: "Tu cuenta está en período de gracia por exceso de pago. Durante 30 días puedes ver tus datos, pero no crear nuevas sesiones clínicas.",
+      gracePeriodTitle: "No puedes crear nuevas sesiones en este momento",
+      saveError: "Ha ocurrido un error al guardar la sesión.",
+      confirmDelete: "¿Eliminar esta sesión?",
+      deleteFailed: "No se pudo eliminar la sesión.",
+      deleteError: "Ha ocurrido un error al eliminar la sesión.",
+      exportOnlyPodiatrists: "Solo los podólogos pueden exportar historias clínicas.",
+      exportFailed: "No se pudo exportar la historia clínica",
+      prescriptionRequireContent: "Escribe las indicaciones en «Prescripción / Indicaciones» o en «Medicamentos / Tratamientos».",
+      patientLoadFailed: "No se pudieron cargar los datos del paciente. Cierra el formulario, abre la sesión de nuevo e inténtalo otra vez.",
+      noPhotos: "No hay fotos en esta sesión. Súbelas al crear o editar el borrador.",
+      imageAlt: "Imagen {n}",
+      folioLabel: "Folio:",
+      medicationsLabel: "Medicamentos:",
+      noPrescriptions: "No hay recetas para esta sesión",
+      patientPrefix: "Paciente:",
+      professionalFallback: "Profesional",
+      userFallback: "Usuario",
+      printTitlePrefix: "Podólogo",
+      weightPlaceholder: "Ej. 72.5",
+      heightPlaceholder: "Ej. 165",
+      anamnesisPlaceholder: "Motivo de consulta, antecedentes...",
+      examPlaceholder: "Hallazgos de la exploración...",
+      diagnosisPlaceholder: "Diagnóstico podológico...",
+      treatmentPlaceholder: "Plan de tratamiento...",
+      notesPlaceholder: "Notas adicionales...",
+      patientData: "Datos del paciente",
+      idOrCurp: "DNI / CURP",
+      age: "Edad",
+      professionalData: "Datos del profesional",
+      professional: "Profesional",
+      professionalLicense: "Cédula profesional",
+      licensePlaceholder: "Número de cédula",
+      prescriptionIndications: "Prescripción / Indicaciones *",
+      prescriptionIndicationsPlaceholder: "Describa las indicaciones y recomendaciones para el paciente...",
+      medicationsTreatments: "Medicamentos / Tratamientos",
+      medicationsTreatmentsPlaceholder: "Liste los medicamentos o tratamientos recomendados...",
+      additionalNotes: "Notas Adicionales",
+      prescriptionMinContent: "Completa al menos «Prescripción / Indicaciones» o «Medicamentos / Tratamientos».",
+      loadingPatients: "Cargando pacientes…",
+      selectEllipsis: "Seleccionar...",
+      incompleteData: " (datos incompletos)",
+      incompletePatientWarning: "Faltan datos obligatorios del paciente (nombre, apellido, fecha nacimiento, género, DNI). Para menores use el DNI del padre/tutor. Edite la ficha del paciente para poder guardar la sesión.",
+      editPatientLink: "Editar paciente →",
+      refreshPatientData: "Actualizar datos (si ya editó el paciente)",
+      vitalsHint: "Se guarda en esta sesión y actualiza el expediente del paciente.",
+      sessionTemplate: "Plantilla de sesión",
+      noTemplate: "Sin plantilla",
+      templateClinic: " (consultorio)",
+      templatePersonal: " (personal)",
+      noTemplatesBefore: "No hay plantillas. Créalas en",
+      noTemplatesAfter: ".",
+      clinicalToolsLink: "Herramientas clínicas",
+      templateApplyHint: "Al elegir una plantilla se aplican automáticamente el contenido y las secciones visibles (p. ej. sin helomas en procedimientos quirúrgicos).",
+      templateFilteredView: "Vista filtrada por plantilla: {n} secciones visibles. Elige «Sin plantilla» para ver el formulario completo.",
+      templateNoSections: "Esta plantilla no tiene secciones definidas. Edítala en Herramientas clínicas, marca qué incluir y guarda de nuevo.",
+      selectPatientTitle: "Seleccione un paciente",
+      completePatientDataTitle: "Complete los datos obligatorios del paciente (nombre, apellido, fecha nacimiento, género, DNI)",
+      completePatientDataHint: "Para guardar borrador o completar la sesión, primero complete los datos del paciente y haga clic en «Actualizar datos» arriba.",
+      loadMoreSessions: "Cargar más sesiones",
+      loadingMore: "Cargando…",
+      reschedule: "Reprogramar",
+      rescheduleTitle: "Reprogramar próxima cita",
+      daysOverdue: "{n} días atrasado",
+      scheduleAppointment: "Programar cita →",
+      todayRel: "Hoy",
+      tomorrowRel: "Mañana",
+      inDays: "En {n} días",
+      exportJson: "Exportar JSON",
+      yearsOld: "{n} años",
       followUp: {
         overdueBanner: "Citas atrasadas",
         upcomingBanner: "Próximas citas (7 días)",
@@ -4736,6 +4916,96 @@ views: {
       allStatuses: "All",
       loadingSessions: "Loading sessions…",
       createFirstSession: "Create your first clinical session",
+      
+      reasons: {
+        routine_checkup: "Routine checkup",
+        treatment_continuation: "Treatment continuation",
+        post_procedure_review: "Post-procedure review",
+        new_symptoms: "New symptoms",
+        follow_up: "Follow-up",
+        other: "Other",
+      },
+      appointmentReason: "Appointment reason",
+      followUpInstructions: "Follow-up instructions",
+      followUpInstructionsPlaceholder: "Instructions for the patient, medication, care...",
+      unknownPatient: "Unknown patient",
+      podiatryExamTitle: "Podiatric examination",
+      confirmApplyTemplate: "Apply this template? Current clinical fields (text, podiatric exam and custom sections) will be replaced.",
+      imageOnlyAllowed: "Only images are allowed (JPEG, PNG, WebP).",
+      imageReadError: "Could not read the image",
+      imageProcessError: "Error processing the image.",
+      saveFailed: "Could not save the session.",
+      selectPatientAlert: "Please select a patient.",
+      gracePeriodMessage: "Your account is in a grace period due to overpayment. For 30 days you can view your data, but you cannot create new clinical sessions.",
+      gracePeriodTitle: "You cannot create new sessions right now",
+      saveError: "An error occurred while saving the session.",
+      confirmDelete: "Delete this session?",
+      deleteFailed: "Could not delete the session.",
+      deleteError: "An error occurred while deleting the session.",
+      exportOnlyPodiatrists: "Only podiatrists can export clinical histories.",
+      exportFailed: "Could not export the clinical history",
+      prescriptionRequireContent: "Enter indications in «Prescription / Instructions» or «Medications / Treatments».",
+      patientLoadFailed: "Could not load patient data. Close the form, open the session again and try once more.",
+      noPhotos: "No photos in this session. Upload them when creating or editing the draft.",
+      imageAlt: "Image {n}",
+      folioLabel: "Folio:",
+      medicationsLabel: "Medications:",
+      noPrescriptions: "No prescriptions for this session",
+      patientPrefix: "Patient:",
+      professionalFallback: "Professional",
+      userFallback: "User",
+      printTitlePrefix: "Podiatrist",
+      weightPlaceholder: "e.g. 72.5",
+      heightPlaceholder: "e.g. 165",
+      anamnesisPlaceholder: "Chief complaint, history...",
+      examPlaceholder: "Examination findings...",
+      diagnosisPlaceholder: "Podiatric diagnosis...",
+      treatmentPlaceholder: "Treatment plan...",
+      notesPlaceholder: "Additional notes...",
+      patientData: "Patient data",
+      idOrCurp: "ID / CURP",
+      age: "Age",
+      professionalData: "Professional data",
+      professional: "Professional",
+      professionalLicense: "Professional license",
+      licensePlaceholder: "License number",
+      prescriptionIndications: "Prescription / Instructions *",
+      prescriptionIndicationsPlaceholder: "Describe indications and recommendations for the patient...",
+      medicationsTreatments: "Medications / Treatments",
+      medicationsTreatmentsPlaceholder: "List recommended medications or treatments...",
+      additionalNotes: "Additional notes",
+      prescriptionMinContent: "Fill in at least «Prescription / Instructions» or «Medications / Treatments».",
+      loadingPatients: "Loading patients…",
+      selectEllipsis: "Select...",
+      incompleteData: " (incomplete data)",
+      incompletePatientWarning: "Required patient fields are missing (first name, last name, date of birth, gender, ID). For minors use the parent/guardian ID. Edit the patient record to save the session.",
+      editPatientLink: "Edit patient →",
+      refreshPatientData: "Refresh data (if you already edited the patient)",
+      vitalsHint: "Saved with this session and updates the patient record.",
+      sessionTemplate: "Session template",
+      noTemplate: "No template",
+      templateClinic: " (clinic)",
+      templatePersonal: " (personal)",
+      noTemplatesBefore: "No templates. Create them in",
+      noTemplatesAfter: ".",
+      clinicalToolsLink: "Clinical tools",
+      templateApplyHint: "Choosing a template automatically applies content and visible sections (e.g. no helomas in surgical procedures).",
+      templateFilteredView: "Template-filtered view: {n} visible sections. Choose «No template» to see the full form.",
+      templateNoSections: "This template has no sections defined. Edit it in Clinical tools, mark what to include and save again.",
+      selectPatientTitle: "Select a patient",
+      completePatientDataTitle: "Complete required patient fields (first name, last name, date of birth, gender, ID)",
+      completePatientDataHint: "To save a draft or complete the session, first complete the patient data and click «Refresh data» above.",
+      loadMoreSessions: "Load more sessions",
+      loadingMore: "Loading…",
+      reschedule: "Reschedule",
+      rescheduleTitle: "Reschedule next appointment",
+      daysOverdue: "{n} days overdue",
+      scheduleAppointment: "Schedule appointment →",
+      todayRel: "Today",
+      tomorrowRel: "Tomorrow",
+      inDays: "In {n} days",
+      exportJson: "Export JSON",
+      yearsOld: "{n} years",
       followUp: {
         overdueBanner: "Overdue appointments",
         upcomingBanner: "Upcoming appointments (7 days)",
@@ -6887,6 +7157,96 @@ views: {
       allStatuses: "Todas",
       loadingSessions: "Carregando sessões…",
       createFirstSession: "Crie sua primeira sessão clínica",
+      
+      reasons: {
+        routine_checkup: "Revisão de rotina",
+        treatment_continuation: "Continuação do tratamento",
+        post_procedure_review: "Revisão pós-procedimento",
+        new_symptoms: "Novos sintomas",
+        follow_up: "Acompanhamento",
+        other: "Outro",
+      },
+      appointmentReason: "Motivo da consulta",
+      followUpInstructions: "Instruções de acompanhamento",
+      followUpInstructionsPlaceholder: "Instruções para o paciente, medicação, cuidados...",
+      unknownPatient: "Paciente desconhecido",
+      podiatryExamTitle: "Exploração podológica",
+      confirmApplyTemplate: "Aplicar este modelo? Os campos clínicos atuais (texto, exploração podológica e secções personalizadas) serão substituídos.",
+      imageOnlyAllowed: "Só são permitidas imagens (JPEG, PNG, WebP).",
+      imageReadError: "Não foi possível ler a imagem",
+      imageProcessError: "Erro ao processar a imagem.",
+      saveFailed: "Não foi possível guardar a sessão.",
+      selectPatientAlert: "Selecione um paciente.",
+      gracePeriodMessage: "A sua conta está em período de graça por excesso de pagamento. Durante 30 dias pode ver os seus dados, mas não criar novas sessões clínicas.",
+      gracePeriodTitle: "Não pode criar novas sessões neste momento",
+      saveError: "Ocorreu um erro ao guardar a sessão.",
+      confirmDelete: "Eliminar esta sessão?",
+      deleteFailed: "Não foi possível eliminar a sessão.",
+      deleteError: "Ocorreu um erro ao eliminar a sessão.",
+      exportOnlyPodiatrists: "Só os podólogos podem exportar histórias clínicas.",
+      exportFailed: "Não foi possível exportar a história clínica",
+      prescriptionRequireContent: "Escreva as indicações em «Prescrição / Indicações» ou em «Medicamentos / Tratamentos».",
+      patientLoadFailed: "Não foi possível carregar os dados do paciente. Feche o formulário, abra a sessão novamente e tente outra vez.",
+      noPhotos: "Não há fotos nesta sessão. Carregue-as ao criar ou editar o rascunho.",
+      imageAlt: "Imagem {n}",
+      folioLabel: "Folio:",
+      medicationsLabel: "Medicamentos:",
+      noPrescriptions: "Não há receitas para esta sessão",
+      patientPrefix: "Paciente:",
+      professionalFallback: "Profissional",
+      userFallback: "Utilizador",
+      printTitlePrefix: "Podólogo",
+      weightPlaceholder: "Ex. 72.5",
+      heightPlaceholder: "Ex. 165",
+      anamnesisPlaceholder: "Motivo da consulta, antecedentes...",
+      examPlaceholder: "Achados da exploração...",
+      diagnosisPlaceholder: "Diagnóstico podológico...",
+      treatmentPlaceholder: "Plano de tratamento...",
+      notesPlaceholder: "Notas adicionais...",
+      patientData: "Dados do paciente",
+      idOrCurp: "Documento / CURP",
+      age: "Idade",
+      professionalData: "Dados do profissional",
+      professional: "Profissional",
+      professionalLicense: "Cédula profissional",
+      licensePlaceholder: "Número da cédula",
+      prescriptionIndications: "Prescrição / Indicações *",
+      prescriptionIndicationsPlaceholder: "Descreva as indicações e recomendações para o paciente...",
+      medicationsTreatments: "Medicamentos / Tratamentos",
+      medicationsTreatmentsPlaceholder: "Liste os medicamentos ou tratamentos recomendados...",
+      additionalNotes: "Notas adicionais",
+      prescriptionMinContent: "Preencha pelo menos «Prescrição / Indicações» ou «Medicamentos / Tratamentos».",
+      loadingPatients: "A carregar pacientes…",
+      selectEllipsis: "Selecionar...",
+      incompleteData: " (dados incompletos)",
+      incompletePatientWarning: "Faltam dados obrigatórios do paciente (nome, apelido, data de nascimento, género, documento). Para menores use o documento do pai/tutor. Edite a ficha do paciente para poder guardar a sessão.",
+      editPatientLink: "Editar paciente →",
+      refreshPatientData: "Atualizar dados (se já editou o paciente)",
+      vitalsHint: "Guarda-se nesta sessão e atualiza o expediente do paciente.",
+      sessionTemplate: "Modelo de sessão",
+      noTemplate: "Sem modelo",
+      templateClinic: " (consultório)",
+      templatePersonal: " (pessoal)",
+      noTemplatesBefore: "Não há modelos. Crie-os em",
+      noTemplatesAfter: ".",
+      clinicalToolsLink: "Ferramentas clínicas",
+      templateApplyHint: "Ao escolher um modelo aplicam-se automaticamente o conteúdo e as secções visíveis (p. ex. sem helomas em procedimentos cirúrgicos).",
+      templateFilteredView: "Vista filtrada pelo modelo: {n} secções visíveis. Escolha «Sem modelo» para ver o formulário completo.",
+      templateNoSections: "Este modelo não tem secções definidas. Edite-o em Ferramentas clínicas, marque o que incluir e guarde novamente.",
+      selectPatientTitle: "Selecione um paciente",
+      completePatientDataTitle: "Complete os dados obrigatórios do paciente (nome, apelido, data de nascimento, género, documento)",
+      completePatientDataHint: "Para guardar rascunho ou concluir a sessão, primeiro complete os dados do paciente e clique em «Atualizar dados» acima.",
+      loadMoreSessions: "Carregar mais sessões",
+      loadingMore: "A carregar…",
+      reschedule: "Reagendar",
+      rescheduleTitle: "Reagendar próxima consulta",
+      daysOverdue: "{n} dias de atraso",
+      scheduleAppointment: "Agendar consulta →",
+      todayRel: "Hoje",
+      tomorrowRel: "Amanhã",
+      inDays: "Em {n} dias",
+      exportJson: "Exportar JSON",
+      yearsOld: "{n} anos",
       followUp: {
         overdueBanner: "Consultas atrasadas",
         upcomingBanner: "Próximas consultas (7 dias)",
@@ -9013,6 +9373,96 @@ views: {
       allStatuses: "Toutes",
       loadingSessions: "Chargement des séances…",
       createFirstSession: "Créez votre première séance clinique",
+      
+      reasons: {
+        routine_checkup: "Contrôle de routine",
+        treatment_continuation: "Suite de traitement",
+        post_procedure_review: "Contrôle post-procédure",
+        new_symptoms: "Nouveaux symptômes",
+        follow_up: "Suivi",
+        other: "Autre",
+      },
+      appointmentReason: "Motif du rendez-vous",
+      followUpInstructions: "Instructions de suivi",
+      followUpInstructionsPlaceholder: "Instructions pour le patient, médication, soins...",
+      unknownPatient: "Patient inconnu",
+      podiatryExamTitle: "Examen podologique",
+      confirmApplyTemplate: "Appliquer ce modèle ? Les champs cliniques actuels (texte, examen podologique et sections personnalisées) seront remplacés.",
+      imageOnlyAllowed: "Seules les images sont autorisées (JPEG, PNG, WebP).",
+      imageReadError: "Impossible de lire l'image",
+      imageProcessError: "Erreur lors du traitement de l'image.",
+      saveFailed: "Impossible d'enregistrer la séance.",
+      selectPatientAlert: "Veuillez sélectionner un patient.",
+      gracePeriodMessage: "Votre compte est en période de grâce pour trop-perçu. Pendant 30 jours vous pouvez consulter vos données, mais pas créer de nouvelles séances cliniques.",
+      gracePeriodTitle: "Vous ne pouvez pas créer de nouvelles séances pour le moment",
+      saveError: "Une erreur s'est produite lors de l'enregistrement de la séance.",
+      confirmDelete: "Supprimer cette séance ?",
+      deleteFailed: "Impossible de supprimer la séance.",
+      deleteError: "Une erreur s'est produite lors de la suppression de la séance.",
+      exportOnlyPodiatrists: "Seuls les podologues peuvent exporter les dossiers cliniques.",
+      exportFailed: "Impossible d'exporter le dossier clinique",
+      prescriptionRequireContent: "Saisissez les indications dans « Prescription / Indications » ou « Médicaments / Traitements ».",
+      patientLoadFailed: "Impossible de charger les données du patient. Fermez le formulaire, rouvrez la séance et réessayez.",
+      noPhotos: "Aucune photo dans cette séance. Ajoutez-les lors de la création ou de la modification du brouillon.",
+      imageAlt: "Image {n}",
+      folioLabel: "Folio :",
+      medicationsLabel: "Médicaments :",
+      noPrescriptions: "Aucune ordonnance pour cette séance",
+      patientPrefix: "Patient :",
+      professionalFallback: "Professionnel",
+      userFallback: "Utilisateur",
+      printTitlePrefix: "Podologue",
+      weightPlaceholder: "ex. 72,5",
+      heightPlaceholder: "ex. 165",
+      anamnesisPlaceholder: "Motif de consultation, antécédents...",
+      examPlaceholder: "Résultats de l'examen...",
+      diagnosisPlaceholder: "Diagnostic podologique...",
+      treatmentPlaceholder: "Plan de traitement...",
+      notesPlaceholder: "Notes supplémentaires...",
+      patientData: "Données du patient",
+      idOrCurp: "ID / CURP",
+      age: "Âge",
+      professionalData: "Données du professionnel",
+      professional: "Professionnel",
+      professionalLicense: "Numéro d'ordre / licence",
+      licensePlaceholder: "Numéro de licence",
+      prescriptionIndications: "Prescription / Indications *",
+      prescriptionIndicationsPlaceholder: "Décrivez les indications et recommandations pour le patient...",
+      medicationsTreatments: "Médicaments / Traitements",
+      medicationsTreatmentsPlaceholder: "Listez les médicaments ou traitements recommandés...",
+      additionalNotes: "Notes supplémentaires",
+      prescriptionMinContent: "Remplissez au moins « Prescription / Indications » ou « Médicaments / Traitements ».",
+      loadingPatients: "Chargement des patients…",
+      selectEllipsis: "Sélectionner...",
+      incompleteData: " (données incomplètes)",
+      incompletePatientWarning: "Des champs obligatoires du patient manquent (prénom, nom, date de naissance, genre, pièce d'identité). Pour les mineurs, utilisez la pièce du parent/tuteur. Modifiez la fiche patient pour pouvoir enregistrer la séance.",
+      editPatientLink: "Modifier le patient →",
+      refreshPatientData: "Actualiser les données (si vous avez déjà modifié le patient)",
+      vitalsHint: "Enregistré avec cette séance et met à jour le dossier du patient.",
+      sessionTemplate: "Modèle de séance",
+      noTemplate: "Sans modèle",
+      templateClinic: " (cabinet)",
+      templatePersonal: " (personnel)",
+      noTemplatesBefore: "Aucun modèle. Créez-les dans",
+      noTemplatesAfter: ".",
+      clinicalToolsLink: "Outils cliniques",
+      templateApplyHint: "Choisir un modèle applique automatiquement le contenu et les sections visibles (p. ex. sans hélomes en procédures chirurgicales).",
+      templateFilteredView: "Vue filtrée par modèle : {n} sections visibles. Choisissez « Sans modèle » pour voir le formulaire complet.",
+      templateNoSections: "Ce modèle n'a pas de sections définies. Modifiez-le dans Outils cliniques, cochez ce qu'il faut inclure et enregistrez à nouveau.",
+      selectPatientTitle: "Sélectionnez un patient",
+      completePatientDataTitle: "Complétez les champs obligatoires du patient (prénom, nom, date de naissance, genre, pièce d'identité)",
+      completePatientDataHint: "Pour enregistrer un brouillon ou terminer la séance, complétez d'abord les données du patient et cliquez sur «Actualiser les données» ci-dessus.",
+      loadMoreSessions: "Charger plus de séances",
+      loadingMore: "Chargement…",
+      reschedule: "Reprogrammer",
+      rescheduleTitle: "Reprogrammer le prochain rendez-vous",
+      daysOverdue: "{n} jours de retard",
+      scheduleAppointment: "Planifier un rendez-vous →",
+      todayRel: "Aujourd'hui",
+      tomorrowRel: "Demain",
+      inDays: "Dans {n} jours",
+      exportJson: "Exporter JSON",
+      yearsOld: "{n} ans",
       followUp: {
         overdueBanner: "Rendez-vous en retard",
         upcomingBanner: "Prochains rendez-vous (7 jours)",

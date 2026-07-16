@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { useLanguage } from "../contexts/language-context";
 import { AuthPublicToolbar } from "../components/auth/auth-public-toolbar";
+import { AuthBrandPanel, AuthBrandMobile } from "../components/auth/auth-brand-link";
 import { api } from "../lib/api-client";
 import { authPage as ap } from "../lib/auth-page-styles";
 import {
@@ -73,12 +74,7 @@ const ForgotPassword = () => {
           </div>
         </div>
         <div className="relative z-10 flex flex-col justify-center items-center w-full p-12">
-          <div className="mb-8">
-            <img src="/favicon.svg" alt="Logo" className="w-40 h-40" />
-          </div>
-          <h1 className="text-white text-5xl font-light tracking-tight mb-4">
-            Podo<span className="font-bold">Admin</span>
-          </h1>
+          <AuthBrandPanel />
           <p className="text-gray-400 text-lg text-center max-w-md leading-relaxed">
             {t.branding.tagline}
           </p>
@@ -91,9 +87,7 @@ const ForgotPassword = () => {
         <div className={ap.formScrollArea}>
           <div className={ap.formScrollInner}>
             <div className="lg:hidden text-center mb-12">
-              <h1 className="text-brand-ink text-4xl font-light tracking-tight">
-                Podo<span className="font-bold">Admin</span>
-              </h1>
+              <AuthBrandMobile />
             </div>
 
             {!sent ? (

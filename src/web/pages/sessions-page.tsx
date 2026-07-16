@@ -2100,7 +2100,7 @@ const SessionsPage = () => {
                       <option value="">{t.sessions.followUp.noSpecificReason}</option>
                       {appointmentReasons.map((reason) => (
                         <option key={reason} value={reason}>
-                          {t.sessions.reasons[reason]}
+                          {t.sessions.reasons?.[reason] ?? reason}
                         </option>
                       ))}
                     </select>

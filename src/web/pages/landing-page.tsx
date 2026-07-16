@@ -1,4 +1,5 @@
 import { Link } from "wouter";
+import { useState } from "react";
 import {
   Calendar,
   Users,
@@ -15,6 +16,7 @@ import {
   UserMinus,
   Clock,
   TrendingUp,
+  ChevronDown,
 } from "lucide-react";
 import { useLanguage } from "../contexts/language-context";
 import { landingByLang, type LandingPlan, type LandingSolution } from "../i18n/landing-i18n";
@@ -52,16 +54,50 @@ function FeatureCard({
   description: string;
   details: string[];
 }) {
+  const [open, setOpen] = useState(false);
+
   return (
-    <div className="group relative overflow-hidden rounded-xl border border-brand-border bg-brand-surface p-6 transition-all duration-300 hover:-translate-y-1 hover:border-brand-ink hover:shadow-lg dark:hover:border-gray-600">
-      <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-lg bg-brand-canvas text-brand-muted transition-colors group-hover:bg-brand-ink group-hover:text-white dark:group-hover:bg-white dark:group-hover:text-gray-900">
-        <Icon className="h-5 w-5" strokeWidth={1.5} />
+    <button
+      type="button"
+      onClick={() => setOpen((v) => !v)}
+      aria-expanded={open}
+      className={cn(
+        "group relative w-full overflow-hidden rounded-xl border bg-brand-surface p-6 text-left transition-all duration-300",
+        "border-brand-border hover:-translate-y-1 hover:border-brand-ink hover:shadow-lg dark:hover:border-gray-600",
+        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-ink",
+        open && "border-brand-ink shadow-lg dark:border-gray-600"
+      )}
+    >
+      <div className="flex items-start justify-between gap-3">
+        <div
+          className={cn(
+            "mb-4 flex h-10 w-10 items-center justify-center rounded-lg bg-brand-canvas text-brand-muted transition-colors",
+            "group-hover:bg-brand-ink group-hover:text-white dark:group-hover:bg-white dark:group-hover:text-gray-900",
+            open && "bg-brand-ink text-white dark:bg-white dark:text-gray-900"
+          )}
+        >
+          <Icon className="h-5 w-5" strokeWidth={1.5} />
+        </div>
+        <ChevronDown
+          className={cn(
+            "mt-1 h-5 w-5 shrink-0 text-brand-muted transition-transform duration-300 md:hidden",
+            open && "rotate-180"
+          )}
+          strokeWidth={1.5}
+          aria-hidden
+        />
       </div>
       <h3 className="font-semibold text-brand-ink">{title}</h3>
       <p className="mt-2 text-sm leading-relaxed text-brand-muted">{description}</p>
 
-      {/* Hover board: detalle que se revela al pasar el cursor */}
-      <div className="grid grid-rows-[0fr] transition-[grid-template-rows] duration-300 ease-out group-hover:grid-rows-[1fr] group-focus-within:grid-rows-[1fr]">
+      {/* Móvil: tap para abrir. Desktop: también con hover. */}
+      <div
+        className={cn(
+          "grid transition-[grid-template-rows] duration-300 ease-out",
+          open ? "grid-rows-[1fr]" : "grid-rows-[0fr]",
+          "[@media(hover:hover)]:group-hover:grid-rows-[1fr]"
+        )}
+      >
         <div className="overflow-hidden">
           <ul className="mt-4 space-y-2 border-t border-brand-border pt-4">
             {details.map((d) => (
@@ -73,7 +109,7 @@ function FeatureCard({
           </ul>
         </div>
       </div>
-    </div>
+    </button>
   );
 }
 
@@ -213,7 +249,7 @@ const LandingPage = () => {
       {/* Nav */}
       <header className="sticky top-0 z-50 border-b border-brand-border bg-brand-surface/95 backdrop-blur-sm">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3 sm:px-6">
-          <Link href="/" className="flex items-center gap-2.5 shrink-0">
+          <Link href="/landing" className="flex items-center gap-2.5 shrink-0">
             <img src="/favicon.svg" alt="" className="h-8 w-8" />
             <Wordmark className="text-lg font-light hidden sm:inline" />
           </Link>

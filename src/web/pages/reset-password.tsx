@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { useLanguage } from "../contexts/language-context";
 import { LanguageSwitcher } from "../components/language-switcher";
+import { AuthBrandPanel, AuthBrandMobile } from "../components/auth/auth-brand-link";
 import { api } from "../lib/api-client";
 import { authPage as ap } from "../lib/auth-page-styles";
 import {
@@ -144,10 +145,7 @@ const ResetPassword = () => {
           </svg>
         </div>
         <div className="relative z-10 flex flex-col justify-center items-center w-full p-12">
-          <img src="/favicon.svg" alt="Logo" className="w-40 h-40 mb-8" />
-          <h1 className="text-white text-5xl font-light tracking-tight mb-4">
-            Podo<span className="font-bold">Admin</span>
-          </h1>
+          <AuthBrandPanel />
           <p className="text-gray-400 text-lg text-center max-w-md">
             {t.branding.tagline}
           </p>
@@ -161,9 +159,7 @@ const ResetPassword = () => {
         <div className="flex-1 min-h-0 overflow-y-auto overflow-scrolling-touch flex flex-col items-center justify-center p-8">
           <div className="w-full max-w-md py-4 pb-mobile-safe">
             <div className="lg:hidden text-center mb-12">
-              <h1 className="text-brand-ink text-4xl font-light tracking-tight">
-                Podo<span className="font-bold">Admin</span>
-              </h1>
+              <AuthBrandMobile />
             </div>
 
             {success ? (

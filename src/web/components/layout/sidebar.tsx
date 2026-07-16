@@ -64,7 +64,12 @@ export const Sidebar = ({
         <div className="flex flex-col h-full min-h-0 safe-area-inset">
           <div className="flex-shrink-0 p-4 md:p-6 border-b border-white/10">
             <div className="flex items-center justify-between mb-4">
-              <h1 className="flex items-center gap-3 text-white text-xl md:text-2xl font-light tracking-tight m-0">
+              <Link
+                href="/landing"
+                onClick={onClose}
+                className="flex items-center gap-3 text-white text-xl md:text-2xl font-light tracking-tight m-0 hover:opacity-90 transition-opacity"
+                aria-label="PodoAdmin — ir a la página de inicio"
+              >
                 <img
                   src="/favicon.svg"
                   alt=""
@@ -74,7 +79,7 @@ export const Sidebar = ({
                 <span className="flex h-12 md:h-14 items-center leading-none">
                   Podo<span className="font-bold">Admin</span>
                 </span>
-              </h1>
+              </Link>
               <div className="flex items-center gap-1">
                 {onToggleDesktop && !locked && (
                   <button

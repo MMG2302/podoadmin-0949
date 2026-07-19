@@ -79,6 +79,14 @@ type TomorrowRow = {
   waPhone: string | null;
   time: string;
   dateLabel: string;
+  // Nuevas variables para templates enriquecidos
+  doctorName?: string;
+  doctorSpecialty?: string;
+  clinicName?: string;
+  clinicAddress?: string;
+  clinicMapsUrl?: string;
+  appointmentCost?: string;
+  appointmentDuration?: string;
 };
 
 type WhatsAppWorkspace = {
@@ -210,6 +218,26 @@ export default function WhatsAppMessagesPage() {
       .sort((a, b) => a.time.localeCompare(b.time))
       .map((a) => {
         const { patientName, phone, waPhone } = resolveAppointmentContact(a);
+        // Nombre completo del doctor (usuario actual)
+        const doctorName = user?.name ? `${user.name}`.trim() : undefined;
+        // Especialidad del doctor (del perfil del usuario)
+        const doctorSpecialty = (user as any)?.specialty?.trim() || undefined;
+        // Datos de la clínica del usuario
+        const clinicName = (user as any)?.clinicName?.trim() || (user as any)?.clinicTitle?.trim() || undefined;
+        const clinicAddress = (user as any)?.clinicAddress?.trim() || undefined;
+        // Construir URL de Google Maps desde la dirección
+        const clinicMapsUrl = clinicAddress
+          ? `https://www.google.com/maps/search/${encodeURIComponent(clinicAddress)}`
+          : undefined;
+        // Duración en minutos (si existe) — típicamente 30-60 min
+        const appointmentDuration = (a as any)?.duration
+          ? `${(a as any).duration} min`
+          : undefined;
+        // Costo de la cita (si existe en los datos)
+        const appointmentCost = (a as any)?.cost
+          ? `$${(a as any).cost}`
+          : undefined;
+
         return {
           id: a.id,
           patientName,
@@ -217,9 +245,16 @@ export default function WhatsAppMessagesPage() {
           waPhone,
           time: a.time,
           dateLabel: tomorrowLabel,
+          doctorName,
+          doctorSpecialty,
+          clinicName,
+          clinicAddress,
+          clinicMapsUrl,
+          appointmentDuration,
+          appointmentCost,
         };
       });
-  }, [appointments, tomorrowIso, tomorrowLabel, patientById, tenantCountry]);
+  }, [appointments, tomorrowIso, tomorrowLabel, patientById, tenantCountry, user]);
 
   const upcomingAppointments = useMemo(() => {
     const today = new Date();
@@ -239,10 +274,22 @@ export default function WhatsAppMessagesPage() {
       whatsAppConfig?.defaultExtraNote?.trim() ||
       m.defaultExtraNote;
     return applyWhatsAppWebTemplate(webTemplate, {
+      // Variables básicas
       nombre: row.patientName,
       fecha: row.dateLabel,
       hora: row.time,
       nota: note,
+      // Variables del doctor
+      doctor: row.doctorName || '',
+      especialidad: row.doctorSpecialty || '',
+      // Variables de la clínica
+      clinica: row.clinicName || '',
+      ubicacion: row.clinicAddress || '',
+      maps: row.clinicMapsUrl || '',
+      // Variables de la cita
+      duracion: row.appointmentDuration || '',
+      costo: row.appointmentCost || '',
+      // Variables dinámicas (confirmar, cancelar)
       ...extraVars,
     });
   };

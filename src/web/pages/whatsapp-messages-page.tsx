@@ -15,6 +15,7 @@ import {
   normalizePhoneForWaMe,
   saveWhatsAppWebTemplate,
   templateHasConfirmationLinks,
+  WHATSAPP_TEMPLATE_EXAMPLES,
 } from "../lib/whatsapp-web-link";
 import { useTenantCountry } from "../hooks/use-tenant-country";
 import {
@@ -350,15 +351,67 @@ export default function WhatsAppMessagesPage() {
             <label className="block text-sm font-medium text-gray-800 dark:text-gray-200">
               {m.defaultMessage}
             </label>
+
+            {/* Templates predefinidos para inspiración */}
+            <details className="bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-900 rounded-lg p-4 cursor-pointer">
+              <summary className="font-medium text-sm text-blue-900 dark:text-blue-200 cursor-pointer hover:text-blue-700 dark:hover:text-blue-100">
+                💡 Ver templates de ejemplo (mejores prácticas de engagement)
+              </summary>
+              <div className="mt-4 space-y-3">
+                {WHATSAPP_TEMPLATE_EXAMPLES.map((ex) => (
+                  <div
+                    key={ex.id}
+                    className="bg-white dark:bg-gray-900 border border-blue-100 dark:border-blue-900 rounded p-3 space-y-2"
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <h5 className="font-medium text-sm text-brand-ink">{ex.name}</h5>
+                      <button
+                        type="button"
+                        onClick={() => setWebTemplate(ex.template)}
+                        className="px-2.5 py-1 text-xs font-medium bg-blue-600 hover:bg-blue-700 text-white rounded transition"
+                      >
+                        Usar este
+                      </button>
+                    </div>
+                    <p className="text-xs text-brand-muted whitespace-pre-wrap font-mono">{ex.template}</p>
+                  </div>
+                ))}
+              </div>
+            </details>
+
             <textarea
               value={webTemplate}
               onChange={(e) => setWebTemplate(e.target.value)}
               rows={5}
               className={`w-full px-4 py-2.5 ${whatsappInputBorderClass} bg-brand-surface text-sm`}
             />
-            <p className="text-xs text-brand-muted">
-              {m.variablesHint} {m.variablesList}
-            </p>
+            <details className="bg-gray-50 dark:bg-gray-900/50 rounded p-3 text-xs text-brand-muted">
+              <summary className="cursor-pointer font-medium text-brand-ink hover:text-blue-600 dark:hover:text-blue-400">
+                📝 Variables disponibles (haz clic para ver todas)
+              </summary>
+              <div className="mt-2 grid grid-cols-2 gap-2 text-xs">
+                <div>
+                  <strong className="text-brand-ink">Básicas:</strong>
+                  <p>{'{{nombre}}, {{fecha}}, {{hora}}, {{nota}}'}</p>
+                </div>
+                <div>
+                  <strong className="text-brand-ink">Confirmación:</strong>
+                  <p>{'{{confirmar}}, {{cancelar}}'}</p>
+                </div>
+                <div>
+                  <strong className="text-brand-ink">Doctor:</strong>
+                  <p>{'{{doctor}}, {{especialidad}}'}</p>
+                </div>
+                <div>
+                  <strong className="text-brand-ink">Ubicación:</strong>
+                  <p>{'{{ubicacion}}, {{maps}}'}</p>
+                </div>
+                <div>
+                  <strong className="text-brand-ink">Detalles:</strong>
+                  <p>{'{{costo}}, {{duracion}}, {{clinica}}'}</p>
+                </div>
+              </div>
+            </details>
             <div className="flex flex-col sm:flex-row gap-3">
               <input
                 value={webExtraNote}

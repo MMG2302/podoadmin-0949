@@ -13,6 +13,59 @@ export const DEFAULT_WHATSAPP_WEB_TEMPLATE =
   'Para confirmar, haz clic aquí: {{confirmar}}\n' +
   'Para cancelar, haz clic aquí: {{cancelar}}';
 
+/** Templates predefinidos para inspir engagement. Variables disponibles:
+ * {{nombre}}, {{fecha}}, {{hora}}, {{nota}}, {{confirmar}}, {{cancelar}},
+ * {{doctor}}, {{especialidad}}, {{ubicacion}}, {{maps}}, {{costo}}, {{duracion}}, {{clinica}}
+ */
+export const WHATSAPP_TEMPLATE_EXAMPLES = [
+  {
+    id: 'basic',
+    name: 'Básico (recordatorio)',
+    template:
+      'Hola {{nombre}}, le recordamos su cita el {{fecha}} a las {{hora}}. {{nota}}\n' +
+      'Para confirmar, haz clic aquí: {{confirmar}}\n' +
+      'Para cancelar, haz clic aquí: {{cancelar}}',
+  },
+  {
+    id: 'with-doctor',
+    name: 'Con datos del doctor',
+    template:
+      'Hola {{nombre}}, recordamos que tienes cita con {{doctor}} ({{especialidad}}) el {{fecha}} a las {{hora}}.\n\n' +
+      '📍 {{ubicacion}}\n' +
+      '💰 Costo: {{costo}} | ⏱️ Duración: {{duracion}}\n\n' +
+      '{{nota}}\n\n' +
+      'Confirmar: {{confirmar}}\n' +
+      'Cancelar: {{cancelar}}',
+  },
+  {
+    id: 'with-location',
+    name: 'Con ubicación y maps',
+    template:
+      'Hola {{nombre}} 👋\n\n' +
+      'Te recordamos tu cita el {{fecha}} a las {{hora}} con {{doctor}}.\n\n' +
+      '📍 {{ubicacion}}\n' +
+      '🗺️ Ver ubicación: {{maps}}\n' +
+      '🏥 {{clinica}}\n\n' +
+      '{{nota}}\n\n' +
+      'Confirma tu asistencia: {{confirmar}} | Cancelar: {{cancelar}}',
+  },
+  {
+    id: 'engagement',
+    name: 'Con experiencia de visita',
+    template:
+      'Hola {{nombre}} 😊\n\n' +
+      'Te espera una experiencia de cuidado podológico en {{clinica}}.\n' +
+      '👨‍⚕️ Doctor: {{doctor}} ({{especialidad}})\n' +
+      '📅 {{fecha}} a las {{hora}}\n' +
+      '📍 {{ubicacion}}\n' +
+      '⏱️ Duración aproximada: {{duracion}}\n' +
+      '💰 Inversión: {{costo}}\n\n' +
+      '{{nota}}\n\n' +
+      '✅ Confirmar: {{confirmar}}\n' +
+      '❌ Necesitas cancelar: {{cancelar}}',
+  },
+];
+
 /** ¿La plantilla usa los enlaces de confirmación por token ({{confirmar}}/{{cancelar}})? */
 export function templateHasConfirmationLinks(template: string): boolean {
   return /\{\{(confirmar|cancelar)\}\}/i.test(template);

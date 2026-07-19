@@ -14,6 +14,7 @@ import {
   loadWhatsAppWebTemplate,
   normalizePhoneForWaMe,
   saveWhatsAppWebTemplate,
+  templateHasConfirmationLinks,
 } from "../lib/whatsapp-web-link";
 import { useTenantCountry } from "../hooks/use-tenant-country";
 import {
@@ -231,7 +232,7 @@ export default function WhatsAppMessagesPage() {
       .slice(0, 50);
   }, [appointments]);
 
-  const buildWebMessage = (row: TomorrowRow) => {
+  const buildWebMessage = (row: TomorrowRow, extraVars: Record<string, string> = {}) => {
     const note =
       webExtraNote.trim() ||
       whatsAppConfig?.defaultExtraNote?.trim() ||
@@ -241,17 +242,42 @@ export default function WhatsAppMessagesPage() {
       fecha: row.dateLabel,
       hora: row.time,
       nota: note,
+      ...extraVars,
     });
   };
 
-  const openWhatsAppForRow = (row: TomorrowRow) => {
+  const openWhatsAppForRow = async (row: TomorrowRow) => {
     if (!row.waPhone) {
       setError(m.noValidPhone.replace("{name}", row.patientName));
       return;
     }
     setError(null);
-    const url = buildWaMeUrl(row.waPhone, buildWebMessage(row));
-    window.open(url, "_blank", "noopener,noreferrer");
+
+    // Pre-abrir la pestaña dentro del gesto del usuario (evita el bloqueador de popups
+    // cuando hay que esperar al backend por los enlaces de confirmación).
+    const needsLinks = templateHasConfirmationLinks(webTemplate);
+    const win = needsLinks ? window.open("about:blank", "_blank") : null;
+
+    let extraVars: Record<string, string> = {};
+    if (needsLinks) {
+      const res = await api.post<{ confirmUrl?: string; cancelUrl?: string }>(
+        `/appointments/${row.id}/confirmation-link`
+      );
+      if (res.success && res.data?.confirmUrl && res.data?.cancelUrl) {
+        extraVars = { confirmar: res.data.confirmUrl, cancelar: res.data.cancelUrl };
+      } else {
+        win?.close();
+        setError(res.message || res.error || m.reminderSendError);
+        return;
+      }
+    }
+
+    const url = buildWaMeUrl(row.waPhone, buildWebMessage(row, extraVars));
+    if (win) {
+      win.location.href = url;
+    } else {
+      window.open(url, "_blank", "noopener,noreferrer");
+    }
   };
 
   const saveWebTemplate = () => {

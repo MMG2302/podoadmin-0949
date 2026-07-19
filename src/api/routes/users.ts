@@ -624,7 +624,8 @@ usersRoutes.post('/', requireRole('super_admin', 'clinic_admin'), async (c) => {
           return c.json(
             {
               error: 'Límite alcanzado',
-              message: `Tu clínica alcanzó el límite de ${limit} podólogos. Contacta a PodoAdmin para ampliar tu plan.`,
+              code: 'podiatrist_limit_reached',
+              message: `Tu clínica alcanzó el límite de ${limit} podólogos. Agrega podólogos adicionales por $10 USD/mes cada uno desde Configuración → Suscripción.`,
               currentCount: activeCount,
               limit,
             },

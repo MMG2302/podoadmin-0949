@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { api } from "../lib/api-client";
+import { useEntitlements } from "./use-entitlements";
 import type { AppointmentAgendaMetrics } from "../types/agenda";
 import type { CheckoutAnalytics } from "../types/checkout-analytics";
 import type { DemographicsSummary } from "../lib/patient-engagement";
@@ -46,6 +47,10 @@ export function useClinicalDashboardSnapshot(opts: {
   includeClinicStats?: boolean;
 }) {
   const { enabled, includeCheckout = false, includeClinicStats = false } = opts;
+  const { has: hasFeature } = useEntitlements();
+  // Métricas/analíticas del plan Premium: no se piden en Base (evita 402).
+  const canAgendaMetrics = hasFeature("agenda_analytics");
+  const canCheckoutAnalytics = hasFeature("checkout_analytics");
   const [data, setData] = useState<Snapshot>(EMPTY);
   const [loading, setLoading] = useState(false);
 
@@ -58,13 +63,15 @@ export function useClinicalDashboardSnapshot(opts: {
     try {
       const [overviewRes, metricsRes, demoRes, analyticsRes, clinicRes] = await Promise.all([
         api.get<{ success?: boolean } & ClinicalDashboardOverview>("/clinical-dashboard/overview"),
-        api.get<{ success?: boolean; metrics?: AppointmentAgendaMetrics }>(
-          "/clinical-dashboard/appointment-metrics?days=30"
-        ),
+        canAgendaMetrics
+          ? api.get<{ success?: boolean; metrics?: AppointmentAgendaMetrics }>(
+              "/clinical-dashboard/appointment-metrics?days=30"
+            )
+          : Promise.resolve({ success: false as const, data: undefined }),
         api.get<{ success?: boolean; demographics?: DemographicsSummary }>(
           "/patients/demographics-summary"
         ),
-        includeCheckout
+        includeCheckout && canCheckoutAnalytics
           ? api.get<{ success?: boolean; analytics?: CheckoutAnalytics }>(
               "/checkout-handoffs/analytics?period=month"
             )
@@ -97,7 +104,7 @@ export function useClinicalDashboardSnapshot(opts: {
     } finally {
       setLoading(false);
     }
-  }, [enabled, includeCheckout, includeClinicStats]);
+  }, [enabled, includeCheckout, includeClinicStats, canAgendaMetrics, canCheckoutAnalytics]);
 
   useEffect(() => {
     void load();

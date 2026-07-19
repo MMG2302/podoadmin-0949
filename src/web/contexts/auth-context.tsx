@@ -18,6 +18,8 @@ export interface User {
   mustChangePassword?: boolean; // Contraseña temporal: obligar cambio en primer login
   systemAccess?: boolean; // Acceso al sistema (super_admin habilitó o Stripe activo)
   accessReason?: 'platform_admin' | 'admin_enabled' | 'stripe_paid' | 'ip_trial' | 'dev_trial' | null;
+  planTier?: 'base' | 'premium'; // Plan contratado (capa ortogonal al rol)
+  entitlements?: Record<string, boolean>; // Features incluidas en el plan (calculadas en servidor)
   accessBadge?: {
     label: string;
     tone: 'green' | 'amber' | 'red' | 'orange' | 'blue' | 'gray' | 'yellow';

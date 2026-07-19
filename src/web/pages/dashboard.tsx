@@ -25,6 +25,7 @@ import { ClinicalRoleDashboardBento, RoleDashboardBento, type StatItem } from ".
 import { useLanguage } from "../contexts/language-context";
 import { useAuth, getPostLoginPath, hasActiveSystemAccess, isClinicalAppPath } from "../contexts/auth-context";
 import { usePermissions } from "../hooks/use-permissions";
+import { useEntitlements } from "../hooks/use-entitlements";
 import { useClinicalDashboardSnapshot } from "../hooks/use-clinical-dashboard-snapshot";
 import { api } from "../lib/api-client";
 import { semanticChipSuccessClass, semanticChipWarningClass } from "../lib/form-field-classes";
@@ -150,6 +151,9 @@ const PodiatristDashboard = () => {
   const { t } = useLanguage();
   const { user } = useAuth();
   const { hasPermission } = usePermissions();
+  const { has: hasFeature } = useEntitlements();
+  const hasAgendaAnalytics = hasFeature("agenda_analytics");
+  const hasCheckoutAnalytics = hasFeature("checkout_analytics");
   const canCheckout = hasPermission("view_checkout_handoffs");
   const { overview, metrics, demographics, analytics } = useClinicalDashboardSnapshot({
     enabled: Boolean(user?.id),
@@ -179,6 +183,7 @@ const PodiatristDashboard = () => {
         value: String(metrics?.totals.attended ?? 0),
         path: "/calendar",
         hint: t.dashboard.last30Days,
+        locked: !hasAgendaAnalytics,
       },
       {
         Icon: Percent,
@@ -186,6 +191,7 @@ const PodiatristDashboard = () => {
         value: `${Math.round(metrics?.occupancy.percent ?? 0)}%`,
         path: "/calendar",
         hint: t.dashboard.last30Days,
+        locked: !hasAgendaAnalytics,
       },
     ];
 
@@ -196,6 +202,7 @@ const PodiatristDashboard = () => {
           label: t.dashboard.salesThisMonth,
           value: formatCheckoutAmount(analytics?.sales.currentTotalCents ?? 0, currency),
           path: "/checkout",
+          locked: !hasCheckoutAnalytics,
         },
         {
           Icon: Banknote,
@@ -206,6 +213,7 @@ const PodiatristDashboard = () => {
             analytics?.collections.pendingCount != null
               ? String(analytics.collections.pendingCount)
               : undefined,
+          locked: !hasCheckoutAnalytics,
         }
       );
     } else {
@@ -226,7 +234,7 @@ const PodiatristDashboard = () => {
     }
 
     return items;
-  }, [analytics, canCheckout, currency, demographics, metrics, overview, t]);
+  }, [analytics, canCheckout, currency, demographics, metrics, overview, t, hasAgendaAnalytics, hasCheckoutAnalytics]);
 
   return (
     <MainLayout title={t.dashboard.title}>
@@ -325,6 +333,9 @@ const ClinicAdminDashboard = () => {
   const { t } = useLanguage();
   const { user } = useAuth();
   const { hasPermission } = usePermissions();
+  const { has: hasFeature } = useEntitlements();
+  const hasAgendaAnalytics = hasFeature("agenda_analytics");
+  const hasCheckoutAnalytics = hasFeature("checkout_analytics");
   const canCheckout = hasPermission("view_checkout_handoffs");
   const { overview, metrics, demographics, analytics, clinicTotals } = useClinicalDashboardSnapshot({
     enabled: Boolean(user?.id),
@@ -362,6 +373,7 @@ const ClinicAdminDashboard = () => {
         value: String(metrics?.totals.attended ?? 0),
         path: "/calendar",
         hint: t.dashboard.last30Days,
+        locked: !hasAgendaAnalytics,
       },
       {
         Icon: Percent,
@@ -369,6 +381,7 @@ const ClinicAdminDashboard = () => {
         value: `${Math.round(metrics?.occupancy.percent ?? 0)}%`,
         path: "/calendar",
         hint: t.dashboard.last30Days,
+        locked: !hasAgendaAnalytics,
       },
     ];
 
@@ -378,6 +391,7 @@ const ClinicAdminDashboard = () => {
         label: t.dashboard.salesThisMonth,
         value: formatCheckoutAmount(analytics?.sales.currentTotalCents ?? 0, currency),
         path: "/checkout",
+        locked: !hasCheckoutAnalytics,
       });
     } else {
       items.push({
@@ -399,6 +413,8 @@ const ClinicAdminDashboard = () => {
     patientCount,
     sessionsThisMonth,
     t,
+    hasAgendaAnalytics,
+    hasCheckoutAnalytics,
   ]);
 
   return (
@@ -423,6 +439,9 @@ const ReceptionistDashboard = () => {
   const { t } = useLanguage();
   const { user } = useAuth();
   const { hasPermission } = usePermissions();
+  const { has: hasFeature } = useEntitlements();
+  const hasAgendaAnalytics = hasFeature("agenda_analytics");
+  const hasCheckoutAnalytics = hasFeature("checkout_analytics");
   const canCheckout = hasPermission("view_checkout_handoffs");
   const [clinic, setClinic] = useState<{ clinicName: string } | null>(null);
   const [assignedPodiatrists, setAssignedPodiatrists] = useState<{ id: string; name: string }[]>([]);
@@ -482,6 +501,7 @@ const ReceptionistDashboard = () => {
         value: String(metrics?.totals.attended ?? 0),
         path: "/calendar",
         hint: t.dashboard.last30Days,
+        locked: !hasAgendaAnalytics,
       },
       {
         Icon: Percent,
@@ -489,6 +509,7 @@ const ReceptionistDashboard = () => {
         value: `${Math.round(metrics?.occupancy.percent ?? 0)}%`,
         path: "/calendar",
         hint: t.dashboard.last30Days,
+        locked: !hasAgendaAnalytics,
       },
     ];
 
@@ -503,12 +524,14 @@ const ReceptionistDashboard = () => {
             analytics?.collections.pendingCount != null
               ? String(analytics.collections.pendingCount)
               : undefined,
+          locked: !hasCheckoutAnalytics,
         },
         {
           Icon: Wallet,
           label: t.dashboard.salesThisMonth,
           value: formatCheckoutAmount(analytics?.sales.currentTotalCents ?? 0, currency),
           path: "/checkout",
+          locked: !hasCheckoutAnalytics,
         },
         {
           Icon: UserRoundPlus,
@@ -541,7 +564,7 @@ const ReceptionistDashboard = () => {
     }
 
     return items;
-  }, [analytics, assignedPodiatrists.length, canCheckout, currency, demographics, metrics, overview, t]);
+  }, [analytics, assignedPodiatrists.length, canCheckout, currency, demographics, metrics, overview, t, hasAgendaAnalytics, hasCheckoutAnalytics]);
 
   return (
     <MainLayout title={t.dashboard.title}>

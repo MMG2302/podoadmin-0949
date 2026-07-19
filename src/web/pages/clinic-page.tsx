@@ -3,10 +3,13 @@ import { Link } from "wouter";
 import { MainLayout } from "../components/layout/main-layout";
 import { useLanguage } from "../contexts/language-context";
 import { useAuth, User } from "../contexts/auth-context";
+import { useEntitlements } from "../hooks/use-entitlements";
+import { PremiumUpsellBanner } from "../components/premium/premium-upsell";
 import { useRefreshOnFocus } from "../hooks/use-refresh-on-focus";
 import { useClinicalListPage } from "../hooks/use-clinical-list-page";
 import { invalidateClinicalListCache } from "../lib/clinical-list-cache";
 import { api } from "../lib/api-client";
+import { BILLING_SETTINGS_PATH } from "../lib/billing-settings-path";
 import {
   semanticAlertErrorClass,
   semanticAlertInfoClass,
@@ -193,6 +196,8 @@ const ClinicPage = () => {
   const { t, language } = useLanguage();
   const eng = t.patients.engagement;
   const { user: currentUser, getAllUsers, fetchUsers, ensureVisibleUsers, isEmailTaken } = useAuth();
+  const { has: hasFeature } = useEntitlements();
+  const hasAgendaAnalytics = hasFeature("agenda_analytics");
   const allUsers = getAllUsers();
 
   useEffect(() => {
@@ -335,6 +340,7 @@ const ClinicPage = () => {
   }, [podiatristFilter]);
 
   const loadAppointmentMetrics = useCallback(async () => {
+    if (!hasAgendaAnalytics) return;
     const params = new URLSearchParams({ days: "30" });
     if (metricsPodiatristFilter !== "all") params.set("podiatristId", metricsPodiatristFilter);
     const r = await api.get<{ success?: boolean; metrics?: AppointmentMetrics }>(
@@ -343,7 +349,7 @@ const ClinicPage = () => {
     if (r.success && r.data?.metrics) {
       setAppointmentMetrics(r.data.metrics);
     }
-  }, [metricsPodiatristFilter]);
+  }, [metricsPodiatristFilter, hasAgendaAnalytics]);
 
   useEffect(() => {
     void loadDemographicsSummary();
@@ -365,8 +371,12 @@ const ClinicPage = () => {
   // Cargar límite de podólogos de la clínica
   useEffect(() => {
     if (!currentUser?.clinicId) return;
-    api.get<{ success?: boolean; clinic?: { podiatristLimit?: number | null } }>(`/clinics/${currentUser.clinicId}`).then((r) => {
-      if (r.success && r.data?.clinic) setClinicPodiatristLimit(r.data.clinic.podiatristLimit ?? null);
+    api.get<{ success?: boolean; clinic?: { podiatristLimit?: number | null; effectivePodiatristLimit?: number | null } }>(`/clinics/${currentUser.clinicId}`).then((r) => {
+      if (r.success && r.data?.clinic) {
+        setClinicPodiatristLimit(
+          r.data.clinic.effectivePodiatristLimit ?? r.data.clinic.podiatristLimit ?? null
+        );
+      }
     });
   }, [currentUser?.clinicId]);
 
@@ -679,7 +689,9 @@ const ClinicPage = () => {
                 </select>
               </div>
 
-              {appointmentMetrics ? (
+              {!hasAgendaAnalytics ? (
+                <PremiumUpsellBanner body={t.premium.agendaAnalyticsLockedBody} />
+              ) : appointmentMetrics ? (
                 <>
                   <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
                     <div className="rounded-lg border border-gray-100 p-4">
@@ -770,11 +782,18 @@ const ClinicPage = () => {
         {activeTab === "podiatrists" && (
           <div className="space-y-4">
             <div className="flex items-center justify-between">
-              <p className="text-sm text-gray-500">
-                {clinicPodiatristLimit !== null
-                  ? t.clinic.podiatristsLimit.replace("{current}", String(clinicPodiatrists.length)).replace("{limit}", String(clinicPodiatristLimit))
-                  : t.clinic.podiatristsNoLimit}
-              </p>
+              <div>
+                <p className="text-sm text-gray-500">
+                  {clinicPodiatristLimit !== null
+                    ? t.clinic.podiatristsLimit.replace("{current}", String(clinicPodiatrists.length)).replace("{limit}", String(clinicPodiatristLimit))
+                    : t.clinic.podiatristsNoLimit}
+                </p>
+                {!canCreatePodiatrist && (
+                  <Link href={BILLING_SETTINGS_PATH} className="text-sm text-brand-ink underline hover:no-underline">
+                    {t.clinic.podiatristsLimitCta}
+                  </Link>
+                )}
+              </div>
               <button
                 onClick={() => {
                   setPodiatristError(null);

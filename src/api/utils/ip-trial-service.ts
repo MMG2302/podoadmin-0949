@@ -380,6 +380,8 @@ export async function grantIpTrialIfEligible(params: {
         status: 'trial',
         currentPeriodStart: now,
         currentPeriodEnd: expiresAt,
+        // El trial prueba el producto completo; al pagar, el checkout decide el tier.
+        planTier: 'premium',
         updatedAt: iso,
       })
       .where(eq(subscriptions.id, existingSub.id));
@@ -393,6 +395,7 @@ export async function grantIpTrialIfEligible(params: {
       planId: 'monthly_standard',
       currentPeriodStart: now,
       currentPeriodEnd: expiresAt,
+      planTier: 'premium',
       createdAt: iso,
       updatedAt: iso,
     });

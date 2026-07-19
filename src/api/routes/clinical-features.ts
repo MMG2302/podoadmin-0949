@@ -10,6 +10,7 @@ import {
   requirePermission,
 } from '../middleware/authorization';
 import { requireActiveSubscription } from '../middleware/subscription';
+import { requireFeature } from '../middleware/entitlements';
 import { database } from '../database';
 import {
   sessionTemplates,
@@ -79,7 +80,9 @@ clinicalRoutes.get('/templates', requireClinicalTemplateRead(), async (c) => {
   });
 });
 
-clinicalRoutes.post('/templates', requireClinicalTemplateManage(), async (c) => {
+// Herramientas clínicas (diseñador de plantillas, inventario, derivaciones): plan Premium.
+// GET /templates queda libre: aplicar plantillas en sesiones es parte del plan Base.
+clinicalRoutes.post('/templates', requireClinicalTemplateManage(), requireFeature('clinical_tools'), async (c) => {
   const user = c.get('user')!;
   const body = await c.req.json().catch(() => ({}));
   const schema = z.object({
@@ -106,7 +109,7 @@ clinicalRoutes.post('/templates', requireClinicalTemplateManage(), async (c) => 
   return c.json({ success: true, id }, 201);
 });
 
-clinicalRoutes.delete('/templates/:id', requireClinicalTemplateManage(), async (c) => {
+clinicalRoutes.delete('/templates/:id', requireClinicalTemplateManage(), requireFeature('clinical_tools'), async (c) => {
   const user = c.get('user')!;
   const id = sanitizePathParam(c.req.param('id'));
   const rows = await database.select().from(sessionTemplates).where(eq(sessionTemplates.id, id)).limit(1);
@@ -149,7 +152,7 @@ const templateFieldsSchema = z
   })
   .passthrough();
 
-clinicalRoutes.patch('/templates/:id', requireClinicalTemplateManage(), async (c) => {
+clinicalRoutes.patch('/templates/:id', requireClinicalTemplateManage(), requireFeature('clinical_tools'), async (c) => {
   const user = c.get('user')!;
   const id = sanitizePathParam(c.req.param('id'));
   const rows = await database.select().from(sessionTemplates).where(eq(sessionTemplates.id, id)).limit(1);
@@ -184,14 +187,14 @@ clinicalRoutes.patch('/templates/:id', requireClinicalTemplateManage(), async (c
 });
 
 // --- Derivaciones ---
-clinicalRoutes.get('/referrals', requirePermission('view_patients'), async (c) => {
+clinicalRoutes.get('/referrals', requirePermission('view_patients'), requireFeature('clinical_tools'), async (c) => {
   const patientId = c.req.query('patientId');
   let rows = await database.select().from(patientReferrals).orderBy(desc(patientReferrals.createdAt));
   if (patientId) rows = rows.filter((r) => r.patientId === sanitizePathParam(patientId));
   return c.json({ success: true, referrals: rows });
 });
 
-clinicalRoutes.post('/referrals', requirePermission('manage_patients', 'manage_sessions'), async (c) => {
+clinicalRoutes.post('/referrals', requirePermission('manage_patients', 'manage_sessions'), requireFeature('clinical_tools'), async (c) => {
   const user = c.get('user')!;
   const schema = z.object({
     patientId: z.string().uuid(),
@@ -226,14 +229,14 @@ clinicalRoutes.patch('/patients/:patientId/alerts', requirePermission('manage_pa
 });
 
 // --- Inventario ---
-clinicalRoutes.get('/inventory', requirePermission('manage_sessions', 'view_sessions'), async (c) => {
+clinicalRoutes.get('/inventory', requirePermission('manage_sessions', 'view_sessions'), requireFeature('clinical_tools'), async (c) => {
   const user = c.get('user')!;
   let rows = await database.select().from(inventoryItems);
   if (user.clinicId) rows = rows.filter((r) => !r.clinicId || r.clinicId === user.clinicId);
   return c.json({ success: true, items: rows });
 });
 
-clinicalRoutes.post('/inventory', requirePermission('manage_sessions'), async (c) => {
+clinicalRoutes.post('/inventory', requirePermission('manage_sessions'), requireFeature('clinical_tools'), async (c) => {
   const user = c.get('user')!;
   const schema = z.object({
     name: z.string().min(1).max(120),
@@ -255,7 +258,7 @@ clinicalRoutes.post('/inventory', requirePermission('manage_sessions'), async (c
   return c.json({ success: true, id }, 201);
 });
 
-clinicalRoutes.post('/sessions/:sessionId/inventory-usage', requirePermission('manage_sessions'), async (c) => {
+clinicalRoutes.post('/sessions/:sessionId/inventory-usage', requirePermission('manage_sessions'), requireFeature('clinical_tools'), async (c) => {
   const sessionId = sanitizePathParam(c.req.param('sessionId'));
   const schema = z.object({ itemId: z.string().uuid(), quantity: z.number().positive().max(9999) });
   const parsed = schema.safeParse(await c.req.json().catch(() => ({})));

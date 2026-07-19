@@ -15,9 +15,14 @@ import {
   saveAgendaSettings,
 } from '../utils/agenda-settings';
 import { getAssignedPodiatristUserIds } from '../utils/tenant-isolation';
+import { requireFeature } from '../middleware/entitlements';
 const clinicalDashboardRoutes = new Hono();
 
 clinicalDashboardRoutes.use('*', requireAuth, requireActiveSubscription);
+
+// Métricas avanzadas de agenda (demanda/ocupación): plan Premium.
+// agenda-settings queda libre: es configuración operativa del calendario.
+clinicalDashboardRoutes.use('/appointment-metrics', requireFeature('agenda_analytics'));
 
 clinicalDashboardRoutes.get('/overview', async (c) => {
   const user = c.get('user')!;

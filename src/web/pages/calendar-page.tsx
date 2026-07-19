@@ -7,6 +7,8 @@ import { PatientSearchSelect } from "../components/patients/patient-search-selec
 import { useLanguage } from "../contexts/language-context";
 import { useAuth } from "../contexts/auth-context";
 import { usePermissions } from "../hooks/use-permissions";
+import { useEntitlements } from "../hooks/use-entitlements";
+import { PremiumLockIcon } from "../components/premium/premium-upsell";
 import { useRefreshOnFocus } from "../hooks/use-refresh-on-focus";
 import {
   fetchPatientPickerSample,
@@ -30,6 +32,7 @@ import type { ClinicalSession, Patient, Appointment } from "../types/clinical";
 import type { AgendaSettings } from "../types/agenda";
 import { isAppointmentOutsideAgendaHours } from "../lib/agenda-hours";
 import {
+  CalendarDayResourceGrid,
   CalendarDayTimeGrid,
   CalendarWeekTimeGrid,
   PodiatristColorLegend,
@@ -89,6 +92,8 @@ const CalendarPage = () => {
   const locale = CALENDAR_LOCALE[language] ?? "es-ES";
   const { user, getAllUsers, updateUser, ensureVisibleUsers } = useAuth();
   const { isClinicAdmin, isPodiatrist, isReceptionist } = usePermissions();
+  const { has: hasFeature } = useEntitlements();
+  const hasAgendaAnalytics = hasFeature("agenda_analytics");
   const tenantCountry = useTenantCountry(user);
   
   useEffect(() => {
@@ -167,17 +172,20 @@ const CalendarPage = () => {
         `/sessions?from=${from}&to=${to}&limit=500`
       ),
       api.get<{ success?: boolean; appointments?: Appointment[] }>(
-        `/appointments?from=${from}&to=${to}&limit=500`
+        `/appointments?from=${from}&to=${to}&includeCancelled=1&limit=500`
       ),
       api.get<{ success?: boolean; metrics?: typeof agendaMetrics }>("/clinical/appointments/metrics"),
       api.get<{ success?: boolean; waitlist?: typeof waitlist }>("/clinical/waitlist"),
-      api.get<{
-        success?: boolean;
-        metrics?: {
-          demandByWeekday?: Array<{ label: string; count: number }>;
-          totals?: { demand?: number };
-        };
-      }>("/clinical-dashboard/appointment-metrics?days=30"),
+      // Analítica de demanda: solo con plan Premium (evita un 402 innecesario).
+      hasAgendaAnalytics
+        ? api.get<{
+            success?: boolean;
+            metrics?: {
+              demandByWeekday?: Array<{ label: string; count: number }>;
+              totals?: { demand?: number };
+            };
+          }>("/clinical-dashboard/appointment-metrics?days=30")
+        : Promise.resolve({ success: false as const, data: undefined }),
     ]);
 
     const sess = sessRes.success && Array.isArray(sessRes.data?.sessions) ? sessRes.data.sessions : [];
@@ -214,7 +222,7 @@ const CalendarPage = () => {
       });
     }
     if (waitRes.success && waitRes.data?.waitlist) setWaitlist(waitRes.data.waitlist);
-  }, [user?.id, currentDate, viewMode]);
+  }, [user?.id, currentDate, viewMode, hasAgendaAnalytics]);
 
   const updateCheckIn = async (
     apptId: string,
@@ -242,6 +250,16 @@ const CalendarPage = () => {
   useEffect(() => {
     loadCalendarData();
   }, [loadCalendarData, refreshTrigger]);
+
+  // Refresco periódico: refleja sin recargar manualmente cambios externos
+  // (p. ej. confirmación/cancelación de citas por el paciente vía enlace de WhatsApp).
+  useEffect(() => {
+    if (!user?.id) return;
+    const interval = setInterval(() => {
+      if (!document.hidden) void loadCalendarData();
+    }, 5_000);
+    return () => clearInterval(interval);
+  }, [loadCalendarData, user?.id]);
 
   useEffect(() => {
     if (!isReceptionist || !user?.id || user.assignedPodiatristIds?.length) return;
@@ -322,17 +340,39 @@ const CalendarPage = () => {
     setSelectedDate(new Date());
   };
 
-  // Get sessions for a specific date
-  const getSessionsForDate = (date: Date): SessionWithPatient[] => {
-    const dateStr = date.toISOString().split("T")[0];
-    return filteredSessions.filter(s => s.sessionDate.split("T")[0] === dateStr);
-  };
+  // Índices por fecha: una sola pasada por los datos en lugar de filtrar todo el
+  // arreglo por cada celda del mes (42×). formatLocalDateString evita además el
+  // desfase de día de toISOString() en husos horarios negativos por la noche.
+  const sessionsByDate = useMemo(() => {
+    const map = new Map<string, SessionWithPatient[]>();
+    for (const s of filteredSessions) {
+      const key = s.sessionDate.split("T")[0];
+      const list = map.get(key);
+      if (list) list.push(s);
+      else map.set(key, [s]);
+    }
+    return map;
+  }, [filteredSessions]);
 
-  // Get appointments for a specific date
-  const getAppointmentsForDate = (date: Date): AppointmentWithDetails[] => {
-    const dateStr = date.toISOString().split("T")[0];
-    return filteredAppointments.filter(a => a.date === dateStr && a.status !== "cancelled");
-  };
+  const appointmentsByDate = useMemo(() => {
+    const map = new Map<string, AppointmentWithDetails[]>();
+    for (const a of filteredAppointments) {
+      const list = map.get(a.date);
+      if (list) list.push(a);
+      else map.set(a.date, [a]);
+    }
+    return map;
+  }, [filteredAppointments]);
+
+  const getSessionsForDate = (date: Date): SessionWithPatient[] =>
+    sessionsByDate.get(formatLocalDateString(date)) ?? [];
+
+  const getAppointmentsForDate = (date: Date): AppointmentWithDetails[] =>
+    (appointmentsByDate.get(formatLocalDateString(date)) ?? []).filter((a) => a.status !== "cancelled");
+
+  // Canceladas del día: se muestran en gris (el horario queda libre para reagendar).
+  const getCancelledAppointmentsForDate = (date: Date): AppointmentWithDetails[] =>
+    (appointmentsByDate.get(formatLocalDateString(date)) ?? []).filter((a) => a.status === "cancelled");
 
   // Get month grid data
   const getMonthGrid = () => {
@@ -456,6 +496,26 @@ const isSelected = (date: Date) => {
   // Selected date sessions and appointments
   const selectedDateSessions = selectedDate ? getSessionsForDate(selectedDate) : [];
   const selectedDateAppointments = selectedDate ? getAppointmentsForDate(selectedDate) : [];
+  const selectedDateCancelled = selectedDate ? getCancelledAppointmentsForDate(selectedDate) : [];
+
+  // Aviso informativo en el formulario: el horario elegido corresponde a una cita
+  // cancelada. No bloquea; solo avisa que se agendará encima de una cancelación.
+  const cancelledSlotOverlap = useMemo(() => {
+    if (!showAppointmentForm || !appointmentForm.date || !appointmentForm.time) return false;
+    const start = parseTimeToMinutes(appointmentForm.time);
+    if (start == null) return false;
+    const end = start + (appointmentForm.duration || 30);
+    const podiatristId = appointmentForm.podiatristId || (isPodiatrist ? user?.id ?? "" : "");
+    return allAppointments.some((a) => {
+      if (a.status !== "cancelled" || a.date !== appointmentForm.date) return false;
+      if (podiatristId && a.podiatristId !== podiatristId) return false;
+      if (editingAppointment && a.id === editingAppointment.id) return false;
+      const aStart = parseTimeToMinutes(a.time);
+      if (aStart == null) return false;
+      const aEnd = aStart + (a.duration || 30);
+      return start < aEnd && end > aStart;
+    });
+  }, [showAppointmentForm, appointmentForm, allAppointments, editingAppointment, isPodiatrist, user?.id]);
 
   // Upcoming sessions (next 7 days)
   const upcomingSessions = useMemo(() => {
@@ -587,6 +647,25 @@ const isSelected = (date: Date) => {
         meta: t.calendar.session,
         badge: podiatristBadge(session.createdBy, podName),
         href: `/sessions?id=${session.id}`,
+      });
+    }
+
+    // Canceladas: en gris, no editables; recuerdan que el horario quedó libre.
+    for (const appt of getCancelledAppointmentsForDate(date)) {
+      const minutes = parseTimeToMinutes(appt.time);
+      if (minutes == null) continue;
+      const clamped = clampEventToGrid(minutes, appt.duration || 30);
+      if (!clamped) continue;
+      blocks.push({
+        id: appt.id,
+        kind: "appointment",
+        startMinutes: clamped.startMinutes,
+        durationMinutes: clamped.durationMinutes,
+        podiatristId: appt.podiatristId,
+        title: getPatientDisplayName(appt),
+        subtitle: t.calendar.legendCancelled,
+        meta: appt.time,
+        muted: true,
       });
     }
 
@@ -1145,7 +1224,7 @@ const isSelected = (date: Date) => {
                 <p className="text-xl font-semibold text-brand-ink">{waitlist.length}</p>
               </div>
             </div>
-            {agendaMetrics && (
+            {agendaMetrics && hasAgendaAnalytics && (
               <div className="bg-brand-surface rounded-xl border border-brand-border p-4">
                 <p className="text-sm font-semibold text-brand-ink mb-1">{t.calendar.agendaDemandTitle}</p>
                 <p className="text-xs text-brand-muted mb-2">
@@ -1159,6 +1238,21 @@ const isSelected = (date: Date) => {
                   className="text-sm font-medium text-brand-ink underline-offset-2 hover:underline"
                 >
                   {t.calendar.goToCheckoutAgendaLong}
+                </Link>
+              </div>
+            )}
+            {agendaMetrics && !hasAgendaAnalytics && (
+              <div className="bg-brand-surface rounded-xl border border-brand-border p-4">
+                <p className="text-sm font-semibold text-brand-ink mb-1 flex items-center gap-1.5">
+                  <PremiumLockIcon />
+                  {t.calendar.agendaDemandTitle}
+                </p>
+                <p className="text-xs text-brand-muted mb-2">{t.premium.agendaAnalyticsLockedBody}</p>
+                <Link
+                  href="/settings?tab=billing"
+                  className="text-sm font-medium text-brand-ink underline-offset-2 hover:underline"
+                >
+                  {t.premium.upsellCta}
                 </Link>
               </div>
             )}
@@ -1364,13 +1458,26 @@ const isSelected = (date: Date) => {
                 </div>
 
                 {getAppointmentsForDate(currentDate).length === 0 &&
-                getSessionsForDate(currentDate).length === 0 ? (
+                getSessionsForDate(currentDate).length === 0 &&
+                getCancelledAppointmentsForDate(currentDate).length === 0 ? (
                   <div className="text-center py-12 text-brand-muted">
                     <svg className="w-12 h-12 mx-auto text-brand-border mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                     </svg>
                     <p>{t.calendar.noEventsForDay}</p>
                   </div>
+                ) : colorByPodiatrist ? (
+                  // Vista por columnas: un doctor por columna con su color (admin/recepción)
+                  <CalendarDayResourceGrid
+                    podiatrists={sortedClinicPodiatrists}
+                    orderedPodiatristIds={orderedPodiatristIds}
+                    getTimedBlocksForPodiatrist={(podiatristId) =>
+                      buildTimedBlocksForDate(currentDate).filter((b) => b.podiatristId === podiatristId)
+                    }
+                    getUntimedBlocksForPodiatrist={(podiatristId) =>
+                      buildUntimedBlocksForDate(currentDate).filter((b) => b.podiatristId === podiatristId)
+                    }
+                  />
                 ) : (
                   <CalendarDayTimeGrid
                     date={currentDate}
@@ -1417,7 +1524,9 @@ const isSelected = (date: Date) => {
                 </button>
               )}
 
-              {selectedDateAppointments.length === 0 && selectedDateSessions.length === 0 ? (
+              {selectedDateAppointments.length === 0 &&
+              selectedDateSessions.length === 0 &&
+              selectedDateCancelled.length === 0 ? (
                 <p className="text-sm text-brand-muted text-center py-4">
                   {t.calendar.noEventsForDay}
                 </p>
@@ -1479,6 +1588,23 @@ const isSelected = (date: Date) => {
                     </div>
                     );
                   })}
+                  {/* Canceladas: en gris, solo informativas (el horario quedó libre) */}
+                  {selectedDateCancelled.map((appt) => (
+                    <div key={appt.id} className="p-3 bg-gray-100 rounded-lg opacity-75">
+                      <div className="flex items-center gap-2 mb-1">
+                        <div className="w-2 h-2 rounded-full bg-gray-400" />
+                        <span className="text-xs font-medium text-gray-600 bg-gray-200 px-1.5 py-0.5 rounded">
+                          {t.calendar.legendCancelled}
+                        </span>
+                        <span className="text-sm font-medium text-gray-500 line-through">
+                          {appt.time} - {getPatientDisplayName(appt)}
+                        </span>
+                      </div>
+                      <p className="text-xs text-gray-500">
+                        {t.calendar.podiatristLabel} {appt.podiatristName}
+                      </p>
+                    </div>
+                  ))}
                   {/* Sessions */}
                   {selectedDateSessions.map((session) => (
                     <Link key={session.id} href={`/sessions?id=${session.id}`}>
@@ -1834,6 +1960,7 @@ const isSelected = (date: Date) => {
                 <label className={`${formLabelClass} mb-1`}>{t.calendar.timeRequired}</label>
                 <input
                   type="time"
+                  step={1800}
                   value={appointmentForm.time}
                   onChange={(e) => setAppointmentForm((prev) => ({ ...prev, time: e.target.value }))}
                   className={formFieldClassSm}
@@ -1881,6 +2008,12 @@ const isSelected = (date: Date) => {
                 {isReceptionist
                   ? `${appointmentAgendaWarning} ${t.calendar.outsideHoursReceptionistNote}`
                   : `${appointmentAgendaWarning} ${t.calendar.outsideHoursContinueNote}`}
+              </div>
+            )}
+
+            {cancelledSlotOverlap && (
+              <div className="rounded-lg border border-gray-300 bg-gray-100 px-3 py-2 text-sm text-gray-600">
+                {t.calendar.cancelledSlotHint}
               </div>
             )}
 

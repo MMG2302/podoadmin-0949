@@ -19,6 +19,8 @@ import { QuickTariffChips } from "../components/checkout/quick-tariff-chips";
 import { CheckoutAnalyticsPanel } from "../components/checkout/checkout-analytics-panel";
 import { AgendaAnalyticsPanel } from "../components/checkout/agenda-analytics-panel";
 import { CheckoutViewTabs } from "../components/checkout/checkout-view-tabs";
+import { PremiumUpsellBanner } from "../components/premium/premium-upsell";
+import { useEntitlements } from "../hooks/use-entitlements";
 
 import { MarkPaidDialog } from "../components/checkout/mark-paid-dialog";
 
@@ -186,6 +188,7 @@ const CheckoutPage = () => {
 
 
   const canAccess = hasPermission("view_checkout_handoffs");
+  const { has: hasFeature } = useEntitlements();
   const showFullAnalytics = isPodiatrist || isClinicAdmin;
   const showAgendaTab = isPodiatrist || isClinicAdmin || isReceptionist;
   const showViewTabs = showFullAnalytics || showAgendaTab;
@@ -194,6 +197,12 @@ const CheckoutPage = () => {
     : showFullAnalytics
       ? ["operations", "sales", "collections", "profit", "agenda"]
       : undefined;
+  // Pestañas visibles pero bloqueadas por plan (Base): muestran candado y panel de upsell.
+  const lockedModes: CheckoutViewMode[] = [
+    ...(hasFeature("checkout_analytics") ? [] : (["sales", "collections", "profit"] as CheckoutViewMode[])),
+    ...(hasFeature("agenda_analytics") ? [] : (["agenda"] as CheckoutViewMode[])),
+  ];
+  const viewModeLocked = lockedModes.includes(viewMode);
 
   const tariffPodiatristId =
 
@@ -420,6 +429,7 @@ const CheckoutPage = () => {
             view={viewMode}
             onViewChange={setViewMode}
             modes={checkoutTabModes}
+            lockedModes={lockedModes}
           />
         )}
         {showViewTabs && viewMode !== "operations" && (
@@ -477,7 +487,13 @@ const CheckoutPage = () => {
           </div>
         )}
 
-        {viewMode === "agenda" && showAgendaTab && (
+        {viewModeLocked && viewMode !== "operations" && (
+          <PremiumUpsellBanner
+            body={viewMode === "agenda" ? t.premium.agendaAnalyticsLockedBody : undefined}
+          />
+        )}
+
+        {!viewModeLocked && viewMode === "agenda" && showAgendaTab && (
           <AgendaAnalyticsPanel
             podiatristId={
               isPodiatrist
@@ -493,7 +509,7 @@ const CheckoutPage = () => {
           />
         )}
 
-        {showFullAnalytics && viewMode !== "operations" && viewMode !== "agenda" && (
+        {!viewModeLocked && showFullAnalytics && viewMode !== "operations" && viewMode !== "agenda" && (
           <CheckoutAnalyticsPanel
             view={viewMode}
             isClinicAdmin={isClinicAdmin}

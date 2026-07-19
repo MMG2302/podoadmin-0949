@@ -234,3 +234,35 @@ Cada llamada externa puede generar costo o agotar cuota. Hay que configurar **l�
   - [ ] Crear/editar paciente y cita.
   - [ ] Revisar que los logs de errores en Cloudflare estÃ©n limpios.
 
+---
+
+## 8. Backup automatico de la base de datos (D1 -> R2)
+
+El Worker ya incluye un cron diario (04:00 UTC, `wrangler.toml` -> `triggers.crons`) que exporta D1 a R2 (`src/api/utils/d1-backup.ts` + `src/worker.ts`). Esta **desactivado por defecto**.
+
+- [ ] Activar en produccion: `wrangler secret put D1_BACKUP_ENABLED --env production` con valor `1` (o definirlo en `[vars]`).
+- [ ] Verificar al dia siguiente que aparece el objeto de backup en el bucket R2 (`podoadmin-prod`).
+- [ ] Confirmar en logs: evento `cron_d1_backup_done` (y en Sentry el monitor `d1-backup-cron` en verde).
+- [ ] Probar una restauracion en una D1 de staging: `wrangler d1 execute DB --remote --file=<backup.sql>` (nunca directamente sobre produccion).
+- [ ] Backup manual bajo demanda: `npm run db:backup:remote` (se guarda en `backups/d1/`, ignorado por git).
+
+## 9. Rollback del deploy (un comando)
+
+Cloudflare Workers conserva las versiones anteriores de cada deploy; volver atras no requiere rebuild.
+
+- [ ] Listar versiones desplegadas: `npm run deploy:versions` (alias de `wrangler deployments list --env production`).
+- [ ] Rollback a la version anterior: `npm run deploy:rollback` (alias de `wrangler rollback --env production`; permite elegir version).
+- [ ] Tras el rollback, repetir el smoke-test del punto 7.
+- **Nota:** el rollback revierte **codigo**, no migraciones de D1. Las migraciones deben ser compatibles hacia atras (aditivas) para poder hacer rollback del Worker sin romper la base de datos.
+
+## 10. Flujo critico verificado en dominio real (no localhost)
+
+Cookies `Secure`, HSTS, CSP y CSRF se comportan distinto en HTTPS real que en localhost. Verificar el flujo critico end-to-end en el dominio de produccion (o en un tunel HTTPS con `npm run tunnel` antes del deploy):
+
+- [ ] Login -> dashboard -> logout -> login de nuevo (sin bucles de sesion; cookies `access-token` y `refresh-token` presentes).
+- [ ] Renovacion de sesion: dejar pasar >60 min o borrar solo `access-token` -> la app renueva sin expulsar al usuario.
+- [ ] Alta/edicion de paciente y cita.
+- [ ] Enlace publico de confirmacion/cancelacion de cita desde WhatsApp (pagina `/reserva/...` funciona sin sesion).
+- [ ] Checkout de Stripe (modo test) + webhook: evento firmado llega y actualiza la suscripcion.
+- [ ] Subida de logo de clinica (valida el flujo R2 en produccion).
+

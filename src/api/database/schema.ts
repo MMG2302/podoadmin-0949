@@ -142,7 +142,7 @@ export const clinics = sqliteTable('clinics', {
   consentTextVersion: integer('consent_text_version').notNull().default(0),
   infoUpdatedAt: text('info_updated_at'), // Última modificación de datos; bloqueo 15 días
   logoUpdatedAt: text('logo_updated_at'), // Última modificación de logo; bloqueo 15 días
-  podiatristLimit: integer('podiatrist_limit'), // null = límite plan estándar (8); super_admin puede ampliar
+  podiatristLimit: integer('podiatrist_limit'), // override manual (super_admin/legacy); null = derivar del plan (incluidos + asientos extra)
   legalName: text('legal_name'),
   rfc: text('rfc'),
   clues: text('clues'),
@@ -198,6 +198,9 @@ export const appointments = sqliteTable('appointments', {
   pendingPatientName: text('pending_patient_name'),
   pendingPatientPhone: text('pending_patient_phone'),
   checkInStatus: text('check_in_status').default('none'), // none | waiting | in_room | seen
+  confirmToken: text('confirm_token'), // token único para confirmar/cancelar por enlace (WhatsApp)
+  confirmationSentAt: text('confirmation_sent_at'),
+  confirmationRespondedAt: text('confirmation_responded_at'),
 });
 
 // Tabla de log de auditoría
@@ -540,6 +543,9 @@ export const subscriptions = sqliteTable('subscriptions', {
   billingInterval: text('billing_interval'), // month | year
   podiatristTier: text('podiatrist_tier'), // standard | expanded (clínica)
   podiatristCountBilled: integer('podiatrist_count_billed'),
+  extraPodiatristSeats: integer('extra_podiatrist_seats').notNull().default(0), // asientos adicionales ($10/mes c/u)
+  planTier: text('plan_tier').notNull().default('base'), // base | premium (tier facturado)
+  planTierOverride: text('plan_tier_override'), // base | premium (grant manual super_admin; gana sobre plan_tier)
   createdAt: text('created_at').notNull(),
   updatedAt: text('updated_at').notNull(),
 });

@@ -264,17 +264,20 @@ Validación en código: `src/api/utils/validate-env.ts` y `validate-production-s
 | `STRIPE_SECRET_KEY` | **secret** | Sí | API backend (`sk_live_...` o `sk_test_...`) |
 | `STRIPE_WEBHOOK_SECRET` | **secret** | Sí | Firma de `POST /api/stripe/webhook` (`whsec_...`) |
 | `STRIPE_PUBLISHABLE_KEY` | var | Sí (front) | Checkout / billing (`pk_live_...`) |
-| `STRIPE_PRICE_CLINIC_MONTHLY_STANDARD` | var | Sí* | Precio clínica mensual |
-| `STRIPE_PRICE_INDEPENDENT_MONTHLY` | var | Sí* | Precio independiente mensual |
+| `STRIPE_PRICE_CLINIC_MONTHLY_STANDARD` | var | Sí* | Precio clínica mensual (plan Base, $100) |
+| `STRIPE_PRICE_INDEPENDENT_MONTHLY` | var | Sí* | Precio independiente mensual (plan Base, $25) |
+| `STRIPE_PRICE_CLINIC_PREMIUM_MONTHLY` | var | Sí* | Precio clínica Premium mensual ($160: analíticas, herramientas clínicas, campañas) |
+| `STRIPE_PRICE_INDEPENDENT_PREMIUM_MONTHLY` | var | Sí* | Precio independiente Premium mensual ($40) |
 | `CLINIC_PODIATRIST_LIMIT` | var | No | Default `8` (podólogos incluidos en plan clínica) |
 
-\* En producción conviene configurar **ambos** precios.
+\* En producción conviene configurar **los cuatro** precios (Base y Premium por tipo de cuenta). Sin los precios Premium, el checkout/upgrade Premium responde `price_not_configured`.
 
 ```bash
 npx wrangler secret put STRIPE_SECRET_KEY --env production
 npx wrangler secret put STRIPE_WEBHOOK_SECRET --env production
 # Vars en wrangler.json → env.production.vars:
-# STRIPE_PUBLISHABLE_KEY, STRIPE_PRICE_CLINIC_MONTHLY_STANDARD, STRIPE_PRICE_INDEPENDENT_MONTHLY
+# STRIPE_PUBLISHABLE_KEY, STRIPE_PRICE_CLINIC_MONTHLY_STANDARD, STRIPE_PRICE_INDEPENDENT_MONTHLY,
+# STRIPE_PRICE_CLINIC_PREMIUM_MONTHLY, STRIPE_PRICE_INDEPENDENT_PREMIUM_MONTHLY
 ```
 
 Referencia local: `.env.example` y `docs/DEV_MOCK_RESET.md`.

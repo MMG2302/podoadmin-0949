@@ -12,8 +12,8 @@ import {
   Headphones,
   ArrowRight,
   Check,
-  CalendarX,
-  UserMinus,
+  CalendarCheck,
+  UserPlus,
   Clock,
   TrendingUp,
   ChevronDown,
@@ -234,8 +234,8 @@ const LandingPage = () => {
   ];
 
   const solutions = [
-    { icon: CalendarX, solution: l.solutionAbsences },
-    { icon: UserMinus, solution: l.solutionRetention },
+    { icon: CalendarCheck, solution: l.solutionAbsences },
+    { icon: UserPlus, solution: l.solutionRetention },
     { icon: Clock, solution: l.solutionTime },
     { icon: TrendingUp, solution: l.solutionDecisions },
   ];
@@ -407,14 +407,15 @@ const LandingPage = () => {
 
       {/* Pricing */}
       <section id="pricing" className="py-16 sm:py-24 px-4 sm:px-6">
-        <div className="mx-auto max-w-5xl">
+        <div className="mx-auto max-w-7xl">
           <div className="max-w-2xl mb-12">
             <h2 className="text-2xl sm:text-3xl font-semibold text-brand-ink">{l.pricingTitle}</h2>
             <p className="mt-3 text-brand-muted leading-relaxed">{l.pricingSubtitle}</p>
           </div>
-          <div className="grid gap-6 md:grid-cols-2">
-            <PricingCard plan={l.pricingBase} />
-            <PricingCard plan={l.pricingPremium} highlighted />
+          <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-4">
+            {l.pricingPlans.map((plan) => (
+              <PricingCard key={plan.name} plan={plan} highlighted={plan.highlighted} />
+            ))}
           </div>
           <p className="mt-6 text-center text-sm text-brand-muted">{l.pricingNote}</p>
         </div>

@@ -1,6 +1,11 @@
 # Propuesta: Tier Premium para PodoAdmin
 
-> Estado: **propuesta** (no implementado). Documento de discusión para decidir qué funcionalidades pasan a ser de pago avanzado y cómo estructurarlo técnica y comercialmente.
+> Estado: **implementado** (julio 2026). Ajustes sobre la propuesta original:
+> - Se añadió el entitlement `clinical_tools`: la página Herramientas clínicas (diseñador de plantillas, inventario, derivaciones) es Premium. `GET /clinical/templates` queda en Base (aplicar plantillas en sesiones).
+> - Persistencia: columnas `plan_tier` y `plan_tier_override` en `subscriptions` (migración 0054); entitlements derivados por código en `src/api/utils/plan-entitlements.ts`.
+> - Precios: Base $25/$100 (los actuales); Premium $40/$160 vía `STRIPE_PRICE_INDEPENDENT_PREMIUM_MONTHLY` / `STRIPE_PRICE_CLINIC_PREMIUM_MONTHLY`.
+> - Grandfather: suscriptores existentes y trials → Premium. Grants manuales de super_admin → Premium.
+> - Administración: checkout Stripe con `{tier}`, upgrade con prorrateo (`POST /subscriptions/stripe/upgrade`) y override manual del super_admin (`POST /subscriptions/set-tier`, menú de cuenta en Usuarios).
 
 ## Contexto
 

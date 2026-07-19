@@ -40,10 +40,12 @@ import sessionImagesRoutes from './routes/session-images';
 import mediaRoutes from './routes/media';
 import whatsappCampaignsRoutes from './routes/whatsapp-campaigns';
 import stripeWebhookRoutes from './routes/stripe-webhook';
+import reservationActionsRoutes from './routes/reservation-actions';
 import trialActivationRoutes from './routes/trial-activation';
 import checkoutHandoffsRoutes from './routes/checkout-handoffs';
 import adminMediaRoutes from './routes/admin-media';
 import { requireActiveSubscription } from './middleware/subscription';
+import { requireFeature } from './middleware/entitlements';
 import { getCaptchaConfig, isCaptchaExplicitlyDisabledInDev, isCaptchaRequiredForForms } from './utils/captcha';
 import { isEmailVerificationRequired } from './utils/email-verification';
 import { isStripeConfigured, getStripePublishableKey } from './utils/stripe-client';
@@ -208,7 +210,10 @@ app.use('*', async (c, next) => {
     (path === '/api/auth/google/callback' && method === 'POST') ||
     (path === '/api/auth/google/url' && method === 'GET') ||
     (path === '/api/subscriptions/stripe/checkout' && method === 'POST') ||
-    (path === '/api/subscriptions/stripe/portal' && method === 'POST')
+    (path === '/api/subscriptions/stripe/portal' && method === 'POST') ||
+    // Confirmación/cancelación de citas por enlace público (autenticadas por token propio, sin sesión)
+    (path === '/api/reservations/confirm' && method === 'POST') ||
+    (path === '/api/reservations/cancel' && method === 'POST')
   ) {
     return next();
   }
@@ -227,6 +232,8 @@ app.use('/prescriptions/*', requireActiveSubscription);
 app.use('/clinical/*', requireActiveSubscription);
 app.use('/whatsapp-messages/*', requireActiveSubscription);
 app.use('/whatsapp-campaigns/*', requireActiveSubscription);
+// Campañas WhatsApp: funcionalidad del plan Premium (WhatsApp Web básico queda en Base)
+app.use('/whatsapp-campaigns/*', requireFeature('whatsapp_campaigns'));
 app.use('/integrations/whatsapp/*', requireActiveSubscription);
 app.use('/receptionists/*', requireActiveSubscription);
 app.use('/professionals/*', requireActiveSubscription);
@@ -263,6 +270,8 @@ app.route('/professionals', professionalsRoutes);
 app.route('/receptionists', receptionistsRoutes);
 app.route('/consent-document', consentDocumentRoutes);
 app.route('/appointments', appointmentsRoutes);
+// Rutas públicas de confirmación de citas por token (sin auth ni suscripción)
+app.route('/reservations', reservationActionsRoutes);
 app.route('/notifications', notificationsRoutes);
 app.route('/messages', messagesRoutes);
 app.route('/support', supportRoutes);

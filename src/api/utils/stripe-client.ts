@@ -9,6 +9,9 @@ function getStripeSecret(): string {
   return key;
 }
 
+/** Timeout de las llamadas a Stripe: un cuelgue del proveedor no debe retener el Worker. */
+const STRIPE_TIMEOUT_MS = 10_000;
+
 function encodeParams(params: Record<string, string | number | boolean | undefined>): string {
   const search = new URLSearchParams();
   for (const [k, v] of Object.entries(params)) {
@@ -29,6 +32,7 @@ export async function stripePost<T = Record<string, unknown>>(
       'Content-Type': 'application/x-www-form-urlencoded',
     },
     body: encodeParams(params),
+    signal: AbortSignal.timeout(STRIPE_TIMEOUT_MS),
   });
   const data = (await res.json()) as T & { error?: { message?: string } };
   if (!res.ok) {
@@ -41,6 +45,7 @@ export async function stripePost<T = Record<string, unknown>>(
 export async function stripeGet<T = Record<string, unknown>>(path: string): Promise<T> {
   const res = await fetch(`https://api.stripe.com/v1${path}`, {
     headers: { Authorization: `Bearer ${getStripeSecret()}` },
+    signal: AbortSignal.timeout(STRIPE_TIMEOUT_MS),
   });
   const data = (await res.json()) as T & { error?: { message?: string } };
   if (!res.ok) {
@@ -66,6 +71,16 @@ export function getAppBaseUrl(): string {
   ).replace(/\/$/, '');
 }
 
+/** Extrae el URL base desde la request actual (detecta host, protocolo dinámicamente). */
+export function getRequestBaseUrl(requestUrl: string): string {
+  try {
+    const url = new URL(requestUrl);
+    return `${url.protocol}//${url.host}`;
+  } catch {
+    return getAppBaseUrl();
+  }
+}
+
 export interface StripeCheckoutSession {
   id: string;
   url: string | null;
@@ -83,7 +98,7 @@ export interface StripeSubscription {
   cancel_at_period_end: boolean;
   metadata?: Record<string, string>;
   items?: {
-    data: Array<{ id: string; price: { id: string } }>;
+    data: Array<{ id: string; price: { id: string }; quantity?: number }>;
   };
 }
 
@@ -94,6 +109,8 @@ export async function createCheckoutSession(opts: {
   successUrl: string;
   cancelUrl: string;
   metadata: Record<string, string>;
+  /** Línea adicional (p. ej. podólogos extra por asiento). */
+  extraLineItem?: { priceId: string; quantity: number } | null;
 }): Promise<StripeCheckoutSession> {
   const params: Record<string, string | number | boolean | undefined> = {
     mode: 'subscription',
@@ -103,6 +120,10 @@ export async function createCheckoutSession(opts: {
     cancel_url: opts.cancelUrl,
     allow_promotion_codes: 'true',
   };
+  if (opts.extraLineItem && opts.extraLineItem.quantity > 0) {
+    params['line_items[1][price]'] = opts.extraLineItem.priceId;
+    params['line_items[1][quantity]'] = opts.extraLineItem.quantity;
+  }
   for (const [key, value] of Object.entries(opts.metadata)) {
     params[`subscription_data[metadata][${key}]`] = value;
     params[`metadata[${key}]`] = value;
@@ -197,14 +218,47 @@ export async function retrieveSubscription(subscriptionId: string): Promise<Stri
   );
 }
 
+/**
+ * Fija la cantidad del ítem de asientos extra en una suscripción activa (con prorrateo).
+ * quantity 0 elimina el ítem; sin ítem previo y quantity > 0 lo crea.
+ */
+export async function setSubscriptionSeatQuantity(
+  subscriptionId: string,
+  opts: { existingItemId: string | null; priceId: string; quantity: number }
+): Promise<StripeSubscription> {
+  const params: Record<string, string | number | boolean | undefined> = {
+    proration_behavior: 'create_prorations',
+  };
+  if (opts.existingItemId) {
+    params['items[0][id]'] = opts.existingItemId;
+    if (opts.quantity <= 0) {
+      params['items[0][deleted]'] = 'true';
+    } else {
+      params['items[0][quantity]'] = opts.quantity;
+    }
+  } else {
+    if (opts.quantity <= 0) {
+      return retrieveSubscription(subscriptionId);
+    }
+    params['items[0][price]'] = opts.priceId;
+    params['items[0][quantity]'] = opts.quantity;
+  }
+  return stripePost<StripeSubscription>(`/subscriptions/${subscriptionId}`, params);
+}
+
 export async function updateSubscriptionPrice(
   subscriptionId: string,
   subscriptionItemId: string,
-  newPriceId: string
+  newPriceId: string,
+  metadata?: Record<string, string>
 ): Promise<StripeSubscription> {
-  return stripePost<StripeSubscription>(`/subscriptions/${subscriptionId}`, {
+  const params: Record<string, string | number | boolean | undefined> = {
     'items[0][id]': subscriptionItemId,
     'items[0][price]': newPriceId,
     proration_behavior: 'create_prorations',
-  });
+  };
+  for (const [key, value] of Object.entries(metadata ?? {})) {
+    params[`metadata[${key}]`] = value;
+  }
+  return stripePost<StripeSubscription>(`/subscriptions/${subscriptionId}`, params);
 }

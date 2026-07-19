@@ -5,6 +5,7 @@ import { usePermissions } from "../../hooks/use-permissions";
 import { useSidebarNavItems } from "../../hooks/use-sidebar-nav-items";
 import { LanguageSwitcher } from "../language-switcher";
 import { UserAvatar } from "../ui/user-avatar";
+import { PremiumLockIcon } from "../premium/premium-upsell";
 
 interface SidebarProps {
   isOpen: boolean;
@@ -133,7 +134,10 @@ export const Sidebar = ({
                     }`}
                   >
                     {item.icon}
-                    <span className="font-medium text-sm">{item.label}</span>
+                    <span className="font-medium text-sm flex-1">{item.label}</span>
+                    {item.locked && (
+                      <PremiumLockIcon className="w-3.5 h-3.5 shrink-0 opacity-60" />
+                    )}
                   </Link>
                 </li>
               ))}

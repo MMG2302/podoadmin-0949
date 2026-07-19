@@ -45,6 +45,62 @@ export async function createNotifications(inputs: CreateNotificationInput[]): Pr
   }
 }
 
+/**
+ * Recepcionistas habilitados que tienen asignado al podólogo dado
+ * (assignedPodiatristIds es un JSON array en la fila del recepcionista).
+ */
+export async function getReceptionistUserIdsForPodiatrist(podiatristUserId: string): Promise<string[]> {
+  const rows = await database
+    .select({
+      userId: createdUsers.userId,
+      assignedPodiatristIds: createdUsers.assignedPodiatristIds,
+      isEnabled: createdUsers.isEnabled,
+    })
+    .from(createdUsers)
+    .where(eq(createdUsers.role, 'receptionist'));
+
+  const result: string[] = [];
+  for (const row of rows) {
+    if (row.isEnabled === false || !row.assignedPodiatristIds) continue;
+    try {
+      const ids = JSON.parse(row.assignedPodiatristIds) as unknown;
+      if (Array.isArray(ids) && ids.includes(podiatristUserId)) {
+        result.push(row.userId);
+      }
+    } catch {
+      /* JSON inválido: ignorar */
+    }
+  }
+  return result;
+}
+
+/** Nombre del podólogo para mensajes dirigidos a su recepcionista. */
+async function getPodiatristName(podiatristUserId: string): Promise<string> {
+  const rows = await database
+    .select({ name: createdUsers.name })
+    .from(createdUsers)
+    .where(eq(createdUsers.userId, podiatristUserId))
+    .limit(1);
+  return rows[0]?.name || 'el podólogo';
+}
+
+/**
+ * Replica una notificación de agenda del podólogo hacia sus recepcionistas asignados,
+ * anteponiendo el nombre del doctor para dar contexto.
+ */
+export async function notifyAssignedReceptionists(
+  podiatristUserId: string,
+  input: Omit<CreateNotificationInput, 'userId'>
+): Promise<void> {
+  const receptionistIds = await getReceptionistUserIdsForPodiatrist(podiatristUserId);
+  if (receptionistIds.length === 0) return;
+  const podiatristName = await getPodiatristName(podiatristUserId);
+  const message = `[${podiatristName}] ${input.message}`;
+  await createNotifications(
+    receptionistIds.map((userId) => ({ ...input, userId, message }))
+  );
+}
+
 export interface AppointmentNotificationContext {
   podiatristUserId: string;
   actorUserId: string;
@@ -83,20 +139,45 @@ export async function notifyPodiatristAboutAppointment(ctx: AppointmentNotificat
         ? `Se te ha reasignado una cita programada el ${dateLabel}${ctx.notes ? ` - ${ctx.notes}` : ''}`
         : `Tienes una nueva cita programada el ${dateLabel}${ctx.notes ? ` - ${ctx.notes}` : ''}`;
 
+  const metadata = {
+    appointmentDate: ctx.date,
+    reason: ctx.notes || undefined,
+    fromUserId: ctx.actorUserId,
+    fromUserName: ctx.actorName,
+    patientId: ctx.patientId || undefined,
+    patientName: patientLabel || undefined,
+  };
+
   await createNotification({
     userId: ctx.podiatristUserId,
     type: 'appointment',
     title,
     message,
-    metadata: {
-      appointmentDate: ctx.date,
-      reason: ctx.notes || undefined,
-      fromUserId: ctx.actorUserId,
-      fromUserName: ctx.actorName,
-      patientId: ctx.patientId || undefined,
-      patientName: patientLabel || undefined,
-    },
+    metadata,
   });
+
+  // El recepcionista asignado también gestiona la agenda: replicar la notificación
+  // (sin incluir al actor si él mismo es el recepcionista que creó la cita).
+  await notifyAssignedReceptionistsExcept(ctx.podiatristUserId, ctx.actorUserId, {
+    type: 'appointment',
+    title,
+    message,
+    metadata,
+  });
+}
+
+async function notifyAssignedReceptionistsExcept(
+  podiatristUserId: string,
+  excludeUserId: string | null,
+  input: Omit<CreateNotificationInput, 'userId'>
+): Promise<void> {
+  const receptionistIds = (await getReceptionistUserIdsForPodiatrist(podiatristUserId)).filter(
+    (id) => id !== excludeUserId
+  );
+  if (receptionistIds.length === 0) return;
+  const podiatristName = await getPodiatristName(podiatristUserId);
+  const message = `[${podiatristName}] ${input.message}`;
+  await createNotifications(receptionistIds.map((userId) => ({ ...input, userId, message })));
 }
 
 export interface PatientReassignmentNotificationContext {

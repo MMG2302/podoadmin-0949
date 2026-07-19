@@ -7,6 +7,7 @@ import {
   checkTenantRateLimit,
 } from '../utils/action-rate-limit';
 import { getClientIP, getIPWhitelist, isIPWhitelisted } from '../utils/ip-tracking';
+import { logger } from '../utils/logger';
 
 const MUTATING_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
 
@@ -34,9 +35,20 @@ function globalTier(
 function rateLimitResponse(
   c: { header: (name: string, value: string) => void; json: (body: unknown, status: number) => Response },
   retryAfterSeconds: number | undefined,
-  scope: 'ip' | 'tenant'
+  scope: 'ip' | 'tenant',
+  meta?: { path?: string; method?: string; tier?: string; userId?: string }
 ) {
   const retry = retryAfterSeconds ?? 60;
+  // Log de seguridad: peticiones que exceden el rate limit (sin datos sensibles).
+  logger.warn({
+    event: 'rate_limit_exceeded',
+    scope,
+    retryAfterSeconds: retry,
+    path: meta?.path,
+    method: meta?.method,
+    tier: meta?.tier,
+    userId: meta?.userId,
+  });
   c.header('Retry-After', String(retry));
   const message =
     scope === 'tenant'
@@ -74,14 +86,23 @@ export const globalRateLimitMiddleware = createMiddleware(async (c, next) => {
 
   const burst = await checkGlobalBurstRateLimit(clientIP);
   if (!burst.allowed) {
-    return rateLimitResponse(c, burst.retryAfterSeconds, 'ip');
+    return rateLimitResponse(c, burst.retryAfterSeconds, 'ip', {
+      path,
+      method: c.req.method,
+      tier: 'burst',
+    });
   }
 
   const user = c.get('user');
   const tier = globalTier(user, isMutatingMethod(c.req.method));
   const global = await checkGlobalIPRateLimit(clientIP, tier);
   if (!global.allowed) {
-    return rateLimitResponse(c, global.retryAfterSeconds, 'ip');
+    return rateLimitResponse(c, global.retryAfterSeconds, 'ip', {
+      path,
+      method: c.req.method,
+      tier,
+      userId: user?.userId,
+    });
   }
 
   return next();
@@ -110,7 +131,12 @@ export const tenantRateLimitMiddleware = createMiddleware(async (c, next) => {
   const tier = isMutatingMethod(c.req.method) ? 'write' : 'read';
   const tenant = await checkTenantRateLimit(tenantKey, tier);
   if (!tenant.allowed) {
-    return rateLimitResponse(c, tenant.retryAfterSeconds, 'tenant');
+    return rateLimitResponse(c, tenant.retryAfterSeconds, 'tenant', {
+      path,
+      method: c.req.method,
+      tier,
+      userId: user.userId,
+    });
   }
 
   return next();

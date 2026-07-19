@@ -378,6 +378,8 @@ export const appointmentsListQuerySchema = clinicalListPaginationSchema.extend({
     .string()
     .regex(/^\d{4}-\d{2}-\d{2}$/, 'Fecha inválida (YYYY-MM-DD)')
     .optional(),
+  // "1" para incluir citas canceladas (el calendario las muestra en gris)
+  includeCancelled: z.enum(['1', 'true']).optional(),
 });
 
 /** Query: exportación ICS / vista previa agenda */

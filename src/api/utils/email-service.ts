@@ -11,6 +11,9 @@
 
 import { escapeHtml } from './sanitization';
 
+/** Timeout de llamadas al proveedor de email: un cuelgue no debe retener el Worker. */
+const EMAIL_TIMEOUT_MS = 8_000;
+
 interface EmailOptions {
   to: string;
   subject: string;
@@ -54,6 +57,7 @@ class ResendEmailService implements EmailService {
           html: options.html,
           text: options.text || options.html.replace(/<[^>]*>/g, ''),
         }),
+        signal: AbortSignal.timeout(EMAIL_TIMEOUT_MS),
       });
 
       if (!response.ok) {
@@ -91,6 +95,7 @@ class SendGridEmailService implements EmailService {
     try {
       const response = await fetch('https://api.sendgrid.com/v3/mail/send', {
         method: 'POST',
+        signal: AbortSignal.timeout(EMAIL_TIMEOUT_MS),
         headers: {
           'Authorization': `Bearer ${this.apiKey}`,
           'Content-Type': 'application/json',

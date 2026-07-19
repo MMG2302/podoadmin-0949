@@ -4,6 +4,7 @@ import { hasActiveSystemAccess, isNavPathAllowedWithoutPayment } from "../lib/sy
 import { useLanguage } from "../contexts/language-context";
 import { usePermissions } from "./use-permissions";
 import { useNavVisibility } from "./use-nav-visibility";
+import { useEntitlements, type FeatureKey } from "./use-entitlements";
 
 export type SidebarNavItem = {
   path: string;
@@ -11,6 +12,10 @@ export type SidebarNavItem = {
   icon: React.ReactNode;
   permission: string;
   roles: readonly string[];
+  /** Feature del plan Premium que desbloquea este ítem (si aplica). */
+  premiumFeature?: FeatureKey;
+  /** true cuando el plan actual no incluye la feature: se muestra con candado. */
+  locked?: boolean;
 };
 
 export function useSidebarNavItems() {
@@ -23,6 +28,7 @@ export function useSidebarNavItems() {
     canViewWhatsAppWeb,
     isReceptionist,
   } = usePermissions();
+  const { has: hasFeature } = useEntitlements();
 
   const navItems = useMemo((): SidebarNavItem[] => {
     if (!user) return [];
@@ -136,6 +142,7 @@ export function useSidebarNavItems() {
         ),
         permission: "manage_sessions",
         roles: ["clinic_admin", "podiatrist"],
+        premiumFeature: "clinical_tools",
       },
       {
         path: "/whatsapp-campaigns",
@@ -147,6 +154,7 @@ export function useSidebarNavItems() {
         ),
         permission: "view_whatsapp_web",
         roles: ["clinic_admin", "podiatrist", "receptionist"],
+        premiumFeature: "whatsapp_campaigns",
       },
       {
         path: "/whatsapp-messages",
@@ -209,16 +217,23 @@ export function useSidebarNavItems() {
 
   const permittedItems = useMemo(() => {
     if (!user) return [];
-    return navItems.filter((item) => {
-      const roleAllowed = item.roles.includes(user.role);
-      if (!roleAllowed) return false;
-      if (!hasActiveSystemAccess(user) && !isNavPathAllowedWithoutPayment(item.path)) return false;
-      if (item.path === "/whatsapp-campaigns" || item.path === "/whatsapp-messages") {
-        return canViewWhatsAppWeb;
-      }
-      return hasPermission(item.permission as Parameters<typeof hasPermission>[0]);
-    });
-  }, [navItems, user, hasPermission, canViewWhatsAppMessages, canViewWhatsAppWeb, isReceptionist]);
+    return navItems
+      .filter((item) => {
+        const roleAllowed = item.roles.includes(user.role);
+        if (!roleAllowed) return false;
+        if (!hasActiveSystemAccess(user) && !isNavPathAllowedWithoutPayment(item.path)) return false;
+        if (item.path === "/whatsapp-campaigns" || item.path === "/whatsapp-messages") {
+          return canViewWhatsAppWeb;
+        }
+        return hasPermission(item.permission as Parameters<typeof hasPermission>[0]);
+      })
+      // Ítems Premium siguen visibles en plan Base, pero marcados con candado (upsell).
+      .map((item) =>
+        item.premiumFeature && !hasFeature(item.premiumFeature)
+          ? { ...item, locked: true }
+          : item
+      );
+  }, [navItems, user, hasPermission, canViewWhatsAppMessages, canViewWhatsAppWeb, isReceptionist, hasFeature]);
 
   const visibleItems = useMemo(() => {
     const filtered = permittedItems.filter((item) => navVisibility[item.path] !== false);

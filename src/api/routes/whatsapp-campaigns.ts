@@ -95,9 +95,16 @@ campaignsRoutes.post('/:id/send', async (c) => {
 
   let sent = 0;
   let failed = 0;
+  // Cache del país por clínica: evita una consulta D1 por paciente (N+1) en el bucle de envío.
+  const countryByClinic = new Map<string, Awaited<ReturnType<typeof getCountryForClinic>>>();
   for (const p of patientRows) {
     try {
-      const phoneCountry = await getCountryForClinic(p.clinicId);
+      const clinicKey = p.clinicId ?? '';
+      let phoneCountry = countryByClinic.get(clinicKey);
+      if (phoneCountry === undefined) {
+        phoneCountry = await getCountryForClinic(p.clinicId);
+        countryByClinic.set(clinicKey, phoneCountry);
+      }
       const phoneE164 = normalizePhoneE164(p.phone, phoneCountry);
       if (!phoneE164) {
         failed++;

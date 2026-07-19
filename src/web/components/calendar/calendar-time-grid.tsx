@@ -29,9 +29,18 @@ export type CalendarTimedBlock = {
   meta?: string;
   /** Iniciales del podólogo cuando comparte color con otro. */
   badge?: string;
+  /** Cita cancelada: se pinta en gris y tachada (el horario queda libre). */
+  muted?: boolean;
   canEdit?: boolean;
   onClick?: () => void;
   href?: string;
+};
+
+const MUTED_BLOCK_STYLE: PodiatristColorStyle = {
+  bg: "bg-gray-100",
+  border: "border-gray-300",
+  text: "text-gray-500",
+  dot: "bg-gray-400",
 };
 
 export type CalendarUntimedBlock = {
@@ -76,12 +85,15 @@ function TimedEventBlock({
   const clamped = clampEventToGrid(layout.startMinutes, layout.durationMinutes);
   if (!clamped) return null;
 
+  const effectiveStyle = block.muted ? MUTED_BLOCK_STYLE : style;
   const top = eventTopPx(clamped.startMinutes);
   const height = eventHeightPx(clamped.durationMinutes);
   const widthPct = 100 / layout.totalColumns;
   const leftPct = layout.column * widthPct;
 
-  const className = `absolute rounded-md border px-1.5 py-1 overflow-hidden text-left transition-shadow ${style.bg} ${style.border} ${style.text} ${
+  const className = `absolute rounded-md border px-1.5 py-1 overflow-hidden text-left transition-shadow ${effectiveStyle.bg} ${effectiveStyle.border} ${effectiveStyle.text} ${
+    block.muted ? "border-dashed opacity-80" : ""
+  } ${
     block.canEdit || block.href ? "cursor-pointer hover:shadow-md hover:z-10" : "cursor-default"
   }`;
 
@@ -91,7 +103,9 @@ function TimedEventBlock({
         {block.badge && <InitialsBadge label={block.badge} />}
         <span className="truncate min-w-0">{block.meta ?? ""}</span>
       </p>
-      <p className="text-xs font-medium leading-tight truncate">{block.title}</p>
+      <p className={`text-xs font-medium leading-tight truncate ${block.muted ? "line-through" : ""}`}>
+        {block.title}
+      </p>
       {block.subtitle && (
         <p className="text-[10px] opacity-80 leading-tight truncate">{block.subtitle}</p>
       )}
@@ -240,7 +254,10 @@ function DayTimeColumn({
               top: (hour - CALENDAR_START_HOUR) * CALENDAR_HOUR_HEIGHT_PX,
               height: CALENDAR_HOUR_HEIGHT_PX,
             }}
-          />
+          >
+            {/* Subdivisión de media hora */}
+            <div className="absolute left-0 right-0 top-1/2 border-t border-dashed border-brand-border/30" />
+          </div>
         ))}
         {laidOut.map((layout) => {
           const block = blockMap.get(layout.id);
@@ -351,6 +368,64 @@ export function CalendarWeekTimeGrid({
             orderedPodiatristIds={orderedPodiatristIds}
           />
         ))}
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Vista día "por recursos": una columna por podólogo con su color, para
+ * clinic admin y recepcionista con varios doctores a cargo.
+ */
+export function CalendarDayResourceGrid({
+  podiatrists,
+  getTimedBlocksForPodiatrist,
+  getUntimedBlocksForPodiatrist,
+  orderedPodiatristIds,
+  header,
+}: {
+  podiatrists: PodiatristOption[];
+  getTimedBlocksForPodiatrist: (podiatristId: string) => CalendarTimedBlock[];
+  getUntimedBlocksForPodiatrist: (podiatristId: string) => CalendarUntimedBlock[];
+  orderedPodiatristIds: string[];
+  header?: ReactNode;
+}) {
+  const sorted = sortPodiatristsByName(podiatrists);
+  return (
+    <div>
+      {header}
+      <div className="border border-brand-border rounded-lg overflow-hidden mt-4 overflow-x-auto">
+        <div style={{ minWidth: `${3.5 + sorted.length * 9}rem` }}>
+          <div className="flex border-b border-brand-border">
+            <div className="shrink-0 w-12 sm:w-14 border-r border-brand-border bg-brand-canvas/40" />
+            {sorted.map((p) => {
+              const style = getPodiatristStyle(p.id, orderedPodiatristIds);
+              return (
+                <div
+                  key={p.id}
+                  className={`flex-1 min-w-0 px-2 py-2 border-r last:border-r-0 border-brand-border ${style.bg}`}
+                >
+                  <span className={`flex items-center justify-center gap-1.5 text-xs font-medium ${style.text}`}>
+                    <span className={`w-2 h-2 rounded-full shrink-0 ${style.dot}`} />
+                    <span className="truncate">{p.name}</span>
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+          <div className="flex max-h-[min(70vh,52rem)] overflow-y-auto overscroll-contain">
+            <TimeColumn />
+            {sorted.map((p) => (
+              <DayTimeColumn
+                key={p.id}
+                timedBlocks={getTimedBlocksForPodiatrist(p.id)}
+                untimedBlocks={getUntimedBlocksForPodiatrist(p.id)}
+                colorByPodiatrist={true}
+                orderedPodiatristIds={orderedPodiatristIds}
+              />
+            ))}
+          </div>
+        </div>
       </div>
     </div>
   );

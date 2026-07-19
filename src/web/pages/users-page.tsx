@@ -1134,6 +1134,7 @@ const UsersPage = () => {
   const [accountMenuPosition, setAccountMenuPosition] = useState<{ top?: number; bottom?: number; left: number } | null>(null);
   const [clinicsForLimits, setClinicsForLimits] = useState<Array<{
     clinicId: string; clinicName: string; clinicCode: string; podiatristLimit: number | null; podiatristCount: number;
+    effectivePlanTier: "base" | "premium" | null;
   }>>([]);
   const [clinicLimitEdits, setClinicLimitEdits] = useState<Record<string, string>>({});
   const [clinicLimitSaving, setClinicLimitSaving] = useState<string | null>(null);
@@ -1174,6 +1175,7 @@ const UsersPage = () => {
           clinicCode: string;
           podiatristLimit?: number | null;
           podiatristCount?: number;
+          effectivePlanTier?: "base" | "premium" | null;
         }>;
       }>("/clinics");
       if (r.success && Array.isArray(r.data?.clinics)) {
@@ -1183,6 +1185,7 @@ const UsersPage = () => {
           clinicCode: c.clinicCode,
           podiatristLimit: c.podiatristLimit ?? null,
           podiatristCount: c.podiatristCount ?? 0,
+          effectivePlanTier: c.effectivePlanTier ?? null,
         }));
         setClinics(
           mapped.map((c) => ({
@@ -1313,9 +1316,9 @@ const UsersPage = () => {
 
   // Mapa clínica -> info (para mostrar nombre y límite en cada fila)
   const clinicMap = useMemo(() => {
-    const m = new Map<string, { clinicName: string; clinicCode: string; podiatristLimit: number | null; podiatristCount: number }>();
+    const m = new Map<string, { clinicName: string; clinicCode: string; podiatristLimit: number | null; podiatristCount: number; effectivePlanTier: "base" | "premium" | null }>();
     for (const c of clinicsForLimits) {
-      m.set(c.clinicId, { clinicName: c.clinicName, clinicCode: c.clinicCode, podiatristLimit: c.podiatristLimit, podiatristCount: c.podiatristCount });
+      m.set(c.clinicId, { clinicName: c.clinicName, clinicCode: c.clinicCode, podiatristLimit: c.podiatristLimit, podiatristCount: c.podiatristCount, effectivePlanTier: c.effectivePlanTier });
     }
     return m;
   }, [clinicsForLimits]);
@@ -1937,6 +1940,36 @@ const UsersPage = () => {
     })();
   };
 
+  /** Override de plan (Base/Premium) por super_admin sobre clínica o podólogo independiente. */
+  const handleManagePlanTier = (user: User) => {
+    const subjectType = user.clinicId ? "clinic" : "user";
+    const subjectId = user.clinicId ?? user.id;
+    (async () => {
+      const cur = await api.get<{ success?: boolean; effectiveTier?: "base" | "premium" | null }>(
+        `/subscriptions/subject/${subjectType}/${subjectId}`
+      );
+      const current = cur.data?.effectiveTier ?? "auto";
+      const raw = window.prompt(t.premium.planPrompt.replace("{current}", current), current);
+      if (raw === null) return;
+      const value = raw.trim().toLowerCase();
+      if (value !== "auto" && value !== "base" && value !== "premium") {
+        alert(t.premium.planInvalid);
+        return;
+      }
+      const tierOverride = value === "auto" ? null : value;
+      const res = await api.post<{ success?: boolean; effectiveTier?: string; message?: string }>(
+        "/subscriptions/set-tier",
+        { subjectType, subjectId, tierOverride }
+      );
+      if (res.success) {
+        alert(t.premium.planUpdated.replace("{tier}", res.data?.effectiveTier ?? value));
+        void loadClinics();
+      } else {
+        alert(res.message || res.error || t.premium.planInvalid);
+      }
+    })();
+  };
+
   const handleSavePodiatristLimit = async (clinicId: string) => {
     const raw = clinicLimitEdits[clinicId];
     setClinicLimitSaving(clinicId);
@@ -2381,9 +2414,22 @@ const UsersPage = () => {
                         const hasChange = editVal !== (info?.podiatristLimit === null ? "" : String(info?.podiatristLimit ?? ""));
                         if (info) {
                           const display = `${info.podiatristCount}/${info.podiatristLimit === null ? "∞" : info.podiatristLimit}`;
+                          const tierBadge = info.effectivePlanTier ? (
+                            <span
+                              className={`text-[10px] font-medium px-1.5 py-0.5 rounded-full whitespace-nowrap ${
+                                info.effectivePlanTier === "premium"
+                                  ? "bg-brand-ink text-brand-ink-fg"
+                                  : "border border-gray-300 text-gray-500"
+                              }`}
+                              title={t.premium.menuManagePlan}
+                            >
+                              {info.effectivePlanTier === "premium" ? t.premium.badge : t.premium.baseBadge}
+                            </span>
+                          ) : null;
                           if (isClinicAdminRow) {
                             return (
                               <div className="flex items-center gap-2">
+                                {tierBadge}
                                 <input
                                   type="number"
                                   inputMode="numeric"
@@ -2406,7 +2452,12 @@ const UsersPage = () => {
                               </div>
                             );
                           }
-                          return <span className="text-xs text-gray-600">{display}</span>;
+                          return (
+                            <span className="text-xs text-gray-600 inline-flex items-center gap-1.5">
+                              {display}
+                              {tierBadge}
+                            </span>
+                          );
                         }
                         return <span className="text-xs text-gray-400" title={t.usersPage.table.clinicMissing}>-</span>;
                       })() : (
@@ -2599,6 +2650,15 @@ const UsersPage = () => {
                   {t.usersPage.menu.authorizeCooldown}
                 </button>
               )}
+              {isSuperAdmin &&
+                ((u.role === "clinic_admin" && u.clinicId) || (u.role === "podiatrist" && !u.clinicId)) && (
+                  <button
+                    onClick={() => { handleManagePlanTier(u); closeMenu(); }}
+                    className="w-full text-left px-4 py-2 text-sm text-purple-700 hover:bg-purple-50"
+                  >
+                    {t.premium.menuManagePlan}
+                  </button>
+                )}
               <div className="border-t border-gray-100 my-1" />
               <button onClick={() => { handleDeleteUser(u); closeMenu(); }} className="w-full text-left px-4 py-2 text-sm text-semantic-error hover:bg-semantic-error-bg">{t.usersPage.menu.deleteAccount}</button>
             </div>

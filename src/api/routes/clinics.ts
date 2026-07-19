@@ -1,5 +1,5 @@
 import { Hono } from 'hono';
-import { eq, and } from 'drizzle-orm';
+import { eq, and, inArray } from 'drizzle-orm';
 import { requireAuth } from '../middleware/auth';
 import { requireRole } from '../middleware/authorization';
 import { database } from '../database';
@@ -20,6 +20,7 @@ import {
   parseEditCooldownScopes,
 } from '../utils/edit-cooldown';
 import { validateData, createClinicSchema } from '../utils/validation';
+import { effectiveTier, getSubscriptionsBatch } from '../utils/subscription-service';
 
 const clinicsRoutes = new Hono();
 
@@ -65,22 +66,29 @@ clinicsRoutes.get('/', requireRole('super_admin', 'admin'), async (c) => {
         if (p.clinicId) podiatristCounts[p.clinicId] = (podiatristCounts[p.clinicId] ?? 0) + 1;
       }
     }
+    const subsByClinic = await getSubscriptionsBatch(clinicIds, []);
     return c.json({
       success: true,
-      clinics: rows.map((r) => ({
-        clinicId: r.clinicId,
-        clinicName: r.clinicName,
-        clinicCode: r.clinicCode,
-        ownerId: r.ownerId,
-        phone: r.phone ?? '',
-        email: r.email ?? '',
-        address: r.address ?? '',
-        city: r.city ?? '',
-        postalCode: r.postalCode ?? '',
-        countryCode: r.countryCode ?? 'MX',
-        podiatristLimit: r.podiatristLimit ?? null,
-        podiatristCount: podiatristCounts[r.clinicId] ?? 0,
-      })),
+      clinics: rows.map((r) => {
+        const sub = subsByClinic.get(`clinic:${r.clinicId}`) ?? null;
+        return {
+          clinicId: r.clinicId,
+          clinicName: r.clinicName,
+          clinicCode: r.clinicCode,
+          ownerId: r.ownerId,
+          phone: r.phone ?? '',
+          email: r.email ?? '',
+          address: r.address ?? '',
+          city: r.city ?? '',
+          postalCode: r.postalCode ?? '',
+          countryCode: r.countryCode ?? 'MX',
+          podiatristLimit: r.podiatristLimit ?? null,
+          podiatristCount: podiatristCounts[r.clinicId] ?? 0,
+          planTier: sub?.planTier ?? null,
+          planTierOverride: sub?.planTierOverride ?? null,
+          effectivePlanTier: sub ? effectiveTier(sub) : null,
+        };
+      }),
     });
   } catch (error) {
     console.error('Error listando clínicas:', error);
@@ -236,6 +244,8 @@ clinicsRoutes.get('/:clinicId', async (c) => {
   const canEdit = canEditClinic(user, clinicId);
   const podiatristCount = (await database.select().from(createdUsersTable).where(and(eq(createdUsersTable.clinicId, clinicId), eq(createdUsersTable.role, 'podiatrist')))).length;
   const clinicRow = row as typeof row & { podiatristLimit?: number | null };
+  const { getEffectivePodiatristLimit } = await import('../utils/billing-pricing');
+  const effectivePodiatristLimit = await getEffectivePodiatristLimit(clinicId);
   return c.json({
     success: true,
     clinic: {
@@ -259,6 +269,7 @@ clinicsRoutes.get('/:clinicId', async (c) => {
       consentText: row.consentText ?? '',
       consentTextVersion: row.consentTextVersion ?? 0,
       podiatristLimit: clinicRow.podiatristLimit ?? null,
+      effectivePodiatristLimit,
       podiatristCount,
     },
     ...(canEdit && {
@@ -328,8 +339,13 @@ clinicsRoutes.patch('/:clinicId', async (c) => {
     if (String(updates.consentText || '') !== String(cur?.consentText ?? '')) {
       const newVersion = (cur?.consentTextVersion ?? 0) + 1;
       updates.consentTextVersion = newVersion;
-      // Pacientes que dieron consentimiento a versión antigua: borrar DNI y resetear consentimiento
-      const clinicPatients = await database.select().from(patientsTable).where(eq(patientsTable.clinicId, clinicId));
+      // Pacientes que dieron consentimiento a versión antigua: borrar DNI y resetear consentimiento.
+      // Un UPDATE por lote (no por paciente): atómico por chunk y sin N+1 de escrituras.
+      const clinicPatients = await database
+        .select({ id: patientsTable.id, consent: patientsTable.consent })
+        .from(patientsTable)
+        .where(eq(patientsTable.clinicId, clinicId));
+      const idsToReset: string[] = [];
       for (const p of clinicPatients) {
         let consentedToVersion: number | null = null;
         try {
@@ -337,11 +353,18 @@ clinicsRoutes.patch('/:clinicId', async (c) => {
           consentedToVersion = parsed.consentedToVersion ?? null;
         } catch { /* ignore */ }
         if (consentedToVersion != null && consentedToVersion < newVersion) {
-          await database.update(patientsTable).set({
-            idNumber: '',
-            consent: JSON.stringify({ given: false, date: null, consentedToVersion: null }),
-            updatedAt: new Date().toISOString(),
-          }).where(eq(patientsTable.id, p.id));
+          idsToReset.push(p.id);
+        }
+      }
+      if (idsToReset.length > 0) {
+        const { chunkIds } = await import('../utils/delete-user-cascade');
+        const resetValues = {
+          idNumber: '',
+          consent: JSON.stringify({ given: false, date: null, consentedToVersion: null }),
+          updatedAt: new Date().toISOString(),
+        };
+        for (const chunk of chunkIds(idsToReset)) {
+          await database.update(patientsTable).set(resetValues).where(inArray(patientsTable.id, chunk));
         }
       }
     }

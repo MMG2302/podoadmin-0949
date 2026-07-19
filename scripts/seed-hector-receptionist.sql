@@ -1,4 +1,4 @@
--- Recepcionista mock local: hector.alba.ruiz@gmail.com / podo123
+-- Recepcionista mock local: recepcion@premium.com / podo123
 -- Clínica Premium (clinic_001)
 
 INSERT OR REPLACE INTO created_users (
@@ -9,7 +9,7 @@ INSERT OR REPLACE INTO created_users (
 ) VALUES (
   'user_receptionist_hector',
   'user_receptionist_hector',
-  'hector.alba.ruiz@gmail.com',
+  'recepcion@premium.com',
   'Héctor Alba Ruiz',
   'receptionist',
   'clinic_001',

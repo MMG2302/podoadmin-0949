@@ -17,6 +17,7 @@ import Privacy from "./pages/privacy";
 import GoogleCallbackPage from "./pages/google-callback";
 import Dashboard from "./pages/dashboard";
 import LandingPage from "./pages/landing-page";
+import ReservationActionPage from "./pages/reservation-action-page";
 
 const ProtectedRoute = ({ component: Component, path }: { component: React.ComponentType; path?: string }) => {
   const { user, isLoading } = useAuth();
@@ -127,6 +128,13 @@ function AppRoutes() {
       </Route>
       {/* Landing siempre accesible (también con sesión), p. ej. desde el logo del sidebar */}
       <Route path="/landing" component={LandingPage} />
+      {/* Confirmación/cancelación de cita por enlace de WhatsApp (público, autenticado por token) */}
+      <Route path="/reserva/confirmar">
+        <ReservationActionPage mode="confirm" />
+      </Route>
+      <Route path="/reserva/cancelar">
+        <ReservationActionPage mode="cancel" />
+      </Route>
       <Route path="/">
         <HomeRoute />
       </Route>

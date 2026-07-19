@@ -1,5 +1,6 @@
 import type { CheckoutViewMode } from "../../types/checkout-analytics";
 import { useLanguage } from "../../contexts/language-context";
+import { PremiumLockIcon } from "../premium/premium-upsell";
 
 function SegmentedTabs<T extends string>({
   value,
@@ -8,7 +9,7 @@ function SegmentedTabs<T extends string>({
 }: {
   value: T;
   onChange: (v: T) => void;
-  options: { id: T; label: string }[];
+  options: { id: T; label: string; locked?: boolean }[];
 }) {
   return (
     <div className="-mx-1 overflow-x-auto overscroll-x-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
@@ -18,12 +19,13 @@ function SegmentedTabs<T extends string>({
             key={opt.id}
             type="button"
             onClick={() => onChange(opt.id)}
-            className={`shrink-0 px-3 sm:px-4 py-2 rounded-md text-sm font-medium transition-colors min-h-[40px] whitespace-nowrap ${
+            className={`shrink-0 px-3 sm:px-4 py-2 rounded-md text-sm font-medium transition-colors min-h-[40px] whitespace-nowrap inline-flex items-center gap-1.5 ${
               value === opt.id
                 ? "bg-brand-ink text-brand-ink-fg"
                 : "text-brand-muted hover:text-brand-ink"
             }`}
           >
+            {opt.locked && <PremiumLockIcon />}
             {opt.label}
           </button>
         ))}
@@ -37,16 +39,22 @@ type Props = {
   onViewChange: (view: CheckoutViewMode) => void;
   /** Si se omite, muestra todas las pestañas. */
   modes?: CheckoutViewMode[];
+  /** Pestañas visibles pero bloqueadas por plan (muestran candado; el panel hace el upsell). */
+  lockedModes?: CheckoutViewMode[];
 };
 
-export function CheckoutViewTabs({ view, onViewChange, modes }: Props) {
+export function CheckoutViewTabs({ view, onViewChange, modes, lockedModes }: Props) {
   const { t } = useLanguage();
   const ids = modes ?? (Object.keys(t.checkout.views) as CheckoutViewMode[]);
   return (
     <SegmentedTabs
       value={view}
       onChange={onViewChange}
-      options={ids.map((id) => ({ id, label: t.checkout.views[id] }))}
+      options={ids.map((id) => ({
+        id,
+        label: t.checkout.views[id],
+        locked: lockedModes?.includes(id) ?? false,
+      }))}
     />
   );
 }

@@ -70,20 +70,25 @@ stripeWebhook.post('/', async (c) => {
           subjectId = existing.subjectId;
         }
         if (!subjectType || !subjectId) break;
-        await upsertSubscriptionFromStripe(
-          subjectType,
-          subjectId,
-          {
-            id: sub.id,
-            customer: String(sub.customer),
-            status: event.type === 'customer.subscription.deleted' ? 'canceled' : sub.status,
-            current_period_start: sub.current_period_start,
-            current_period_end: sub.current_period_end,
-            cancel_at_period_end: sub.cancel_at_period_end,
-            metadata: sub.metadata,
-          },
-          String(sub.customer)
-        );
+        // En 'updated' se recupera la suscripción completa (con items) para
+        // sincronizar los asientos extra; si falla, se usa el payload del evento.
+        let stripePayload = {
+          id: sub.id,
+          customer: String(sub.customer),
+          status: event.type === 'customer.subscription.deleted' ? 'canceled' : sub.status,
+          current_period_start: sub.current_period_start,
+          current_period_end: sub.current_period_end,
+          cancel_at_period_end: sub.cancel_at_period_end,
+          metadata: sub.metadata,
+        } as Parameters<typeof upsertSubscriptionFromStripe>[2];
+        if (event.type === 'customer.subscription.updated') {
+          try {
+            stripePayload = await retrieveSubscription(sub.id);
+          } catch {
+            // payload del evento como fallback
+          }
+        }
+        await upsertSubscriptionFromStripe(subjectType, subjectId, stripePayload, String(sub.customer));
         await invalidateBillingSubjectAccessCache(subjectType, subjectId);
         break;
       }

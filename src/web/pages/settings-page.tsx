@@ -641,7 +641,7 @@ const SettingsPage = () => {
   const handleSaveLogo = async () => {
     if (!canUploadLogo || !logoPreview || !user?.clinicId || isLogoBlocked) return;
     try {
-      const res = await api.put<{ success?: boolean; logoBlockedUntil?: string }>(`/clinics/${user.clinicId}/logo`, { logo: logoPreview });
+      const res = await api.put<{ success?: boolean; logo?: string | null; logoBlockedUntil?: string; message?: string }>(`/clinics/${user.clinicId}/logo`, { logo: logoPreview });
       if (res.success) {
         const savedLogo =
           res.data?.logo ??
@@ -651,30 +651,37 @@ const SettingsPage = () => {
         setLogoPreview(null);
         if (fileInputRef.current) fileInputRef.current.value = "";
         setLogoBlockedUntil(res.data?.logoBlockedUntil ?? null);
+        setLogoError(null);
         setSaved(true);
         setTimeout(() => setSaved(false), 2000);
         window.dispatchEvent(new CustomEvent("clinic-logo:updated"));
       } else if (res.error === "cooldown" && res.data?.logoBlockedUntil) {
         setLogoBlockedUntil(res.data.logoBlockedUntil);
         setLogoError(res.message ?? t.settings.logo.errors.cooldown);
+      } else {
+        // Antes se ignoraba en silencio: el usuario creía haber guardado y al recargar no persistía.
+        setLogoError(res.message ?? res.error ?? t.settings.logo.errors.saveFailed);
       }
     } catch {
-      // No marcar como guardado si falla
+      setLogoError(t.settings.logo.errors.saveFailed);
     }
   };
 
   const handleRemoveLogo = async () => {
     if (!canUploadLogo || !user?.clinicId || isLogoBlocked) return;
-    const res = await api.delete<{ success?: boolean; logoBlockedUntil?: string }>(`/clinics/${user.clinicId}/logo`);
+    const res = await api.delete<{ success?: boolean; logoBlockedUntil?: string; message?: string }>(`/clinics/${user.clinicId}/logo`);
     if (res.success) {
       setCurrentLogo(null);
       setLogoPreview(null);
       if (fileInputRef.current) fileInputRef.current.value = "";
       setLogoBlockedUntil(res.data?.logoBlockedUntil ?? null);
+      setLogoError(null);
       window.dispatchEvent(new CustomEvent("clinic-logo:updated"));
     } else if (res.error === "cooldown" && res.data?.logoBlockedUntil) {
       setLogoBlockedUntil(res.data.logoBlockedUntil);
       setLogoError(res.message ?? t.settings.logo.errors.cooldown);
+    } else {
+      setLogoError(res.message ?? res.error ?? t.settings.logo.errors.saveFailed);
     }
   };
 

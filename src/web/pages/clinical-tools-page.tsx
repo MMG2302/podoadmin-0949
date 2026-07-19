@@ -5,6 +5,8 @@ import { useAuth } from "../contexts/auth-context";
 import { useLanguage } from "../contexts/language-context";
 import { usePermissions } from "../hooks/use-permissions";
 import { useClinicalLayout } from "../hooks/use-clinical-layout";
+import { useEntitlements } from "../hooks/use-entitlements";
+import { PremiumUpsellBanner } from "../components/premium/premium-upsell";
 import { api } from "../lib/api-client";
 import {
   semanticAlertErrorClass,
@@ -82,6 +84,8 @@ const ClinicalToolsPage = () => {
   const [creating, setCreating] = useState(false);
 
   const canUse = isPodiatrist || isClinicAdmin;
+  const { has: hasFeature } = useEntitlements();
+  const hasClinicalTools = hasFeature("clinical_tools");
   const hasClinic = Boolean(user?.clinicId);
   const pageTitle = t.clinicalTools.title;
 
@@ -114,8 +118,8 @@ const ClinicalToolsPage = () => {
   }, [tab, templates.length, inventory.length, referrals.length]);
 
   useEffect(() => {
-    if (canUse) void loadAll();
-  }, [canUse, loadAll, tab]);
+    if (canUse && hasClinicalTools) void loadAll();
+  }, [canUse, hasClinicalTools, loadAll, tab]);
 
   useEffect(() => {
     if (isClinicAdmin) setTemplateScope("clinic");
@@ -125,6 +129,17 @@ const ClinicalToolsPage = () => {
     return (
       <MainLayout title={pageTitle}>
         <p className="text-brand-muted">{t.clinicalTools.denied}</p>
+      </MainLayout>
+    );
+  }
+
+  if (!hasClinicalTools) {
+    return (
+      <MainLayout title={pageTitle}>
+        <PremiumUpsellBanner
+          title={t.premium.clinicalToolsLockedTitle}
+          body={t.premium.clinicalToolsLockedBody}
+        />
       </MainLayout>
     );
   }

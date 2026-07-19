@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { MainLayout } from "../components/layout/main-layout";
 import { usePermissions } from "../hooks/use-permissions";
+import { useEntitlements } from "../hooks/use-entitlements";
+import { PremiumUpsellBanner } from "../components/premium/premium-upsell";
 import { useAuth } from "../contexts/auth-context";
 import { useLanguage } from "../contexts/language-context";
 import { api } from "../lib/api-client";
@@ -39,6 +41,8 @@ interface Campaign {
 const WhatsAppCampaignsPage = () => {
   const { t } = useLanguage();
   const { canViewWhatsAppWeb, isReceptionist, canConfigureWhatsApp } = usePermissions();
+  const { has: hasFeature } = useEntitlements();
+  const hasCampaigns = hasFeature("whatsapp_campaigns");
   const { user } = useAuth();
   const tenantCountry = useTenantCountry(user);
   const c = t.whatsapp.campaigns;
@@ -95,10 +99,10 @@ const WhatsAppCampaignsPage = () => {
   }, [isReceptionist]);
 
   useEffect(() => {
-    if (!canViewWhatsAppWeb) return;
+    if (!canViewWhatsAppWeb || !hasCampaigns) return;
     void load();
     void loadPatients();
-  }, [canViewWhatsAppWeb, load, loadPatients]);
+  }, [canViewWhatsAppWeb, hasCampaigns, load, loadPatients]);
 
   const previewRecipients = useMemo(
     () =>
@@ -131,6 +135,17 @@ const WhatsAppCampaignsPage = () => {
     return (
       <MainLayout title={c.title}>
         <p className="text-brand-muted">{c.denied}</p>
+      </MainLayout>
+    );
+  }
+
+  if (!hasCampaigns) {
+    return (
+      <MainLayout title={c.title}>
+        <PremiumUpsellBanner
+          title={t.premium.campaignsLockedTitle}
+          body={t.premium.campaignsLockedBody}
+        />
       </MainLayout>
     );
   }

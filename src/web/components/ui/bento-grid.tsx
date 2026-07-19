@@ -1,5 +1,6 @@
 import * as React from "react";
 import { Link } from "wouter";
+import { Lock } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useDashboardLogo } from "@/hooks/use-dashboard-logo";
 import { useLanguage } from "@/contexts/language-context";
@@ -69,6 +70,9 @@ interface BentoStatCardProps {
   hint?: string;
   cta?: string;
   className?: string;
+  /** Métrica del plan Premium no incluida en el plan actual: candado en lugar del valor. */
+  locked?: boolean;
+  lockedLabel?: string;
 }
 
 const BentoStatCard = ({
@@ -79,6 +83,8 @@ const BentoStatCard = ({
   hint,
   cta,
   className,
+  locked,
+  lockedLabel,
 }: BentoStatCardProps) => (
   <Link href={href}>
     <div
@@ -102,9 +108,16 @@ const BentoStatCard = ({
           </div>
           <div>
             <p className="text-sm text-brand-muted">{name}</p>
-            <p className="mt-1 text-2xl sm:text-3xl font-semibold tabular-nums tracking-tight text-brand-ink transition-colors dark:group-hover:text-white/90">
-              {value}
-            </p>
+            {locked ? (
+              <p className="mt-1 flex items-center gap-1.5 text-lg sm:text-xl font-semibold tracking-tight text-brand-muted">
+                <Lock className="h-4 w-4 shrink-0" strokeWidth={2} aria-hidden />
+                {lockedLabel ?? "Premium"}
+              </p>
+            ) : (
+              <p className="mt-1 text-2xl sm:text-3xl font-semibold tabular-nums tracking-tight text-brand-ink transition-colors dark:group-hover:text-white/90">
+                {value}
+              </p>
+            )}
           </div>
         </div>
         <p className="mt-4 flex items-center text-sm font-medium text-brand-ink opacity-0 transition-opacity group-hover:opacity-100 md:opacity-100">
@@ -195,6 +208,8 @@ export type StatItem = {
   value: string;
   path: string;
   hint?: string;
+  /** Métrica Premium no incluida en el plan actual: candado y enlace a planes. */
+  locked?: boolean;
 };
 
 export type ActionItem = {
@@ -251,9 +266,11 @@ const RoleDashboardBento = ({
             Icon={stat.Icon}
             name={stat.label}
             value={stat.value}
-            href={stat.path}
+            href={stat.locked ? "/settings?tab=billing" : stat.path}
             hint={stat.hint}
-            cta={viewMoreCta}
+            cta={stat.locked ? t.premium.upsellCta : viewMoreCta}
+            locked={stat.locked}
+            lockedLabel={t.premium.badge}
           />
         ))}
         {actionItems.map((action, index) => (

@@ -9,7 +9,14 @@ import {
 } from '../../lib/phone-country';
 
 export const DEFAULT_WHATSAPP_WEB_TEMPLATE =
-  'Hola {{nombre}}, le recordamos su cita el {{fecha}} a las {{hora}}. {{nota}}';
+  'Hola {{nombre}}, le recordamos su cita el {{fecha}} a las {{hora}}. {{nota}}\n' +
+  'Para confirmar, haz clic aquí: {{confirmar}}\n' +
+  'Para cancelar, haz clic aquí: {{cancelar}}';
+
+/** ¿La plantilla usa los enlaces de confirmación por token ({{confirmar}}/{{cancelar}})? */
+export function templateHasConfirmationLinks(template: string): boolean {
+  return /\{\{(confirmar|cancelar)\}\}/i.test(template);
+}
 
 const TEMPLATE_STORAGE_PREFIX = 'podoadmin_wa_template_';
 

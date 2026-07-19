@@ -449,8 +449,12 @@ authRoutes.post('/login', async (c) => {
     const accessCookie = formatCookie('access-token', accessToken, accessCookieOptions);
     const refreshCookie = formatCookie('refresh-token', refreshToken, refreshCookieOptions);
 
-    // Establecer cookies en la respuesta
-    c.header('Set-Cookie', [accessCookie, refreshCookie].join(', '));
+    // Establecer cookies en la respuesta.
+    // IMPORTANTE: cada cookie va en su PROPIO header Set-Cookie. Unirlas con ", " en un solo
+    // header es inválido: el navegador no separa por comas y descartaría la 2ª cookie
+    // (refresh-token), rompiendo la renovación de sesión (bucle de login, sobre todo por HTTPS/túnel).
+    c.header('Set-Cookie', accessCookie, { append: true });
+    c.header('Set-Cookie', refreshCookie, { append: true });
 
     // Limpiar intentos fallidos en login exitoso (solo si no está whitelisted)
     if (!isWhitelisted) {
@@ -518,6 +522,8 @@ authRoutes.post('/login', async (c) => {
         systemAccess: access.granted,
         accessReason: access.reason,
         accessMessage: access.granted ? undefined : access.message,
+        planTier: access.planTier,
+        entitlements: access.entitlements,
         avatarUrl: resolveAvatarForClient(dbUser?.avatarUrl ?? null, matchedUser.user.id, dbUser?.updatedAt),
       },
       trialEligibility,
@@ -577,8 +583,9 @@ authRoutes.post('/logout', requireAuth, async (c) => {
   const deleteAccessCookie = createDeleteCookie('access-token');
   const deleteRefreshCookie = createDeleteCookie('refresh-token');
 
-  // Establecer cookies vacías que expiran inmediatamente
-  c.header('Set-Cookie', [deleteAccessCookie, deleteRefreshCookie].join(', '));
+  // Establecer cookies vacías que expiran inmediatamente (una por header Set-Cookie)
+  c.header('Set-Cookie', deleteAccessCookie, { append: true });
+  c.header('Set-Cookie', deleteRefreshCookie, { append: true });
 
   return c.json({ success: true, message: 'Sesión cerrada correctamente' });
 });
@@ -631,6 +638,8 @@ authRoutes.get('/verify', requireAuth, async (c) => {
       mustChangePassword: dbUser.mustChangePassword ?? false,
       systemAccess: access.granted,
       accessReason: access.reason,
+      planTier: access.planTier,
+      entitlements: access.entitlements,
       avatarUrl: resolveAvatarForClient(dbUser.avatarUrl ?? null, dbUser.userId, dbUser.updatedAt),
     },
   });
@@ -782,8 +791,9 @@ authRoutes.post('/refresh', async (c) => {
     const accessCookie = formatCookie('access-token', accessToken, accessCookieOptions);
     const refreshCookie = formatCookie('refresh-token', newRefreshToken, refreshCookieOptions);
 
-    // Establecer nuevas cookies
-    c.header('Set-Cookie', [accessCookie, refreshCookie].join(', '));
+    // Establecer nuevas cookies (una por header Set-Cookie; ver nota en /login)
+    c.header('Set-Cookie', accessCookie, { append: true });
+    c.header('Set-Cookie', refreshCookie, { append: true });
 
     return c.json({
       success: true,
@@ -1815,7 +1825,9 @@ authRoutes.post('/google/callback', async (c) => {
     const isProd = isProduction({ NODE_ENV: process.env.NODE_ENV }, c.req.raw.headers);
     const accessCookie = formatCookie('access-token', accessToken, getAccessTokenCookieOptions(isProd));
     const refreshCookie = formatCookie('refresh-token', refreshToken, getRefreshTokenCookieOptions(isProd));
-    c.header('Set-Cookie', [accessCookie, refreshCookie].join(', '));
+    // Una cookie por header Set-Cookie (ver nota en /login)
+    c.header('Set-Cookie', accessCookie, { append: true });
+    c.header('Set-Cookie', refreshCookie, { append: true });
 
     const googleClientIP = getClientIP(c.req.raw.headers);
     const { tryGrantIpTrialForUser } = await import('../utils/ip-trial-service');
@@ -1849,6 +1861,8 @@ authRoutes.post('/google/callback', async (c) => {
         ),
         systemAccess: access.granted,
         accessReason: access.reason,
+        planTier: access.planTier,
+        entitlements: access.entitlements,
       },
     });
   } catch (error) {

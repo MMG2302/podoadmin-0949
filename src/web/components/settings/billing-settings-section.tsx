@@ -28,10 +28,20 @@ interface TrialEligibility {
   expiresAt?: number;
 }
 
+interface PlanOption {
+  tier: "base" | "premium";
+  planKey: string;
+  label: string;
+  description: string;
+  amountUsd: number;
+  stripeConfigured: boolean;
+}
+
 interface PricingOverview {
   subjectType: "clinic" | "user";
   podiatristCount: number;
   podiatristLimit: number;
+  tier?: "base" | "premium";
   plan: {
     planKey: string;
     label: string;
@@ -39,8 +49,16 @@ interface PricingOverview {
     amountUsd: number;
     stripeConfigured: boolean;
   };
+  plans?: {
+    base: PlanOption;
+    premium: PlanOption;
+  };
   atPodiatristLimit: boolean;
   overIncludedPodiatrists: boolean;
+  includedPodiatrists?: number;
+  extraPodiatristSeats?: number;
+  extraSeatPriceUsd?: number;
+  extraSeatStripeConfigured?: boolean;
 }
 
 interface TrialVerification {
@@ -66,6 +84,7 @@ export function BillingSettingsSection() {
   const [message, setMessage] = useState("");
   const [trialEligibility, setTrialEligibility] = useState<TrialEligibility | null>(null);
   const [trialVerification, setTrialVerification] = useState<TrialVerification | null>(null);
+  const [seatsDraft, setSeatsDraft] = useState<number | null>(null);
 
   const params = new URLSearchParams(typeof window !== "undefined" ? window.location.search : "");
   const success = params.get("success");
@@ -82,6 +101,8 @@ export function BillingSettingsSection() {
       canManageBilling?: boolean;
       pricing?: PricingOverview;
       systemAccess?: boolean;
+      planTier?: "base" | "premium";
+      entitlements?: Record<string, boolean>;
       trialEligibility?: TrialEligibility;
       trialVerification?: TrialVerification;
     }>("/subscriptions/me");
@@ -89,13 +110,21 @@ export function BillingSettingsSection() {
       setSubscription(me.data.subscription ?? null);
       setStripeEnabled(Boolean(me.data.stripeEnabled));
       setCanManageBilling(Boolean(me.data.canManageBilling));
-      if (me.data.pricing) setPricing(me.data.pricing);
+      if (me.data.pricing) {
+        setPricing(me.data.pricing);
+        setSeatsDraft(me.data.pricing.extraPodiatristSeats ?? 0);
+      }
       if (me.data.trialEligibility) setTrialEligibility(me.data.trialEligibility);
       else setTrialEligibility(null);
       if (me.data.trialVerification) setTrialVerification(me.data.trialVerification);
       else setTrialVerification(null);
       if (typeof me.data.systemAccess === "boolean") {
-        updateUser({ systemAccess: me.data.systemAccess });
+        // Sincroniza también el plan y sus entitlements (fuente: servidor).
+        updateUser({
+          systemAccess: me.data.systemAccess,
+          ...(me.data.planTier ? { planTier: me.data.planTier } : {}),
+          ...(me.data.entitlements ? { entitlements: me.data.entitlements } : {}),
+        });
       }
     }
     setLoading(false);
@@ -170,16 +199,55 @@ export function BillingSettingsSection() {
     }
   };
 
-  const startCheckout = async () => {
+  const startCheckout = async (tier: "base" | "premium" = "base") => {
     setBusy(true);
     setMessage("");
-    const res = await api.post<{ url?: string; message?: string }>("/subscriptions/stripe/checkout");
+    const res = await api.post<{ url?: string; message?: string }>("/subscriptions/stripe/checkout", {
+      tier,
+    });
     setBusy(false);
     if (res.success && res.data?.url) {
       window.location.href = res.data.url;
       return;
     }
     setMessage(res.message || res.error || t.settings.billing.checkoutError);
+  };
+
+  const upgradeToPremium = async () => {
+    setBusy(true);
+    setMessage("");
+    const res = await api.post<{ success?: boolean; message?: string }>(
+      "/subscriptions/stripe/upgrade",
+      { tier: "premium" }
+    );
+    setBusy(false);
+    if (res.success) {
+      setMessage(t.premium.upgradeSuccess);
+      load();
+      return;
+    }
+    setMessage(res.message || res.error || t.settings.billing.checkoutError);
+  };
+
+  const saveSeats = async () => {
+    if (seatsDraft == null) return;
+    setBusy(true);
+    setMessage("");
+    const res = await api.post<{ pricing?: PricingOverview; message?: string }>(
+      "/subscriptions/stripe/seats",
+      { seats: seatsDraft }
+    );
+    setBusy(false);
+    if (res.success) {
+      setMessage(t.settings.billing.extraSeatsSaved);
+      if (res.data?.pricing) {
+        setPricing(res.data.pricing);
+        setSeatsDraft(res.data.pricing.extraPodiatristSeats ?? seatsDraft);
+      }
+      load();
+      return;
+    }
+    setMessage(res.message || res.error || t.settings.billing.extraSeatsError);
   };
 
   const openPortal = async () => {
@@ -307,9 +375,20 @@ export function BillingSettingsSection() {
         <div className="bg-brand-surface rounded-xl border border-brand-border p-4 sm:p-6 space-y-4">
           <div>
             <p className="text-sm text-brand-muted">{t.settings.billing.subscriptionTitle}</p>
-            <p className="text-base sm:text-lg font-semibold text-brand-ink">
+            <p className="text-base sm:text-lg font-semibold text-brand-ink flex items-center gap-2 flex-wrap">
               {pricing?.plan.label ??
                 (pricing?.subjectType === "clinic" ? t.settings.billing.clinicPlan : t.settings.billing.independentPlan)}
+              {pricing?.tier && (
+                <span
+                  className={`text-[11px] font-medium px-2 py-0.5 rounded-full ${
+                    pricing.tier === "premium"
+                      ? "bg-brand-ink text-brand-ink-fg"
+                      : "border border-brand-border text-brand-muted"
+                  }`}
+                >
+                  {pricing.tier === "premium" ? t.premium.badge : t.premium.baseBadge}
+                </span>
+              )}
             </p>
             {pricing?.plan.description && (
               <p className="text-xs text-brand-muted mt-1">{pricing.plan.description}</p>
@@ -324,6 +403,99 @@ export function BillingSettingsSection() {
                   {pricing.podiatristCount} / {pricing.podiatristLimit}
                 </strong>
               </p>
+              {pricing.includedPodiatrists != null && (
+                <p className="text-xs text-brand-muted">
+                  {t.settings.billing.extraSeatsBreakdown
+                    .replace("{included}", String(pricing.includedPodiatrists))
+                    .replace("{seats}", String(pricing.extraPodiatristSeats ?? 0))}
+                </p>
+              )}
+            </div>
+          )}
+
+          {pricing?.subjectType === "clinic" && canManageBilling && (
+            <div className="rounded-xl border border-brand-border p-4 space-y-3">
+              <p className="text-sm font-semibold text-brand-ink">
+                {t.settings.billing.extraSeatsTitle}
+              </p>
+              <p className="text-xs text-brand-muted">
+                {t.settings.billing.extraSeatsHint
+                  .replace("{included}", String(pricing.includedPodiatrists ?? ""))
+                  .replace("{price}", String(pricing.extraSeatPriceUsd ?? 10))}
+              </p>
+              {!subscription?.hasStripeBilling ? (
+                <p className="text-sm text-brand-muted">{t.settings.billing.extraSeatsNeedSub}</p>
+              ) : (
+                (() => {
+                  const included = pricing.includedPodiatrists ?? 0;
+                  const currentSeats = pricing.extraPodiatristSeats ?? 0;
+                  const draft = seatsDraft ?? currentSeats;
+                  const minSeats = Math.max(0, pricing.podiatristCount - included);
+                  const price = pricing.extraSeatPriceUsd ?? 10;
+                  return (
+                    <div className="space-y-3">
+                      <div className="flex items-center gap-3">
+                        <span className="text-sm text-brand-muted">
+                          {t.settings.billing.extraSeatsLabel}
+                        </span>
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            disabled={busy || draft <= minSeats}
+                            onClick={() => setSeatsDraft(Math.max(minSeats, draft - 1))}
+                            className="w-9 h-9 rounded-lg border border-brand-border text-brand-ink font-semibold disabled:opacity-40"
+                            aria-label="-"
+                          >
+                            −
+                          </button>
+                          <span className="w-8 text-center font-semibold text-brand-ink">{draft}</span>
+                          <button
+                            type="button"
+                            disabled={busy || draft >= 200}
+                            onClick={() => setSeatsDraft(draft + 1)}
+                            className="w-9 h-9 rounded-lg border border-brand-border text-brand-ink font-semibold disabled:opacity-40"
+                            aria-label="+"
+                          >
+                            +
+                          </button>
+                        </div>
+                      </div>
+                      <p className="text-xs text-brand-muted">
+                        {t.settings.billing.extraSeatsTotal
+                          .replace("{seats}", String(draft))
+                          .replace("{price}", String(price))
+                          .replace("{total}", String(draft * price))}
+                      </p>
+                      {draft !== currentSeats && (
+                        <button
+                          type="button"
+                          disabled={busy}
+                          onClick={saveSeats}
+                          className="w-full py-2.5 bg-brand-ink text-brand-ink-fg rounded-lg text-sm font-medium disabled:opacity-50 min-h-[44px]"
+                        >
+                          {t.settings.billing.extraSeatsSave}
+                        </button>
+                      )}
+                    </div>
+                  );
+                })()
+              )}
+            </div>
+          )}
+
+          {pricing?.subjectType === "user" && canManageBilling && (
+            <div className="rounded-xl border border-brand-border p-4 space-y-2">
+              <p className="text-sm font-semibold text-brand-ink">
+                {t.settings.billing.growthTitle}
+              </p>
+              <p className="text-xs text-brand-muted">{t.settings.billing.growthHint}</p>
+              <p className="text-xs text-brand-muted">{t.settings.billing.growthClinicBullet}</p>
+              <a
+                href={`mailto:soporte@podoadmin.com?subject=${encodeURIComponent("Cambio a plan Clínica - PodoAdmin")}`}
+                className="inline-flex items-center justify-center w-full py-2.5 rounded-lg border border-brand-border text-sm font-medium text-brand-ink hover:bg-brand-canvas min-h-[44px]"
+              >
+                {t.settings.billing.growthContact}
+              </a>
             </div>
           )}
 
@@ -357,23 +529,61 @@ export function BillingSettingsSection() {
           {stripeEnabled && canManageBilling && (
             <div className="flex flex-col gap-2 pt-2">
               {!subscription?.hasStripeBilling ? (
-                <button
-                  type="button"
-                  disabled={busy || !pricing?.plan.stripeConfigured || checkoutBlocked}
-                  onClick={startCheckout}
-                  className="w-full py-2.5 bg-brand-ink text-brand-ink-fg rounded-lg text-sm font-medium disabled:opacity-50 min-h-[44px]"
-                >
-                  {t.settings.billing.subscribe.replace("{amount}", String(pricing?.plan.amountUsd ?? ""))}
-                </button>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  {(["base", "premium"] as const).map((tierKey) => {
+                    const option = pricing?.plans?.[tierKey];
+                    const label = tierKey === "premium" ? t.premium.planPremium : t.premium.planBase;
+                    const configured = option ? option.stripeConfigured : Boolean(pricing?.plan.stripeConfigured);
+                    return (
+                      <div
+                        key={tierKey}
+                        className={`rounded-xl border p-4 space-y-2 ${
+                          tierKey === "premium" ? "border-brand-ink" : "border-brand-border"
+                        }`}
+                      >
+                        <p className="text-sm font-semibold text-brand-ink">{label}</p>
+                        {option?.description && (
+                          <p className="text-xs text-brand-muted">{option.description}</p>
+                        )}
+                        <button
+                          type="button"
+                          disabled={busy || !configured || checkoutBlocked}
+                          onClick={() => startCheckout(tierKey)}
+                          className="w-full py-2.5 bg-brand-ink text-brand-ink-fg rounded-lg text-sm font-medium disabled:opacity-50 min-h-[44px]"
+                        >
+                          {t.settings.billing.subscribe.replace(
+                            "{amount}",
+                            String(option?.amountUsd ?? pricing?.plan.amountUsd ?? "")
+                          )}
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
               ) : (
-                <button
-                  type="button"
-                  disabled={busy}
-                  onClick={openPortal}
-                  className="w-full py-2.5 bg-brand-ink text-brand-ink-fg rounded-lg text-sm font-medium disabled:opacity-50 min-h-[44px]"
-                >
-                  {t.settings.billing.manageStripe}
-                </button>
+                <>
+                  {pricing?.tier === "base" && (
+                    <button
+                      type="button"
+                      disabled={busy || !pricing?.plans?.premium.stripeConfigured}
+                      onClick={upgradeToPremium}
+                      className="w-full py-2.5 bg-brand-ink text-brand-ink-fg rounded-lg text-sm font-medium disabled:opacity-50 min-h-[44px]"
+                    >
+                      {t.premium.upgradeButton}
+                      {pricing?.plans?.premium
+                        ? ` — $${pricing.plans.premium.amountUsd} USD/mes`
+                        : ""}
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    disabled={busy}
+                    onClick={openPortal}
+                    className="w-full py-2.5 bg-brand-ink text-brand-ink-fg rounded-lg text-sm font-medium disabled:opacity-50 min-h-[44px]"
+                  >
+                    {t.settings.billing.manageStripe}
+                  </button>
+                </>
               )}
             </div>
           )}

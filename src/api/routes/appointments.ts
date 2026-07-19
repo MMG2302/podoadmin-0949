@@ -32,7 +32,10 @@ import {
   getSessionAccessDeniedReason,
   isClinicAdminWithoutClinic,
 } from '../utils/tenant-isolation';
-import { assertReceptionistAgendaSlot, getAgendaOutsideHoursAdvisory } from '../utils/agenda-settings';const appointmentsRoutes = new Hono();
+import { assertReceptionistAgendaSlot, getAgendaOutsideHoursAdvisory } from '../utils/agenda-settings';
+import { getRequestBaseUrl } from '../utils/stripe-client';
+
+const appointmentsRoutes = new Hono();
 
 appointmentsRoutes.use('*', requireAuth);
 
@@ -124,6 +127,8 @@ async function hasOverlappingSlot(
   const newEnd = newStart + duration;
 
   for (const row of rows) {
+    // Las citas canceladas liberan el horario: no bloquean nuevas citas.
+    if (row.status === 'cancelled') continue;
     const existingDuration = parseNotes(row.notes).duration;
     const existingStart = timeToMinutes(row.sessionTime);
     const existingEnd = existingStart + existingDuration;
@@ -146,7 +151,7 @@ appointmentsRoutes.get('/', requirePermission('view_patients'), async (c) => {
     if (!queryResult.success) {
       return c.json({ error: 'Parámetros inválidos', message: queryResult.error, issues: queryResult.issues }, 400);
     }
-    const { clinicId, podiatristId, date, from, to } = queryResult.data;
+    const { clinicId, podiatristId, date, from, to, includeCancelled } = queryResult.data;
 
     if (user.role === 'clinic_admin' && clinicId && clinicId !== user.clinicId) {
       return c.json({ error: 'Acceso denegado', message: 'No puedes consultar otra clínica' }, 403);
@@ -180,8 +185,10 @@ appointmentsRoutes.get('/', requirePermission('view_patients'), async (c) => {
     if (date) rows = rows.filter((r) => r.sessionDate === date);
     if (from) rows = rows.filter((r) => r.sessionDate >= from);
     if (to) rows = rows.filter((r) => r.sessionDate <= to);
-    // No devolver citas canceladas (si quedan registros antiguos con status cancelled)
-    rows = rows.filter((r) => r.status !== 'cancelled');
+    // Por defecto no devolver canceladas; el calendario pide includeCancelled=1 para mostrarlas en gris
+    if (!includeCancelled) {
+      rows = rows.filter((r) => r.status !== 'cancelled');
+    }
 
     const appointments = rows.map(mapDbToAppointment);
     return c.json({ success: true, appointments });
@@ -459,6 +466,59 @@ appointmentsRoutes.post('/', requirePermission('manage_appointments'), async (c)
     console.error('Error creando cita:', err);
     const message = err instanceof Error ? err.message : String(err);
     return c.json({ error: 'Error interno', message }, 500);
+  }
+});
+
+/**
+ * POST /api/appointments/:id/confirmation-link
+ * Genera (o reutiliza) el token de confirmación de la cita y devuelve las URLs
+ * públicas para confirmar/cancelar, listas para insertar en el mensaje de WhatsApp.
+ */
+appointmentsRoutes.post('/:id/confirmation-link', requirePermission('manage_appointments'), async (c) => {
+  try {
+    const user = c.get('user')!;
+    const id = sanitizePathParam(c.req.param('id'), 64);
+    if (!id) return c.json({ error: 'ID de cita inválido' }, 400);
+
+    const rows = await database.select().from(appointmentsTable).where(eq(appointmentsTable.id, id)).limit(1);
+    if (!rows.length) return c.json({ error: 'Cita no encontrada' }, 404);
+    const row = rows[0];
+
+    const deny = await getSessionAccessDeniedReason(user, row);
+    if (deny) return c.json({ error: 'Acceso denegado', message: 'No tienes permiso sobre esta cita' }, 403);
+
+    if (row.status === 'cancelled' || row.status === 'completed') {
+      return c.json(
+        { error: 'appointment_closed', message: 'La cita está cancelada o completada; no admite confirmación.' },
+        409
+      );
+    }
+
+    const now = new Date().toISOString();
+    let token = row.confirmToken;
+    if (!token) {
+      token = crypto.randomUUID().replace(/-/g, '');
+      await database
+        .update(appointmentsTable)
+        .set({ confirmToken: token, confirmationSentAt: now, updatedAt: now })
+        .where(eq(appointmentsTable.id, id));
+    } else {
+      await database
+        .update(appointmentsTable)
+        .set({ confirmationSentAt: now, updatedAt: now })
+        .where(eq(appointmentsTable.id, id));
+    }
+
+    const base = getRequestBaseUrl(c.req.url);
+    return c.json({
+      success: true,
+      token,
+      confirmUrl: `${base}/reserva/confirmar?token=${token}`,
+      cancelUrl: `${base}/reserva/cancelar?token=${token}`,
+    });
+  } catch (err) {
+    console.error('Error generando enlace de confirmación:', err);
+    return c.json({ error: 'Error interno' }, 500);
   }
 });
 

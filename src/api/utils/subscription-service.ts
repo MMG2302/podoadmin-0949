@@ -6,6 +6,8 @@ import { subscriptions, createdUsers, clinics } from '../database/schema';
 
 import type { StripeSubscription } from './stripe-client';
 import { allowDevTrialAccess, hasSystemAccess } from './access-control';
+import { isPlanTier, planTierFromPlanKey, type PlanTier } from './plan-entitlements';
+import { resolveExtraPodiatristPriceId } from './billing-pricing';
 
 const MONTH_MS = 30 * 24 * 60 * 60 * 1000;
 
@@ -44,6 +46,14 @@ export interface SubscriptionPublic {
   billingInterval?: 'month' | 'year' | null;
   podiatristTier?: 'standard' | 'expanded' | null;
   podiatristCountBilled?: number | null;
+  extraPodiatristSeats: number;
+  planTier: PlanTier;
+  planTierOverride: PlanTier | null;
+}
+
+/** Tier efectivo: el override manual de super_admin gana sobre el tier facturado. */
+export function effectiveTier(sub: Pick<SubscriptionPublic, 'planTier' | 'planTierOverride'>): PlanTier {
+  return sub.planTierOverride ?? sub.planTier;
 }
 
 
@@ -94,6 +104,9 @@ function mapRow(row: typeof subscriptions.$inferSelect): SubscriptionPublic {
     billingInterval: (row.billingInterval as 'month' | 'year') || null,
     podiatristTier: (row.podiatristTier as 'standard' | 'expanded') || null,
     podiatristCountBilled: row.podiatristCountBilled ?? null,
+    extraPodiatristSeats: Math.max(0, row.extraPodiatristSeats ?? 0),
+    planTier: isPlanTier(row.planTier) ? row.planTier : 'base',
+    planTierOverride: isPlanTier(row.planTierOverride) ? row.planTierOverride : null,
   };
 }
 
@@ -323,6 +336,26 @@ export async function upsertSubscriptionFromStripe(
 
   const existing = await getSubscriptionRowBySubject(subjectType, subjectId);
 
+  // Tier: derivado del planKey de la metadata; si el evento no lo trae, se preserva
+  // el tier existente (nunca degradar en silencio). plan_tier_override no se toca.
+  const planTier: PlanTier = meta.planKey
+    ? planTierFromPlanKey(meta.planKey)
+    : isPlanTier(existing?.planTier)
+      ? existing.planTier
+      : 'base';
+
+  // Asientos extra: sincronizados desde el ítem Stripe del precio por podólogo adicional.
+  // Sin datos de items en el evento → se preserva el valor actual.
+  const seatPriceId = resolveExtraPodiatristPriceId();
+  const extraSeats: number | null = stripeSub.items
+    ? Math.max(
+        0,
+        (seatPriceId &&
+          stripeSub.items.data?.find((it) => it.price?.id === seatPriceId)?.quantity) ||
+          0
+      )
+    : null;
+
   if (!existing) {
     const id = crypto.randomUUID();
     await database.insert(subscriptions).values({
@@ -341,6 +374,8 @@ export async function upsertSubscriptionFromStripe(
       billingInterval,
       podiatristTier,
       podiatristCountBilled,
+      extraPodiatristSeats: extraSeats ?? 0,
+      planTier,
       createdAt: iso,
       updatedAt: iso,
     });
@@ -357,6 +392,8 @@ export async function upsertSubscriptionFromStripe(
         billingInterval,
         podiatristTier,
         podiatristCountBilled,
+        ...(extraSeats != null ? { extraPodiatristSeats: extraSeats } : {}),
+        planTier,
         updatedAt: iso,
       })
       .where(eq(subscriptions.id, existing.id));
@@ -423,6 +460,8 @@ export async function ensureSubscriptionForUser(
     planId: 'monthly_standard',
     currentPeriodStart: now,
     currentPeriodEnd: useDevTrial ? now + TRIAL_PERIOD_MS : now,
+    // Trials prueban el producto completo; al pagar, el checkout decide el tier.
+    planTier: useDevTrial ? 'premium' : 'base',
     createdAt: iso,
     updatedAt: iso,
   });
@@ -439,7 +478,12 @@ export async function isUserSubscriptionActive(userId: string, role: string): Pr
 
 
 
-export async function renewSubscription(subjectType: 'clinic' | 'user', subjectId: string, months = 1): Promise<SubscriptionPublic> {
+export async function renewSubscription(
+  subjectType: 'clinic' | 'user',
+  subjectId: string,
+  months = 1,
+  tier?: PlanTier
+): Promise<SubscriptionPublic> {
 
   const rows = await database
 
@@ -479,6 +523,8 @@ export async function renewSubscription(subjectType: 'clinic' | 'user', subjectI
 
       currentPeriodEnd: periodEnd,
 
+      planTier: tier ?? 'base',
+
       createdAt: iso,
 
       updatedAt: iso,
@@ -498,6 +544,8 @@ export async function renewSubscription(subjectType: 'clinic' | 'user', subjectI
         currentPeriodStart: now,
 
         currentPeriodEnd: periodEnd,
+
+        ...(tier ? { planTier: tier } : {}),
 
         updatedAt: iso,
 
@@ -524,6 +572,51 @@ export async function renewSubscription(subjectType: 'clinic' | 'user', subjectI
 }
 
 
+
+/** Persiste los asientos extra de podólogo (tras confirmar el cambio en Stripe). */
+export async function setExtraPodiatristSeats(
+  subjectType: 'clinic' | 'user',
+  subjectId: string,
+  seats: number
+): Promise<boolean> {
+  const row = await getSubscriptionRowBySubject(subjectType, subjectId);
+  if (!row) return false;
+  await database
+    .update(subscriptions)
+    .set({ extraPodiatristSeats: Math.max(0, Math.floor(seats)), updatedAt: new Date().toISOString() })
+    .where(eq(subscriptions.id, row.id));
+  return true;
+}
+
+/** Actualiza el tier facturado (tras upgrade/downgrade confirmado en Stripe). */
+export async function setPlanTier(
+  subjectType: 'clinic' | 'user',
+  subjectId: string,
+  tier: PlanTier
+): Promise<boolean> {
+  const row = await getSubscriptionRowBySubject(subjectType, subjectId);
+  if (!row) return false;
+  await database
+    .update(subscriptions)
+    .set({ planTier: tier, updatedAt: new Date().toISOString() })
+    .where(eq(subscriptions.id, row.id));
+  return true;
+}
+
+/** Override manual de super_admin (null = volver al tier facturado). */
+export async function setPlanTierOverride(
+  subjectType: 'clinic' | 'user',
+  subjectId: string,
+  tierOverride: PlanTier | null
+): Promise<boolean> {
+  const row = await getSubscriptionRowBySubject(subjectType, subjectId);
+  if (!row) return false;
+  await database
+    .update(subscriptions)
+    .set({ planTierOverride: tierOverride, updatedAt: new Date().toISOString() })
+    .where(eq(subscriptions.id, row.id));
+  return true;
+}
 
 export async function setStripeCustomerOnSubject(
 
@@ -558,6 +651,8 @@ export async function setStripeCustomerOnSubject(
       currentPeriodStart: now,
 
       currentPeriodEnd: now + MONTH_MS,
+
+      planTier: 'premium',
 
       stripeCustomerId,
 

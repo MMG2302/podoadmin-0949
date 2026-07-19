@@ -26,7 +26,10 @@ export async function checkKvWindowRateLimit(
   windowMs: number
 ): Promise<ActionRateLimitResult> {
   const now = Date.now();
-  const ttlSeconds = Math.max(1, Math.ceil(windowMs / 1000) + 1);
+  // Cloudflare KV exige expirationTtl >= 60. La ventana real la controla windowStart
+  // (guardado en el valor), así que un TTL mayor solo retrasa la eviction del registro.
+  // Con TTL < 60 el put lanza 400 → en producción el catch fail-closed bloquearía TODA la API.
+  const ttlSeconds = Math.max(60, Math.ceil(windowMs / 1000) + 1);
 
   try {
     const existing = await kv.get<KvRateLimitWindow>(key, 'json');

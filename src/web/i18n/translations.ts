@@ -701,6 +701,7 @@ export interface Translations {
     legendSessionCompleted: string;
     legendSessionDraft: string;
     legendCancelled: string;
+    cancelledSlotHint: string;
     formTitleNew: string;
     formTitleEdit: string;
     patientLabel: string;
@@ -960,6 +961,19 @@ export interface Translations {
       subscribe: string;
       manageStripe: string;
       clinicManagedByAdmin: string;
+      extraSeatsTitle: string;
+      extraSeatsHint: string;
+      extraSeatsLabel: string;
+      extraSeatsSave: string;
+      extraSeatsSaved: string;
+      extraSeatsNeedSub: string;
+      extraSeatsTotal: string;
+      extraSeatsError: string;
+      extraSeatsBreakdown: string;
+      growthTitle: string;
+      growthHint: string;
+      growthClinicBullet: string;
+      growthContact: string;
     };
     dashboardLogo: {
       title: string;
@@ -1324,6 +1338,55 @@ export interface Translations {
   };
 
   // Contact PodoAdmin / Support (2-way messaging)
+  premium: {
+    badge: string;
+    baseBadge: string;
+    lockedTab: string;
+    upsellTitle: string;
+    upsellBody: string;
+    upsellCta: string;
+    clinicalToolsLockedTitle: string;
+    clinicalToolsLockedBody: string;
+    campaignsLockedTitle: string;
+    campaignsLockedBody: string;
+    agendaAnalyticsLockedBody: string;
+    upgradeButton: string;
+    upgradeSuccess: string;
+    planBase: string;
+    planPremium: string;
+    menuManagePlan: string;
+    planPrompt: string;
+    planInvalid: string;
+    planUpdated: string;
+  };
+
+  reservationAction: {
+    confirmTitle: string;
+    cancelTitle: string;
+    loading: string;
+    greeting: string;
+    confirmQuestion: string;
+    cancelQuestion: string;
+    dateLabel: string;
+    timeLabel: string;
+    clinicLabel: string;
+    podiatristLabel: string;
+    confirmButton: string;
+    cancelButton: string;
+    confirmedOk: string;
+    cancelledOk: string;
+    alreadyConfirmed: string;
+    alreadyCancelled: string;
+    invalidMsg: string;
+    expiredMsg: string;
+    errorGeneric: string;
+    processingConfirm: string;
+    processingCancel: string;
+    changedMindToCancel: string;
+    changedMindToConfirm: string;
+    slotTaken: string;
+  };
+
   support: {
     title: string;
     contactPodoAdmin: string;
@@ -1719,6 +1782,10 @@ export interface Translations {
     yesterday: string;
     justNow: string;
     from: string;
+    to: string;
+    type: string;
+    patient: string;
+    selectedCount: string;
   };
   
   // Messaging (Super Admin)
@@ -1993,6 +2060,7 @@ export interface Translations {
     sessionsCount: string;
     podiatristsLimit: string;
     podiatristsNoLimit: string;
+    podiatristsLimitCta: string;
     createPodiatrist: string;
     colPodiatrist: string;
     colEmail: string;
@@ -2824,6 +2892,7 @@ views: {
       legendSessionCompleted: "Sesión completada",
       legendSessionDraft: "Sesión borrador",
       legendCancelled: "Cancelada",
+      cancelledSlotHint: "En este horario había una cita que fue cancelada. El horario está libre: puedes agendar sin problema.",
       formTitleNew: "Nueva Cita",
       formTitleEdit: "Editar Cita",
       patientLabel: "Paciente",
@@ -2999,7 +3068,7 @@ views: {
         clinicalHistory: "Historia clínica",
         integrations: "Integraciones",
         clinic: "Clínica",
-        billing: "Facturación",
+        billing: "Suscripción",
       },
       settingsScope: {
         appliesClinic: "Aplica a toda la clínica.",
@@ -3041,7 +3110,7 @@ views: {
         save: "Guardar marca de agua",
       },
       billing: {
-        title: "Facturación",
+        title: "Suscripción",
         subscriptionTitle: "Suscripción PodoAdmin",
         independentPlan: "Plan podólogo independiente",
         status: "Estado",
@@ -3070,7 +3139,7 @@ views: {
         stepCard: "2. Tarjeta",
         verifyCard: "Verificar tarjeta (sin cobro hoy)",
         activateMonthTrial: "Activar prueba de 1 mes",
-        overLimit: "Tu clínica tiene {count} podólogos activos, por encima del plan en línea (hasta {limit}). Contacta a PodoAdmin para ampliar tu capacidad y la facturación.",
+        overLimit: "Tu clínica tiene {count} podólogos activos, por encima de los {limit} incluidos, y el cobro de adicionales no está configurado. Contacta a PodoAdmin.",
         loading: "Cargando…",
         clinicPlan: "Plan clínica",
         activePodiatrists: "Podólogos activos:",
@@ -3078,6 +3147,19 @@ views: {
         subscribe: "Suscribirse — ${amount} USD/mes",
         manageStripe: "Gestionar facturación en Stripe",
         clinicManagedByAdmin: "La suscripción de tu clínica la gestiona el administrador de la clínica.",
+        extraSeatsTitle: "Podólogos adicionales",
+        extraSeatsHint: "Tu plan incluye {included} podólogos. Agrega los que necesites por ${price} USD/mes cada uno; el cambio se prorratea en tu factura.",
+        extraSeatsLabel: "Podólogos adicionales",
+        extraSeatsSave: "Actualizar podólogos adicionales",
+        extraSeatsSaved: "Podólogos adicionales actualizados.",
+        extraSeatsNeedSub: "Activa tu suscripción para agregar podólogos adicionales.",
+        extraSeatsTotal: "Adicionales: {seats} × ${price} = ${total} USD/mes",
+        extraSeatsError: "No se pudieron actualizar los podólogos adicionales.",
+        extraSeatsBreakdown: "{included} incluidos en tu plan + {seats} adicionales",
+        growthTitle: "¿Tu consulta crece?",
+        growthHint: "Sube a Premium para desbloquear analíticas, herramientas clínicas avanzadas y campañas de WhatsApp, o pasa a un plan Clínica para sumar podólogos y recepción.",
+        growthClinicBullet: "Plan Clínica: desde $100 USD/mes con 3 podólogos incluidos (6 en Premium) y podólogos adicionales por $10 USD/mes.",
+        growthContact: "Quiero pasar a plan Clínica",
       },
       dashboardLogo: {
         title: "Logo en el panel",
@@ -3440,6 +3522,59 @@ views: {
       },
       supportSenderLabel: "PodoAdmin",
     },
+    premium: {
+      badge: "Premium",
+      baseBadge: "Base",
+      lockedTab: "Disponible en Premium",
+      upsellTitle: "Disponible en el plan Premium",
+      upsellBody: "Las analíticas de ventas, cobros, rentabilidad y agenda están incluidas en el plan Premium. Mejora tu plan para desbloquearlas.",
+      upsellCta: "Ver planes y mejorar",
+      clinicalToolsLockedTitle: "Herramientas clínicas es una función Premium",
+      clinicalToolsLockedBody: "El diseñador de plantillas, el inventario y las derivaciones están incluidos en el plan Premium.",
+      campaignsLockedTitle: "Campañas de WhatsApp es una función Premium",
+      campaignsLockedBody: "Las campañas y la reactivación de pacientes por WhatsApp están incluidas en el plan Premium. WhatsApp Web básico sigue disponible en tu plan.",
+      agendaAnalyticsLockedBody: "La analítica de demanda, ocupación y cierres diarios está incluida en el plan Premium.",
+      upgradeButton: "Mejorar a Premium",
+      upgradeSuccess: "Tu plan se actualizó correctamente.",
+      planBase: "Plan Base",
+      planPremium: "Plan Premium",
+      menuManagePlan: "Plan (Base/Premium)",
+      planPrompt: "Plan actual: {current}. Escribe \"base\", \"premium\" o \"auto\" (auto = según lo pagado en Stripe):",
+      planInvalid: "Valor inválido. Usa \"base\", \"premium\" o \"auto\".",
+      planUpdated: "Plan actualizado: {tier}.",
+    },
+
+    reservationAction: {
+      confirmTitle: "Confirmar cita",
+      cancelTitle: "Cancelar cita",
+      loading: "Cargando tu reserva…",
+      greeting: "Hola {name},",
+      confirmQuestion: "¿Confirmas tu asistencia a esta cita?",
+      cancelQuestion: "¿Seguro que quieres cancelar esta cita?",
+      dateLabel: "Fecha",
+      timeLabel: "Hora",
+      clinicLabel: "Clínica",
+      podiatristLabel: "Profesional",
+      confirmButton: "Confirmar asistencia",
+      cancelButton: "Cancelar cita",
+      confirmedOk: "¡Cita confirmada! Te esperamos.",
+      cancelledOk: "Tu cita ha sido cancelada. Gracias por avisar.",
+      alreadyConfirmed: "Esta cita ya estaba confirmada. ¡Te esperamos!",
+      alreadyCancelled: "Esta cita ya estaba cancelada.",
+      invalidMsg: "Este enlace no es válido o ya no está disponible.",
+      expiredMsg: "Esta cita ya pasó; el enlace no está disponible.",
+      errorGeneric: "No se pudo procesar tu solicitud. Intenta de nuevo en unos minutos.",
+      processingConfirm: "Confirmando tu cita…",
+      processingCancel: "Cancelando tu cita…",
+      changedMindToCancel: "¿Cambiaste de opinión? Cancelar esta cita",
+      changedMindToConfirm: "¿Cambiaste de opinión? Confirmar asistencia",
+      slotTaken: "El horario fue ocupado por otro paciente. No se pudo reconfirmar.",
+      pageCloseable: "Tu confirmación se registró correctamente. Ya puedes cerrar esta página.",
+      closePageNow: "Cerrar ahora",
+      keepOpen: "Mantener abierta",
+      cantAutoClose: "Por favor cierra esta ventana manualmente",
+    },
+
     support: {
       title: "Contactar PodoAdmin",
       contactPodoAdmin: "Contactar PodoAdmin",
@@ -3642,7 +3777,7 @@ views: {
         reminderSent: "Recordatorio enviado correctamente.",
         defaultMessage: "Mensaje predeterminado",
         variablesHint: "Variables:",
-        variablesList: "{{nombre}} (nombre), {{fecha}} (fecha), {{hora}} (hora), {{nota}} (nota)",
+        variablesList: "{{nombre}} (nombre), {{fecha}} (fecha), {{hora}} (hora), {{nota}} (nota), {{confirmar}} (enlace para confirmar), {{cancelar}} (enlace para cancelar)",
         extraNotePlaceholder: "Nota extra para todos los envíos de hoy (opcional)",
         saved: "Guardado",
         saveMessage: "Guardar mensaje",
@@ -3831,6 +3966,10 @@ views: {
       justNow: "Justo ahora",
       adminMessage: "Mensaje del Administrador",
       from: "De",
+      to: "Para",
+      type: "Tipo",
+      patient: "Paciente",
+      selectedCount: "{n} seleccionada(s)",
     },
     messaging: {
       title: "Mensajes",
@@ -3889,8 +4028,9 @@ views: {
       loadingAgendaMetrics: "Cargando métricas de agenda…",
       activityByPodiatrist: "Actividad por podólogo",
       sessionsCount: "{n} sesiones",
-      podiatristsLimit: "Podólogos: {current} de {limit} (límite definido por PodoAdmin)",
+      podiatristsLimit: "Podólogos: {current} de {limit} disponibles en tu plan",
       podiatristsNoLimit: "Podólogos de la clínica. Sin límite definido.",
+      podiatristsLimitCta: "¿Necesitas más? Agrega podólogos adicionales por $10 USD/mes en Suscripción.",
       createPodiatrist: "Crear podólogo",
       colPodiatrist: "Podólogo",
       colEmail: "Email",
@@ -5070,6 +5210,7 @@ views: {
       legendSessionCompleted: "Session completed",
       legendSessionDraft: "Session draft",
       legendCancelled: "Cancelled",
+      cancelledSlotHint: "There was a cancelled appointment in this time slot. The slot is free: you can book without issues.",
       formTitleNew: "New Appointment",
       formTitleEdit: "Edit Appointment",
       patientLabel: "Patient",
@@ -5245,7 +5386,7 @@ views: {
         clinicalHistory: "Clinical history",
         integrations: "Integrations",
         clinic: "Clinic",
-        billing: "Billing",
+        billing: "Subscription",
       },
       settingsScope: {
         appliesClinic: "Applies to the whole clinic.",
@@ -5287,7 +5428,7 @@ views: {
         save: "Save watermark",
       },
       billing: {
-        title: "Billing",
+        title: "Subscription",
         subscriptionTitle: "PodoAdmin subscription",
         independentPlan: "Independent podiatrist plan",
         status: "Status",
@@ -5316,11 +5457,24 @@ views: {
         stepCard: "2. Card",
         verifyCard: "Verify card (no charge today)",
         activateMonthTrial: "Activate 1-month trial",
-        overLimit: "Your clinic has {count} active podiatrists, above the online plan (up to {limit}). Contact PodoAdmin to increase capacity and billing.",
+        overLimit: "Your clinic has {count} active podiatrists, above the {limit} included, and extra-seat billing is not configured. Contact PodoAdmin.",
         loading: "Loading…",
         clinicPlan: "Clinic plan",
         activePodiatrists: "Active podiatrists:",
         stripeNotConfigured: "Stripe is not configured. Set STRIPE_PRICE_CLINIC_MONTHLY_STANDARD and STRIPE_PRICE_INDEPENDENT_MONTHLY on the server.",
+        extraSeatsTitle: "Additional podiatrists",
+        extraSeatsHint: "Your plan includes {included} podiatrists. Add as many as you need for ${price} USD/mo each; the change is prorated on your invoice.",
+        extraSeatsLabel: "Additional podiatrists",
+        extraSeatsSave: "Update additional podiatrists",
+        extraSeatsSaved: "Additional podiatrists updated.",
+        extraSeatsNeedSub: "Activate your subscription to add additional podiatrists.",
+        extraSeatsTotal: "Additional: {seats} × ${price} = ${total} USD/mo",
+        extraSeatsError: "Could not update additional podiatrists.",
+        extraSeatsBreakdown: "{included} included in your plan + {seats} additional",
+        growthTitle: "Is your practice growing?",
+        growthHint: "Upgrade to Premium to unlock analytics, advanced clinical tools and WhatsApp campaigns, or move to a Clinic plan to add podiatrists and reception.",
+        growthClinicBullet: "Clinic plan: from $100 USD/mo with 3 podiatrists included (6 on Premium) and additional podiatrists for $10 USD/mo.",
+        growthContact: "I want to move to a Clinic plan",
         subscribe: "Subscribe — ${amount} USD/month",
         manageStripe: "Manage billing in Stripe",
         clinicManagedByAdmin: "Your clinic subscription is managed by the clinic administrator.",
@@ -5686,6 +5840,59 @@ views: {
       },
       supportSenderLabel: "PodoAdmin",
     },
+    premium: {
+      badge: "Premium",
+      baseBadge: "Base",
+      lockedTab: "Available in Premium",
+      upsellTitle: "Available in the Premium plan",
+      upsellBody: "Sales, collections, profitability and agenda analytics are included in the Premium plan. Upgrade to unlock them.",
+      upsellCta: "See plans and upgrade",
+      clinicalToolsLockedTitle: "Clinical tools is a Premium feature",
+      clinicalToolsLockedBody: "The template designer, inventory and referrals are included in the Premium plan.",
+      campaignsLockedTitle: "WhatsApp campaigns is a Premium feature",
+      campaignsLockedBody: "Campaigns and patient reactivation via WhatsApp are included in the Premium plan. Basic WhatsApp Web remains available on your plan.",
+      agendaAnalyticsLockedBody: "Demand, occupancy and daily close analytics are included in the Premium plan.",
+      upgradeButton: "Upgrade to Premium",
+      upgradeSuccess: "Your plan was updated successfully.",
+      planBase: "Base plan",
+      planPremium: "Premium plan",
+      menuManagePlan: "Plan (Base/Premium)",
+      planPrompt: "Current plan: {current}. Type \"base\", \"premium\" or \"auto\" (auto = as paid in Stripe):",
+      planInvalid: "Invalid value. Use \"base\", \"premium\" or \"auto\".",
+      planUpdated: "Plan updated: {tier}.",
+    },
+
+    reservationAction: {
+      confirmTitle: "Confirm appointment",
+      cancelTitle: "Cancel appointment",
+      loading: "Loading your reservation…",
+      greeting: "Hi {name},",
+      confirmQuestion: "Do you confirm your attendance to this appointment?",
+      cancelQuestion: "Are you sure you want to cancel this appointment?",
+      dateLabel: "Date",
+      timeLabel: "Time",
+      clinicLabel: "Clinic",
+      podiatristLabel: "Professional",
+      confirmButton: "Confirm attendance",
+      cancelButton: "Cancel appointment",
+      confirmedOk: "Appointment confirmed! See you there.",
+      cancelledOk: "Your appointment has been cancelled. Thanks for letting us know.",
+      alreadyConfirmed: "This appointment was already confirmed. See you there!",
+      alreadyCancelled: "This appointment was already cancelled.",
+      invalidMsg: "This link is not valid or is no longer available.",
+      expiredMsg: "This appointment already took place; the link is no longer available.",
+      errorGeneric: "We could not process your request. Please try again in a few minutes.",
+      processingConfirm: "Confirming your appointment…",
+      processingCancel: "Cancelling your appointment…",
+      changedMindToCancel: "Changed your mind? Cancel this appointment",
+      changedMindToConfirm: "Changed your mind? Confirm attendance",
+      slotTaken: "The time slot was taken by another patient. Could not reconfirm.",
+      pageCloseable: "Your confirmation has been registered successfully. You can now close this page.",
+      closePageNow: "Close now",
+      keepOpen: "Keep open",
+      cantAutoClose: "Please close this window manually",
+    },
+
     support: {
       title: "Contact PodoAdmin",
       contactPodoAdmin: "Contact PodoAdmin",
@@ -5886,7 +6093,7 @@ views: {
         reminderSent: "Reminder sent successfully.",
         defaultMessage: "Default message",
         variablesHint: "Variables:",
-        variablesList: "{{nombre}} (first name), {{fecha}} (date), {{hora}} (time), {{nota}} (note)",
+        variablesList: "{{nombre}} (first name), {{fecha}} (date), {{hora}} (time), {{nota}} (note), {{confirmar}} (confirmation link), {{cancelar}} (cancellation link)",
         extraNotePlaceholder: "Extra note for all sends today (optional)",
         saved: "Saved",
         saveMessage: "Save message",
@@ -6075,6 +6282,10 @@ views: {
       justNow: "Just now",
       adminMessage: "Admin Message",
       from: "From",
+      to: "To",
+      type: "Type",
+      patient: "Patient",
+      selectedCount: "{n} selected",
     },
     messaging: {
       title: "Messages",
@@ -6133,8 +6344,9 @@ views: {
       loadingAgendaMetrics: "Loading agenda metrics…",
       activityByPodiatrist: "Activity by podiatrist",
       sessionsCount: "{n} sessions",
-      podiatristsLimit: "Podiatrists: {current} of {limit} (limit set by PodoAdmin)",
+      podiatristsLimit: "Podiatrists: {current} of {limit} available on your plan",
       podiatristsNoLimit: "Clinic podiatrists. No limit defined.",
+      podiatristsLimitCta: "Need more? Add additional podiatrists for $10 USD/mo in Subscription.",
       createPodiatrist: "Create podiatrist",
       colPodiatrist: "Podiatrist",
       colEmail: "Email",
@@ -7311,6 +7523,7 @@ views: {
       legendSessionCompleted: "Sessão concluída",
       legendSessionDraft: "Sessão rascunho",
       legendCancelled: "Cancelada",
+      cancelledSlotHint: "Havia uma consulta cancelada neste horário. O horário está livre: pode agendar sem problema.",
       formTitleNew: "Nova Consulta",
       formTitleEdit: "Editar Consulta",
       patientLabel: "Paciente",
@@ -7486,7 +7699,7 @@ views: {
         clinicalHistory: "História clínica",
         integrations: "Integrações",
         clinic: "Clínica",
-        billing: "Faturação",
+        billing: "Subscrição",
       },
       settingsScope: {
         appliesClinic: "Aplica-se a toda a clínica.",
@@ -7528,7 +7741,7 @@ views: {
         save: "Guardar marca de água",
       },
       billing: {
-        title: "Faturação",
+        title: "Subscrição",
         subscriptionTitle: "Assinatura PodoAdmin",
         independentPlan: "Plano podólogo independente",
         status: "Estado",
@@ -7557,7 +7770,7 @@ views: {
         stepCard: "2. Cartão",
         verifyCard: "Verificar cartão (sem cobrança hoje)",
         activateMonthTrial: "Ativar teste de 1 mês",
-        overLimit: "A sua clínica tem {count} podólogos ativos, acima do plano em linha (até {limit}). Contacte o PodoAdmin para ampliar a capacidade e a faturação.",
+        overLimit: "A sua clínica tem {count} podólogos ativos, acima dos {limit} incluídos, e a cobrança de adicionais não está configurada. Contacte o PodoAdmin.",
         loading: "A carregar…",
         clinicPlan: "Plano clínica",
         activePodiatrists: "Podólogos ativos:",
@@ -7565,6 +7778,19 @@ views: {
         subscribe: "Subscrever — ${amount} USD/mês",
         manageStripe: "Gerir faturação no Stripe",
         clinicManagedByAdmin: "A assinatura da sua clínica é gerida pelo administrador da clínica.",
+        extraSeatsTitle: "Podólogos adicionais",
+        extraSeatsHint: "O seu plano inclui {included} podólogos. Adicione os que precisar por ${price} USD/mês cada um; a alteração é rateada na sua fatura.",
+        extraSeatsLabel: "Podólogos adicionais",
+        extraSeatsSave: "Atualizar podólogos adicionais",
+        extraSeatsSaved: "Podólogos adicionais atualizados.",
+        extraSeatsNeedSub: "Ative a sua subscrição para adicionar podólogos adicionais.",
+        extraSeatsTotal: "Adicionais: {seats} × ${price} = ${total} USD/mês",
+        extraSeatsError: "Não foi possível atualizar os podólogos adicionais.",
+        extraSeatsBreakdown: "{included} incluídos no seu plano + {seats} adicionais",
+        growthTitle: "A sua consulta está a crescer?",
+        growthHint: "Suba para Premium para desbloquear analíticas, ferramentas clínicas avançadas e campanhas de WhatsApp, ou mude para um plano Clínica para somar podólogos e receção.",
+        growthClinicBullet: "Plano Clínica: desde $100 USD/mês com 3 podólogos incluídos (6 no Premium) e podólogos adicionais por $10 USD/mês.",
+        growthContact: "Quero mudar para o plano Clínica",
       },
       dashboardLogo: {
         title: "Logótipo no painel",
@@ -7927,6 +8153,59 @@ views: {
       },
       supportSenderLabel: "PodoAdmin",
     },
+    premium: {
+      badge: "Premium",
+      baseBadge: "Base",
+      lockedTab: "Disponível no Premium",
+      upsellTitle: "Disponível no plano Premium",
+      upsellBody: "As análises de vendas, cobranças, rentabilidade e agenda estão incluídas no plano Premium. Melhore seu plano para desbloqueá-las.",
+      upsellCta: "Ver planos e melhorar",
+      clinicalToolsLockedTitle: "Ferramentas clínicas é um recurso Premium",
+      clinicalToolsLockedBody: "O editor de modelos, o inventário e os encaminhamentos estão incluídos no plano Premium.",
+      campaignsLockedTitle: "Campanhas de WhatsApp é um recurso Premium",
+      campaignsLockedBody: "As campanhas e a reativação de pacientes via WhatsApp estão incluídas no plano Premium. O WhatsApp Web básico continua disponível no seu plano.",
+      agendaAnalyticsLockedBody: "A análise de demanda, ocupação e fechamentos diários está incluída no plano Premium.",
+      upgradeButton: "Melhorar para Premium",
+      upgradeSuccess: "Seu plano foi atualizado com sucesso.",
+      planBase: "Plano Base",
+      planPremium: "Plano Premium",
+      menuManagePlan: "Plano (Base/Premium)",
+      planPrompt: "Plano atual: {current}. Digite \"base\", \"premium\" ou \"auto\" (auto = conforme pago no Stripe):",
+      planInvalid: "Valor inválido. Use \"base\", \"premium\" ou \"auto\".",
+      planUpdated: "Plano atualizado: {tier}.",
+    },
+
+    reservationAction: {
+      confirmTitle: "Confirmar consulta",
+      cancelTitle: "Cancelar consulta",
+      loading: "A carregar a sua reserva…",
+      greeting: "Olá {name},",
+      confirmQuestion: "Confirma a sua presença nesta consulta?",
+      cancelQuestion: "Tem a certeza de que quer cancelar esta consulta?",
+      dateLabel: "Data",
+      timeLabel: "Hora",
+      clinicLabel: "Clínica",
+      podiatristLabel: "Profissional",
+      confirmButton: "Confirmar presença",
+      cancelButton: "Cancelar consulta",
+      confirmedOk: "Consulta confirmada! Esperamos por si.",
+      cancelledOk: "A sua consulta foi cancelada. Obrigado por avisar.",
+      alreadyConfirmed: "Esta consulta já estava confirmada. Esperamos por si!",
+      alreadyCancelled: "Esta consulta já estava cancelada.",
+      invalidMsg: "Este link não é válido ou já não está disponível.",
+      expiredMsg: "Esta consulta já passou; o link não está disponível.",
+      errorGeneric: "Não foi possível processar o seu pedido. Tente novamente em alguns minutos.",
+      processingConfirm: "A confirmar a sua consulta…",
+      processingCancel: "A cancelar a sua consulta…",
+      changedMindToCancel: "Mudou de ideias? Cancelar esta consulta",
+      changedMindToConfirm: "Mudou de opinião? Confirmar presença",
+      slotTaken: "O horário foi ocupado por outro paciente. Não foi possível reconfirmar.",
+      pageCloseable: "A sua confirmação foi registada com sucesso. Já pode fechar esta página.",
+      closePageNow: "Fechar agora",
+      keepOpen: "Manter aberta",
+      cantAutoClose: "Por favor feche esta janela manualmente",
+    },
+
     support: {
       title: "Contactar PodoAdmin",
       contactPodoAdmin: "Contactar PodoAdmin",
@@ -8127,7 +8406,7 @@ views: {
         reminderSent: "Lembrete enviado corretamente.",
         defaultMessage: "Mensagem predefinida",
         variablesHint: "Variáveis:",
-        variablesList: "{{nombre}} (nome), {{fecha}} (data), {{hora}} (hora), {{nota}} (nota)",
+        variablesList: "{{nombre}} (nome), {{fecha}} (data), {{hora}} (hora), {{nota}} (nota), {{confirmar}} (link para confirmar), {{cancelar}} (link para cancelar)",
         extraNotePlaceholder: "Nota extra para todos os envios de hoje (opcional)",
         saved: "Guardado",
         saveMessage: "Guardar mensagem",
@@ -8316,6 +8595,10 @@ views: {
       justNow: "Agora mesmo",
       adminMessage: "Mensagem do Administrador",
       from: "De",
+      to: "Para",
+      type: "Tipo",
+      patient: "Paciente",
+      selectedCount: "{n} selecionada(s)",
     },
     messaging: {
       title: "Mensagens",
@@ -8374,8 +8657,9 @@ views: {
       loadingAgendaMetrics: "A carregar métricas da agenda…",
       activityByPodiatrist: "Atividade por podólogo",
       sessionsCount: "{n} sessões",
-      podiatristsLimit: "Podólogos: {current} de {limit} (limite definido pela PodoAdmin)",
-      podiatristsNoLimit: "Podólogos de la clínica. Sem limite definido.",
+      podiatristsLimit: "Podólogos: {current} de {limit} disponíveis no seu plano",
+      podiatristsNoLimit: "Podólogos da clínica. Sem limite definido.",
+      podiatristsLimitCta: "Precisa de mais? Adicione podólogos adicionais por $10 USD/mês em Subscrição.",
       createPodiatrist: "Criar podólogo",
       colPodiatrist: "Podólogo",
       colEmail: "Email",
@@ -9527,6 +9811,7 @@ views: {
       legendSessionCompleted: "Séance terminée",
       legendSessionDraft: "Séance brouillon",
       legendCancelled: "Annulée",
+      cancelledSlotHint: "Il y avait un rendez-vous annulé sur ce créneau. Le créneau est libre : vous pouvez réserver sans problème.",
       formTitleNew: "Nouveau rendez-vous",
       formTitleEdit: "Modifier le rendez-vous",
       patientLabel: "Patient",
@@ -9702,7 +9987,7 @@ views: {
         clinicalHistory: "Dossier clinique",
         integrations: "Intégrations",
         clinic: "Clinique",
-        billing: "Facturation",
+        billing: "Abonnement",
       },
       settingsScope: {
         appliesClinic: "S'applique à toute la clinique.",
@@ -9744,7 +10029,7 @@ views: {
         save: "Enregistrer le filigrane",
       },
       billing: {
-        title: "Facturation",
+        title: "Abonnement",
         subscriptionTitle: "Abonnement PodoAdmin",
         independentPlan: "Plan podologue indépendant",
         status: "État",
@@ -9773,7 +10058,7 @@ views: {
         stepCard: "2. Carte",
         verifyCard: "Vérifier la carte (sans frais aujourd'hui)",
         activateMonthTrial: "Activer l'essai d'1 mois",
-        overLimit: "Votre clinique a {count} podologues actifs, au-dessus du forfait en ligne (jusqu'à {limit}). Contactez PodoAdmin pour augmenter la capacité et la facturation.",
+        overLimit: "Votre clinique a {count} podologues actifs, au-dessus des {limit} inclus, et la facturation des sièges supplémentaires n'est pas configurée. Contactez PodoAdmin.",
         loading: "Chargement…",
         clinicPlan: "Plan clinique",
         activePodiatrists: "Podologues actifs :",
@@ -9781,6 +10066,19 @@ views: {
         subscribe: "S'abonner — ${amount} USD/mois",
         manageStripe: "Gérer la facturation dans Stripe",
         clinicManagedByAdmin: "L'abonnement de votre clinique est géré par l'administrateur de la clinique.",
+        extraSeatsTitle: "Podologues supplémentaires",
+        extraSeatsHint: "Votre forfait inclut {included} podologues. Ajoutez-en autant que nécessaire pour ${price} USD/mois chacun ; le changement est calculé au prorata sur votre facture.",
+        extraSeatsLabel: "Podologues supplémentaires",
+        extraSeatsSave: "Mettre à jour les podologues supplémentaires",
+        extraSeatsSaved: "Podologues supplémentaires mis à jour.",
+        extraSeatsNeedSub: "Activez votre abonnement pour ajouter des podologues supplémentaires.",
+        extraSeatsTotal: "Supplémentaires : {seats} × ${price} = ${total} USD/mois",
+        extraSeatsError: "Impossible de mettre à jour les podologues supplémentaires.",
+        extraSeatsBreakdown: "{included} inclus dans votre forfait + {seats} supplémentaires",
+        growthTitle: "Votre cabinet grandit ?",
+        growthHint: "Passez à Premium pour débloquer les analytiques, les outils cliniques avancés et les campagnes WhatsApp, ou passez à un forfait Clinique pour ajouter podologues et accueil.",
+        growthClinicBullet: "Forfait Clinique : à partir de 100 $ USD/mois avec 3 podologues inclus (6 en Premium) et podologues supplémentaires pour 10 $ USD/mois.",
+        growthContact: "Je veux passer au forfait Clinique",
       },
       dashboardLogo: {
         title: "Logo sur le tableau de bord",
@@ -10143,6 +10441,59 @@ views: {
       },
       supportSenderLabel: "PodoAdmin",
     },
+    premium: {
+      badge: "Premium",
+      baseBadge: "Base",
+      lockedTab: "Disponible en Premium",
+      upsellTitle: "Disponible dans le plan Premium",
+      upsellBody: "Les analyses de ventes, encaissements, rentabilité et agenda sont incluses dans le plan Premium. Passez au plan supérieur pour les débloquer.",
+      upsellCta: "Voir les plans et mettre à niveau",
+      clinicalToolsLockedTitle: "Outils cliniques est une fonctionnalité Premium",
+      clinicalToolsLockedBody: "Le concepteur de modèles, l'inventaire et les orientations sont inclus dans le plan Premium.",
+      campaignsLockedTitle: "Campagnes WhatsApp est une fonctionnalité Premium",
+      campaignsLockedBody: "Les campagnes et la réactivation des patients via WhatsApp sont incluses dans le plan Premium. WhatsApp Web basique reste disponible dans votre plan.",
+      agendaAnalyticsLockedBody: "L'analyse de la demande, de l'occupation et des clôtures quotidiennes est incluse dans le plan Premium.",
+      upgradeButton: "Passer à Premium",
+      upgradeSuccess: "Votre plan a été mis à jour avec succès.",
+      planBase: "Plan Base",
+      planPremium: "Plan Premium",
+      menuManagePlan: "Plan (Base/Premium)",
+      planPrompt: "Plan actuel : {current}. Tapez \"base\", \"premium\" ou \"auto\" (auto = selon le paiement Stripe) :",
+      planInvalid: "Valeur invalide. Utilisez \"base\", \"premium\" ou \"auto\".",
+      planUpdated: "Plan mis à jour : {tier}.",
+    },
+
+    reservationAction: {
+      confirmTitle: "Confirmer le rendez-vous",
+      cancelTitle: "Annuler le rendez-vous",
+      loading: "Chargement de votre réservation…",
+      greeting: "Bonjour {name},",
+      confirmQuestion: "Confirmez-vous votre présence à ce rendez-vous ?",
+      cancelQuestion: "Voulez-vous vraiment annuler ce rendez-vous ?",
+      dateLabel: "Date",
+      timeLabel: "Heure",
+      clinicLabel: "Clinique",
+      podiatristLabel: "Praticien",
+      confirmButton: "Confirmer ma présence",
+      cancelButton: "Annuler le rendez-vous",
+      confirmedOk: "Rendez-vous confirmé ! À bientôt.",
+      cancelledOk: "Votre rendez-vous a été annulé. Merci de nous avoir prévenus.",
+      alreadyConfirmed: "Ce rendez-vous était déjà confirmé. À bientôt !",
+      alreadyCancelled: "Ce rendez-vous était déjà annulé.",
+      invalidMsg: "Ce lien n'est pas valide ou n'est plus disponible.",
+      expiredMsg: "Ce rendez-vous est déjà passé ; le lien n'est plus disponible.",
+      errorGeneric: "Impossible de traiter votre demande. Réessayez dans quelques minutes.",
+      processingConfirm: "Confirmation de votre rendez-vous…",
+      processingCancel: "Annulation de votre rendez-vous…",
+      changedMindToCancel: "Vous avez changé d'avis ? Annuler ce rendez-vous",
+      changedMindToConfirm: "Vous avez changé d'avis ? Confirmer ma présence",
+      slotTaken: "Le créneau horaire a été occupé par un autre patient. Impossible de reconfirmer.",
+      pageCloseable: "Votre confirmation a été enregistrée avec succès. Vous pouvez maintenant fermer cette page.",
+      closePageNow: "Fermer maintenant",
+      keepOpen: "Garder ouverte",
+      cantAutoClose: "Veuillez fermer cette fenêtre manuellement",
+    },
+
     support: {
       title: "Contacter PodoAdmin",
       contactPodoAdmin: "Contacter PodoAdmin",
@@ -10343,7 +10694,7 @@ views: {
         reminderSent: "Rappel envoyé avec succès.",
         defaultMessage: "Message par défaut",
         variablesHint: "Variables :",
-        variablesList: "{{nombre}} (prénom), {{fecha}} (date), {{hora}} (heure), {{nota}} (note)",
+        variablesList: "{{nombre}} (prénom), {{fecha}} (date), {{hora}} (heure), {{nota}} (note), {{confirmar}} (lien de confirmation), {{cancelar}} (lien d'annulation)",
         extraNotePlaceholder: "Note extra pour tous les envois d'aujourd'hui (optionnel)",
         saved: "Enregistré",
         saveMessage: "Enregistrer le message",
@@ -10532,6 +10883,10 @@ views: {
       justNow: "À l'instant",
       adminMessage: "Message de l'Administrateur",
       from: "De",
+      to: "À",
+      type: "Type",
+      patient: "Patient",
+      selectedCount: "{n} sélectionnée(s)",
     },
     messaging: {
       title: "Messages",
@@ -10590,8 +10945,9 @@ views: {
       loadingAgendaMetrics: "Chargement des métriques d'agenda…",
       activityByPodiatrist: "Activité par podologue",
       sessionsCount: "{n} séances",
-      podiatristsLimit: "Podologues : {current} sur {limit} (limite définie par PodoAdmin)",
+      podiatristsLimit: "Podologues : {current} sur {limit} disponibles dans votre forfait",
       podiatristsNoLimit: "Podologues de la clinique. Aucune limite définie.",
+      podiatristsLimitCta: "Besoin de plus ? Ajoutez des podologues supplémentaires pour 10 $ USD/mois dans Abonnement.",
       createPodiatrist: "Créer un podologue",
       colPodiatrist: "Podologue",
       colEmail: "E-mail",

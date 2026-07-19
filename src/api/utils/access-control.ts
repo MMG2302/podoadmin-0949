@@ -3,8 +3,9 @@ import { eq } from 'drizzle-orm';
 import { database } from '../database';
 import { createdUsers } from '../database/schema';
 
-import { getSubscriptionForUser, getSubscriptionsBatch, lookupSubscriptionFromBatch, type SubscriptionPublic } from './subscription-service';
+import { effectiveTier, getSubscriptionForUser, getSubscriptionsBatch, lookupSubscriptionFromBatch, type SubscriptionPublic } from './subscription-service';
 import { canUserAccess } from './user-retention';
+import { entitlementsForTier, type Entitlements, type PlanTier } from './plan-entitlements';
 
 export type AccessGrantReason = 'platform_admin' | 'admin_enabled' | 'stripe_paid' | 'ip_trial' | 'dev_trial' | null;
 
@@ -12,6 +13,16 @@ export interface SystemAccessResult {
   granted: boolean;
   reason: AccessGrantReason;
   message?: string;
+  planTier: PlanTier;
+  entitlements: Entitlements;
+}
+
+/** Grant manual (super_admin / isEnabled) → acceso completo; suscripción → su tier efectivo. */
+function withTier(
+  result: Omit<SystemAccessResult, 'planTier' | 'entitlements'>,
+  tier: PlanTier
+): SystemAccessResult {
+  return { ...result, planTier: tier, entitlements: entitlementsForTier(tier) };
 }
 
 /** Roles que no pagan: super_admin, admin (grant super_admin), receptionist (grant clínica/podólogo). */
@@ -95,7 +106,7 @@ export async function resolveSystemAccess(
   prefetchedSub?: SubscriptionPublic | null
 ): Promise<SystemAccessResult> {
   if (role === 'super_admin') {
-    return { granted: true, reason: 'platform_admin' };
+    return withTier({ granted: true, reason: 'platform_admin' }, 'premium');
   }
 
   const userRowResolved =
@@ -108,45 +119,45 @@ export async function resolveSystemAccess(
       .then((r) => r[0]));
 
   if (!userRowResolved) {
-    return {
+    return withTier({
       granted: false,
       reason: null,
       message: 'Usuario no encontrado',
-    };
+    }, 'base');
   }
 
   if (role === 'admin') {
     if (userRowResolved.isEnabled === true) {
-      return { granted: true, reason: 'admin_enabled' };
+      return withTier({ granted: true, reason: 'admin_enabled' }, 'premium');
     }
-    return {
+    return withTier({
       granted: false,
       reason: null,
       message: 'Tu cuenta de administrador debe ser habilitada por un super administrador.',
-    };
+    }, 'base');
   }
 
   if (role === 'receptionist') {
     if (userRowResolved.isEnabled === true) {
-      return { granted: true, reason: 'admin_enabled' };
+      return withTier({ granted: true, reason: 'admin_enabled' }, 'premium');
     }
     const payerSub = prefetchedSub ?? (await getReceptionistPayerSubscription(userRowResolved));
     if (isStripeSubscriptionGranted(payerSub)) {
-      return { granted: true, reason: 'stripe_paid' };
+      return withTier({ granted: true, reason: 'stripe_paid' }, effectiveTier(payerSub!));
     }
     if (
       payerSub &&
       (await isTrialAccessGranted(payerSub, payerSub.subjectType, payerSub.subjectId))
     ) {
       const reason = isDevTrialGranted(payerSub) ? 'dev_trial' : 'ip_trial';
-      return { granted: true, reason };
+      return withTier({ granted: true, reason }, effectiveTier(payerSub));
     }
-    return {
+    return withTier({
       granted: false,
       reason: null,
       message:
         'Tu acceso debe ser concedido por el administrador de clínica o el podólogo que te creó la cuenta, o la clínica debe tener el pago activo.',
-    };
+    }, 'base');
   }
 
   if (role === 'clinic_admin' || role === 'podiatrist') {
@@ -157,27 +168,27 @@ export async function resolveSystemAccess(
     const subjectType = userRowResolved.clinicId ? ('clinic' as const) : ('user' as const);
     const subjectId = userRowResolved.clinicId ?? userId;
     if (isStripeSubscriptionGranted(sub)) {
-      return { granted: true, reason: 'stripe_paid' };
+      return withTier({ granted: true, reason: 'stripe_paid' }, effectiveTier(sub!));
     }
     if (sub && (await isTrialAccessGranted(sub, subjectType, subjectId))) {
       const reason = isDevTrialGranted(sub) ? 'dev_trial' : 'ip_trial';
-      return { granted: true, reason };
+      return withTier({ granted: true, reason }, effectiveTier(sub));
     }
     if (userRowResolved.isEnabled === true) {
-      return { granted: true, reason: 'admin_enabled' };
+      return withTier({ granted: true, reason: 'admin_enabled' }, 'premium');
     }
-    return {
+    return withTier({
       granted: false,
       reason: null,
       message: 'Tu acceso no está activo. Completa el pago en Facturación para usar el servicio.',
-    };
+    }, 'base');
   }
 
-  return {
+  return withTier({
     granted: false,
     reason: null,
     message: 'Rol no reconocido o sin acceso configurado.',
-  };
+  }, 'base');
 }
 
 export async function hasSystemAccess(userId: string, role: string): Promise<boolean> {
@@ -204,6 +215,11 @@ export function resolveInitialIsEnabled(
     return true;
   }
   if (role === 'receptionist' && (requesterRole === 'clinic_admin' || requesterRole === 'podiatrist')) {
+    return true;
+  }
+  // Podólogos creados por clinic_admin dentro del límite del plan (la ruta valida
+  // el cupo antes de crear) quedan activos: el asiento ya está cubierto por la suscripción.
+  if (role === 'podiatrist' && requesterRole === 'clinic_admin') {
     return true;
   }
   return false;

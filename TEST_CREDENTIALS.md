@@ -2,11 +2,25 @@
 
 ## 📋 Resumen del Seed Data
 
-✅ **3 Clínicas** con 3 podiatras cada una
+✅ **3 Clínicas** con 3-6 podiatras cada una
 ✅ **4 Médicos independientes** sin clínica
 ✅ **100+ Pacientes ficticios** (8-10 por podatra)
 ✅ **200+ Sesiones clínicas** (15-20 por podatra)
 ✅ **Logos únicos por clínica** (compartidos entre podiatras de la misma clínica)
+
+## 🪪 Plan por cuenta (Base / Premium)
+
+Cada clínica o podólogo independiente tiene un plan fijo en el seed, para poder probar el gating de ambos tiers sin tocar Stripe. El plan se hereda por todos los usuarios de esa cuenta (clinic_admin, podólogos y recepcionistas asignadas).
+
+| Cuenta | Plan | Uso |
+|--------|------|-----|
+| Clínica Podológica Premium (`clinic_001`) | **Premium** | Ver Ventas/Cobros/Rentabilidad/Agenda, Herramientas clínicas y Campañas WhatsApp desbloqueadas |
+| Centro Médico (`clinic_002`) | **Base** | Ver candados + banner de upsell en esas mismas secciones |
+| Integral Plus (`clinic_003`) | **Premium** | Segundo ejemplo Premium (con facturación anual) |
+| Pablo Hernández (independiente, `pablo.hernandez@gmail.com`) | **Base** | Independiente sin analíticas/herramientas/campañas |
+| Lucía, Andrés, Beatriz (independientes) | **Premium** | Trial de desarrollo (`ACCESS_ALLOW_TRIAL=1`) siempre entra como Premium |
+
+Para forzar un plan distinto durante pruebas, usa el menú de cuenta (⋮) del super_admin en Usuarios ("Plan (Base/Premium)"), o el endpoint `POST /subscriptions/set-tier`.
 
 ---
 
@@ -26,7 +40,7 @@
 
 ---
 
-## 🏥 CLÍNICA 1: "Clínica Podológica Premium"
+## 🏥 CLÍNICA 1: "Clínica Podológica Premium" — Plan **PREMIUM**
 ### Administrador de Clínica
 - **Email:** maria.fernandez@premium.com
 - **Password:** manager123
@@ -64,7 +78,7 @@
 
 ---
 
-## 🏥 CLÍNICA 2: "Centro Médico Podológico"
+## 🏥 CLÍNICA 2: "Centro Médico Podológico" — Plan **BASE**
 ### Administrador de Clínica
 - **Email:** juan.garcia@centromedico.com
 - **Password:** manager123
@@ -93,9 +107,11 @@
 - **Clínica:** clinic_002 (Centro Médico Podológico)
 - **Datos:** ~9 pacientes, ~17 sesiones
 
+*(También existen doctor4/5/6@centromedico.com con la misma contraseña, del seed expandido)*
+
 ---
 
-## 🏥 CLÍNICA 3: "Podología Integral Plus"
+## 🏥 CLÍNICA 3: "Podología Integral Plus" — Plan **PREMIUM**
 ### Administrador de Clínica
 - **Email:** sofia.rodriguez@integralplus.com
 - **Password:** manager123
@@ -126,9 +142,20 @@
 
 ---
 
+## 🛎️ RECEPCIONISTA (Clínica 1)
+- **Email:** recepcion@premium.com
+- **Password:** podo123
+- **Rol:** Receptionist
+- **Clínica:** clinic_001 (Clínica Podológica Premium)
+- **Podólogos asignados:** doctor1, doctor2 y doctor3 de clinic_001
+- **Acceso:** Calendario, pacientes y mensajes, sin datos clínicos sensibles. Hereda el plan (Base/Premium) de la clínica.
+- **Seed:** `scripts/seed-hector-receptionist.sql` (incluido en `npm run db:seed:local`)
+
+---
+
 ## 👨‍⚕️ MÉDICOS INDEPENDIENTES (Sin Clínica)
 
-### Médico Independiente 1
+### Médico Independiente 1 — Plan **BASE**
 - **Email:** pablo.hernandez@gmail.com
 - **Password:** doctor123
 - **Nombre:** Dr. Pablo Hernández
@@ -136,7 +163,7 @@
 - **Clínica:** Ninguna (Independiente)
 - **Datos:** ~9 pacientes, ~17 sesiones
 
-### Médico Independiente 2
+### Médico Independiente 2 — Plan **PREMIUM**
 - **Email:** lucia.santos@outlook.com
 - **Password:** doctor123
 - **Nombre:** Dra. Lucía Santos

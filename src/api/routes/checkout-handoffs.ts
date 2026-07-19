@@ -3,6 +3,7 @@ import { and, desc, eq, inArray } from 'drizzle-orm';
 import { z } from 'zod';
 import { requireAuth } from '../middleware/auth';
 import { requirePermission } from '../middleware/authorization';
+import { requireFeature } from '../middleware/entitlements';
 import { database } from '../database';
 import {
   checkoutHandoffs,
@@ -49,6 +50,12 @@ const checkoutHandoffsRoutes = new Hono();
 
 checkoutHandoffsRoutes.use('*', requireAuth);
 checkoutHandoffsRoutes.use('*', requirePermission('view_checkout_handoffs'));
+
+// Analíticas de negocio: solo plan Premium. El checkout operativo queda libre (Base).
+checkoutHandoffsRoutes.use('/analytics', requireFeature('checkout_analytics'));
+checkoutHandoffsRoutes.use('/analytics-preferences', requireFeature('checkout_analytics'));
+checkoutHandoffsRoutes.use('/daily-closes', requireFeature('agenda_analytics'));
+checkoutHandoffsRoutes.use('/daily-closes/*', requireFeature('agenda_analytics'));
 
 const generateId = () => `chk_${crypto.randomUUID().replace(/-/g, '')}`;
 

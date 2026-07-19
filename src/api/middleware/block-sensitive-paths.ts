@@ -23,6 +23,7 @@ const ALLOWED_API_FIRST_SEGMENTS: ReadonlySet<string> = new Set([
   'receptionists',
   'consent-document',
   'appointments',
+  'reservations',
   'notifications',
   'messages',
   'support',

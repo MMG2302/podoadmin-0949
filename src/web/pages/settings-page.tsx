@@ -46,6 +46,7 @@ interface ClinicInfoForm {
   address: string;
   city: string;
   postalCode: string;
+  mapsUrl: string;
   countryCode: string;
   licenseNumber: string;
   website: string;
@@ -160,6 +161,7 @@ const SettingsPage = () => {
           address: (c.address as string) ?? "",
           city: (c.city as string) ?? "",
           postalCode: (c.postalCode as string) ?? "",
+          mapsUrl: (c.mapsUrl as string) ?? "",
           countryCode: (c.countryCode as string) ?? DEFAULT_TENANT_COUNTRY,
           licenseNumber: (c.licenseNumber as string) ?? "",
           website: (c.website as string) ?? "",
@@ -200,6 +202,7 @@ const SettingsPage = () => {
     address: "",
     city: "",
     postalCode: "",
+    mapsUrl: "",
     countryCode: DEFAULT_TENANT_COUNTRY,
     licenseNumber: "",
     website: "",
@@ -281,6 +284,7 @@ const SettingsPage = () => {
         address: userClinic.address || "",
         city: userClinic.city || "",
         postalCode: userClinic.postalCode || "",
+        mapsUrl: userClinic.mapsUrl || "",
         countryCode: (userClinic as { countryCode?: string }).countryCode || DEFAULT_TENANT_COUNTRY,
         licenseNumber: userClinic.licenseNumber || "",
         website: userClinic.website || "",
@@ -425,6 +429,7 @@ const SettingsPage = () => {
         address: clinicInfoForm.address,
         city: clinicInfoForm.city,
         postalCode: clinicInfoForm.postalCode,
+        mapsUrl: clinicInfoForm.mapsUrl || null,
         countryCode: resolveTenantCountryCode(clinicInfoForm.countryCode),
         licenseNumber: clinicInfoForm.licenseNumber,
         website: clinicInfoForm.website,
@@ -1777,7 +1782,20 @@ const SettingsPage = () => {
                       />
                     </div>
                   </div>
-                  
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">{t.settings.clinicInfo.mapsUrl}</label>
+                    <input
+                      type="url"
+                      value={clinicInfoForm.mapsUrl}
+                      onChange={(e) => handleClinicInfoChange("mapsUrl", e.target.value)}
+                      placeholder={t.settings.clinicInfo.mapsUrlPlaceholder}
+                      disabled={isInfoBlocked}
+                      className={`w-full px-4 py-2.5 border border-gray-200 rounded-lg transition-all ${isInfoBlocked ? "bg-brand-canvas text-brand-muted cursor-not-allowed" : "bg-brand-surface text-brand-ink focus:ring-2 focus:ring-brand-ink focus:border-transparent"}`}
+                    />
+                    <p className="text-xs text-gray-500 mt-1">{t.settings.clinicInfo.mapsUrlHint}</p>
+                  </div>
+
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">{t.settings.clinicInfo.licenseNumber}</label>
@@ -1909,6 +1927,19 @@ const SettingsPage = () => {
                       <span className="font-medium text-brand-ink">
                         {userClinic.address}{userClinic.city && `, ${userClinic.city}`}{userClinic.postalCode && ` ${userClinic.postalCode}`}
                       </span>
+                    </div>
+                  )}
+                  {userClinic.mapsUrl && (
+                    <div className="flex">
+                      <span className="w-32 text-gray-500">{t.settings.clinicInfo.labels.maps}</span>
+                      <a
+                        href={userClinic.mapsUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="font-medium text-brand-ink hover:underline truncate"
+                      >
+                        {userClinic.mapsUrl}
+                      </a>
                     </div>
                   )}
                   {userClinic.licenseNumber && (
@@ -2315,7 +2346,23 @@ const SettingsPage = () => {
                       className="w-full px-4 py-2.5 bg-brand-canvas border border-brand-border rounded-lg text-brand-muted cursor-not-allowed"
                     />
                   </div>
-                  
+
+                  {userClinic.mapsUrl && (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-500 mb-1 flex items-center gap-2">
+                        {t.settings.clinicInfo.labels.maps}
+                      </label>
+                      <a
+                        href={userClinic.mapsUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="block w-full px-4 py-2.5 bg-brand-canvas border border-brand-border rounded-lg text-brand-ink hover:underline truncate"
+                      >
+                        {userClinic.mapsUrl}
+                      </a>
+                    </div>
+                  )}
+
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="block text-sm font-medium text-gray-500 mb-1 flex items-center gap-2">

@@ -485,18 +485,16 @@ subscriptionsRoutes.post('/stripe/checkout', async (c) => {
 
 
 /**
- * Ajusta los podólogos adicionales ($10 USD/mes c/u) de una suscripción Stripe activa.
- * body.seats = total de asientos extra deseado (no delta). Prorrateo automático.
+ * Ajusta los podólogos adicionales ($10 USD/mes c/u) de una clínica.
+ * body.seats = total de asientos extra deseado (no delta).
+ *
+ * Con suscripción Stripe activa: sincroniza la cantidad en Stripe (prorrateo automático).
+ * En prueba/demo (sin suscripción de pago): ajusta solo el cupo local; el checkout y el
+ * webhook reconcilian los asientos realmente facturados al activar el pago.
  */
 subscriptionsRoutes.post('/stripe/seats', async (c) => {
 
   const user = c.get('user')!;
-
-  if (!isStripeConfigured()) {
-
-    return c.json({ error: 'stripe_not_configured' }, 503);
-
-  }
 
   const raw = await c.req.json().catch(() => ({}));
 
@@ -521,40 +519,6 @@ subscriptionsRoutes.post('/stripe/seats', async (c) => {
       { error: 'billing_not_allowed', message: 'Solo el administrador de una clínica puede gestionar podólogos adicionales.' },
 
       403
-
-    );
-
-  }
-
-  const extraSeatPriceId = resolveExtraPodiatristPriceId();
-
-  if (!extraSeatPriceId) {
-
-    return c.json(
-
-      {
-
-        error: 'price_not_configured',
-
-        message: 'No hay precio Stripe configurado para podólogos adicionales (STRIPE_PRICE_EXTRA_PODIATRIST_MONTHLY).',
-
-      },
-
-      503
-
-    );
-
-  }
-
-  const subRow = await getSubscriptionRowBySubject('clinic', billing.subjectId);
-
-  if (!subRow?.stripeSubscriptionId) {
-
-    return c.json(
-
-      { error: 'no_stripe_subscription', message: 'Activa primero tu suscripción para agregar podólogos adicionales.' },
-
-      400
 
     );
 
@@ -589,29 +553,69 @@ subscriptionsRoutes.post('/stripe/seats', async (c) => {
 
   }
 
-  const stripeSub = await retrieveSubscription(subRow.stripeSubscriptionId);
+  let subRow = await getSubscriptionRowBySubject('clinic', billing.subjectId);
 
-  const seatItem = stripeSub.items?.data?.find((it) => it.price?.id === extraSeatPriceId) ?? null;
+  const hasStripeSub = Boolean(subRow?.stripeSubscriptionId);
 
-  await setSubscriptionSeatQuantity(subRow.stripeSubscriptionId, {
+  if (hasStripeSub) {
 
-    existingItemId: seatItem?.id ?? null,
+    // Vía de pago: sincroniza la cantidad de asientos en Stripe (prorrateo automático).
+    if (!isStripeConfigured()) {
 
-    priceId: extraSeatPriceId,
+      return c.json({ error: 'stripe_not_configured' }, 503);
 
-    quantity: seats,
+    }
 
-  });
+    const extraSeatPriceId = resolveExtraPodiatristPriceId();
+
+    if (!extraSeatPriceId) {
+
+      return c.json(
+
+        {
+
+          error: 'price_not_configured',
+
+          message: 'No hay precio Stripe configurado para podólogos adicionales (STRIPE_PRICE_EXTRA_PODIATRIST_MONTHLY).',
+
+        },
+
+        503
+
+      );
+
+    }
+
+    const stripeSub = await retrieveSubscription(subRow!.stripeSubscriptionId!);
+
+    const seatItem = stripeSub.items?.data?.find((it) => it.price?.id === extraSeatPriceId) ?? null;
+
+    await setSubscriptionSeatQuantity(subRow!.stripeSubscriptionId!, {
+
+      existingItemId: seatItem?.id ?? null,
+
+      priceId: extraSeatPriceId,
+
+      quantity: seats,
+
+    });
+
+  } else if (!subRow) {
+
+    // Prueba/demo sin fila de suscripción todavía: garantízala antes de persistir el cupo.
+    await ensureSubscriptionForUser(user.userId, { role: user.role });
+
+    subRow = await getSubscriptionRowBySubject('clinic', billing.subjectId);
+
+  }
 
   await setExtraPodiatristSeats('clinic', billing.subjectId, seats);
 
   await invalidateBillingSubjectAccessCache('clinic', billing.subjectId);
 
-  const currentTier = capacity.tier;
+  const pricing = await getBillingPricingOverview('clinic', billing.subjectId, capacity.tier);
 
-  const pricing = await getBillingPricingOverview('clinic', billing.subjectId, currentTier);
-
-  return c.json({ success: true, extraPodiatristSeats: seats, pricing });
+  return c.json({ success: true, extraPodiatristSeats: seats, pricing, billed: hasStripeSub });
 
 });
 

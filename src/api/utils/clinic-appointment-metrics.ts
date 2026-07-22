@@ -150,6 +150,7 @@ export async function fetchAppointmentMetrics(options: {
       status: appointmentsTable.status,
       notes: appointmentsTable.notes,
       reason: appointmentsTable.reason,
+      serviceLabel: appointmentsTable.serviceLabel,
       createdBy: appointmentsTable.createdBy,
     })
     .from(appointmentsTable)
@@ -209,7 +210,9 @@ export async function fetchAppointmentMetrics(options: {
         weekdayCounts[d.getDay()] += 1;
       }
 
-      const reasonKey = (row.reason || 'Sin motivo').trim() || 'Sin motivo';
+      // Agrupamos por el servicio/tarifa elegido (para cruzar con la pauta de duración).
+      // Fallback al motivo libre por compatibilidad con citas antiguas sin servicio.
+      const reasonKey = (row.serviceLabel || row.reason || 'Sin motivo').trim() || 'Sin motivo';
       const prev = reasonAgg.get(reasonKey) ?? { totalMinutes: 0, count: 0 };
       reasonAgg.set(reasonKey, {
         totalMinutes: prev.totalMinutes + duration,

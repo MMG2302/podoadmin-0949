@@ -1,4 +1,4 @@
-import { eq, and } from 'drizzle-orm';
+import { eq, inArray } from 'drizzle-orm';
 import { database } from '../database';
 import {
   appointments,
@@ -62,7 +62,31 @@ export async function runAppointmentRemindersCron(): Promise<{
     .from(appointments)
     .where(eq(appointments.status, 'scheduled'));
 
+  if (scheduled.length === 0) {
+    logger.info({ event: 'appointment_reminders_cron_done', sent, skipped, queued });
+    return { sent, skipped, queued };
+  }
+
   const integrations = await database.select().from(userWhatsappIntegrations);
+
+  // Precarga en batch: pacientes y recordatorios ya enviados (evita N+1 dentro del loop).
+  const patientIds = [...new Set(scheduled.map((a) => a.patientId).filter((id): id is string => !!id))];
+  const patientsById = new Map<string, typeof patients.$inferSelect>();
+  if (patientIds.length > 0) {
+    const pRows = await database.select().from(patients).where(inArray(patients.id, patientIds));
+    for (const p of pRows) patientsById.set(p.id, p);
+  }
+
+  const apptIds = scheduled.map((a) => a.id);
+  const sentKeys = new Set<string>();
+  for (let i = 0; i < apptIds.length; i += 100) {
+    const chunk = apptIds.slice(i, i + 100);
+    const rows = await database
+      .select({ appointmentId: appointmentReminderSent.appointmentId, reminderKind: appointmentReminderSent.reminderKind })
+      .from(appointmentReminderSent)
+      .where(inArray(appointmentReminderSent.appointmentId, chunk));
+    for (const r of rows) sentKeys.add(`${r.appointmentId}:${r.reminderKind}`);
+  }
 
   for (const appt of scheduled) {
     const creatorId = appt.createdBy;
@@ -76,8 +100,7 @@ export async function runAppointmentRemindersCron(): Promise<{
     let patientName = appt.pendingPatientName || 'Paciente';
 
     if (appt.patientId) {
-      const pRows = await database.select().from(patients).where(eq(patients.id, appt.patientId)).limit(1);
-      const p = pRows[0];
+      const p = patientsById.get(appt.patientId);
       if (!p?.phone?.trim()) {
         skipped++;
         continue;
@@ -113,18 +136,7 @@ export async function runAppointmentRemindersCron(): Promise<{
 
     for (const { kind, due } of kinds) {
       if (!due) continue;
-
-      const already = await database
-        .select()
-        .from(appointmentReminderSent)
-        .where(
-          and(
-            eq(appointmentReminderSent.appointmentId, appt.id),
-            eq(appointmentReminderSent.reminderKind, kind)
-          )
-        )
-        .limit(1);
-      if (already[0]) continue;
+      if (sentKeys.has(`${appt.id}:${kind}`)) continue;
 
       const job: WhatsAppReminderJob = {
         type: 'whatsapp_reminder',
@@ -135,6 +147,7 @@ export async function runAppointmentRemindersCron(): Promise<{
         phoneE164: phone,
         sessionDate: appt.sessionDate,
         sessionTime: appt.sessionTime,
+        ...(appt.cost ? { cost: appt.cost } : {}),
       };
 
       const outcome = await dispatchReminder(job);

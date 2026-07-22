@@ -736,6 +736,7 @@ export interface Translations {
     errorSaveFailed: string;
     errorDeleteFailed: string;
     downloadIcs: string;
+    exportDateLabel: string;
     sendWhatsApp: string;
     exportIcsHint: string;
     exportWaHint: string;
@@ -763,6 +764,9 @@ export interface Translations {
     confirmMarkNoShow: string;
     markNoShow: string;
     noPhoneShort: string;
+    icsExportTitle: string;
+    icsExportDescription: string;
+    icsExportLabel: string;
     preferredDateShort: string;
     outsideHoursReceptionistNote: string;
     outsideHoursContinueNote: string;
@@ -954,6 +958,7 @@ export interface Translations {
       verifyCard: string;
       activateMonthTrial: string;
       overLimit: string;
+      overCapacityAfterDowngrade: string;
       loading: string;
       clinicPlan: string;
       activePodiatrists: string;
@@ -966,10 +971,11 @@ export interface Translations {
       extraSeatsLabel: string;
       extraSeatsSave: string;
       extraSeatsSaved: string;
-      extraSeatsNeedSub: string;
       extraSeatsTotal: string;
       extraSeatsError: string;
       extraSeatsBreakdown: string;
+      extraSeatsTrialNote: string;
+      extraSeatsTrialSaved: string;
       growthTitle: string;
       growthHint: string;
       growthClinicBullet: string;
@@ -1276,6 +1282,9 @@ export interface Translations {
       cityPlaceholder: string;
       postalCode: string;
       postalCodePlaceholder: string;
+      mapsUrl: string;
+      mapsUrlPlaceholder: string;
+      mapsUrlHint: string;
       licenseNumber: string;
       licensePlaceholder: string;
       website: string;
@@ -1291,6 +1300,7 @@ export interface Translations {
         phone: string;
         email: string;
         address: string;
+        maps: string;
         license: string;
         consent: string;
         web: string;
@@ -1363,6 +1373,7 @@ export interface Translations {
   reservationAction: {
     confirmTitle: string;
     cancelTitle: string;
+    rescheduleTitle: string;
     loading: string;
     greeting: string;
     confirmQuestion: string;
@@ -1375,6 +1386,7 @@ export interface Translations {
     cancelButton: string;
     confirmedOk: string;
     cancelledOk: string;
+    rescheduledOk: string;
     alreadyConfirmed: string;
     alreadyCancelled: string;
     invalidMsg: string;
@@ -1382,9 +1394,35 @@ export interface Translations {
     errorGeneric: string;
     processingConfirm: string;
     processingCancel: string;
+    processingReschedule: string;
     changedMindToCancel: string;
     changedMindToConfirm: string;
     slotTaken: string;
+    satisfactionTitle: string;
+    satisfactionProcessing: string;
+    thanksGood: string;
+    thanksRegular: string;
+    thanksBad: string;
+    reviewCta: string;
+    complaintPrompt: string;
+    complaintPlaceholder: string;
+    anonymousLabel: string;
+    sendComment: string;
+    commentSent: string;
+    sending: string;
+    bookingTitle: string;
+    bookingInvalid: string;
+    bookingPickDate: string;
+    bookingPickTime: string;
+    bookingLoadingSlots: string;
+    bookingNoSlots: string;
+    bookingName: string;
+    bookingPhone: string;
+    bookingConfirm: string;
+    bookingBooking: string;
+    bookingDoneTitle: string;
+    bookingDoneMsg: string;
+    bookingSlotTaken: string;
   };
 
   support: {
@@ -1554,6 +1592,9 @@ export interface Translations {
       sendAssistant: string;
       hideList: string;
       showList: string;
+      deleteDraft: string;
+      deleteDraftConfirm: string;
+      deleteDraftError: string;
       noValidRecipients: string;
       noDrafts: string;
       connected: string;
@@ -1589,6 +1630,11 @@ export interface Translations {
       extraNotePlaceholder: string;
       saved: string;
       saveMessage: string;
+      dayOffsetLabel: string;
+      dayOffsetToday: string;
+      dayOffsetTomorrow: string;
+      dayOffsetIn2Days: string;
+      dayOffsetIn5Days: string;
       tomorrowAppointments: string;
       loadingAppointments: string;
       noTomorrowAppointments: string;
@@ -1622,6 +1668,40 @@ export interface Translations {
       emDash: string;
       yes: string;
       no: string;
+      pendingRescheduleTitle: string;
+      pendingRescheduleHint: string;
+      loadingPendingReschedule: string;
+      noPendingReschedule: string;
+      cancelledOn: string;
+      sendRescheduleMessage: string;
+      rescheduleWhatsAppMessage: string;
+      rescheduleWaMsgTitle: string;
+      rescheduleWaMsgHint: string;
+      rescheduleMessageSectionTitle: string;
+      rescheduleMessageHint: string;
+      rescheduleMessagePlaceholder: string;
+      rescheduleMessageScope: string;
+      rescheduleMessageReadOnlyHint: string;
+      savingRescheduleMessage: string;
+      saveRescheduleMessageButton: string;
+      markRescheduleHandled: string;
+      reopenReschedule: string;
+      rescheduleHandledBadge: string;
+      dismissReschedule: string;
+      dismissRescheduleConfirm: string;
+      opinionSectionTitle: string;
+      opinionSectionHint: string;
+      loadingOpinion: string;
+      noOpinionCandidates: string;
+      attendedOn: string;
+      requestOpinion: string;
+      opinionWhatsAppMessage: string;
+      bookingLinkTitle: string;
+      bookingLinkHint: string;
+      bookingLinkEnabled: string;
+      bookingLinkDisabled: string;
+      bookingLinkCopy: string;
+      bookingLinkCopied: string;
     };
   };
 
@@ -1977,6 +2057,8 @@ export interface Translations {
       currentPodiatrists: string;
       saveLimit: string;
       clinicMissing: string;
+      effectiveLimitHint: string;
+      overCapacityHint: string;
       patients: string;
       sessions: string;
     };
@@ -2927,6 +3009,7 @@ views: {
       errorSaveFailed: "Error al guardar la cita.",
       errorDeleteFailed: "No se pudo eliminar la cita.",
       downloadIcs: "Descargar .ics",
+      exportDateLabel: "Fecha a exportar",
       sendWhatsApp: "WhatsApp Web",
       exportIcsHint: "Descarga las citas programadas del día en .ics (solo citas con hora; no incluye sesiones clínicas)",
       exportWaHint: "Descarga el .ics y abre WhatsApp. Si el podólogo tiene móvil en su perfil, se abre el chat directo; si no, eliges el contacto manualmente. Adjunta el .ics.",
@@ -2957,6 +3040,9 @@ views: {
       preferredDateShort: "pref. {date}",
       outsideHoursReceptionistNote: "No se guardará la cita: recepción no puede registrar citas fuera de horario.",
       outsideHoursContinueNote: "Puedes continuar; se pedirá confirmación al guardar.",
+      icsExportTitle: "Exportar Agenda (.ics)",
+      icsExportDescription: "El archivo .ics es un calendario estándar que puedes importar en Outlook, Google Calendar, Apple Calendar o cualquier app de calendario. Al descargar, el archivo se guarda en tu dispositivo.",
+      icsExportLabel: "Selecciona la fecha para exportar",
     },
     credits: {
       title: "Créditos",
@@ -3140,6 +3226,7 @@ views: {
         verifyCard: "Verificar tarjeta (sin cobro hoy)",
         activateMonthTrial: "Activar prueba de 1 mes",
         overLimit: "Tu clínica tiene {count} podólogos activos, por encima de los {limit} incluidos, y el cobro de adicionales no está configurado. Contacta a PodoAdmin.",
+        overCapacityAfterDowngrade: "Tienes {count} podólogos activos, más de los {limit} que permite tu plan actual. Siguen funcionando con normalidad, pero no podrás añadir ninguno nuevo hasta que compres asientos adicionales o reduzcas tu equipo.",
         loading: "Cargando…",
         clinicPlan: "Plan clínica",
         activePodiatrists: "Podólogos activos:",
@@ -3152,10 +3239,11 @@ views: {
         extraSeatsLabel: "Podólogos adicionales",
         extraSeatsSave: "Actualizar podólogos adicionales",
         extraSeatsSaved: "Podólogos adicionales actualizados.",
-        extraSeatsNeedSub: "Activa tu suscripción para agregar podólogos adicionales.",
         extraSeatsTotal: "Adicionales: {seats} × ${price} = ${total} USD/mes",
         extraSeatsError: "No se pudieron actualizar los podólogos adicionales.",
         extraSeatsBreakdown: "{included} incluidos en tu plan + {seats} adicionales",
+        extraSeatsTrialNote: "Durante la prueba puedes ajustar tu cupo sin costo. Al activar tu suscripción se cobrarán ${price} USD/mes por cada podólogo adicional.",
+        extraSeatsTrialSaved: "Cupo de podólogos actualizado. Ya puedes agregar más podólogos a tu clínica.",
         growthTitle: "¿Tu consulta crece?",
         growthHint: "Sube a Premium para desbloquear analíticas, herramientas clínicas avanzadas y campañas de WhatsApp, o pasa a un plan Clínica para sumar podólogos y recepción.",
         growthClinicBullet: "Plan Clínica: desde $100 USD/mes con 3 podólogos incluidos (6 en Premium) y podólogos adicionales por $10 USD/mes.",
@@ -3462,6 +3550,9 @@ views: {
         cityPlaceholder: "Madrid",
         postalCode: "Código Postal",
         postalCodePlaceholder: "28013",
+        mapsUrl: "Link de Google Maps (opcional)",
+        mapsUrlPlaceholder: "https://maps.app.goo.gl/...",
+        mapsUrlHint: "Se usa como ubicación en WhatsApp cuando la dirección no basta para generar un enlace útil.",
         licenseNumber: "Nº Licencia/Registro",
         licensePlaceholder: "CS-28/2024-POD-001",
         website: "Sitio Web (opcional)",
@@ -3477,6 +3568,7 @@ views: {
           phone: "Teléfono:",
           email: "Email:",
           address: "Dirección:",
+          maps: "Maps:",
           license: "Licencia:",
           consent: "Consentimiento:",
           web: "Web:",
@@ -3547,6 +3639,7 @@ views: {
     reservationAction: {
       confirmTitle: "Confirmar cita",
       cancelTitle: "Cancelar cita",
+      rescheduleTitle: "Reagendar cita",
       loading: "Cargando tu reserva…",
       greeting: "Hola {name},",
       confirmQuestion: "¿Confirmas tu asistencia a esta cita?",
@@ -3559,6 +3652,7 @@ views: {
       cancelButton: "Cancelar cita",
       confirmedOk: "¡Cita confirmada! Te esperamos.",
       cancelledOk: "Tu cita ha sido cancelada. Gracias por avisar.",
+      rescheduledOk: "Tu cita ha sido cancelada. Pronto nos pondremos en contacto contigo para reagendarla.",
       alreadyConfirmed: "Esta cita ya estaba confirmada. ¡Te esperamos!",
       alreadyCancelled: "Esta cita ya estaba cancelada.",
       invalidMsg: "Este enlace no es válido o ya no está disponible.",
@@ -3566,6 +3660,7 @@ views: {
       errorGeneric: "No se pudo procesar tu solicitud. Intenta de nuevo en unos minutos.",
       processingConfirm: "Confirmando tu cita…",
       processingCancel: "Cancelando tu cita…",
+      processingReschedule: "Procesando tu solicitud de reagendo…",
       changedMindToCancel: "¿Cambiaste de opinión? Cancelar esta cita",
       changedMindToConfirm: "¿Cambiaste de opinión? Confirmar asistencia",
       slotTaken: "El horario fue ocupado por otro paciente. No se pudo reconfirmar.",
@@ -3573,6 +3668,31 @@ views: {
       closePageNow: "Cerrar ahora",
       keepOpen: "Mantener abierta",
       cantAutoClose: "Por favor cierra esta ventana manualmente",
+      satisfactionTitle: "Tu opinión",
+      satisfactionProcessing: "Registrando tu opinión…",
+      thanksGood: "¡Gracias! Nos alegra que tu visita fuera excelente.",
+      thanksRegular: "Gracias por tu opinión. ¿Qué podríamos mejorar?",
+      thanksBad: "Lamentamos que tu visita no fuera buena. Cuéntanos qué pasó para poder mejorar.",
+      reviewCta: "Déjanos una reseña en Google",
+      complaintPrompt: "Quejas o sugerencias (opcional)",
+      complaintPlaceholder: "Cuéntanos con detalle qué podemos mejorar…",
+      anonymousLabel: "Enviar de forma anónima",
+      sendComment: "Enviar comentario",
+      commentSent: "¡Gracias! Recibimos tu comentario y le daremos seguimiento.",
+      sending: "Enviando…",
+      bookingTitle: "Agenda tu cita",
+      bookingInvalid: "Este enlace no está disponible.",
+      bookingPickDate: "Elige un día",
+      bookingPickTime: "Elige un horario",
+      bookingLoadingSlots: "Cargando horarios…",
+      bookingNoSlots: "No hay horarios disponibles ese día.",
+      bookingName: "Tu nombre",
+      bookingPhone: "Tu WhatsApp (para confirmarte)",
+      bookingConfirm: "Confirmar cita",
+      bookingBooking: "Agendando…",
+      bookingDoneTitle: "¡Cita agendada!",
+      bookingDoneMsg: "Te esperamos el {date} a las {time}. Te contactaremos para confirmar.",
+      bookingSlotTaken: "Ese horario acaba de ocuparse. Elige otro, por favor.",
     },
 
     support: {
@@ -3744,6 +3864,9 @@ views: {
         loading: "Cargando…",
         recipientsCount: "{count} destinatario(s) con WhatsApp",
         sendAssistant: "Asistente de envío",
+        deleteDraft: "Eliminar",
+        deleteDraftConfirm: "¿Eliminar el borrador «{name}»? Esta acción no se puede deshacer.",
+        deleteDraftError: "No se pudo eliminar el borrador.",
         hideList: "Ocultar lista",
         showList: "Ver lista",
         noValidRecipients: "Sin destinatarios válidos.",
@@ -3777,13 +3900,18 @@ views: {
         reminderSent: "Recordatorio enviado correctamente.",
         defaultMessage: "Mensaje predeterminado",
         variablesHint: "Variables:",
-        variablesList: "{{nombre}} (nombre), {{fecha}} (fecha), {{hora}} (hora), {{nota}} (nota), {{confirmar}} (enlace para confirmar), {{cancelar}} (enlace para cancelar)",
+        variablesList: "{{nombre}} (nombre), {{fecha}} (fecha), {{hora}} (hora), {{nota}} (nota), {{confirmar}} (enlace para confirmar), {{cancelar}} (enlace para cancelar), {{reagendar}} (enlace para reagendar)",
         extraNotePlaceholder: "Nota extra para todos los envíos de hoy (opcional)",
         saved: "Guardado",
         saveMessage: "Guardar mensaje",
-        tomorrowAppointments: "Citas de mañana ({date})",
+        dayOffsetLabel: "Recordatorios para:",
+        dayOffsetToday: "Hoy",
+        dayOffsetTomorrow: "Mañana",
+        dayOffsetIn2Days: "En 2 días",
+        dayOffsetIn5Days: "En 5 días",
+        tomorrowAppointments: "Citas de {date}",
         loadingAppointments: "Cargando citas…",
-        noTomorrowAppointments: "No hay citas programadas para mañana.",
+        noTomorrowAppointments: "No hay citas programadas para ese día.",
         noPhone: "Sin teléfono",
         sendViaWhatsApp: "Enviar por WhatsApp",
         connected: "(conectado)",
@@ -3814,6 +3942,41 @@ views: {
         emDash: "—",
         yes: "Sí",
         no: "No",
+        pendingRescheduleTitle: "Pendientes de reagendar",
+        pendingRescheduleHint: "Citas canceladas que aún no tienen una nueva cita agendada para el mismo paciente.",
+        loadingPendingReschedule: "Cargando pendientes de reagendar…",
+        noPendingReschedule: "No hay citas pendientes de reagendar.",
+        cancelledOn: "Cancelada el {date}",
+        sendRescheduleMessage: "Avisar reagendo",
+        rescheduleWhatsAppMessage: "Hola {name}, tu cita del {date} fue cancelada. Pronto nos pondremos en contacto contigo para reagendarla. ¡Gracias por tu paciencia!",
+        rescheduleWaMsgTitle: "Mensaje de WhatsApp al avisar reagendo",
+        rescheduleWaMsgHint: "Texto que se envía al pulsar «Avisar reagendo». Variables: {nombre}, {fecha} y {reserva} (inserta tu link de reserva en línea para que el paciente agende solo).",
+        rescheduleMessageSectionTitle: "Mensaje personalizado de reagendo",
+        rescheduleMessageHint: "Texto que ve el paciente en la página que abre desde el enlace {{reagendar}} del mensaje de WhatsApp. Si lo dejas vacío, se usa un mensaje predeterminado.",
+        rescheduleMessagePlaceholder: "Ej. Tu cita fue cancelada. Escríbenos al WhatsApp para reagendar más rápido.",
+        rescheduleMessageScope: "Ámbito: {label}",
+        rescheduleMessageReadOnlyHint: "Solo lectura: lo define tu podólogo o el administrador de la clínica.",
+        savingRescheduleMessage: "Guardando…",
+        saveRescheduleMessageButton: "Guardar mensaje",
+        markRescheduleHandled: "Marcar en gestión",
+        reopenReschedule: "Reabrir",
+        rescheduleHandledBadge: "En gestión",
+        dismissReschedule: "Borrar",
+        dismissRescheduleConfirm: "¿Borrar a {name} de pendientes de reagendar? La cita no se elimina, solo sale de esta lista.",
+        opinionSectionTitle: "Pedir opinión (satisfacción)",
+        opinionSectionHint: "Citas atendidas en los últimos 7 días sin opinión. Envía al paciente los enlaces 👍 😐 👎 por WhatsApp.",
+        loadingOpinion: "Cargando citas atendidas…",
+        noOpinionCandidates: "No hay citas atendidas pendientes de opinión.",
+        attendedOn: "Atendida el {date}",
+        requestOpinion: "Pedir opinión",
+        opinionWhatsAppMessage:
+          "Hola {name}, ¿cómo estuvo tu visita en {clinica}? Tu opinión nos ayuda mucho:\n👍 Bien: {good}\n😐 Regular: {regular}\n👎 Mal: {bad}",
+        bookingLinkTitle: "Reserva en línea",
+        bookingLinkHint: "Comparte este enlace con tus pacientes para que agenden solos. Muestra la marca de tu clínica; ellos no ven PodoAdmin.",
+        bookingLinkEnabled: "Reserva en línea activada",
+        bookingLinkDisabled: "Activar reserva en línea",
+        bookingLinkCopy: "Copiar enlace",
+        bookingLinkCopied: "¡Copiado!",
       },
     },
     clinicalTools: {
@@ -4593,6 +4756,8 @@ views: {
         currentPodiatrists: "Actuales: {count}",
         saveLimit: "Guardar",
         clinicMissing: "Clínica no encontrada",
+        effectiveLimitHint: "Cupo real aplicado (incluidos por el plan + asientos extra, o el override manual si es mayor).",
+        overCapacityHint: "Esta clínica tiene más podólogos activos que su cupo actual (probable tras bajar de plan). No podrá añadir más hasta liberar cupo o comprar asientos extra.",
         patients: "pacientes",
         sessions: "sesiones",
       },
@@ -5245,6 +5410,7 @@ views: {
       errorSaveFailed: "Error saving the appointment.",
       errorDeleteFailed: "Could not delete the appointment.",
       downloadIcs: "Download .ics",
+      exportDateLabel: "Date to export",
       sendWhatsApp: "WhatsApp Web",
       exportIcsHint: "Download scheduled appointments for the day as .ics (appointments with time only; clinical sessions are not included)",
       exportWaHint: "Downloads the .ics and opens WhatsApp. If the podiatrist has a mobile on their profile, the chat opens directly; otherwise pick the contact manually. Attach the .ics.",
@@ -5275,6 +5441,9 @@ views: {
       preferredDateShort: "pref. {date}",
       outsideHoursReceptionistNote: "The appointment will not be saved: reception cannot book outside hours.",
       outsideHoursContinueNote: "You can continue; confirmation will be requested on save.",
+      icsExportTitle: "Export Schedule (.ics)",
+      icsExportDescription: "The .ics file is a standard calendar format that you can import into Outlook, Google Calendar, Apple Calendar, or any calendar app. When you download it, the file is saved to your device.",
+      icsExportLabel: "Select the date to export",
     },
     credits: {
       title: "Credits",
@@ -5458,6 +5627,7 @@ views: {
         verifyCard: "Verify card (no charge today)",
         activateMonthTrial: "Activate 1-month trial",
         overLimit: "Your clinic has {count} active podiatrists, above the {limit} included, and extra-seat billing is not configured. Contact PodoAdmin.",
+        overCapacityAfterDowngrade: "You have {count} active podiatrists, more than the {limit} your current plan allows. They keep working normally, but you won't be able to add any new one until you buy extra seats or reduce your team.",
         loading: "Loading…",
         clinicPlan: "Clinic plan",
         activePodiatrists: "Active podiatrists:",
@@ -5467,10 +5637,11 @@ views: {
         extraSeatsLabel: "Additional podiatrists",
         extraSeatsSave: "Update additional podiatrists",
         extraSeatsSaved: "Additional podiatrists updated.",
-        extraSeatsNeedSub: "Activate your subscription to add additional podiatrists.",
         extraSeatsTotal: "Additional: {seats} × ${price} = ${total} USD/mo",
         extraSeatsError: "Could not update additional podiatrists.",
         extraSeatsBreakdown: "{included} included in your plan + {seats} additional",
+        extraSeatsTrialNote: "During the trial you can adjust your seats at no cost. When you activate your subscription you'll be charged ${price} USD/mo per additional podiatrist.",
+        extraSeatsTrialSaved: "Podiatrist seats updated. You can now add more podiatrists to your clinic.",
         growthTitle: "Is your practice growing?",
         growthHint: "Upgrade to Premium to unlock analytics, advanced clinical tools and WhatsApp campaigns, or move to a Clinic plan to add podiatrists and reception.",
         growthClinicBullet: "Clinic plan: from $100 USD/mo with 3 podiatrists included (6 on Premium) and additional podiatrists for $10 USD/mo.",
@@ -5780,6 +5951,9 @@ views: {
         cityPlaceholder: "Madrid",
         postalCode: "Postal code",
         postalCodePlaceholder: "28013",
+        mapsUrl: "Google Maps link (optional)",
+        mapsUrlPlaceholder: "https://maps.app.goo.gl/...",
+        mapsUrlHint: "Used as the location in WhatsApp messages when the address alone isn't enough to generate a useful link.",
         licenseNumber: "License / registry no.",
         licensePlaceholder: "CS-28/2024-POD-001",
         website: "Website (optional)",
@@ -5795,6 +5969,7 @@ views: {
           phone: "Phone:",
           email: "Email:",
           address: "Address:",
+          maps: "Maps:",
           license: "License:",
           consent: "Consent:",
           web: "Web:",
@@ -5865,6 +6040,7 @@ views: {
     reservationAction: {
       confirmTitle: "Confirm appointment",
       cancelTitle: "Cancel appointment",
+      rescheduleTitle: "Reschedule appointment",
       loading: "Loading your reservation…",
       greeting: "Hi {name},",
       confirmQuestion: "Do you confirm your attendance to this appointment?",
@@ -5877,6 +6053,7 @@ views: {
       cancelButton: "Cancel appointment",
       confirmedOk: "Appointment confirmed! See you there.",
       cancelledOk: "Your appointment has been cancelled. Thanks for letting us know.",
+      rescheduledOk: "Your appointment has been cancelled. We'll reach out to you shortly to reschedule it.",
       alreadyConfirmed: "This appointment was already confirmed. See you there!",
       alreadyCancelled: "This appointment was already cancelled.",
       invalidMsg: "This link is not valid or is no longer available.",
@@ -5884,6 +6061,7 @@ views: {
       errorGeneric: "We could not process your request. Please try again in a few minutes.",
       processingConfirm: "Confirming your appointment…",
       processingCancel: "Cancelling your appointment…",
+      processingReschedule: "Processing your reschedule request…",
       changedMindToCancel: "Changed your mind? Cancel this appointment",
       changedMindToConfirm: "Changed your mind? Confirm attendance",
       slotTaken: "The time slot was taken by another patient. Could not reconfirm.",
@@ -5891,6 +6069,31 @@ views: {
       closePageNow: "Close now",
       keepOpen: "Keep open",
       cantAutoClose: "Please close this window manually",
+      satisfactionTitle: "Your feedback",
+      satisfactionProcessing: "Recording your feedback…",
+      thanksGood: "Thank you! We're glad your visit was excellent.",
+      thanksRegular: "Thanks for your feedback. What could we improve?",
+      thanksBad: "We're sorry your visit wasn't good. Tell us what happened so we can improve.",
+      reviewCta: "Leave us a review on Google",
+      complaintPrompt: "Complaints or suggestions (optional)",
+      complaintPlaceholder: "Tell us in detail what we can improve…",
+      anonymousLabel: "Send anonymously",
+      sendComment: "Send comment",
+      commentSent: "Thank you! We received your comment and will follow up.",
+      sending: "Sending…",
+      bookingTitle: "Book your appointment",
+      bookingInvalid: "This link isn't available.",
+      bookingPickDate: "Pick a day",
+      bookingPickTime: "Pick a time",
+      bookingLoadingSlots: "Loading times…",
+      bookingNoSlots: "No available times that day.",
+      bookingName: "Your name",
+      bookingPhone: "Your WhatsApp (to confirm)",
+      bookingConfirm: "Confirm appointment",
+      bookingBooking: "Booking…",
+      bookingDoneTitle: "Appointment booked!",
+      bookingDoneMsg: "See you on {date} at {time}. We'll contact you to confirm.",
+      bookingSlotTaken: "That time was just taken. Please pick another.",
     },
 
     support: {
@@ -6060,6 +6263,9 @@ views: {
         loading: "Loading…",
         recipientsCount: "{count} recipient(s) with WhatsApp",
         sendAssistant: "Send assistant",
+        deleteDraft: "Delete",
+        deleteDraftConfirm: "Delete draft «{name}»? This cannot be undone.",
+        deleteDraftError: "Couldn't delete the draft.",
         hideList: "Hide list",
         showList: "View list",
         noValidRecipients: "No valid recipients.",
@@ -6093,13 +6299,18 @@ views: {
         reminderSent: "Reminder sent successfully.",
         defaultMessage: "Default message",
         variablesHint: "Variables:",
-        variablesList: "{{nombre}} (first name), {{fecha}} (date), {{hora}} (time), {{nota}} (note), {{confirmar}} (confirmation link), {{cancelar}} (cancellation link)",
+        variablesList: "{{nombre}} (first name), {{fecha}} (date), {{hora}} (time), {{nota}} (note), {{confirmar}} (confirmation link), {{cancelar}} (cancellation link), {{reagendar}} (reschedule link)",
         extraNotePlaceholder: "Extra note for all sends today (optional)",
         saved: "Saved",
         saveMessage: "Save message",
-        tomorrowAppointments: "Tomorrow’s appointments ({date})",
+        dayOffsetLabel: "Reminders for:",
+        dayOffsetToday: "Today",
+        dayOffsetTomorrow: "Tomorrow",
+        dayOffsetIn2Days: "In 2 days",
+        dayOffsetIn5Days: "In 5 days",
+        tomorrowAppointments: "Appointments on {date}",
         loadingAppointments: "Loading appointments…",
-        noTomorrowAppointments: "No appointments scheduled for tomorrow.",
+        noTomorrowAppointments: "No appointments scheduled for that day.",
         noPhone: "No phone",
         sendViaWhatsApp: "Send via WhatsApp",
         connected: "(connected)",
@@ -6130,6 +6341,41 @@ views: {
         emDash: "—",
         yes: "Yes",
         no: "No",
+        pendingRescheduleTitle: "Pending reschedule",
+        pendingRescheduleHint: "Cancelled appointments that don't have a new appointment scheduled for the same patient yet.",
+        loadingPendingReschedule: "Loading pending reschedules…",
+        noPendingReschedule: "No appointments pending reschedule.",
+        cancelledOn: "Cancelled on {date}",
+        sendRescheduleMessage: "Notify reschedule",
+        rescheduleWhatsAppMessage: "Hi {name}, your appointment on {date} was cancelled. We'll reach out to you shortly to reschedule it. Thanks for your patience!",
+        rescheduleWaMsgTitle: "WhatsApp message when notifying reschedule",
+        rescheduleWaMsgHint: "Text sent when you tap “Notify reschedule”. Variables: {name}, {date} and {reserva} (inserts your online booking link so the patient can book themselves).",
+        rescheduleMessageSectionTitle: "Custom reschedule message",
+        rescheduleMessageHint: "Text shown to the patient on the page opened from the {{reagendar}} link in the WhatsApp message. If left empty, a default message is used.",
+        rescheduleMessagePlaceholder: "E.g. Your appointment was cancelled. Message us on WhatsApp to reschedule faster.",
+        rescheduleMessageScope: "Scope: {label}",
+        rescheduleMessageReadOnlyHint: "Read only: set by your podiatrist or the clinic admin.",
+        savingRescheduleMessage: "Saving…",
+        saveRescheduleMessageButton: "Save message",
+        markRescheduleHandled: "Mark as handling",
+        reopenReschedule: "Reopen",
+        rescheduleHandledBadge: "Handling",
+        dismissReschedule: "Remove",
+        dismissRescheduleConfirm: "Remove {name} from pending reschedules? The appointment isn't deleted, it just leaves this list.",
+        opinionSectionTitle: "Request feedback (satisfaction)",
+        opinionSectionHint: "Appointments attended in the last 7 days without feedback. Send the patient the 👍 😐 👎 links via WhatsApp.",
+        loadingOpinion: "Loading attended appointments…",
+        noOpinionCandidates: "No attended appointments pending feedback.",
+        attendedOn: "Attended on {date}",
+        requestOpinion: "Request feedback",
+        opinionWhatsAppMessage:
+          "Hi {name}, how was your visit at {clinica}? Your feedback helps us a lot:\n👍 Good: {good}\n😐 Okay: {regular}\n👎 Bad: {bad}",
+        bookingLinkTitle: "Online booking",
+        bookingLinkHint: "Share this link with your patients so they can book themselves. It shows your clinic's brand; they never see PodoAdmin.",
+        bookingLinkEnabled: "Online booking enabled",
+        bookingLinkDisabled: "Enable online booking",
+        bookingLinkCopy: "Copy link",
+        bookingLinkCopied: "Copied!",
       },
     },
     clinicalTools: {
@@ -6906,6 +7152,8 @@ views: {
         currentPodiatrists: "Current: {count}",
         saveLimit: "Save",
         clinicMissing: "Clinic not found",
+        effectiveLimitHint: "Real capacity applied (plan-included seats + extra seats, or the manual override if higher).",
+        overCapacityHint: "This clinic has more active podiatrists than its current capacity (likely after a plan downgrade). It won't be able to add more until seats are freed or extra seats are purchased.",
         patients: "patients",
         sessions: "sessions",
       },
@@ -7558,6 +7806,7 @@ views: {
       errorSaveFailed: "Erro ao guardar a consulta.",
       errorDeleteFailed: "Não foi possível eliminar a consulta.",
       downloadIcs: "Descarregar .ics",
+      exportDateLabel: "Data a exportar",
       sendWhatsApp: "WhatsApp Web",
       exportIcsHint: "Descarrega as consultas agendadas do dia em .ics (só consultas com hora; não inclui sessões clínicas)",
       exportWaHint: "Descarrega o .ics e abre o WhatsApp. Se o podologista tiver telemóvel no perfil, abre o chat direto; senão escolhe o contacto manualmente. Anexe o .ics.",
@@ -7588,6 +7837,9 @@ views: {
       preferredDateShort: "pref. {date}",
       outsideHoursReceptionistNote: "A consulta não será salva: a recepção não pode agendar fora do horário.",
       outsideHoursContinueNote: "Você pode continuar; será pedida confirmação ao salvar.",
+      icsExportTitle: "Exportar Calendário (.ics)",
+      icsExportDescription: "O ficheiro .ics é um formato de calendário padrão que pode importar no Outlook, Google Calendar, Apple Calendar ou qualquer aplicação de calendário. Ao descarregar, o ficheiro é guardado no seu dispositivo.",
+      icsExportLabel: "Selecione a data para exportar",
     },
     credits: {
       title: "Créditos",
@@ -7771,6 +8023,7 @@ views: {
         verifyCard: "Verificar cartão (sem cobrança hoje)",
         activateMonthTrial: "Ativar teste de 1 mês",
         overLimit: "A sua clínica tem {count} podólogos ativos, acima dos {limit} incluídos, e a cobrança de adicionais não está configurada. Contacte o PodoAdmin.",
+        overCapacityAfterDowngrade: "Tem {count} podólogos ativos, mais do que os {limit} que o seu plano atual permite. Continuam a funcionar normalmente, mas não poderá adicionar nenhum novo até comprar assentos adicionais ou reduzir a sua equipa.",
         loading: "A carregar…",
         clinicPlan: "Plano clínica",
         activePodiatrists: "Podólogos ativos:",
@@ -7783,10 +8036,11 @@ views: {
         extraSeatsLabel: "Podólogos adicionais",
         extraSeatsSave: "Atualizar podólogos adicionais",
         extraSeatsSaved: "Podólogos adicionais atualizados.",
-        extraSeatsNeedSub: "Ative a sua subscrição para adicionar podólogos adicionais.",
         extraSeatsTotal: "Adicionais: {seats} × ${price} = ${total} USD/mês",
         extraSeatsError: "Não foi possível atualizar os podólogos adicionais.",
         extraSeatsBreakdown: "{included} incluídos no seu plano + {seats} adicionais",
+        extraSeatsTrialNote: "Durante o período de avaliação pode ajustar os seus lugares sem custo. Ao ativar a subscrição serão cobrados ${price} USD/mês por cada podólogo adicional.",
+        extraSeatsTrialSaved: "Lugares de podólogos atualizados. Já pode adicionar mais podólogos à sua clínica.",
         growthTitle: "A sua consulta está a crescer?",
         growthHint: "Suba para Premium para desbloquear analíticas, ferramentas clínicas avançadas e campanhas de WhatsApp, ou mude para um plano Clínica para somar podólogos e receção.",
         growthClinicBullet: "Plano Clínica: desde $100 USD/mês com 3 podólogos incluídos (6 no Premium) e podólogos adicionais por $10 USD/mês.",
@@ -8093,6 +8347,9 @@ views: {
         cityPlaceholder: "Lisboa",
         postalCode: "Código postal",
         postalCodePlaceholder: "1000-001",
+        mapsUrl: "Link do Google Maps (opcional)",
+        mapsUrlPlaceholder: "https://maps.app.goo.gl/...",
+        mapsUrlHint: "Usado como localização no WhatsApp quando a morada não basta para gerar um link útil.",
         licenseNumber: "Nº licença/registo",
         licensePlaceholder: "CS-28/2024-POD-001",
         website: "Site (opcional)",
@@ -8108,6 +8365,7 @@ views: {
           phone: "Telefone:",
           email: "Email:",
           address: "Morada:",
+          maps: "Maps:",
           license: "Licença:",
           consent: "Consentimento:",
           web: "Web:",
@@ -8178,6 +8436,7 @@ views: {
     reservationAction: {
       confirmTitle: "Confirmar consulta",
       cancelTitle: "Cancelar consulta",
+      rescheduleTitle: "Reagendar consulta",
       loading: "A carregar a sua reserva…",
       greeting: "Olá {name},",
       confirmQuestion: "Confirma a sua presença nesta consulta?",
@@ -8190,6 +8449,7 @@ views: {
       cancelButton: "Cancelar consulta",
       confirmedOk: "Consulta confirmada! Esperamos por si.",
       cancelledOk: "A sua consulta foi cancelada. Obrigado por avisar.",
+      rescheduledOk: "A sua consulta foi cancelada. Em breve entraremos em contacto para reagendá-la.",
       alreadyConfirmed: "Esta consulta já estava confirmada. Esperamos por si!",
       alreadyCancelled: "Esta consulta já estava cancelada.",
       invalidMsg: "Este link não é válido ou já não está disponível.",
@@ -8197,6 +8457,7 @@ views: {
       errorGeneric: "Não foi possível processar o seu pedido. Tente novamente em alguns minutos.",
       processingConfirm: "A confirmar a sua consulta…",
       processingCancel: "A cancelar a sua consulta…",
+      processingReschedule: "A processar o seu pedido de reagendamento…",
       changedMindToCancel: "Mudou de ideias? Cancelar esta consulta",
       changedMindToConfirm: "Mudou de opinião? Confirmar presença",
       slotTaken: "O horário foi ocupado por outro paciente. Não foi possível reconfirmar.",
@@ -8204,6 +8465,31 @@ views: {
       closePageNow: "Fechar agora",
       keepOpen: "Manter aberta",
       cantAutoClose: "Por favor feche esta janela manualmente",
+      satisfactionTitle: "A sua opinião",
+      satisfactionProcessing: "A registar a sua opinião…",
+      thanksGood: "Obrigado! Ficamos felizes que a sua visita tenha sido excelente.",
+      thanksRegular: "Obrigado pela sua opinião. O que podíamos melhorar?",
+      thanksBad: "Lamentamos que a sua visita não tenha sido boa. Conte-nos o que aconteceu para melhorarmos.",
+      reviewCta: "Deixe-nos uma avaliação no Google",
+      complaintPrompt: "Queixas ou sugestões (opcional)",
+      complaintPlaceholder: "Conte-nos em detalhe o que podemos melhorar…",
+      anonymousLabel: "Enviar de forma anónima",
+      sendComment: "Enviar comentário",
+      commentSent: "Obrigado! Recebemos o seu comentário e vamos dar seguimento.",
+      sending: "A enviar…",
+      bookingTitle: "Agende a sua consulta",
+      bookingInvalid: "Este link não está disponível.",
+      bookingPickDate: "Escolha um dia",
+      bookingPickTime: "Escolha um horário",
+      bookingLoadingSlots: "A carregar horários…",
+      bookingNoSlots: "Não há horários disponíveis nesse dia.",
+      bookingName: "O seu nome",
+      bookingPhone: "O seu WhatsApp (para confirmar)",
+      bookingConfirm: "Confirmar consulta",
+      bookingBooking: "A agendar…",
+      bookingDoneTitle: "Consulta agendada!",
+      bookingDoneMsg: "Esperamos por si em {date} às {time}. Entraremos em contacto para confirmar.",
+      bookingSlotTaken: "Esse horário acabou de ser ocupado. Escolha outro, por favor.",
     },
 
     support: {
@@ -8373,6 +8659,9 @@ views: {
         loading: "A carregar…",
         recipientsCount: "{count} destinatário(s) com WhatsApp",
         sendAssistant: "Assistente de envio",
+        deleteDraft: "Eliminar",
+        deleteDraftConfirm: "Eliminar o rascunho «{name}»? Esta ação não pode ser desfeita.",
+        deleteDraftError: "Não foi possível eliminar o rascunho.",
         hideList: "Ocultar lista",
         showList: "Ver lista",
         noValidRecipients: "Sem destinatários válidos.",
@@ -8406,13 +8695,18 @@ views: {
         reminderSent: "Lembrete enviado corretamente.",
         defaultMessage: "Mensagem predefinida",
         variablesHint: "Variáveis:",
-        variablesList: "{{nombre}} (nome), {{fecha}} (data), {{hora}} (hora), {{nota}} (nota), {{confirmar}} (link para confirmar), {{cancelar}} (link para cancelar)",
+        variablesList: "{{nombre}} (nome), {{fecha}} (data), {{hora}} (hora), {{nota}} (nota), {{confirmar}} (link para confirmar), {{cancelar}} (link para cancelar), {{reagendar}} (link para reagendar)",
         extraNotePlaceholder: "Nota extra para todos os envios de hoje (opcional)",
         saved: "Guardado",
         saveMessage: "Guardar mensagem",
-        tomorrowAppointments: "Consultas de amanhã ({date})",
+        dayOffsetLabel: "Lembretes para:",
+        dayOffsetToday: "Hoje",
+        dayOffsetTomorrow: "Amanhã",
+        dayOffsetIn2Days: "Em 2 dias",
+        dayOffsetIn5Days: "Em 5 dias",
+        tomorrowAppointments: "Consultas de {date}",
         loadingAppointments: "A carregar consultas…",
-        noTomorrowAppointments: "Não há consultas agendadas para amanhã.",
+        noTomorrowAppointments: "Não há consultas agendadas para esse dia.",
         noPhone: "Sem telefone",
         sendViaWhatsApp: "Enviar por WhatsApp",
         connected: "(ligado)",
@@ -8443,6 +8737,41 @@ views: {
         emDash: "—",
         yes: "Sim",
         no: "Não",
+        pendingRescheduleTitle: "Pendentes de reagendar",
+        pendingRescheduleHint: "Consultas canceladas que ainda não têm uma nova consulta agendada para o mesmo paciente.",
+        loadingPendingReschedule: "A carregar pendentes de reagendar…",
+        noPendingReschedule: "Não há consultas pendentes de reagendar.",
+        cancelledOn: "Cancelada em {date}",
+        sendRescheduleMessage: "Avisar reagendamento",
+        rescheduleWhatsAppMessage: "Olá {name}, a sua consulta de {date} foi cancelada. Em breve entraremos em contacto para reagendá-la. Obrigado pela paciência!",
+        rescheduleWaMsgTitle: "Mensagem de WhatsApp ao avisar reagendamento",
+        rescheduleWaMsgHint: "Texto enviado ao tocar «Avisar reagendamento». Variáveis: {nombre}, {fecha} e {reserva} (insere o seu link de reserva online para o paciente agendar sozinho).",
+        rescheduleMessageSectionTitle: "Mensagem personalizada de reagendamento",
+        rescheduleMessageHint: "Texto que o paciente vê na página aberta a partir do link {{reagendar}} da mensagem de WhatsApp. Se deixar vazio, é usada uma mensagem predefinida.",
+        rescheduleMessagePlaceholder: "Ex. A sua consulta foi cancelada. Escreva-nos no WhatsApp para reagendar mais rápido.",
+        rescheduleMessageScope: "Âmbito: {label}",
+        rescheduleMessageReadOnlyHint: "Só leitura: definido pelo seu podólogo ou pelo admin da clínica.",
+        savingRescheduleMessage: "A guardar…",
+        saveRescheduleMessageButton: "Guardar mensagem",
+        markRescheduleHandled: "Marcar em gestão",
+        reopenReschedule: "Reabrir",
+        rescheduleHandledBadge: "Em gestão",
+        dismissReschedule: "Remover",
+        dismissRescheduleConfirm: "Remover {name} dos pendentes de reagendar? A consulta não é eliminada, só sai desta lista.",
+        opinionSectionTitle: "Pedir opinião (satisfação)",
+        opinionSectionHint: "Consultas atendidas nos últimos 7 dias sem opinião. Envie ao paciente os links 👍 😐 👎 por WhatsApp.",
+        loadingOpinion: "A carregar consultas atendidas…",
+        noOpinionCandidates: "Não há consultas atendidas pendentes de opinião.",
+        attendedOn: "Atendida em {date}",
+        requestOpinion: "Pedir opinião",
+        opinionWhatsAppMessage:
+          "Olá {name}, como foi a sua visita em {clinica}? A sua opinião ajuda-nos muito:\n👍 Bem: {good}\n😐 Regular: {regular}\n👎 Mal: {bad}",
+        bookingLinkTitle: "Reserva online",
+        bookingLinkHint: "Partilhe este link com os seus pacientes para agendarem sozinhos. Mostra a marca da sua clínica; eles não veem o PodoAdmin.",
+        bookingLinkEnabled: "Reserva online ativada",
+        bookingLinkDisabled: "Ativar reserva online",
+        bookingLinkCopy: "Copiar link",
+        bookingLinkCopied: "Copiado!",
       },
     },
     clinicalTools: {
@@ -9194,6 +9523,8 @@ views: {
         currentPodiatrists: "Atuais: {count}",
         saveLimit: "Guardar",
         clinicMissing: "Clínica não encontrada",
+        effectiveLimitHint: "Cupo real aplicado (incluídos pelo plano + assentos extra, ou o override manual se for maior).",
+        overCapacityHint: "Esta clínica tem mais podólogos ativos do que o seu cupo atual (provavelmente após rebaixar de plano). Não poderá adicionar mais até libertar cupo ou comprar assentos extra.",
         patients: "pacientes",
         sessions: "sessões",
       },
@@ -9846,6 +10177,7 @@ views: {
       errorSaveFailed: "Erreur lors de l'enregistrement du rendez-vous.",
       errorDeleteFailed: "Impossible de supprimer le rendez-vous.",
       downloadIcs: "Télécharger .ics",
+      exportDateLabel: "Date à exporter",
       sendWhatsApp: "WhatsApp Web",
       exportIcsHint: "Télécharge les rendez-vous programmés du jour en .ics (rendez-vous avec heure uniquement ; pas les séances cliniques)",
       exportWaHint: "Télécharge le .ics et ouvre WhatsApp. Si le podologue a un mobile sur son profil, le chat s'ouvre directement ; sinon choisissez le contact manuellement. Joignez le .ics.",
@@ -9876,6 +10208,9 @@ views: {
       preferredDateShort: "préf. {date}",
       outsideHoursReceptionistNote: "Le rendez-vous ne sera pas enregistré : la réception ne peut pas réserver hors horaires.",
       outsideHoursContinueNote: "Vous pouvez continuer ; une confirmation sera demandée à l'enregistrement.",
+      icsExportTitle: "Exporter l'Agenda (.ics)",
+      icsExportDescription: "Le fichier .ics est un format de calendrier standard que vous pouvez importer dans Outlook, Google Calendar, Apple Calendar ou n'importe quelle application calendrier. Quand vous le téléchargez, le fichier est enregistré sur votre appareil.",
+      icsExportLabel: "Sélectionnez la date à exporter",
     },
     credits: {
       title: "Crédits",
@@ -10059,6 +10394,7 @@ views: {
         verifyCard: "Vérifier la carte (sans frais aujourd'hui)",
         activateMonthTrial: "Activer l'essai d'1 mois",
         overLimit: "Votre clinique a {count} podologues actifs, au-dessus des {limit} inclus, et la facturation des sièges supplémentaires n'est pas configurée. Contactez PodoAdmin.",
+        overCapacityAfterDowngrade: "Vous avez {count} podologues actifs, plus que les {limit} permis par votre forfait actuel. Ils continuent de fonctionner normalement, mais vous ne pourrez en ajouter aucun tant que vous n'aurez pas acheté de sièges supplémentaires ou réduit votre équipe.",
         loading: "Chargement…",
         clinicPlan: "Plan clinique",
         activePodiatrists: "Podologues actifs :",
@@ -10071,10 +10407,11 @@ views: {
         extraSeatsLabel: "Podologues supplémentaires",
         extraSeatsSave: "Mettre à jour les podologues supplémentaires",
         extraSeatsSaved: "Podologues supplémentaires mis à jour.",
-        extraSeatsNeedSub: "Activez votre abonnement pour ajouter des podologues supplémentaires.",
         extraSeatsTotal: "Supplémentaires : {seats} × ${price} = ${total} USD/mois",
         extraSeatsError: "Impossible de mettre à jour les podologues supplémentaires.",
         extraSeatsBreakdown: "{included} inclus dans votre forfait + {seats} supplémentaires",
+        extraSeatsTrialNote: "Pendant l'essai, vous pouvez ajuster vos sièges sans frais. À l'activation de votre abonnement, ${price} USD/mois seront facturés par podologue supplémentaire.",
+        extraSeatsTrialSaved: "Sièges de podologues mis à jour. Vous pouvez maintenant ajouter d'autres podologues à votre clinique.",
         growthTitle: "Votre cabinet grandit ?",
         growthHint: "Passez à Premium pour débloquer les analytiques, les outils cliniques avancés et les campagnes WhatsApp, ou passez à un forfait Clinique pour ajouter podologues et accueil.",
         growthClinicBullet: "Forfait Clinique : à partir de 100 $ USD/mois avec 3 podologues inclus (6 en Premium) et podologues supplémentaires pour 10 $ USD/mois.",
@@ -10381,6 +10718,9 @@ views: {
         cityPlaceholder: "Madrid",
         postalCode: "Code postal",
         postalCodePlaceholder: "28013",
+        mapsUrl: "Lien Google Maps (optionnel)",
+        mapsUrlPlaceholder: "https://maps.app.goo.gl/...",
+        mapsUrlHint: "Utilisé comme localisation dans WhatsApp quand l'adresse seule ne suffit pas à générer un lien utile.",
         licenseNumber: "N° licence / registre",
         licensePlaceholder: "CS-28/2024-POD-001",
         website: "Site web (optionnel)",
@@ -10396,6 +10736,7 @@ views: {
           phone: "Téléphone :",
           email: "E-mail :",
           address: "Adresse :",
+          maps: "Maps :",
           license: "Licence :",
           consent: "Consentement :",
           web: "Web :",
@@ -10466,6 +10807,7 @@ views: {
     reservationAction: {
       confirmTitle: "Confirmer le rendez-vous",
       cancelTitle: "Annuler le rendez-vous",
+      rescheduleTitle: "Reprogrammer le rendez-vous",
       loading: "Chargement de votre réservation…",
       greeting: "Bonjour {name},",
       confirmQuestion: "Confirmez-vous votre présence à ce rendez-vous ?",
@@ -10478,6 +10820,7 @@ views: {
       cancelButton: "Annuler le rendez-vous",
       confirmedOk: "Rendez-vous confirmé ! À bientôt.",
       cancelledOk: "Votre rendez-vous a été annulé. Merci de nous avoir prévenus.",
+      rescheduledOk: "Votre rendez-vous a été annulé. Nous vous recontacterons bientôt pour le reprogrammer.",
       alreadyConfirmed: "Ce rendez-vous était déjà confirmé. À bientôt !",
       alreadyCancelled: "Ce rendez-vous était déjà annulé.",
       invalidMsg: "Ce lien n'est pas valide ou n'est plus disponible.",
@@ -10485,6 +10828,7 @@ views: {
       errorGeneric: "Impossible de traiter votre demande. Réessayez dans quelques minutes.",
       processingConfirm: "Confirmation de votre rendez-vous…",
       processingCancel: "Annulation de votre rendez-vous…",
+      processingReschedule: "Traitement de votre demande de reprogrammation…",
       changedMindToCancel: "Vous avez changé d'avis ? Annuler ce rendez-vous",
       changedMindToConfirm: "Vous avez changé d'avis ? Confirmer ma présence",
       slotTaken: "Le créneau horaire a été occupé par un autre patient. Impossible de reconfirmer.",
@@ -10492,6 +10836,31 @@ views: {
       closePageNow: "Fermer maintenant",
       keepOpen: "Garder ouverte",
       cantAutoClose: "Veuillez fermer cette fenêtre manuellement",
+      satisfactionTitle: "Votre avis",
+      satisfactionProcessing: "Enregistrement de votre avis…",
+      thanksGood: "Merci ! Nous sommes ravis que votre visite ait été excellente.",
+      thanksRegular: "Merci pour votre avis. Que pourrions-nous améliorer ?",
+      thanksBad: "Nous sommes désolés que votre visite n'ait pas été bonne. Dites-nous ce qui s'est passé pour nous améliorer.",
+      reviewCta: "Laissez-nous un avis sur Google",
+      complaintPrompt: "Réclamations ou suggestions (facultatif)",
+      complaintPlaceholder: "Dites-nous en détail ce que nous pouvons améliorer…",
+      anonymousLabel: "Envoyer anonymement",
+      sendComment: "Envoyer le commentaire",
+      commentSent: "Merci ! Nous avons reçu votre commentaire et y donnerons suite.",
+      sending: "Envoi…",
+      bookingTitle: "Réservez votre rendez-vous",
+      bookingInvalid: "Ce lien n'est pas disponible.",
+      bookingPickDate: "Choisissez un jour",
+      bookingPickTime: "Choisissez une heure",
+      bookingLoadingSlots: "Chargement des horaires…",
+      bookingNoSlots: "Aucun horaire disponible ce jour-là.",
+      bookingName: "Votre nom",
+      bookingPhone: "Votre WhatsApp (pour confirmer)",
+      bookingConfirm: "Confirmer le rendez-vous",
+      bookingBooking: "Réservation…",
+      bookingDoneTitle: "Rendez-vous réservé !",
+      bookingDoneMsg: "À bientôt le {date} à {time}. Nous vous contacterons pour confirmer.",
+      bookingSlotTaken: "Cet horaire vient d'être pris. Veuillez en choisir un autre.",
     },
 
     support: {
@@ -10661,6 +11030,9 @@ views: {
         loading: "Chargement…",
         recipientsCount: "{count} destinataire(s) avec WhatsApp",
         sendAssistant: "Assistant d'envoi",
+        deleteDraft: "Supprimer",
+        deleteDraftConfirm: "Supprimer le brouillon « {name} » ? Cette action est irréversible.",
+        deleteDraftError: "Impossible de supprimer le brouillon.",
         hideList: "Masquer la liste",
         showList: "Voir la liste",
         noValidRecipients: "Aucun destinataire valide.",
@@ -10694,13 +11066,18 @@ views: {
         reminderSent: "Rappel envoyé avec succès.",
         defaultMessage: "Message par défaut",
         variablesHint: "Variables :",
-        variablesList: "{{nombre}} (prénom), {{fecha}} (date), {{hora}} (heure), {{nota}} (note), {{confirmar}} (lien de confirmation), {{cancelar}} (lien d'annulation)",
+        variablesList: "{{nombre}} (prénom), {{fecha}} (date), {{hora}} (heure), {{nota}} (note), {{confirmar}} (lien de confirmation), {{cancelar}} (lien d'annulation), {{reagendar}} (lien de reprogrammation)",
         extraNotePlaceholder: "Note extra pour tous les envois d'aujourd'hui (optionnel)",
         saved: "Enregistré",
         saveMessage: "Enregistrer le message",
-        tomorrowAppointments: "Rendez-vous de demain ({date})",
+        dayOffsetLabel: "Rappels pour :",
+        dayOffsetToday: "Aujourd'hui",
+        dayOffsetTomorrow: "Demain",
+        dayOffsetIn2Days: "Dans 2 jours",
+        dayOffsetIn5Days: "Dans 5 jours",
+        tomorrowAppointments: "Rendez-vous du {date}",
         loadingAppointments: "Chargement des rendez-vous…",
-        noTomorrowAppointments: "Aucun rendez-vous prévu pour demain.",
+        noTomorrowAppointments: "Aucun rendez-vous prévu pour ce jour.",
         noPhone: "Sans téléphone",
         sendViaWhatsApp: "Envoyer via WhatsApp",
         connected: "(connecté)",
@@ -10731,6 +11108,41 @@ views: {
         emDash: "—",
         yes: "Oui",
         no: "Non",
+        pendingRescheduleTitle: "En attente de reprogrammation",
+        pendingRescheduleHint: "Rendez-vous annulés sans nouvelle date encore programmée pour le même patient.",
+        loadingPendingReschedule: "Chargement des reprogrammations en attente…",
+        noPendingReschedule: "Aucun rendez-vous en attente de reprogrammation.",
+        cancelledOn: "Annulé le {date}",
+        sendRescheduleMessage: "Signaler reprogrammation",
+        rescheduleWhatsAppMessage: "Bonjour {name}, votre rendez-vous du {date} a été annulé. Nous vous recontacterons bientôt pour le reprogrammer. Merci de votre patience !",
+        rescheduleWaMsgTitle: "Message WhatsApp pour signaler la reprogrammation",
+        rescheduleWaMsgHint: "Texte envoyé en cliquant « Signaler reprogrammation ». Variables : {name}, {date} et {reserva} (insère votre lien de réservation en ligne pour que le patient réserve lui-même).",
+        rescheduleMessageSectionTitle: "Message personnalisé de reprogrammation",
+        rescheduleMessageHint: "Texte affiché au patient sur la page ouverte depuis le lien {{reagendar}} du message WhatsApp. S'il est vide, un message par défaut est utilisé.",
+        rescheduleMessagePlaceholder: "Ex. Votre rendez-vous a été annulé. Écrivez-nous sur WhatsApp pour reprogrammer plus vite.",
+        rescheduleMessageScope: "Périmètre : {label}",
+        rescheduleMessageReadOnlyHint: "Lecture seule : défini par votre podologue ou l'admin de la clinique.",
+        savingRescheduleMessage: "Enregistrement…",
+        saveRescheduleMessageButton: "Enregistrer le message",
+        markRescheduleHandled: "Marquer en gestion",
+        reopenReschedule: "Rouvrir",
+        rescheduleHandledBadge: "En gestion",
+        dismissReschedule: "Retirer",
+        dismissRescheduleConfirm: "Retirer {name} des reprogrammations en attente ? Le rendez-vous n'est pas supprimé, il quitte juste cette liste.",
+        opinionSectionTitle: "Demander un avis (satisfaction)",
+        opinionSectionHint: "Rendez-vous honorés ces 7 derniers jours sans avis. Envoyez au patient les liens 👍 😐 👎 via WhatsApp.",
+        loadingOpinion: "Chargement des rendez-vous honorés…",
+        noOpinionCandidates: "Aucun rendez-vous honoré en attente d'avis.",
+        attendedOn: "Honoré le {date}",
+        requestOpinion: "Demander un avis",
+        opinionWhatsAppMessage:
+          "Bonjour {name}, comment s'est passée votre visite à {clinica} ? Votre avis nous aide beaucoup :\n👍 Bien : {good}\n😐 Moyen : {regular}\n👎 Mauvais : {bad}",
+        bookingLinkTitle: "Réservation en ligne",
+        bookingLinkHint: "Partagez ce lien avec vos patients pour qu'ils réservent eux-mêmes. Il affiche la marque de votre clinique ; ils ne voient jamais PodoAdmin.",
+        bookingLinkEnabled: "Réservation en ligne activée",
+        bookingLinkDisabled: "Activer la réservation en ligne",
+        bookingLinkCopy: "Copier le lien",
+        bookingLinkCopied: "Copié !",
       },
     },
     clinicalTools: {
@@ -11482,6 +11894,8 @@ views: {
         currentPodiatrists: "Actuels : {count}",
         saveLimit: "Enregistrer",
         clinicMissing: "Clinique introuvable",
+        effectiveLimitHint: "Capacité réelle appliquée (sièges inclus par le forfait + sièges supplémentaires, ou le dépassement manuel s'il est plus élevé).",
+        overCapacityHint: "Cette clinique a plus de podologues actifs que sa capacité actuelle (probablement après une rétrogradation de forfait). Elle ne pourra pas en ajouter d'autres tant que des places ne seront pas libérées ou des sièges supplémentaires achetés.",
         patients: "patients",
         sessions: "séances",
       },

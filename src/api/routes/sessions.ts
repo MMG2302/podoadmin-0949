@@ -10,7 +10,18 @@ import {
   sessionsListQuerySchema,
 } from '../utils/validation';
 import { database } from '../database';
-import { clinicalSessions as sessionsTable, patients as patientsTable, createdUsers as createdUsersTable } from '../database/schema';
+import {
+  clinicalSessions as sessionsTable,
+  patients as patientsTable,
+  createdUsers as createdUsersTable,
+  prescriptions as prescriptionsTable,
+  sessionInventoryUsage as sessionInventoryUsageTable,
+  sessionChecklists as sessionChecklistsTable,
+  clinicalEvolutionNotes as clinicalEvolutionNotesTable,
+  patientConsentSignatures as patientConsentSignaturesTable,
+  labAttachments as labAttachmentsTable,
+  creditTransactions as creditTransactionsTable,
+} from '../database/schema';
 import { eq, and, desc, gte, lte } from 'drizzle-orm';
 import { validateImageDataUri, MAX_SESSION_IMAGE_BYTES, MAX_D1_STORED_DATA_URI_BYTES } from '../utils/logo-upload';
 import { syncClinicalRetentionForSession } from '../utils/clinical-retention';
@@ -872,6 +883,36 @@ sessionsRoutes.delete(
           400
         );
       }
+
+      // D1 exige integridad referencial (PRAGMA foreign_keys=ON): borrar la sesión con
+      // registros enlazados fallaba con "Error interno" (violación de FK) antes de este fix.
+      // Todo lo que es historial clínico del PACIENTE (recetas, notas de evolución,
+      // consentimientos, adjuntos de laboratorio, movimientos de créditos) pivota sobre
+      // patientId, no sobre la sesión: se desvincula (sessionId=NULL) para no perderlo.
+      // Uso de inventario/checklist son bookkeeping puro de ESA sesión (sin identidad de
+      // paciente propia) → se eliminan junto con ella.
+      await database
+        .update(prescriptionsTable)
+        .set({ sessionId: null })
+        .where(eq(prescriptionsTable.sessionId, sessionId));
+      await database.delete(sessionInventoryUsageTable).where(eq(sessionInventoryUsageTable.sessionId, sessionId));
+      await database.delete(sessionChecklistsTable).where(eq(sessionChecklistsTable.sessionId, sessionId));
+      await database
+        .update(clinicalEvolutionNotesTable)
+        .set({ sessionId: null })
+        .where(eq(clinicalEvolutionNotesTable.sessionId, sessionId));
+      await database
+        .update(patientConsentSignaturesTable)
+        .set({ sessionId: null })
+        .where(eq(patientConsentSignaturesTable.sessionId, sessionId));
+      await database
+        .update(labAttachmentsTable)
+        .set({ sessionId: null })
+        .where(eq(labAttachmentsTable.sessionId, sessionId));
+      await database
+        .update(creditTransactionsTable)
+        .set({ sessionId: null })
+        .where(eq(creditTransactionsTable.sessionId, sessionId));
 
       await database
         .delete(sessionsTable)

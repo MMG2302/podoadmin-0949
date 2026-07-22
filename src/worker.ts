@@ -18,6 +18,7 @@ import { handleNotificationQueueBatch } from './api/queues/consumer';
 import type { NotificationJob } from './api/queues/notification-messages';
 import { runD1BackupToR2, type D1BackupEnv } from './api/utils/d1-backup';
 import { runAppointmentRemindersCron } from './api/utils/appointment-reminders-cron';
+import { runRescheduleAlertsCron } from './api/utils/appointment-reschedule-alerts-cron';
 import { runClinicalRetentionPurge } from './api/utils/clinical-retention-purge';
 
 async function runRetentionCron(): Promise<void> {
@@ -119,6 +120,20 @@ const workerHandler = {
         }
       };
       ctx.waitUntil(remindersJob());
+      return;
+    }
+
+    if (controller.cron === '*/10 * * * *') {
+      const rescheduleAlertsJob = async () => {
+        try {
+          const result = await runRescheduleAlertsCron();
+          logger.info({ event: 'cron_reschedule_alerts_done', ...result });
+        } catch (err) {
+          logger.error({ event: 'cron_reschedule_alerts_error', message: String(err) });
+          captureServerError(err, { cron: 'reschedule-alerts' });
+        }
+      };
+      ctx.waitUntil(rescheduleAlertsJob());
       return;
     }
 

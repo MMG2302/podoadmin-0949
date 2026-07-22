@@ -30,6 +30,7 @@ import {
   normalizeCheckoutTariffs,
 } from '../utils/checkout-tariffs';
 import { logAuditEvent } from '../utils/audit-log';
+import { checkoutTariffsBodySchema } from '../utils/validation';
 import {
   getCheckoutAnalytics,
   getCheckoutAnalyticsPrefs,
@@ -114,17 +115,6 @@ async function resolvePodiatristIdForCreate(
   return { error: 'No autorizado', status: 403 };
 }
 
-const tariffsBodySchema = z.object({
-  podiatristId: z.string().optional(),
-  tariffs: z.array(
-    z.object({
-      id: z.string().min(1).max(40),
-      label: z.string().min(1).max(80),
-      amountCents: z.number().int().min(0),
-    })
-  ),
-});
-
 /** GET /checkout-handoffs/tariffs */
 checkoutHandoffsRoutes.get('/tariffs', async (c) => {
   const user = c.get('user')!;
@@ -149,7 +139,7 @@ checkoutHandoffsRoutes.get('/tariffs', async (c) => {
 checkoutHandoffsRoutes.put('/tariffs', requirePermission('manage_checkout_handoffs'), async (c) => {
   const user = c.get('user')!;
   const body = await c.req.json().catch(() => ({}));
-  const parsed = tariffsBodySchema.safeParse(body);
+  const parsed = checkoutTariffsBodySchema.safeParse(body);
   if (!parsed.success) {
     return c.json({ success: false, error: 'Datos inválidos' }, 400);
   }

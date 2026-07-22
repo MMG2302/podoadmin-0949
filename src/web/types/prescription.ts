@@ -1,6 +1,8 @@
 export interface Prescription {
   id: string;
-  sessionId: string;
+  // Nullable: se desvincula (no se borra) si la sesión que la originó se elimina —
+  // la receta sigue siendo historial del paciente vía patientId.
+  sessionId: string | null;
   patientId: string;
   patientName: string;
   patientDob: string;

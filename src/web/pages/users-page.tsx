@@ -1134,6 +1134,7 @@ const UsersPage = () => {
   const [accountMenuPosition, setAccountMenuPosition] = useState<{ top?: number; bottom?: number; left: number } | null>(null);
   const [clinicsForLimits, setClinicsForLimits] = useState<Array<{
     clinicId: string; clinicName: string; clinicCode: string; podiatristLimit: number | null; podiatristCount: number;
+    effectivePodiatristLimit: number;
     effectivePlanTier: "base" | "premium" | null;
   }>>([]);
   const [clinicLimitEdits, setClinicLimitEdits] = useState<Record<string, string>>({});
@@ -1174,6 +1175,7 @@ const UsersPage = () => {
           clinicName: string;
           clinicCode: string;
           podiatristLimit?: number | null;
+          effectivePodiatristLimit?: number;
           podiatristCount?: number;
           effectivePlanTier?: "base" | "premium" | null;
         }>;
@@ -1184,6 +1186,7 @@ const UsersPage = () => {
           clinicName: c.clinicName,
           clinicCode: c.clinicCode,
           podiatristLimit: c.podiatristLimit ?? null,
+          effectivePodiatristLimit: c.effectivePodiatristLimit ?? c.podiatristLimit ?? 0,
           podiatristCount: c.podiatristCount ?? 0,
           effectivePlanTier: c.effectivePlanTier ?? null,
         }));
@@ -1316,9 +1319,9 @@ const UsersPage = () => {
 
   // Mapa clínica -> info (para mostrar nombre y límite en cada fila)
   const clinicMap = useMemo(() => {
-    const m = new Map<string, { clinicName: string; clinicCode: string; podiatristLimit: number | null; podiatristCount: number; effectivePlanTier: "base" | "premium" | null }>();
+    const m = new Map<string, { clinicName: string; clinicCode: string; podiatristLimit: number | null; effectivePodiatristLimit: number; podiatristCount: number; effectivePlanTier: "base" | "premium" | null }>();
     for (const c of clinicsForLimits) {
-      m.set(c.clinicId, { clinicName: c.clinicName, clinicCode: c.clinicCode, podiatristLimit: c.podiatristLimit, podiatristCount: c.podiatristCount, effectivePlanTier: c.effectivePlanTier });
+      m.set(c.clinicId, { clinicName: c.clinicName, clinicCode: c.clinicCode, podiatristLimit: c.podiatristLimit, effectivePodiatristLimit: c.effectivePodiatristLimit, podiatristCount: c.podiatristCount, effectivePlanTier: c.effectivePlanTier });
     }
     return m;
   }, [clinicsForLimits]);
@@ -2272,9 +2275,16 @@ const UsersPage = () => {
                             </button>
                           </div>
                         ) : (
-                          <span className="mobile-card-value">
+                          <span
+                            className={`mobile-card-value ${
+                              clinicMap.get(u.clinicId)!.podiatristCount > clinicMap.get(u.clinicId)!.effectivePodiatristLimit
+                                ? "text-semantic-error font-semibold"
+                                : ""
+                            }`}
+                            title={t.usersPage.table.effectiveLimitHint}
+                          >
                             {clinicMap.get(u.clinicId)!.podiatristCount}/
-                            {clinicMap.get(u.clinicId)!.podiatristLimit === null ? "∞" : clinicMap.get(u.clinicId)!.podiatristLimit}
+                            {clinicMap.get(u.clinicId)!.effectivePodiatristLimit}
                           </span>
                         )}
                       </div>
@@ -2413,7 +2423,8 @@ const UsersPage = () => {
                         const editVal = clinicLimitEdits[u.clinicId] ?? (info?.podiatristLimit === null ? "" : String(info?.podiatristLimit ?? ""));
                         const hasChange = editVal !== (info?.podiatristLimit === null ? "" : String(info?.podiatristLimit ?? ""));
                         if (info) {
-                          const display = `${info.podiatristCount}/${info.podiatristLimit === null ? "∞" : info.podiatristLimit}`;
+                          const display = `${info.podiatristCount}/${info.effectivePodiatristLimit}`;
+                          const overCapacity = info.podiatristCount > info.effectivePodiatristLimit;
                           const tierBadge = info.effectivePlanTier ? (
                             <span
                               className={`text-[10px] font-medium px-1.5 py-0.5 rounded-full whitespace-nowrap ${
@@ -2453,7 +2464,12 @@ const UsersPage = () => {
                             );
                           }
                           return (
-                            <span className="text-xs text-gray-600 inline-flex items-center gap-1.5">
+                            <span
+                              className={`text-xs inline-flex items-center gap-1.5 ${
+                                overCapacity ? "text-semantic-error font-semibold" : "text-gray-600"
+                              }`}
+                              title={overCapacity ? t.usersPage.table.overCapacityHint : t.usersPage.table.effectiveLimitHint}
+                            >
                               {display}
                               {tierBadge}
                             </span>

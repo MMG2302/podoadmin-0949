@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { api } from "../lib/api-client";
 import { useLanguage } from "../contexts/language-context";
 import type { AgendaSettings } from "../types/agenda";
-import type { AppointmentAgendaMetrics } from "../types/agenda";
+import type { AppointmentAgendaMetrics, SatisfactionSummary } from "../types/agenda";
 import type { DailyCloseSnapshot, DailyCloseTodayStatus } from "../types/agenda";
 
 export function useAppointmentAgendaMetrics(enabled: boolean, podiatristId?: string) {
@@ -42,6 +42,32 @@ export function useAppointmentAgendaMetrics(enabled: boolean, podiatristId?: str
   }, [load]);
 
   return { metrics, loading, error, reload: load };
+}
+
+export function useSatisfaction(enabled: boolean, podiatristId?: string) {
+  const [data, setData] = useState<SatisfactionSummary | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  const load = useCallback(async () => {
+    if (!enabled) return;
+    setLoading(true);
+    try {
+      const params = new URLSearchParams({ days: "30" });
+      if (podiatristId) params.set("podiatristId", podiatristId);
+      const res = await api.get<{ success: boolean; satisfaction?: SatisfactionSummary }>(
+        `/clinical-dashboard/satisfaction?${params.toString()}`
+      );
+      setData(res.success ? res.data?.satisfaction ?? null : null);
+    } finally {
+      setLoading(false);
+    }
+  }, [enabled, podiatristId]);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
+
+  return { satisfaction: data, loading, reload: load };
 }
 
 export function useAgendaSettings(enabled: boolean, podiatristId?: string) {

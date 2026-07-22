@@ -135,6 +135,7 @@ export const clinics = sqliteTable('clinics', {
   address: text('address'),
   city: text('city'),
   postalCode: text('postal_code'),
+  mapsUrl: text('maps_url'), // Link directo de Google Maps (fallback/override de la ubicación generada desde address)
   countryCode: text('country_code').default('MX'),
   licenseNumber: text('license_number'),
   website: text('website'),
@@ -156,6 +157,8 @@ export const clinics = sqliteTable('clinics', {
   checkoutAnalyticsJson: text('checkout_analytics_json'),
   agendaSettingsJson: text('agenda_settings_json'),
   printPreferencesJson: text('print_preferences_json'),
+  // Mensaje predeterminado de la clínica para reagendo por enlace (fallback del override por podólogo).
+  rescheduleMessage: text('reschedule_message'),
   createdAt: text('created_at').notNull(),
 });
 
@@ -201,6 +204,20 @@ export const appointments = sqliteTable('appointments', {
   confirmToken: text('confirm_token'), // token único para confirmar/cancelar por enlace (WhatsApp)
   confirmationSentAt: text('confirmation_sent_at'),
   confirmationRespondedAt: text('confirmation_responded_at'),
+  cost: text('cost'), // costo de la cita, string para preservar precisión decimal
+  serviceLabel: text('service_label'), // servicio/tarifa elegido (para métrica "Tiempo por servicio")
+  // Alerta de reagendo: se activa al cancelar, se apaga sola al crear una nueva cita para el mismo paciente.
+  rescheduleStatus: text('reschedule_status').default('none'), // none | pending | handled | resolved | expired
+  rescheduleRequestedAt: text('reschedule_requested_at'), // cuándo se canceló (inicio del pendiente)
+  lastRescheduleAlertAt: text('last_reschedule_alert_at'), // última vez que se (re)envió la notificación interna
+  // "En gestión": un miembro del staff lo marcó para recuperación manual; frena las alertas automáticas.
+  rescheduleHandledAt: text('reschedule_handled_at'),
+  rescheduleHandledBy: text('reschedule_handled_by'),
+  // Encuesta de satisfacción por enlace (post-visita): el paciente califica y opcionalmente deja queja/sugerencia.
+  satisfactionRating: text('satisfaction_rating'), // good | regular | bad
+  satisfactionComment: text('satisfaction_comment'),
+  satisfactionAnonymous: integer('satisfaction_anonymous', { mode: 'boolean' }).notNull().default(false),
+  satisfactionRespondedAt: text('satisfaction_responded_at'),
 });
 
 // Tabla de log de auditoría
@@ -334,6 +351,11 @@ export const professionalInfo = sqliteTable('professional_info', {
   agendaSettingsJson: text('agenda_settings_json'),
   printPreferencesJson: text('print_preferences_json'),
   infoUpdatedAt: text('info_updated_at'),
+  // Mensaje personalizado que ve el paciente al pedir reagendar por enlace de WhatsApp (fallback: i18n genérico).
+  rescheduleMessage: text('reschedule_message'),
+  // Reserva en línea white-label: token público del enlace de auto-agendado del podólogo.
+  bookingToken: text('booking_token'),
+  bookingEnabled: integer('booking_enabled', { mode: 'boolean' }).notNull().default(false),
 });
 
 // Licencia profesional (todos los podólogos)
@@ -506,7 +528,10 @@ export const whatsappMessageEvents = sqliteTable('whatsapp_message_events', {
 // Recetas médicas (backend)
 export const prescriptions = sqliteTable('prescriptions', {
   id: text('id').primaryKey(),
-  sessionId: text('session_id').notNull().references(() => clinicalSessions.id),
+  // Nullable: la receta pivota sobre el paciente (patientId), no sobre la sesión. Al borrar
+  // la sesión que la originó, se desvincula (session_id=NULL) en vez de destruirse — el
+  // documento médico sigue siendo consultable por paciente vía GET /prescriptions?patientId=.
+  sessionId: text('session_id').references(() => clinicalSessions.id),
   patientId: text('patient_id').notNull().references(() => patients.id),
   patientName: text('patient_name').notNull(),
   patientDob: text('patient_dob').notNull(),

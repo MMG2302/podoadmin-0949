@@ -10,13 +10,16 @@ type ReservationInfo = {
   clinicName: string | null;
   podiatristName: string | null;
   logoUrl: string | null;
+  rescheduleMessage: string | null;
 };
+
+type ReservationAction = "confirm" | "cancel" | "reschedule";
 
 type PageState =
   | { kind: "processing" }
   | { kind: "invalid" }
   | { kind: "expired" }
-  | { kind: "done"; action: "confirm" | "cancel"; info: ReservationInfo | null; showClosePopup?: boolean }
+  | { kind: "done"; action: ReservationAction; info: ReservationInfo | null; showClosePopup?: boolean }
   | { kind: "slotTaken"; info: ReservationInfo | null }
   | { kind: "error" };
 
@@ -29,7 +32,7 @@ function getTokenFromUrl(): string {
 }
 
 async function postAction(
-  action: "confirm" | "cancel",
+  action: ReservationAction,
   token: string
 ): Promise<{ status: number; data: { success?: boolean; error?: string; reservation?: ReservationInfo } }> {
   const res = await fetch(`/api/reservations/${action}`, {
@@ -47,14 +50,14 @@ async function postAction(
 
 /**
  * Página pública a la que llega el paciente desde WhatsApp:
- * /reserva/confirmar?token=... | /reserva/cancelar?token=...
+ * /reserva/confirmar?token=... | /reserva/cancelar?token=... | /reserva/reagendar?token=...
  *
  * Abrir el enlace EJECUTA la acción (sin botón): la página lanza el POST al montar.
  * Los bots de vista previa de WhatsApp no ejecutan JavaScript, así que una preview
  * del enlace no confirma ni cancela nada. Tras la acción se ofrece deshacer
  * ("¿Cambiaste de opinión?") por si el toque fue accidental.
  */
-export default function ReservationActionPage({ mode }: { mode: "confirm" | "cancel" }) {
+export default function ReservationActionPage({ mode }: { mode: ReservationAction }) {
   const { t, language } = useLanguage();
   const r = t.reservationAction;
   const [state, setState] = useState<PageState>({ kind: "processing" });
@@ -66,7 +69,7 @@ export default function ReservationActionPage({ mode }: { mode: "confirm" | "can
   const dateLocale =
     language === "en" ? "en-US" : language === "pt" ? "pt-PT" : language === "fr" ? "fr-FR" : "es-MX";
 
-  const runAction = async (action: "confirm" | "cancel") => {
+  const runAction = async (action: ReservationAction) => {
     try {
       const { status, data } = await postAction(action, token);
       if (status === 410 || data.error === "expired") {
@@ -85,6 +88,7 @@ export default function ReservationActionPage({ mode }: { mode: "confirm" | "can
         setState({ kind: "error" });
         return;
       }
+      if (data.reservation?.clinicName) document.title = data.reservation.clinicName;
       setState({ kind: "done", action, info: data.reservation ?? null });
     } catch {
       setState({ kind: "error" });
@@ -127,7 +131,7 @@ export default function ReservationActionPage({ mode }: { mode: "confirm" | "can
     setTimeout(() => setCloseHint(true), 500);
   };
 
-  const title = mode === "confirm" ? r.confirmTitle : r.cancelTitle;
+  const title = mode === "confirm" ? r.confirmTitle : mode === "reschedule" ? r.rescheduleTitle : r.cancelTitle;
 
   const brandInfo = state.kind === "done" || state.kind === "slotTaken" ? state.info : null;
   const brandLogoUrl = brandInfo?.logoUrl ?? null;
@@ -193,7 +197,11 @@ export default function ReservationActionPage({ mode }: { mode: "confirm" | "can
 
         {state.kind === "processing" && (
           <p className="text-sm text-brand-muted">
-            {mode === "confirm" ? r.processingConfirm : r.processingCancel}
+            {mode === "confirm"
+              ? r.processingConfirm
+              : mode === "reschedule"
+                ? r.processingReschedule
+                : r.processingCancel}
           </p>
         )}
 
@@ -222,7 +230,11 @@ export default function ReservationActionPage({ mode }: { mode: "confirm" | "can
                 state.action === "confirm" ? "text-semantic-success" : "text-brand-ink"
               }`}
             >
-              {state.action === "confirm" ? r.confirmedOk : r.cancelledOk}
+              {state.action === "confirm"
+                ? r.confirmedOk
+                : state.action === "reschedule"
+                  ? state.info?.rescheduleMessage || r.rescheduledOk
+                  : r.cancelledOk}
             </p>
             {detailsCard(state.info)}
             {state.showClosePopup && (

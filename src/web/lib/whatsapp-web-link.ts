@@ -11,11 +11,12 @@ import {
 export const DEFAULT_WHATSAPP_WEB_TEMPLATE =
   'Hola {{nombre}}, le recordamos su cita el {{fecha}} a las {{hora}}. {{nota}}\n' +
   'Para confirmar, haz clic aquí: {{confirmar}}\n' +
-  'Para cancelar, haz clic aquí: {{cancelar}}';
+  'Para cancelar, haz clic aquí: {{cancelar}}\n' +
+  'Para reagendar, haz clic aquí: {{reagendar}}';
 
 /** Templates predefinidos para inspir engagement. Variables disponibles:
- * {{nombre}}, {{fecha}}, {{hora}}, {{nota}}, {{confirmar}}, {{cancelar}},
- * {{doctor}}, {{especialidad}}, {{ubicacion}}, {{maps}}, {{costo}}, {{duracion}}, {{clinica}}
+ * {{nombre}}, {{fecha}}, {{hora}}, {{nota}}, {{confirmar}}, {{cancelar}}, {{reagendar}},
+ * {{doctor}}, {{ubicacion}}, {{maps}}, {{costo}}, {{duracion}}, {{clinica}}
  */
 export const WHATSAPP_TEMPLATE_EXAMPLES = [
   {
@@ -24,18 +25,20 @@ export const WHATSAPP_TEMPLATE_EXAMPLES = [
     template:
       'Hola {{nombre}}, le recordamos su cita el {{fecha}} a las {{hora}}. {{nota}}\n' +
       'Para confirmar, haz clic aquí: {{confirmar}}\n' +
-      'Para cancelar, haz clic aquí: {{cancelar}}',
+      'Para cancelar, haz clic aquí: {{cancelar}}\n' +
+      'Para reagendar, haz clic aquí: {{reagendar}}',
   },
   {
     id: 'with-doctor',
     name: 'Con datos del doctor',
     template:
-      'Hola {{nombre}}, recordamos que tienes cita con {{doctor}} ({{especialidad}}) el {{fecha}} a las {{hora}}.\n\n' +
+      'Hola {{nombre}}, recordamos que tienes cita con {{doctor}} el {{fecha}} a las {{hora}}.\n\n' +
       '📍 {{ubicacion}}\n' +
       '💰 Costo: {{costo}} | ⏱️ Duración: {{duracion}}\n\n' +
       '{{nota}}\n\n' +
       'Confirmar: {{confirmar}}\n' +
-      'Cancelar: {{cancelar}}',
+      'Cancelar: {{cancelar}}\n' +
+      'Reagendar: {{reagendar}}',
   },
   {
     id: 'with-location',
@@ -47,7 +50,7 @@ export const WHATSAPP_TEMPLATE_EXAMPLES = [
       '🗺️ Ver ubicación: {{maps}}\n' +
       '🏥 {{clinica}}\n\n' +
       '{{nota}}\n\n' +
-      'Confirma tu asistencia: {{confirmar}} | Cancelar: {{cancelar}}',
+      'Confirma tu asistencia: {{confirmar}} | Cancelar: {{cancelar}} | Reagendar: {{reagendar}}',
   },
   {
     id: 'engagement',
@@ -55,20 +58,21 @@ export const WHATSAPP_TEMPLATE_EXAMPLES = [
     template:
       'Hola {{nombre}} 😊\n\n' +
       'Te espera una experiencia de cuidado podológico en {{clinica}}.\n' +
-      '👨‍⚕️ Doctor: {{doctor}} ({{especialidad}})\n' +
+      '👨‍⚕️ Doctor: {{doctor}}\n' +
       '📅 {{fecha}} a las {{hora}}\n' +
       '📍 {{ubicacion}}\n' +
       '⏱️ Duración aproximada: {{duracion}}\n' +
       '💰 Inversión: {{costo}}\n\n' +
       '{{nota}}\n\n' +
       '✅ Confirmar: {{confirmar}}\n' +
-      '❌ Necesitas cancelar: {{cancelar}}',
+      '❌ Necesitas cancelar: {{cancelar}}\n' +
+      '🔄 Necesitas otra fecha: {{reagendar}}',
   },
 ];
 
-/** ¿La plantilla usa los enlaces de confirmación por token ({{confirmar}}/{{cancelar}})? */
+/** ¿La plantilla usa alguno de los enlaces por token ({{confirmar}}/{{cancelar}}/{{reagendar}})? */
 export function templateHasConfirmationLinks(template: string): boolean {
-  return /\{\{(confirmar|cancelar)\}\}/i.test(template);
+  return /\{\{(confirmar|cancelar|reagendar)\}\}/i.test(template);
 }
 
 const TEMPLATE_STORAGE_PREFIX = 'podoadmin_wa_template_';
@@ -87,6 +91,47 @@ export function saveWhatsAppWebTemplate(userId: string, template: string): void 
   } catch {
     /* ignore */
   }
+}
+
+const RESCHEDULE_WA_STORAGE_PREFIX = 'podoadmin_wa_reschedule_';
+
+/** Plantilla editable del mensaje de WhatsApp de "Avisar reagendo" (por usuario). */
+export function loadWaRescheduleTemplate(userId: string, fallback: string): string {
+  try {
+    return localStorage.getItem(`${RESCHEDULE_WA_STORAGE_PREFIX}${userId}`) || fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+export function saveWaRescheduleTemplate(userId: string, template: string): void {
+  try {
+    localStorage.setItem(`${RESCHEDULE_WA_STORAGE_PREFIX}${userId}`, template);
+  } catch {
+    /* ignore */
+  }
+}
+
+/**
+ * Rellena la plantilla de reagendo. Acepta llaves simples o dobles: {nombre}/{{nombre}},
+ * {fecha}, {reserva} (link de reserva en línea). {reserva} vacío se elimina junto con su línea.
+ */
+export function applyRescheduleWaMessage(
+  template: string,
+  vars: { name: string; date: string; reserva: string }
+): string {
+  let out = template
+    .replace(/\{\{?\s*(nombre|name)\s*\}?\}/gi, vars.name)
+    .replace(/\{\{?\s*(fecha|date)\s*\}?\}/gi, vars.date);
+  if (vars.reserva) {
+    out = out.replace(/\{\{?\s*(reserva|booking|link)\s*\}?\}/gi, vars.reserva);
+  } else {
+    // Sin link configurado: quita la línea que contenga {reserva} para no dejar un hueco raro.
+    out = out
+      .replace(/^.*\{\{?\s*(reserva|booking|link)\s*\}?\}.*$\n?/gim, '')
+      .replace(/\{\{?\s*(reserva|booking|link)\s*\}?\}/gi, '');
+  }
+  return out.trim();
 }
 
 export function applyWhatsAppWebTemplate(
@@ -109,13 +154,18 @@ export function formatDisplayDate(isoDate: string, locale = 'es-MX'): string {
   }
 }
 
-export function getTomorrowLocalDateString(base: Date = new Date()): string {
+/** Fecha local (YYYY-MM-DD) desplazada `offsetDays` días respecto a `base`. */
+export function getRelativeLocalDateString(offsetDays: number, base: Date = new Date()): string {
   const d = new Date(base);
-  d.setDate(d.getDate() + 1);
+  d.setDate(d.getDate() + offsetDays);
   const y = d.getFullYear();
   const m = String(d.getMonth() + 1).padStart(2, '0');
   const day = String(d.getDate()).padStart(2, '0');
   return `${y}-${m}-${day}`;
+}
+
+export function getTomorrowLocalDateString(base: Date = new Date()): string {
+  return getRelativeLocalDateString(1, base);
 }
 
 export function phonePlaceholderForCountry(countryCode: string): string {

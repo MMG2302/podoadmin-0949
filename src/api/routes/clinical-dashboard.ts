@@ -14,7 +14,16 @@ import {
   resolveAgendaSettingsForPodiatrist,
   saveAgendaSettings,
 } from '../utils/agenda-settings';
+import {
+  canAccessRescheduleMessageForPodiatrist,
+  getClinicRescheduleMessage,
+  resolveRescheduleMessageForPodiatrist,
+  saveRescheduleMessage,
+} from '../utils/reschedule-message';
 import { getAssignedPodiatristUserIds } from '../utils/tenant-isolation';
+import { fetchSatisfactionSummary } from '../utils/satisfaction-summary';
+import { getOrCreateBookingToken } from '../utils/booking';
+import { getRequestBaseUrl } from '../utils/stripe-client';
 import { requireFeature } from '../middleware/entitlements';
 const clinicalDashboardRoutes = new Hono();
 
@@ -232,6 +241,8 @@ const agendaSettingsBodySchema = z.object({
   allowOvertime: z.boolean().optional(),
   overtimeStartHour: z.number().int().min(0).max(23).optional(),
   overtimeEndHour: z.number().int().min(0).max(23).optional(),
+  rescheduleAlertIntervalMinutes: z.number().int().min(5).max(1440).optional(),
+  timezone: z.string().trim().min(1).max(64).optional(),
   podiatristId: z.string().trim().min(1).max(128).optional(),
 });
 
@@ -313,12 +324,13 @@ clinicalDashboardRoutes.put('/agenda-settings', async (c) => {
     return c.json({ success: false, error: 'Datos inválidos' }, 400);
   }
 
-  const { podiatristId: bodyPodId, ...patch } = parsed.data;
+  const { podiatristId: bodyPodId, rescheduleAlertIntervalMinutes, timezone, ...restPatch } = parsed.data;
 
   if (user.role === 'podiatrist') {
+    // rescheduleAlertIntervalMinutes y timezone son clínica-wide: el podólogo no los sobreescribe.
     const settings = await saveAgendaSettings(
       { kind: 'podiatrist', podiatristId: user.userId },
-      patch
+      restPatch
     );
     return c.json({ success: true, settings });
   }
@@ -333,11 +345,152 @@ clinicalDashboardRoutes.put('/agenda-settings', async (c) => {
         403
       );
     }
-    const settings = await saveAgendaSettings({ kind: 'clinic', clinicId: user.clinicId }, patch);
+    const settings = await saveAgendaSettings(
+      { kind: 'clinic', clinicId: user.clinicId },
+      {
+        ...restPatch,
+        ...(rescheduleAlertIntervalMinutes !== undefined ? { rescheduleAlertIntervalMinutes } : {}),
+        ...(timezone !== undefined ? { timezone } : {}),
+      }
+    );
     return c.json({ success: true, settings });
   }
 
   return c.json({ success: false, error: 'No autorizado' }, 403);
+});
+
+/** GET /clinical-dashboard/reschedule-message */
+clinicalDashboardRoutes.get('/reschedule-message', async (c) => {
+  const user = c.get('user')!;
+  const podiatristId = sanitizePathParam(c.req.query('podiatristId') ?? '', 128) || undefined;
+
+  if (user.role === 'podiatrist') {
+    const resolved = await resolveRescheduleMessageForPodiatrist(user.userId);
+    return c.json({
+      success: true,
+      message: resolved.message,
+      source: resolved.source,
+      editable: true,
+      scopeLabel: 'Mi consulta',
+      podiatristId: user.userId,
+    });
+  }
+
+  if (user.role === 'clinic_admin') {
+    if (!user.clinicId) {
+      return c.json({ success: false, error: 'Sin clínica asignada' }, 400);
+    }
+    if (podiatristId) {
+      const ok = await canAccessRescheduleMessageForPodiatrist(user, podiatristId);
+      if (!ok) return c.json({ success: false, error: 'No autorizado' }, 403);
+      const resolved = await resolveRescheduleMessageForPodiatrist(podiatristId);
+      return c.json({
+        success: true,
+        message: resolved.message,
+        source: resolved.source,
+        editable: false,
+        scopeLabel: 'Podólogo',
+        podiatristId,
+      });
+    }
+    const message = await getClinicRescheduleMessage(user.clinicId);
+    return c.json({
+      success: true,
+      message,
+      source: 'clinic' as const,
+      editable: true,
+      scopeLabel: 'Toda la clínica',
+      podiatristId: null,
+    });
+  }
+
+  if (user.role === 'receptionist') {
+    const targetId = podiatristId || (await getAssignedPodiatristUserIds(user.userId))[0] || null;
+    if (!targetId) {
+      return c.json({ success: false, error: 'Sin podólogo asignado' }, 400);
+    }
+    const ok = await canAccessRescheduleMessageForPodiatrist(user, targetId);
+    if (!ok) return c.json({ success: false, error: 'No autorizado' }, 403);
+    const resolved = await resolveRescheduleMessageForPodiatrist(targetId);
+    return c.json({
+      success: true,
+      message: resolved.message,
+      source: resolved.source,
+      editable: false,
+      scopeLabel: 'Podólogo asignado',
+      podiatristId: targetId,
+    });
+  }
+
+  return c.json({ success: false, error: 'No autorizado' }, 403);
+});
+
+const rescheduleMessageBodySchema = z.object({
+  message: z.string().max(500).nullable(),
+});
+
+/** PUT /clinical-dashboard/reschedule-message */
+clinicalDashboardRoutes.put('/reschedule-message', async (c) => {
+  const user = c.get('user')!;
+  const body = await c.req.json().catch(() => ({}));
+  const parsed = rescheduleMessageBodySchema.safeParse(body);
+  if (!parsed.success) {
+    return c.json({ success: false, error: 'Datos inválidos' }, 400);
+  }
+
+  if (user.role === 'podiatrist') {
+    const message = await saveRescheduleMessage({ kind: 'podiatrist', podiatristId: user.userId }, parsed.data.message);
+    return c.json({ success: true, message });
+  }
+
+  if (user.role === 'clinic_admin') {
+    if (!user.clinicId) {
+      return c.json({ success: false, error: 'Sin clínica asignada' }, 400);
+    }
+    const message = await saveRescheduleMessage({ kind: 'clinic', clinicId: user.clinicId }, parsed.data.message);
+    return c.json({ success: true, message });
+  }
+
+  return c.json({ success: false, error: 'No autorizado' }, 403);
+});
+
+/** GET /clinical-dashboard/satisfaction?days=30&podiatristId= */
+clinicalDashboardRoutes.get('/satisfaction', async (c) => {
+  const user = c.get('user')!;
+  const scope = await resolveClinicalListScope(user);
+  const daysRaw = c.req.query('days');
+  const days = daysRaw ? Number.parseInt(daysRaw, 10) : 30;
+  const podiatristId = sanitizePathParam(c.req.query('podiatristId') ?? '', 128) || undefined;
+
+  const summary = await fetchSatisfactionSummary({
+    scope,
+    podiatristUserId: podiatristId,
+    days: Number.isNaN(days) ? 30 : days,
+  });
+  return c.json({ success: true, satisfaction: summary });
+});
+
+/** GET /clinical-dashboard/booking-link — enlace de reserva en línea del podólogo. */
+clinicalDashboardRoutes.get('/booking-link', async (c) => {
+  const user = c.get('user')!;
+  if (user.role !== 'podiatrist') {
+    return c.json({ success: false, error: 'Solo el podólogo gestiona su enlace de reserva' }, 403);
+  }
+  const { token, enabled } = await getOrCreateBookingToken(user.userId);
+  const base = getRequestBaseUrl(c.req.url);
+  return c.json({ success: true, enabled, token, url: `${base}/reserva/agendar?t=${token}` });
+});
+
+/** PUT /clinical-dashboard/booking-link { enabled } — activa/desactiva la reserva en línea. */
+clinicalDashboardRoutes.put('/booking-link', async (c) => {
+  const user = c.get('user')!;
+  if (user.role !== 'podiatrist') {
+    return c.json({ success: false, error: 'Solo el podólogo gestiona su enlace de reserva' }, 403);
+  }
+  const body = await c.req.json().catch(() => ({} as { enabled?: boolean }));
+  const { token, enabled } = await getOrCreateBookingToken(user.userId, body.enabled === true);
+  const base = getRequestBaseUrl(c.req.url);
+  return c.json({ success: true, enabled, token, url: `${base}/reserva/agendar?t=${token}` });
 });
 
 export default clinicalDashboardRoutes;

@@ -317,8 +317,27 @@ clinicalRoutes.patch('/appointments/:id/check-in', requirePermission('manage_app
   const schema = z.object({ checkInStatus: z.enum(['none', 'waiting', 'in_room', 'seen']) });
   const parsed = schema.safeParse(await c.req.json().catch(() => ({})));
   if (!parsed.success) return c.json({ error: 'Datos inválidos' }, 400);
-  await database.update(appointments).set({ checkInStatus: parsed.data.checkInStatus, updatedAt: new Date().toISOString() }).where(eq(appointments.id, id));
-  return c.json({ success: true });
+  const checkInStatus = parsed.data.checkInStatus;
+
+  const rows = await database.select().from(appointments).where(eq(appointments.id, id)).limit(1);
+  if (!rows.length) return c.json({ error: 'Cita no encontrada' }, 404);
+  const current = rows[0];
+
+  const patch: { checkInStatus: string; updatedAt: string; status?: string } = {
+    checkInStatus,
+    updatedAt: new Date().toISOString(),
+  };
+  // "Atendido" (seen) cierra la cita como 'completed': así cuenta en métricas y habilita
+  // la solicitud de opinión post-visita. Solo transiciona desde estados abiertos; nunca
+  // pisa 'cancelled' ni 'no_show'. Quitar "Atendido" revierte la completación automática.
+  if (checkInStatus === 'seen' && (current.status === 'scheduled' || current.status === 'confirmed')) {
+    patch.status = 'completed';
+  } else if (checkInStatus !== 'seen' && current.status === 'completed') {
+    patch.status = 'scheduled';
+  }
+
+  await database.update(appointments).set(patch).where(eq(appointments.id, id));
+  return c.json({ success: true, checkInStatus, status: patch.status ?? current.status });
 });
 
 // --- Métricas agenda ---

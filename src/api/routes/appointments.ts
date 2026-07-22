@@ -1,5 +1,5 @@
 import { Hono } from 'hono';
-import { eq, and, ne } from 'drizzle-orm';
+import { eq, and, ne, gte, lte, inArray, isNull, or, type SQL } from 'drizzle-orm';
 import { requireAuth } from '../middleware/auth';
 import { requirePermission } from '../middleware/authorization';
 import { sanitizePathParam } from '../utils/sanitization';
@@ -23,7 +23,7 @@ import { database } from '../database';
 import { appointments as appointmentsTable, createdUsers as createdUsersTable } from '../database/schema';
 import { canUserAccess } from '../utils/user-retention';
 import { logAuditEvent } from '../utils/audit-log';
-import { notifyPodiatristAboutAppointment } from '../utils/notifications-service';
+import { notifyAppointmentCancelled, notifyPodiatristAboutAppointment } from '../utils/notifications-service';
 import { getClientIP } from '../utils/ip-tracking';
 import { getSafeUserAgent } from '../utils/request-headers';
 import {
@@ -75,6 +75,12 @@ function mapDbToAppointment(row: DbAppointment) {
     pendingPatientName: row.pendingPatientName ?? undefined,
     pendingPatientPhone: row.pendingPatientPhone ?? undefined,
     checkInStatus: (row.checkInStatus as 'none' | 'waiting' | 'in_room' | 'seen') ?? 'none',
+    cost: row.cost ?? undefined,
+    serviceLabel: row.serviceLabel ?? undefined,
+    rescheduleStatus: (row.rescheduleStatus as 'none' | 'pending' | 'handled' | 'resolved' | 'expired') ?? 'none',
+    rescheduleRequestedAt: row.rescheduleRequestedAt ?? undefined,
+    rescheduleHandledAt: row.rescheduleHandledAt ?? undefined,
+    satisfactionRating: (row.satisfactionRating as 'good' | 'regular' | 'bad' | null) ?? null,
   };
 }
 
@@ -151,7 +157,7 @@ appointmentsRoutes.get('/', requirePermission('view_patients'), async (c) => {
     if (!queryResult.success) {
       return c.json({ error: 'Parámetros inválidos', message: queryResult.error, issues: queryResult.issues }, 400);
     }
-    const { clinicId, podiatristId, date, from, to, includeCancelled } = queryResult.data;
+    const { clinicId, podiatristId, date, from, to, includeCancelled, rescheduleStatus } = queryResult.data;
 
     if (user.role === 'clinic_admin' && clinicId && clinicId !== user.clinicId) {
       return c.json({ error: 'Acceso denegado', message: 'No puedes consultar otra clínica' }, 403);
@@ -166,29 +172,39 @@ appointmentsRoutes.get('/', requirePermission('view_patients'), async (c) => {
       }
     }
 
-    let rows = await database.select().from(appointmentsTable);
+    // Filtros empujados a SQL (índices por created_by/clinic_id/session_date): evita
+    // leer toda la tabla en memoria y filtrar en JS. El aislamiento por rol es lo primero.
+    const conditions: SQL[] = [];
 
     if (user?.role === 'podiatrist') {
-      rows = rows.filter((r) => r.createdBy === user.userId);
+      conditions.push(eq(appointmentsTable.createdBy, user.userId));
     } else if (user?.role === 'clinic_admin') {
-      rows = rows.filter((r) => r.clinicId === user.clinicId);
+      conditions.push(eq(appointmentsTable.clinicId, user.clinicId!));
     } else if (user?.role === 'receptionist') {
       const assignedIds = await getAssignedPodiatristUserIds(user.userId);
       if (assignedIds.length === 0) {
-        rows = [];
-      } else {
-        rows = rows.filter((r) => assignedIds.includes(r.createdBy));
+        return c.json({ success: true, appointments: [] });
       }
+      conditions.push(inArray(appointmentsTable.createdBy, assignedIds));
     }
-    if (clinicId) rows = rows.filter((r) => r.clinicId === clinicId);
-    if (podiatristId) rows = rows.filter((r) => r.createdBy === podiatristId);
-    if (date) rows = rows.filter((r) => r.sessionDate === date);
-    if (from) rows = rows.filter((r) => r.sessionDate >= from);
-    if (to) rows = rows.filter((r) => r.sessionDate <= to);
+
+    if (clinicId) conditions.push(eq(appointmentsTable.clinicId, clinicId));
+    if (podiatristId) conditions.push(eq(appointmentsTable.createdBy, podiatristId));
+    if (date) conditions.push(eq(appointmentsTable.sessionDate, date));
+    if (from) conditions.push(gte(appointmentsTable.sessionDate, from));
+    if (to) conditions.push(lte(appointmentsTable.sessionDate, to));
     // Por defecto no devolver canceladas; el calendario pide includeCancelled=1 para mostrarlas en gris
-    if (!includeCancelled) {
-      rows = rows.filter((r) => r.status !== 'cancelled');
+    if (!includeCancelled) conditions.push(ne(appointmentsTable.status, 'cancelled'));
+    if (rescheduleStatus === 'none') {
+      // Filas pre-migración pueden tener NULL; se tratan como 'none'.
+      conditions.push(or(eq(appointmentsTable.rescheduleStatus, 'none'), isNull(appointmentsTable.rescheduleStatus))!);
+    } else if (rescheduleStatus) {
+      conditions.push(eq(appointmentsTable.rescheduleStatus, rescheduleStatus));
     }
+
+    const rows = conditions.length
+      ? await database.select().from(appointmentsTable).where(and(...conditions))
+      : await database.select().from(appointmentsTable);
 
     const appointments = rows.map(mapDbToAppointment);
     return c.json({ success: true, appointments });
@@ -425,7 +441,27 @@ appointmentsRoutes.post('/', requirePermission('manage_appointments'), async (c)
       clinicId,
       pendingPatientName: body.pendingPatientName ?? null,
       pendingPatientPhone: body.pendingPatientPhone ?? null,
+      cost: body.cost || null,
+      serviceLabel: body.serviceLabel || null,
     });
+
+    // Auto-resuelve la alerta de reagendo: esta nueva cita cubre la cancelación pendiente del mismo paciente.
+    if (body.patientId) {
+      await database
+        .update(appointmentsTable)
+        .set({ rescheduleStatus: 'resolved' })
+        .where(and(eq(appointmentsTable.patientId, body.patientId), eq(appointmentsTable.rescheduleStatus, 'pending')));
+    } else if (body.pendingPatientPhone?.trim()) {
+      await database
+        .update(appointmentsTable)
+        .set({ rescheduleStatus: 'resolved' })
+        .where(
+          and(
+            eq(appointmentsTable.pendingPatientPhone, body.pendingPatientPhone.trim()),
+            eq(appointmentsTable.rescheduleStatus, 'pending')
+          )
+        );
+    }
 
     await logAuditEvent({
       userId: user!.userId,
@@ -515,9 +551,49 @@ appointmentsRoutes.post('/:id/confirmation-link', requirePermission('manage_appo
       token,
       confirmUrl: `${base}/reserva/confirmar?token=${token}`,
       cancelUrl: `${base}/reserva/cancelar?token=${token}`,
+      rescheduleUrl: `${base}/reserva/reagendar?token=${token}`,
     });
   } catch (err) {
     console.error('Error generando enlace de confirmación:', err);
+    return c.json({ error: 'Error interno' }, 500);
+  }
+});
+
+/**
+ * POST /api/appointments/:id/satisfaction-link
+ * Genera (o reutiliza) el token y devuelve las 3 URLs de opinión (bien/regular/mal) para
+ * insertarlas en un mensaje de WhatsApp post-visita. Pensado para citas ya atendidas.
+ */
+appointmentsRoutes.post('/:id/satisfaction-link', requirePermission('manage_appointments'), async (c) => {
+  try {
+    const user = c.get('user')!;
+    const id = sanitizePathParam(c.req.param('id'), 64);
+    if (!id) return c.json({ error: 'ID de cita inválido' }, 400);
+
+    const rows = await database.select().from(appointmentsTable).where(eq(appointmentsTable.id, id)).limit(1);
+    if (!rows.length) return c.json({ error: 'Cita no encontrada' }, 404);
+    const row = rows[0];
+
+    const deny = await getSessionAccessDeniedReason(user, row);
+    if (deny) return c.json({ error: 'Acceso denegado', message: 'No tienes permiso sobre esta cita' }, 403);
+
+    const now = new Date().toISOString();
+    let token = row.confirmToken;
+    if (!token) {
+      token = crypto.randomUUID().replace(/-/g, '');
+      await database.update(appointmentsTable).set({ confirmToken: token, updatedAt: now }).where(eq(appointmentsTable.id, id));
+    }
+
+    const base = getRequestBaseUrl(c.req.url);
+    return c.json({
+      success: true,
+      token,
+      goodUrl: `${base}/reserva/opinion?token=${token}&v=good`,
+      regularUrl: `${base}/reserva/opinion?token=${token}&v=regular`,
+      badUrl: `${base}/reserva/opinion?token=${token}&v=bad`,
+    });
+  } catch (err) {
+    console.error('Error generando enlace de opinión:', err);
     return c.json({ error: 'Error interno' }, 500);
   }
 });
@@ -609,6 +685,10 @@ appointmentsRoutes.put('/:id', requirePermission('manage_appointments'), async (
         ? await getAgendaOutsideHoursAdvisory(user, effectivePodiatristId, effectiveTime, duration)
         : null;
 
+    // Al cancelar (transición, no si ya estaba cancelada) se abre la alerta de reagendo pendiente:
+    // se resuelve sola cuando se crea una nueva cita para el mismo paciente (ver POST /).
+    const becomingCancelled = body.status === 'cancelled' && row.status !== 'cancelled';
+
     await database
       .update(appointmentsTable)
       .set({
@@ -622,6 +702,11 @@ appointmentsRoutes.put('/:id', requirePermission('manage_appointments'), async (
         updatedAt: now,
         pendingPatientName: body.pendingPatientName !== undefined ? body.pendingPatientName : row.pendingPatientName,
         pendingPatientPhone: body.pendingPatientPhone !== undefined ? body.pendingPatientPhone : row.pendingPatientPhone,
+        cost: body.cost !== undefined ? body.cost : row.cost,
+        serviceLabel: body.serviceLabel !== undefined ? body.serviceLabel : row.serviceLabel,
+        ...(becomingCancelled
+          ? { rescheduleStatus: 'pending', rescheduleRequestedAt: now, lastRescheduleAlertAt: now }
+          : {}),
       })
       .where(eq(appointmentsTable.id, id));
 
@@ -637,6 +722,23 @@ appointmentsRoutes.put('/:id', requirePermission('manage_appointments'), async (
     });
 
     const [updated] = await database.select().from(appointmentsTable).where(eq(appointmentsTable.id, id)).limit(1);
+
+    if (becomingCancelled) {
+      const actorName =
+        (await database.select({ name: createdUsersTable.name }).from(createdUsersTable).where(eq(createdUsersTable.userId, user.userId)).limit(1))[0]
+          ?.name ?? user.email;
+      await notifyAppointmentCancelled({
+        appointmentId: id,
+        podiatristUserId: effectivePodiatristId,
+        clinicId: row.clinicId ?? null,
+        actorUserId: user.userId,
+        actorName,
+        patientId: row.patientId,
+        patientName: row.pendingPatientName,
+        date: row.sessionDate,
+        time: row.sessionTime,
+      }).catch((err) => console.error('Error enviando notificación de cancelación:', err));
+    }
 
     if (effectivePodiatristId !== previousPodiatristId) {
       const actorName =
@@ -662,6 +764,107 @@ appointmentsRoutes.put('/:id', requirePermission('manage_appointments'), async (
     });
   } catch (err) {
     console.error('Error actualizando cita:', err);
+    return c.json({ error: 'Error interno' }, 500);
+  }
+});
+
+/**
+ * POST /api/appointments/:id/reschedule-handled
+ * Marca (o desmarca) una cancelación pendiente como "en gestión": el staff se encargará de
+ * recuperar al paciente manualmente. Frena la escalación de alertas automáticas sin perderlo.
+ * Body: { handled?: boolean } (true por defecto; false lo regresa a 'pending').
+ */
+appointmentsRoutes.post('/:id/reschedule-handled', requirePermission('manage_appointments'), async (c) => {
+  try {
+    const user = c.get('user')!;
+    const id = sanitizePathParam(c.req.param('id'), 64);
+    if (!id) return c.json({ error: 'ID de cita inválido' }, 400);
+
+    const body = await c.req.json().catch(() => ({} as { handled?: boolean }));
+    const handled = body.handled !== false;
+
+    const rows = await database.select().from(appointmentsTable).where(eq(appointmentsTable.id, id)).limit(1);
+    if (!rows.length) return c.json({ error: 'Cita no encontrada' }, 404);
+    const row = rows[0];
+
+    const deny = await getSessionAccessDeniedReason(user, row);
+    if (deny) return c.json({ error: 'Acceso denegado', message: 'No tienes permiso sobre esta cita' }, 403);
+
+    const current = row.rescheduleStatus ?? 'none';
+    if (current !== 'pending' && current !== 'handled') {
+      return c.json(
+        { error: 'not_pending', message: 'Esta cita no está pendiente de reagendar.' },
+        409
+      );
+    }
+
+    const now = new Date().toISOString();
+    await database
+      .update(appointmentsTable)
+      .set(
+        handled
+          ? { rescheduleStatus: 'handled', rescheduleHandledAt: now, rescheduleHandledBy: user.userId, updatedAt: now }
+          : { rescheduleStatus: 'pending', rescheduleHandledAt: null, rescheduleHandledBy: null, lastRescheduleAlertAt: now, updatedAt: now }
+      )
+      .where(eq(appointmentsTable.id, id));
+
+    await logAuditEvent({
+      userId: user.userId,
+      action: handled ? 'RESCHEDULE_HANDLED' : 'RESCHEDULE_REOPENED',
+      resourceType: 'appointment',
+      resourceId: id,
+      details: { appointmentId: id, patientId: row.patientId },
+      ipAddress: getClientIP(c.req.raw.headers),
+      userAgent: getSafeUserAgent(c),
+      clinicId: row.clinicId ?? undefined,
+    });
+
+    const [updated] = await database.select().from(appointmentsTable).where(eq(appointmentsTable.id, id)).limit(1);
+    return c.json({ success: true, appointment: mapDbToAppointment(updated!) });
+  } catch (err) {
+    console.error('Error marcando reagendo en gestión:', err);
+    return c.json({ error: 'Error interno' }, 500);
+  }
+});
+
+/**
+ * POST /api/appointments/:id/reschedule-dismiss
+ * Descarta el pendiente de reagendar (lo saca de las listas y frena alertas) sin borrar la cita.
+ * Marca rescheduleStatus = 'resolved'. Útil tras gestionar/recuperar (o descartar) al paciente.
+ */
+appointmentsRoutes.post('/:id/reschedule-dismiss', requirePermission('manage_appointments'), async (c) => {
+  try {
+    const user = c.get('user')!;
+    const id = sanitizePathParam(c.req.param('id'), 64);
+    if (!id) return c.json({ error: 'ID de cita inválido' }, 400);
+
+    const rows = await database.select().from(appointmentsTable).where(eq(appointmentsTable.id, id)).limit(1);
+    if (!rows.length) return c.json({ error: 'Cita no encontrada' }, 404);
+    const row = rows[0];
+
+    const deny = await getSessionAccessDeniedReason(user, row);
+    if (deny) return c.json({ error: 'Acceso denegado', message: 'No tienes permiso sobre esta cita' }, 403);
+
+    const now = new Date().toISOString();
+    await database
+      .update(appointmentsTable)
+      .set({ rescheduleStatus: 'resolved', updatedAt: now })
+      .where(eq(appointmentsTable.id, id));
+
+    await logAuditEvent({
+      userId: user.userId,
+      action: 'RESCHEDULE_DISMISSED',
+      resourceType: 'appointment',
+      resourceId: id,
+      details: { appointmentId: id, patientId: row.patientId },
+      ipAddress: getClientIP(c.req.raw.headers),
+      userAgent: getSafeUserAgent(c),
+      clinicId: row.clinicId ?? undefined,
+    });
+
+    return c.json({ success: true });
+  } catch (err) {
+    console.error('Error descartando pendiente de reagendo:', err);
     return c.json({ error: 'Error interno' }, 500);
   }
 });

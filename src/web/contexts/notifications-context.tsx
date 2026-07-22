@@ -5,7 +5,7 @@ import { api } from "../lib/api-client";
 import { fetchShared, invalidateShared, invalidateSharedPrefix } from "../lib/shared-query";
 import type { Notification } from "../types/notification";
 
-const POLL_MS = 5_000;
+const POLL_MS = 25_000;
 const CACHE_KEY = "notifications:list";
 
 type NotificationsContextValue = {
@@ -35,6 +35,12 @@ async function fetchNotificationsFromApi(limit = 100): Promise<{
     };
   }
   return { notifications: [], unreadCount: 0 };
+}
+
+/** Consulta ligera: solo el contador de no leídas (1 fila), para el poll de fondo. */
+async function fetchUnreadCountFromApi(): Promise<number> {
+  const res = await api.get<{ success?: boolean; unreadCount?: number }>("/notifications/unread-count");
+  return res.success && typeof res.data?.unreadCount === "number" ? res.data.unreadCount : 0;
 }
 
 export function NotificationsProvider({ children }: { children: ReactNode }) {
@@ -74,6 +80,20 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
     [user?.id]
   );
 
+  // Poll de fondo: solo actualiza el contador (1 fila leída) sin traer la lista completa.
+  // La lista se pide con refresh() al montar, al abrir la campanita o al volver a la pestaña.
+  const refreshCount = useCallback(async () => {
+    if (!user?.id) {
+      setUnreadCount(0);
+      return;
+    }
+    try {
+      setUnreadCount(await fetchUnreadCountFromApi());
+    } catch {
+      /* transitorio: mantener el último valor */
+    }
+  }, [user?.id]);
+
   const setNotificationsLocal = useCallback((updater: (prev: Notification[]) => Notification[]) => {
     setNotifications((prev) => {
       const next = updater(prev);
@@ -95,7 +115,7 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
 
     const tick = () => {
       if (document.hidden) return;
-      void refresh();
+      void refreshCount();
     };
 
     const interval = setInterval(tick, POLL_MS);
@@ -108,7 +128,7 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
       clearInterval(interval);
       document.removeEventListener("visibilitychange", onVisible);
     };
-  }, [user?.id, onNotificationsPage, refresh]);
+  }, [user?.id, onNotificationsPage, refresh, refreshCount]);
 
   return (
     <NotificationsContext.Provider

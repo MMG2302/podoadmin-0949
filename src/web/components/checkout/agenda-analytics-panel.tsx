@@ -6,6 +6,7 @@ import {
   useAgendaSettings,
   useAppointmentAgendaMetrics,
   useDailySalesClose,
+  useSatisfaction,
 } from "../../hooks/use-agenda-analytics";
 import { translateSystemScopeLabel } from "../../lib/system-scope-label";
 import { SimpleBarChart } from "./simple-bar-chart";
@@ -17,6 +18,19 @@ const LOCALE_BY_LANG: Record<string, string> = {
   pt: "pt-PT",
   fr: "fr-FR",
 };
+
+// Zonas horarias frecuentes de los mercados objetivo (MX + LatAm + ES).
+const TIMEZONE_OPTIONS: Array<{ value: string; label: string }> = [
+  { value: "America/Mexico_City", label: "México – Centro (CDMX, Monterrey, Guadalajara)" },
+  { value: "America/Tijuana", label: "México – Pacífico (Tijuana, BC)" },
+  { value: "America/Hermosillo", label: "México – Sonora (sin horario de verano)" },
+  { value: "America/Cancun", label: "México – Sureste (Cancún, Quintana Roo)" },
+  { value: "America/Bogota", label: "Colombia (Bogotá)" },
+  { value: "America/Lima", label: "Perú (Lima)" },
+  { value: "America/Santiago", label: "Chile (Santiago)" },
+  { value: "America/Argentina/Buenos_Aires", label: "Argentina (Buenos Aires)" },
+  { value: "Europe/Madrid", label: "España (Madrid)" },
+];
 
 function MetricCard({
   label,
@@ -64,12 +78,14 @@ type Props = {
   podiatristId?: string;
   canEditSchedule?: boolean;
   canCloseDay?: boolean;
+  isClinicAdmin?: boolean;
 };
 
 export function AgendaAnalyticsPanel({
   podiatristId,
   canEditSchedule = false,
   canCloseDay = true,
+  isClinicAdmin = false,
 }: Props) {
   const { t, language } = useLanguage();
   const aa = t.checkout.agendaAnalytics;
@@ -83,6 +99,7 @@ export function AgendaAnalyticsPanel({
   } = useAgendaSettings(true, podiatristId);
   const { today, history, closing, error: closeError, closeDay, reload: reloadClose } =
     useDailySalesClose(true, podiatristId);
+  const { satisfaction } = useSatisfaction(true, podiatristId);
   const { tariffs } = useCheckoutTariffs(podiatristId);
 
   const [draft, setDraft] = useState<AgendaSettings | null>(null);
@@ -198,7 +215,7 @@ export function AgendaAnalyticsPanel({
         </p>
       )}
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4">
         <MetricCard
           label={t.dashboard.agendaOccupancy}
           value={`${metrics?.occupancy.percent ?? 0}%`}
@@ -217,6 +234,11 @@ export function AgendaAnalyticsPanel({
           sub={aa.appointmentsCount.replace("{n}", String(metrics?.totals.noShow ?? 0))}
         />
         <MetricCard
+          label={aa.cancellations}
+          value={`${metrics?.totals.cancellationRate ?? 0}%`}
+          sub={aa.appointmentsCount.replace("{n}", String(metrics?.totals.cancelled ?? 0))}
+        />
+        <MetricCard
           label={aa.peakHour}
           value={metrics?.topBusyHours[0]?.label ?? "—"}
           sub={
@@ -226,6 +248,46 @@ export function AgendaAnalyticsPanel({
           }
         />
       </div>
+
+      <SectionCard title={aa.satisfactionTitle}>
+        {!satisfaction || satisfaction.totals.total === 0 ? (
+          <p className="text-sm text-brand-muted">{aa.satisfactionEmpty}</p>
+        ) : (
+          <>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              <MetricCard
+                label={aa.satisfactionRate}
+                value={`${satisfaction.totals.satisfactionRate}%`}
+                sub={aa.satisfactionResponses.replace("{n}", String(satisfaction.totals.total))}
+              />
+              <MetricCard label={aa.satisfactionGood} value={`👍 ${satisfaction.totals.good}`} />
+              <MetricCard label={aa.satisfactionRegular} value={`😐 ${satisfaction.totals.regular}`} />
+              <MetricCard label={aa.satisfactionBad} value={`👎 ${satisfaction.totals.bad}`} />
+            </div>
+            {satisfaction.comments.length > 0 && (
+              <div className="pt-1">
+                <p className="text-xs font-medium text-brand-muted mb-2">{aa.satisfactionComments}</p>
+                <ul className="divide-y divide-brand-border text-sm">
+                  {satisfaction.comments.slice(0, 12).map((cm) => (
+                    <li key={cm.appointmentId} className="py-2.5 space-y-1">
+                      <div className="flex items-center gap-2">
+                        <span aria-hidden>
+                          {cm.rating === "good" ? "👍" : cm.rating === "regular" ? "😐" : "👎"}
+                        </span>
+                        <span className="font-medium text-brand-ink">
+                          {cm.patientName || aa.satisfactionAnonymous}
+                        </span>
+                        <span className="text-xs text-brand-muted ml-auto">{cm.date}</span>
+                      </div>
+                      <p className="text-brand-muted whitespace-pre-wrap">{cm.comment}</p>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </>
+        )}
+      </SectionCard>
 
       <SectionCard title={aa.busiestHours}>
         <SimpleBarChart
@@ -391,6 +453,26 @@ export function AgendaAnalyticsPanel({
               />
               {aa.allowOvertime}
             </label>
+            {isClinicAdmin && (
+              <div className="pt-2 border-t border-brand-border/60 space-y-1.5">
+                <label className="text-xs text-brand-muted space-y-1 block">
+                  <span>{aa.timezoneLabel}</span>
+                  <select
+                    disabled={!scheduleEditable}
+                    value={draft.timezone}
+                    onChange={(e) => setDraft((d) => (d ? { ...d, timezone: e.target.value } : d))}
+                    className="w-full sm:w-72 px-2 py-2 text-sm border border-brand-border rounded-lg bg-brand-surface"
+                  >
+                    {TIMEZONE_OPTIONS.map((tz) => (
+                      <option key={tz.value} value={tz.value}>
+                        {tz.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <p className="text-xs text-brand-muted">{aa.timezoneHint}</p>
+              </div>
+            )}
             {!scheduleEditable && (
               <p className="text-xs text-brand-muted">{aa.scheduleReadOnlyHint}</p>
             )}

@@ -4,6 +4,23 @@ export type AgendaSettings = {
   allowOvertime: boolean;
   overtimeStartHour: number;
   overtimeEndHour: number;
+  rescheduleAlertIntervalMinutes: number;
+  timezone: string;
+};
+
+export type SatisfactionSummary = {
+  periodDays: number;
+  fromDate: string;
+  toDate: string;
+  totals: { good: number; regular: number; bad: number; total: number; satisfactionRate: number };
+  comments: Array<{
+    appointmentId: string;
+    rating: "good" | "regular" | "bad";
+    comment: string;
+    patientName: string | null;
+    date: string;
+    createdAt: string | null;
+  }>;
 };
 
 export type AppointmentAgendaMetrics = {

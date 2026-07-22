@@ -380,6 +380,8 @@ export const appointmentsListQuerySchema = clinicalListPaginationSchema.extend({
     .optional(),
   // "1" para incluir citas canceladas (el calendario las muestra en gris)
   includeCancelled: z.enum(['1', 'true']).optional(),
+  // Filtra por estado de la alerta de reagendo (pending = cancelada sin reagendar aún)
+  rescheduleStatus: z.enum(['none', 'pending', 'handled', 'resolved', 'expired']).optional(),
 });
 
 /** Query: exportación ICS / vista previa agenda */
@@ -598,6 +600,8 @@ export const createAppointmentSchema = z.object({
   clinicId: z.string().max(128).optional(),
   pendingPatientName: z.string().max(255).optional(),
   pendingPatientPhone: z.string().max(50).optional(),
+  cost: z.string().max(20).nullable().optional(),
+  serviceLabel: z.string().max(120).nullable().optional(),
 });
 
 export const updateAppointmentSchema = createAppointmentSchema
@@ -605,6 +609,23 @@ export const updateAppointmentSchema = createAppointmentSchema
     status: z.enum(['scheduled', 'confirmed', 'completed', 'cancelled', 'no_show']).optional(),
   })
   .partial();
+
+/**
+ * Body de PUT /checkout-handoffs/tariffs. `durationMinutes` es la pauta de duración por
+ * servicio que alimenta la métrica "Tiempo por servicio"; debe estar declarado aquí o Zod
+ * lo descarta y la duración nunca se persiste.
+ */
+export const checkoutTariffsBodySchema = z.object({
+  podiatristId: z.string().optional(),
+  tariffs: z.array(
+    z.object({
+      id: z.string().min(1).max(40),
+      label: z.string().min(1).max(80),
+      amountCents: z.number().int().min(0),
+      durationMinutes: z.number().int().min(5).max(480).optional(),
+    })
+  ),
+});
 
 /**
  * Valida parámetros de query string (Hono c.req.query()).

@@ -18,6 +18,8 @@ import GoogleCallbackPage from "./pages/google-callback";
 import Dashboard from "./pages/dashboard";
 import LandingPage from "./pages/landing-page";
 import ReservationActionPage from "./pages/reservation-action-page";
+import SatisfactionPage from "./pages/satisfaction-page";
+import BookingPage from "./pages/booking-page";
 
 const ProtectedRoute = ({ component: Component, path }: { component: React.ComponentType; path?: string }) => {
   const { user, isLoading } = useAuth();
@@ -134,6 +136,15 @@ function AppRoutes() {
       </Route>
       <Route path="/reserva/cancelar">
         <ReservationActionPage mode="cancel" />
+      </Route>
+      <Route path="/reserva/reagendar">
+        <ReservationActionPage mode="reschedule" />
+      </Route>
+      <Route path="/reserva/opinion">
+        <SatisfactionPage />
+      </Route>
+      <Route path="/reserva/agendar">
+        <BookingPage />
       </Route>
       <Route path="/">
         <HomeRoute />

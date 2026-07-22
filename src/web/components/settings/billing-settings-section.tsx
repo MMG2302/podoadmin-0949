@@ -233,13 +233,17 @@ export function BillingSettingsSection() {
     if (seatsDraft == null) return;
     setBusy(true);
     setMessage("");
-    const res = await api.post<{ pricing?: PricingOverview; message?: string }>(
+    const res = await api.post<{ pricing?: PricingOverview; message?: string; billed?: boolean }>(
       "/subscriptions/stripe/seats",
       { seats: seatsDraft }
     );
     setBusy(false);
     if (res.success) {
-      setMessage(t.settings.billing.extraSeatsSaved);
+      setMessage(
+        res.data?.billed
+          ? t.settings.billing.extraSeatsSaved
+          : t.settings.billing.extraSeatsTrialSaved
+      );
       if (res.data?.pricing) {
         setPricing(res.data.pricing);
         setSeatsDraft(res.data.pricing.extraPodiatristSeats ?? seatsDraft);
@@ -286,6 +290,11 @@ export function BillingSettingsSection() {
   };
 
   const checkoutBlocked = pricing?.overIncludedPodiatrists && pricing.subjectType === "clinic";
+  // Estrictamente por encima del cupo (no solo "justo al límite"): pasa típicamente al bajar
+  // de Premium a Base sin haber ajustado antes los asientos extra. El equipo actual sigue
+  // funcionando con normalidad; solo se bloquea añadir podólogos nuevos.
+  const overCapacityAfterDowngrade =
+    pricing?.subjectType === "clinic" && pricing.podiatristCount > pricing.podiatristLimit;
 
   return (
     <div className="space-y-4 sm:space-y-6">
@@ -361,6 +370,14 @@ export function BillingSettingsSection() {
         </div>
       )}
 
+      {overCapacityAfterDowngrade && (
+        <div className={`${semanticAlertWarningClass} !p-3 text-sm`}>
+          {t.settings.billing.overCapacityAfterDowngrade
+            .replace("{count}", String(pricing?.podiatristCount ?? ""))
+            .replace("{limit}", String(pricing?.podiatristLimit ?? ""))}
+        </div>
+      )}
+
       {checkoutBlocked && (
         <div className={`${semanticAlertWarningClass} !p-3 text-sm`}>
           {t.settings.billing.overLimit
@@ -419,14 +436,16 @@ export function BillingSettingsSection() {
                 {t.settings.billing.extraSeatsTitle}
               </p>
               <p className="text-xs text-brand-muted">
-                {t.settings.billing.extraSeatsHint
-                  .replace("{included}", String(pricing.includedPodiatrists ?? ""))
-                  .replace("{price}", String(pricing.extraSeatPriceUsd ?? 10))}
+                {subscription?.hasStripeBilling
+                  ? t.settings.billing.extraSeatsHint
+                      .replace("{included}", String(pricing.includedPodiatrists ?? ""))
+                      .replace("{price}", String(pricing.extraSeatPriceUsd ?? 10))
+                  : t.settings.billing.extraSeatsTrialNote.replace(
+                      "{price}",
+                      String(pricing.extraSeatPriceUsd ?? 10)
+                    )}
               </p>
-              {!subscription?.hasStripeBilling ? (
-                <p className="text-sm text-brand-muted">{t.settings.billing.extraSeatsNeedSub}</p>
-              ) : (
-                (() => {
+              {(() => {
                   const included = pricing.includedPodiatrists ?? 0;
                   const currentSeats = pricing.extraPodiatristSeats ?? 0;
                   const draft = seatsDraft ?? currentSeats;
@@ -478,8 +497,7 @@ export function BillingSettingsSection() {
                       )}
                     </div>
                   );
-                })()
-              )}
+                })()}
             </div>
           )}
 

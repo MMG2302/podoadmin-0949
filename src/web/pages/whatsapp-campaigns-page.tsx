@@ -171,6 +171,18 @@ const WhatsAppCampaignsPage = () => {
     }
   };
 
+  const deleteDraft = async (campaign: Campaign) => {
+    if (!confirm(c.deleteDraftConfirm.replace("{name}", campaign.name))) return;
+    const res = await api.delete<{ success?: boolean }>(`/whatsapp-campaigns/${campaign.id}`);
+    if (!res.success) {
+      setFeedback(res.error || c.deleteDraftError);
+      return;
+    }
+    if (webAssistant?.campaignId === campaign.id) setWebAssistant(null);
+    if (expandedWebId === campaign.id) setExpandedWebId(null);
+    setCampaigns((prev) => prev.filter((item) => item.id !== campaign.id));
+  };
+
   const sendCampaignApi = async (id: string) => {
     if (!confirm(c.sendConfirm)) return;
     setSendingId(id);
@@ -360,6 +372,13 @@ const WhatsAppCampaignsPage = () => {
                             className={whatsappOutlineButtonClass}
                           >
                             {expanded ? c.hideList : c.showList}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => void deleteDraft(campaign)}
+                            className="px-3 py-1.5 text-sm font-medium rounded-lg border border-red-300 text-red-600 hover:bg-red-50 dark:border-red-800 dark:text-red-400 dark:hover:bg-red-950/40 transition-colors"
+                          >
+                            {c.deleteDraft}
                           </button>
                         </div>
                       </div>

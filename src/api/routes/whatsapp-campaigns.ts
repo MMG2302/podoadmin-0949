@@ -133,4 +133,27 @@ campaignsRoutes.post('/:id/send', async (c) => {
   return c.json({ success: true, sent, failed });
 });
 
+campaignsRoutes.delete('/:id', async (c) => {
+  const user = c.get('user')!;
+  if (!canUseWhatsAppWeb(user.role)) return c.json({ error: 'Acceso denegado' }, 403);
+
+  const id = c.req.param('id');
+  const campaignRows = await database.select().from(whatsappCampaigns).where(eq(whatsappCampaigns.id, id)).limit(1);
+  const campaign = campaignRows[0];
+  if (!campaign) return c.json({ error: 'Campaña no encontrada' }, 404);
+  if (user.clinicId && campaign.clinicId && campaign.clinicId !== user.clinicId) {
+    return c.json({ error: 'Acceso denegado' }, 403);
+  }
+  // Solo se permite borrar borradores: una campaña ya enviada es historial de envío.
+  if (campaign.status !== 'draft') {
+    return c.json(
+      { error: 'No permitido', message: 'Solo se pueden eliminar campañas en borrador.' },
+      400
+    );
+  }
+
+  await database.delete(whatsappCampaigns).where(eq(whatsappCampaigns.id, id));
+  return c.json({ success: true });
+});
+
 export default campaignsRoutes;

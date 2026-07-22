@@ -28,6 +28,9 @@ import {
 } from "../lib/agenda-export";
 import { useTenantCountry } from "../hooks/use-tenant-country";
 import { hydrateReceptionistUser } from "../lib/receptionist-assignments";
+import { useCheckoutTariffs } from "../hooks/use-checkout-tariffs";
+import { QuickTariffChips } from "../components/checkout/quick-tariff-chips";
+import type { CheckoutQuickTariff } from "../types/checkout-tariff";
 import type { ClinicalSession, Patient, Appointment } from "../types/clinical";
 import type { AgendaSettings } from "../types/agenda";
 import { isAppointmentOutsideAgendaHours } from "../lib/agenda-hours";
@@ -72,6 +75,8 @@ interface AppointmentFormData {
   notes: string;
   pendingPatientName: string;
   pendingPatientPhone: string;
+  cost: string;
+  serviceLabel: string;
 }
 
 const emptyAppointmentForm: AppointmentFormData = {
@@ -83,6 +88,8 @@ const emptyAppointmentForm: AppointmentFormData = {
   notes: "",
   pendingPatientName: "",
   pendingPatientPhone: "",
+  cost: "",
+  serviceLabel: "",
 };
 
 const CALENDAR_LOCALE: Record<string, string> = { es: "es-ES", en: "en-US", pt: "pt-BR", fr: "fr-FR" };
@@ -112,6 +119,7 @@ const CalendarPage = () => {
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [podiatristFilter, setPodiatristFilter] = useState<string>("all");
   const [refreshTrigger, setRefreshTrigger] = useState(0);
+  const [agendaExportDate, setAgendaExportDate] = useState<string>(() => formatLocalDateString(new Date()));
   
   const [allSessions, setAllSessions] = useState<ClinicalSession[]>([]);
   const [allPatients, setAllPatients] = useState<Patient[]>([]);
@@ -124,12 +132,16 @@ const CalendarPage = () => {
   >("loading");
   const [appointmentCompactPatients, setAppointmentCompactPatients] = useState<Patient[]>([]);
   const [appointmentForm, setAppointmentForm] = useState<AppointmentFormData>(emptyAppointmentForm);
+  const { tariffs: appointmentTariffs } = useCheckoutTariffs(
+    appointmentForm.podiatristId || (isPodiatrist && !isClinicAdmin ? user?.id : undefined)
+  );
   const [editingAppointment, setEditingAppointment] = useState<Appointment | null>(null);
   const [isSubmittingAppointment, setIsSubmittingAppointment] = useState(false);
   const [appointmentSubmitError, setAppointmentSubmitError] = useState("");
   const [appointmentAgendaSettings, setAppointmentAgendaSettings] = useState<AgendaSettings | null>(null);
   const [appointmentAgendaWarning, setAppointmentAgendaWarning] = useState<string | null>(null);
   const [agendaExportBusy, setAgendaExportBusy] = useState(false);
+  const [showIcsInfoCard, setShowIcsInfoCard] = useState(true);
   const [agendaMetrics, setAgendaMetrics] = useState<{
     scheduled: number;
     noShow: number;
@@ -230,12 +242,16 @@ const CalendarPage = () => {
     e?: React.MouseEvent
   ) => {
     e?.stopPropagation();
-    const res = await api.patch<{ success?: boolean }>(`/clinical/appointments/${apptId}/check-in`, {
-      checkInStatus,
-    });
+    const res = await api.patch<{ success?: boolean; status?: string }>(
+      `/clinical/appointments/${apptId}/check-in`,
+      { checkInStatus }
+    );
     if (res.success) {
+      const newStatus = res.data?.status as Appointment["status"] | undefined;
       setAllAppointments((prev) =>
-        prev.map((a) => (a.id === apptId ? { ...a, checkInStatus } : a))
+        prev.map((a) =>
+          a.id === apptId ? { ...a, checkInStatus, ...(newStatus ? { status: newStatus } : {}) } : a
+        )
       );
     }
   };
@@ -255,10 +271,19 @@ const CalendarPage = () => {
   // (p. ej. confirmación/cancelación de citas por el paciente vía enlace de WhatsApp).
   useEffect(() => {
     if (!user?.id) return;
+    // 25s en background + refresco inmediato al volver a la pestaña (visibilitychange):
+    // reduce peticiones a Workers/D1 sin que se sienta desactualizado.
     const interval = setInterval(() => {
       if (!document.hidden) void loadCalendarData();
-    }, 5_000);
-    return () => clearInterval(interval);
+    }, 25_000);
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') void loadCalendarData();
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener('visibilitychange', onVisible);
+    };
   }, [loadCalendarData, user?.id]);
 
   useEffect(() => {
@@ -723,6 +748,8 @@ const isSelected = (date: Date) => {
       notes: appointment.notes,
       pendingPatientName: appointment.pendingPatientName || "",
       pendingPatientPhone: appointment.pendingPatientPhone || "",
+      cost: appointment.cost || "",
+      serviceLabel: appointment.serviceLabel || "",
     });
     setShowAppointmentForm(true);
   };
@@ -848,6 +875,8 @@ const isSelected = (date: Date) => {
             pendingPatientPhone: appointmentForm.pendingPatientPhone,
           }
         : {}),
+      ...(appointmentForm.cost ? { cost: appointmentForm.cost } : {}),
+      ...(appointmentForm.serviceLabel ? { serviceLabel: appointmentForm.serviceLabel } : {}),
     };
 
     setIsSubmittingAppointment(true);
@@ -1007,17 +1036,26 @@ const isSelected = (date: Date) => {
     if (appointmentPatientPickerMode !== "select") return;
     if (!clinicPatients.length) return;
     if (appointmentForm.patientId && clinicPatients.some((p) => p.id === appointmentForm.patientId)) return;
-    setAppointmentForm((prev) => ({ ...prev, patientId: clinicPatients[0].id }));
+    setAppointmentForm((prev) => ({
+      ...prev,
+      patientId: clinicPatients[0]?.id || null,
+      pendingPatientName: "",
+      pendingPatientPhone: "",
+    }));
   }, [
     showAppointmentForm,
     editingAppointment,
     isPendingPatientMode,
     appointmentPatientPickerMode,
-    clinicPatients,
-    appointmentForm.patientId,
+    clinicPatients.length,
   ]);
 
-  const getAgendaExportDate = () => formatLocalDateString(selectedDate ?? currentDate);
+  // Clic en un día del calendario también actualiza la fecha a exportar (el input sigue siendo editable manualmente).
+  useEffect(() => {
+    if (selectedDate) setAgendaExportDate(formatLocalDateString(selectedDate));
+  }, [selectedDate]);
+
+  const getAgendaExportDate = () => agendaExportDate;
 
   const resolveAgendaExportPodiatristId = (): string | undefined => {
     if (isPodiatrist) return undefined;
@@ -1141,6 +1179,19 @@ const isSelected = (date: Date) => {
 
                 {(isClinicAdmin || isPodiatrist || isReceptionist) && (
                   <>
+                    <div className="flex flex-col gap-1.5">
+                      <label className="text-xs font-medium text-brand-muted">
+                        {t.calendar.icsExportLabel}
+                      </label>
+                      <input
+                        type="date"
+                        value={agendaExportDate}
+                        onChange={(e) => setAgendaExportDate(e.target.value)}
+                        title={t.calendar.exportDateLabel}
+                        aria-label={t.calendar.icsExportLabel}
+                        className="px-2 py-2 text-sm border border-brand-border rounded-lg bg-brand-surface text-brand-ink"
+                      />
+                    </div>
                     <button
                       type="button"
                       onClick={handleDownloadAgendaIcs}
@@ -1275,8 +1326,10 @@ const isSelected = (date: Date) => {
             </div>
           )}
 
-          {/* Calendar Grid - overflow-x-auto en móvil para grid de 7 columnas */}
-          <div className="bg-brand-surface rounded-xl border border-brand-border overflow-x-auto overscroll-contain">
+          {/* Calendar Grid - scroll horizontal solo en móvil (grid de 7 columnas). En escritorio
+              no debe atrapar el scroll vertical de la página: por eso overscroll-x-contain (solo
+              contiene el eje X) y sm:overflow-visible (deja de ser contenedor scrollable). */}
+          <div className="bg-brand-surface rounded-xl border border-brand-border overflow-x-auto sm:overflow-visible overscroll-x-contain">
             {/* Month View */}
             {viewMode === "month" && (
               <>
@@ -1757,6 +1810,33 @@ const isSelected = (date: Date) => {
               </p>
             </div>
           </div>
+
+          {/* .ics Export Info Card */}
+          {showIcsInfoCard && (
+            <div className="bg-blue-50 dark:bg-blue-950 rounded-xl border border-blue-200 dark:border-blue-800 p-4">
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex-1">
+                  <h4 className="font-semibold text-blue-900 dark:text-blue-100 mb-2">
+                    {t.calendar.icsExportTitle}
+                  </h4>
+                  <p className="text-sm text-blue-800 dark:text-blue-200">
+                    {t.calendar.icsExportDescription}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowIcsInfoCard(false)}
+                  className="p-1 hover:bg-blue-200 dark:hover:bg-blue-800 rounded transition-colors flex-shrink-0"
+                  title={t.common.close}
+                  aria-label={t.common.close}
+                >
+                  <svg className="w-5 h-5 text-blue-900 dark:text-blue-100" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
@@ -1969,21 +2049,71 @@ const isSelected = (date: Date) => {
               </section>
             </div>
 
-            <section>
-              <label className={`${formLabelClass} mb-1`}>{t.calendar.durationMinutes}</label>
-              <select
-                value={appointmentForm.duration}
-                onChange={(e) =>
-                  setAppointmentForm((prev) => ({ ...prev, duration: parseInt(e.target.value, 10) }))
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <section>
+                <label className={`${formLabelClass} mb-1`}>{t.calendar.durationMinutes}</label>
+                <select
+                  value={appointmentForm.duration}
+                  onChange={(e) =>
+                    setAppointmentForm((prev) => ({ ...prev, duration: parseInt(e.target.value, 10) }))
+                  }
+                  className={formFieldClassSm}
+                >
+                  <option value={15}>{t.calendar.duration15}</option>
+                  <option value={30}>{t.calendar.duration30}</option>
+                  <option value={45}>{t.calendar.duration45}</option>
+                  <option value={60}>{t.calendar.duration60}</option>
+                  <option value={90}>{t.calendar.duration90}</option>
+                </select>
+              </section>
+
+              <section>
+                <label className={`${formLabelClass} mb-1`}>Costo</label>
+                <input
+                  type="text"
+                  inputMode="decimal"
+                  value={appointmentForm.cost}
+                  onChange={(e) => {
+                    const v = e.target.value.replace(/[^\d.]/g, "");
+                    setAppointmentForm((prev) => ({ ...prev, cost: v }));
+                  }}
+                  placeholder="0.00"
+                  className={formFieldClassSm}
+                />
+              </section>
+            </div>
+
+            <section className="space-y-2">
+              <label className={formLabelClass}>Tarifa rápida</label>
+              <QuickTariffChips
+                tariffs={appointmentTariffs}
+                onSelect={(tariff: CheckoutQuickTariff) =>
+                  setAppointmentForm((prev) => ({
+                    ...prev,
+                    cost: (tariff.amountCents / 100).toFixed(2),
+                    duration: tariff.durationMinutes || prev.duration,
+                    serviceLabel: tariff.label,
+                  }))
                 }
-                className={formFieldClassSm}
-              >
-                <option value={15}>{t.calendar.duration15}</option>
-                <option value={30}>{t.calendar.duration30}</option>
-                <option value={45}>{t.calendar.duration45}</option>
-                <option value={60}>{t.calendar.duration60}</option>
-                <option value={90}>{t.calendar.duration90}</option>
-              </select>
+              />
+              {appointmentForm.serviceLabel && (
+                <p className="text-xs text-brand-ink flex items-center gap-2">
+                  <span className="font-medium">Servicio:</span>
+                  <span className="px-2 py-0.5 rounded-full bg-brand-canvas border border-brand-border">
+                    {appointmentForm.serviceLabel}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setAppointmentForm((prev) => ({ ...prev, serviceLabel: "" }))}
+                    className="text-brand-muted hover:text-brand-ink underline"
+                  >
+                    quitar
+                  </button>
+                </p>
+              )}
+              <p className={formHintClass}>
+                El costo se usa como variable {"{{costo}}"} en los mensajes de WhatsApp. El servicio se usa para la métrica «Tiempo por servicio». Puedes editar las tarifas rápidas desde Checkout.
+              </p>
             </section>
 
             <section>

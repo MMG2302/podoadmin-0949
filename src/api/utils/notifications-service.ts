@@ -1,6 +1,6 @@
 import { database } from '../database';
 import { notifications as notificationsTable, patients as patientsTable, createdUsers } from '../database/schema';
-import { eq } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 import type { ClientNotificationType } from '../security/notification-policy';
 
 const generateNotificationId = () => `notif_${crypto.randomUUID().replace(/-/g, '')}`;
@@ -40,9 +40,20 @@ export async function createNotification(input: CreateNotificationInput): Promis
 }
 
 export async function createNotifications(inputs: CreateNotificationInput[]): Promise<void> {
-  for (const input of inputs) {
-    await createNotification(input);
-  }
+  if (inputs.length === 0) return;
+  const now = new Date().toISOString();
+  const rows = inputs.map((input) => ({
+    id: generateNotificationId(),
+    userId: input.userId,
+    type: input.type,
+    title: input.title.slice(0, 500),
+    message: input.message.slice(0, 5000),
+    read: false,
+    metadata: input.metadata ? JSON.stringify(input.metadata) : null,
+    createdAt: now,
+  }));
+  // Un solo INSERT con múltiples filas (D1) en vez de N round-trips.
+  await database.insert(notificationsTable).values(rows);
 }
 
 /**
@@ -249,6 +260,85 @@ export async function notifyPatientReassignment(ctx: PatientReassignmentNotifica
   }
 
   await createNotifications(payloads);
+}
+
+async function getClinicAdminUserIds(clinicId: string): Promise<string[]> {
+  const rows = await database
+    .select({ userId: createdUsers.userId })
+    .from(createdUsers)
+    .where(and(eq(createdUsers.clinicId, clinicId), eq(createdUsers.role, 'clinic_admin')));
+  return rows.map((r) => r.userId);
+}
+
+export interface AppointmentCancelledNotificationContext {
+  appointmentId: string;
+  podiatristUserId: string;
+  clinicId: string | null;
+  actorUserId: string;
+  actorName: string;
+  patientId?: string | null;
+  patientName?: string | null;
+  date: string;
+  time: string;
+  /** true cuando la envía el cron recurrente (aún sin reagendar), no la cancelación original. */
+  isReminder?: boolean;
+  /** true cuando el propio paciente pidió reagendar desde el enlace de WhatsApp (no fue el staff quien canceló). */
+  patientInitiated?: boolean;
+}
+
+/**
+ * Notifica cancelación pendiente de reagendar: al podólogo dueño de la cita, sus recepcionistas
+ * asignadas y el/los clinic_admin de la clínica ("todos los roles" involucrados en la agenda).
+ * Reutilizable por el cron de recordatorio recurrente (isReminder: true).
+ */
+export async function notifyAppointmentCancelled(ctx: AppointmentCancelledNotificationContext): Promise<void> {
+  let patientLabel = ctx.patientName?.trim() || '';
+  if (!patientLabel && ctx.patientId) {
+    const rows = await database
+      .select({ firstName: patientsTable.firstName, lastName: patientsTable.lastName })
+      .from(patientsTable)
+      .where(eq(patientsTable.id, ctx.patientId))
+      .limit(1);
+    if (rows[0]) patientLabel = `${rows[0].firstName} ${rows[0].lastName}`.trim();
+  }
+
+  const dateLabel = formatAppointmentDateLabel(ctx.date, ctx.time);
+  const title = ctx.isReminder
+    ? 'Recordatorio: reagendo pendiente'
+    : ctx.patientInitiated
+      ? 'El paciente solicitó reagendar'
+      : 'Cita cancelada: pendiente de reagendar';
+  const base = ctx.patientInitiated
+    ? patientLabel
+      ? `${patientLabel} pidió reagendar su cita del ${dateLabel}. Contáctalo pronto para ofrecer una nueva fecha.`
+      : `Un paciente pidió reagendar su cita del ${dateLabel}. Contáctalo pronto para ofrecer una nueva fecha.`
+    : patientLabel
+      ? `La cita con ${patientLabel} del ${dateLabel} se canceló y sigue sin reagendarse. Contacta al paciente para reagendar.`
+      : `Una cita del ${dateLabel} se canceló y sigue sin reagendarse. Contacta al paciente para reagendar.`;
+  const message = ctx.isReminder ? `Recordatorio: ${base}` : base;
+
+  const metadata = {
+    appointmentId: ctx.appointmentId,
+    appointmentDate: ctx.date,
+    patientId: ctx.patientId || undefined,
+    patientName: patientLabel || undefined,
+    fromUserId: ctx.actorUserId,
+    fromUserName: ctx.actorName,
+  };
+
+  const recipientIds = new Set<string>([ctx.podiatristUserId]);
+  for (const id of await getReceptionistUserIdsForPodiatrist(ctx.podiatristUserId)) {
+    recipientIds.add(id);
+  }
+  if (ctx.clinicId) {
+    for (const id of await getClinicAdminUserIds(ctx.clinicId)) {
+      recipientIds.add(id);
+    }
+  }
+
+  await createNotifications(
+    Array.from(recipientIds).map((userId) => ({ userId, type: 'appointment' as const, title, message, metadata }))
+  );
 }
 
 function formatAppointmentDateLabel(date: string, time: string): string {

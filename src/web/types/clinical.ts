@@ -75,6 +75,11 @@ export interface Appointment {
   updatedAt: string;
   pendingPatientName?: string;
   pendingPatientPhone?: string;
+  cost?: string | null;
+  serviceLabel?: string | null;
+  rescheduleStatus?: "none" | "pending" | "handled" | "resolved" | "expired";
+  rescheduleRequestedAt?: string;
+  rescheduleHandledAt?: string;
 }
 
 export type AppointmentReason =

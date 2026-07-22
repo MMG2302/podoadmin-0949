@@ -10,6 +10,7 @@ export interface Clinic {
   address?: string;
   city?: string;
   postalCode?: string;
+  mapsUrl?: string;
   licenseNumber?: string;
   website?: string;
   consentText?: string;

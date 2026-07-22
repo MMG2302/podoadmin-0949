@@ -38,13 +38,16 @@ export async function processWhatsAppReminderJob(
 
   try {
     const token = await decryptSecret(wa.accessTokenEnc);
+    const bodyParams = [job.patientName, job.sessionDate, job.sessionTime];
+    if (job.cost) bodyParams.push(job.cost);
+
     const result = await sendWhatsAppTemplateMessage({
       phoneNumberId: wa.phoneNumberId,
       accessToken: token,
       toPhoneE164: job.phoneE164,
       templateName: wa.templateName || 'appointment_reminder',
       templateLanguage: wa.templateLanguage,
-      bodyParams: [job.patientName, job.sessionDate, job.sessionTime],
+      bodyParams,
     });
     if (!result.ok) {
       return { ok: false };

@@ -506,6 +506,7 @@ const CheckoutPage = () => {
             }
             canEditSchedule={isPodiatrist || isClinicAdmin}
             canCloseDay={isPodiatrist || isClinicAdmin || isReceptionist}
+            isClinicAdmin={isClinicAdmin}
           />
         )}
 

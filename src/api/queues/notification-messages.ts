@@ -11,6 +11,7 @@ export interface WhatsAppReminderJob {
   phoneE164: string;
   sessionDate: string;
   sessionTime: string;
+  cost?: string;
 }
 
 export type NotificationJob = WhatsAppReminderJob;

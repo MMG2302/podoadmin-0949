@@ -11,6 +11,12 @@ export type AgendaSettings = {
   allowOvertime: boolean;
   overtimeStartHour: number;
   overtimeEndHour: number;
+  // Minutos entre reenvíos de la alerta interna de "cita cancelada sin reagendar".
+  // Siempre clínica-wide (solo clinic_admin la edita); ver saveAgendaSettings/PUT agenda-settings.
+  rescheduleAlertIntervalMinutes: number;
+  // Zona horaria IANA de la clínica: los crons corren en UTC en el Worker, así que la usamos
+  // para saber la hora local (recordatorios y ventana de horario laboral de las alertas).
+  timezone: string;
 };
 
 export const DEFAULT_AGENDA_SETTINGS: AgendaSettings = {
@@ -19,7 +25,32 @@ export const DEFAULT_AGENDA_SETTINGS: AgendaSettings = {
   allowOvertime: false,
   overtimeStartHour: 21,
   overtimeEndHour: 23,
+  rescheduleAlertIntervalMinutes: 10,
+  timezone: 'America/Mexico_City',
 };
+
+/** Valida una zona horaria IANA; si es inválida, cae al default. */
+export function normalizeTimezone(tz: unknown): string {
+  if (typeof tz !== 'string' || !tz.trim()) return DEFAULT_AGENDA_SETTINGS.timezone;
+  try {
+    // Lanza RangeError si la zona no existe.
+    new Intl.DateTimeFormat('en-US', { timeZone: tz }).format(new Date());
+    return tz;
+  } catch {
+    return DEFAULT_AGENDA_SETTINGS.timezone;
+  }
+}
+
+/** Hora local (0-23) en la zona dada, según el reloj UTC del Worker. */
+export function localHourInTimezone(timezone: string, at: Date = new Date()): number {
+  try {
+    const h = new Intl.DateTimeFormat('en-US', { timeZone: timezone, hour: 'numeric', hour12: false }).format(at);
+    const n = Number(h);
+    return Number.isFinite(n) ? n % 24 : new Date(at).getUTCHours();
+  } catch {
+    return new Date(at).getUTCHours();
+  }
+}
 
 function clampHour(n: unknown, fallback: number): number {
   const v = Number(n);
@@ -48,16 +79,26 @@ export function parseAgendaSettings(json: string | null | undefined): AgendaSett
     if (overtimeEndHour <= overtimeStartHour) {
       overtimeEndHour = Math.min(23, overtimeStartHour + 1);
     }
+    const rescheduleAlertIntervalMinutes = clampRescheduleInterval(parsed.rescheduleAlertIntervalMinutes);
+    const timezone = normalizeTimezone(parsed.timezone);
     return {
       workdayStartHour,
       workdayEndHour,
       allowOvertime,
       overtimeStartHour,
       overtimeEndHour,
+      rescheduleAlertIntervalMinutes,
+      timezone,
     };
   } catch {
     return { ...DEFAULT_AGENDA_SETTINGS };
   }
+}
+
+function clampRescheduleInterval(n: unknown): number {
+  const v = Number(n);
+  if (!Number.isFinite(v)) return DEFAULT_AGENDA_SETTINGS.rescheduleAlertIntervalMinutes;
+  return Math.min(1440, Math.max(5, Math.round(v)));
 }
 
 export function normalizeAgendaSettingsPatch(
@@ -118,6 +159,47 @@ export async function getAgendaSettingsTarget(
   }
   const resolved = await resolveAgendaSettingsForPodiatrist(target.podiatristId);
   return resolved.settings;
+}
+
+/**
+ * Intervalo (minutos) de reenvío de la alerta de reagendo pendiente, siempre a nivel clínica
+ * (ignora overrides personales del podólogo): lo configura solo clinic_admin.
+ */
+export async function getRescheduleAlertIntervalMinutes(clinicId: string | null): Promise<number> {
+  if (!clinicId) return DEFAULT_AGENDA_SETTINGS.rescheduleAlertIntervalMinutes;
+  const settings = await getAgendaSettingsTarget({ kind: 'clinic', clinicId });
+  return settings.rescheduleAlertIntervalMinutes;
+}
+
+export interface ClinicBusinessWindow {
+  startHour: number;
+  endHour: number; // exclusivo
+  timezone: string;
+}
+
+/** Ventana laboral + zona horaria a nivel clínica (para las alertas de reagendo). */
+export async function getClinicBusinessWindow(clinicId: string | null): Promise<ClinicBusinessWindow> {
+  const settings = clinicId
+    ? await getAgendaSettingsTarget({ kind: 'clinic', clinicId })
+    : { ...DEFAULT_AGENDA_SETTINGS };
+  return {
+    startHour: settings.workdayStartHour,
+    endHour: settings.workdayEndHour,
+    timezone: settings.timezone,
+  };
+}
+
+/**
+ * ¿La hora local de la clínica está dentro del horario laboral, con `bufferHours` extra
+ * al cierre (p. ej. 1h para cortes de caja)? Fuera de esa ventana no se envían alertas.
+ */
+export function isWithinBusinessHours(
+  window: ClinicBusinessWindow,
+  bufferHours = 0,
+  at: Date = new Date()
+): boolean {
+  const hour = localHourInTimezone(window.timezone, at);
+  return hour >= window.startHour && hour < window.endHour + bufferHours;
 }
 
 export async function saveAgendaSettings(

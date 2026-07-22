@@ -109,6 +109,7 @@ export type AgendaAnalyticsI18n = {
   demand30d: string;
   demandHint: string;
   noShow: string;
+  cancellations: string;
   appointmentsCount: string;
   peakHour: string;
   noData: string;
@@ -133,6 +134,21 @@ export type AgendaAnalyticsI18n = {
   savingSchedule: string;
   saveSchedule: string;
   saved: string;
+  rescheduleAlertInterval: string;
+  rescheduleAlertIntervalHint: string;
+  rescheduleAlertIntervalReadOnlyHint: string;
+  rescheduleAlertIntervalUnit: string;
+  timezoneLabel: string;
+  timezoneHint: string;
+  satisfactionTitle: string;
+  satisfactionEmpty: string;
+  satisfactionRate: string;
+  satisfactionResponses: string;
+  satisfactionGood: string;
+  satisfactionRegular: string;
+  satisfactionBad: string;
+  satisfactionComments: string;
+  satisfactionAnonymous: string;
   dailyCloseTitle: string;
   loadingClose: string;
   paidToday: string;
@@ -567,6 +583,7 @@ const agendaEs: AgendaAnalyticsI18n = {
   demand30d: "Demanda 30 días",
   demandHint: "Citas solicitadas / creadas",
   noShow: "No-shows",
+  cancellations: "Cancelaciones",
   appointmentsCount: "{n} citas",
   peakHour: "Hora pico",
   noData: "Sin datos",
@@ -591,6 +608,21 @@ const agendaEs: AgendaAnalyticsI18n = {
   savingSchedule: "Guardando…",
   saveSchedule: "Guardar horario",
   saved: "Guardado",
+  rescheduleAlertInterval: "Alerta de reagendo pendiente",
+  rescheduleAlertIntervalHint: "Minutos entre avisos internos mientras una cita cancelada siga sin reagendarse. Se apaga sola al crear la nueva cita.",
+  timezoneLabel: "Zona horaria de la clínica",
+  timezoneHint: "Se usa para enviar recordatorios y alertas de reagendo a la hora local correcta (solo en horario laboral).",
+  satisfactionTitle: "Satisfacción del paciente",
+  satisfactionEmpty: "Aún no hay opiniones en el periodo.",
+  satisfactionRate: "Satisfacción",
+  satisfactionResponses: "{n} respuestas",
+  satisfactionGood: "Bien",
+  satisfactionRegular: "Regular",
+  satisfactionBad: "Mal",
+  satisfactionComments: "Quejas y sugerencias",
+  satisfactionAnonymous: "Anónimo",
+  rescheduleAlertIntervalReadOnlyHint: "Solo el administrador de clínica configura este intervalo.",
+  rescheduleAlertIntervalUnit: "min",
   dailyCloseTitle: "Cierre diario de caja",
   loadingClose: "Cargando cierre…",
   paidToday: "Cobrado hoy",
@@ -619,6 +651,7 @@ const agendaEn: AgendaAnalyticsI18n = {
   demand30d: "30-day demand",
   demandHint: "Appointments requested / created",
   noShow: "No-shows",
+  cancellations: "Cancellations",
   appointmentsCount: "{n} appointments",
   peakHour: "Peak hour",
   noData: "No data",
@@ -643,6 +676,21 @@ const agendaEn: AgendaAnalyticsI18n = {
   savingSchedule: "Saving…",
   saveSchedule: "Save schedule",
   saved: "Saved",
+  rescheduleAlertInterval: "Pending reschedule alert",
+  rescheduleAlertIntervalHint: "Minutes between internal reminders while a cancelled appointment stays unrescheduled. Turns off automatically once the new appointment is created.",
+  timezoneLabel: "Clinic timezone",
+  timezoneHint: "Used to send reminders and reschedule alerts at the correct local time (business hours only).",
+  satisfactionTitle: "Patient satisfaction",
+  satisfactionEmpty: "No feedback in this period yet.",
+  satisfactionRate: "Satisfaction",
+  satisfactionResponses: "{n} responses",
+  satisfactionGood: "Good",
+  satisfactionRegular: "Okay",
+  satisfactionBad: "Bad",
+  satisfactionComments: "Complaints and suggestions",
+  satisfactionAnonymous: "Anonymous",
+  rescheduleAlertIntervalReadOnlyHint: "Only the clinic admin configures this interval.",
+  rescheduleAlertIntervalUnit: "min",
   dailyCloseTitle: "Daily cash close",
   loadingClose: "Loading close…",
   paidToday: "Paid today",
@@ -672,6 +720,7 @@ const agendaPt: AgendaAnalyticsI18n = {
   demand30d: "Procura 30 dias",
   demandHint: "Consultas pedidas / criadas",
   noShow: "Faltas",
+  cancellations: "Cancelamentos",
   appointmentsCount: "{n} consultas",
   peakHour: "Hora de pico",
   noData: "Sem dados",
@@ -696,6 +745,21 @@ const agendaPt: AgendaAnalyticsI18n = {
   savingSchedule: "A guardar…",
   saveSchedule: "Guardar horário",
   saved: "Guardado",
+  rescheduleAlertInterval: "Alerta de reagendamento pendente",
+  rescheduleAlertIntervalHint: "Minutos entre avisos internos enquanto uma consulta cancelada continuar sem ser reagendada. Desliga-se sozinho ao criar a nova consulta.",
+  timezoneLabel: "Fuso horário da clínica",
+  timezoneHint: "Usado para enviar lembretes e alertas de reagendamento à hora local correta (só em horário laboral).",
+  satisfactionTitle: "Satisfação do paciente",
+  satisfactionEmpty: "Ainda não há opiniões no período.",
+  satisfactionRate: "Satisfação",
+  satisfactionResponses: "{n} respostas",
+  satisfactionGood: "Bem",
+  satisfactionRegular: "Regular",
+  satisfactionBad: "Mal",
+  satisfactionComments: "Queixas e sugestões",
+  satisfactionAnonymous: "Anónimo",
+  rescheduleAlertIntervalReadOnlyHint: "Só o administrador da clínica configura este intervalo.",
+  rescheduleAlertIntervalUnit: "min",
   dailyCloseTitle: "Fecho diário de caixa",
   loadingClose: "A carregar fecho…",
   paidToday: "Cobrado hoje",
@@ -725,6 +789,7 @@ const agendaFr: AgendaAnalyticsI18n = {
   demand30d: "Demande 30 jours",
   demandHint: "Rendez-vous demandés / créés",
   noShow: "Absences",
+  cancellations: "Annulations",
   appointmentsCount: "{n} rendez-vous",
   peakHour: "Heure de pointe",
   noData: "Pas de données",
@@ -749,6 +814,21 @@ const agendaFr: AgendaAnalyticsI18n = {
   savingSchedule: "Enregistrement…",
   saveSchedule: "Enregistrer l'horaire",
   saved: "Enregistré",
+  rescheduleAlertInterval: "Alerte de reprogrammation en attente",
+  rescheduleAlertIntervalHint: "Minutes entre les rappels internes tant qu'un rendez-vous annulé reste sans nouvelle date. S'éteint automatiquement à la création du nouveau rendez-vous.",
+  timezoneLabel: "Fuseau horaire de la clinique",
+  timezoneHint: "Utilisé pour envoyer les rappels et alertes de reprogrammation à la bonne heure locale (heures d'ouverture uniquement).",
+  satisfactionTitle: "Satisfaction du patient",
+  satisfactionEmpty: "Pas encore d'avis sur la période.",
+  satisfactionRate: "Satisfaction",
+  satisfactionResponses: "{n} réponses",
+  satisfactionGood: "Bien",
+  satisfactionRegular: "Moyen",
+  satisfactionBad: "Mauvais",
+  satisfactionComments: "Réclamations et suggestions",
+  satisfactionAnonymous: "Anonyme",
+  rescheduleAlertIntervalReadOnlyHint: "Seul l'admin de la clinique configure cet intervalle.",
+  rescheduleAlertIntervalUnit: "min",
   dailyCloseTitle: "Clôture de caisse journalière",
   loadingClose: "Chargement de la clôture…",
   paidToday: "Encaissé aujourd'hui",

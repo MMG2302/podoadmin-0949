@@ -99,7 +99,12 @@ export const NotificationsBell = () => {
     <div className="relative" ref={dropdownRef}>
       {/* Bell Button */}
       <button
-        onClick={() => setIsOpen(!isOpen)}
+        onClick={() => {
+          const next = !isOpen;
+          setIsOpen(next);
+          // La lista completa se pide al abrir (el poll de fondo solo trae el contador).
+          if (next) void refresh({ force: true });
+        }}
         className="relative p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
         aria-label={t.notifications.title}
       >

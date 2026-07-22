@@ -211,9 +211,13 @@ app.use('*', async (c, next) => {
     (path === '/api/auth/google/url' && method === 'GET') ||
     (path === '/api/subscriptions/stripe/checkout' && method === 'POST') ||
     (path === '/api/subscriptions/stripe/portal' && method === 'POST') ||
-    // Confirmación/cancelación de citas por enlace público (autenticadas por token propio, sin sesión)
+    // Confirmación/cancelación/reagendo/opinión de citas por enlace público (autenticadas por token propio, sin sesión)
     (path === '/api/reservations/confirm' && method === 'POST') ||
-    (path === '/api/reservations/cancel' && method === 'POST')
+    (path === '/api/reservations/cancel' && method === 'POST') ||
+    (path === '/api/reservations/reschedule' && method === 'POST') ||
+    (path === '/api/reservations/satisfaction' && method === 'POST') ||
+    (path === '/api/reservations/satisfaction-comment' && method === 'POST') ||
+    (path === '/api/reservations/book' && method === 'POST')
   ) {
     return next();
   }

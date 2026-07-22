@@ -21,6 +21,7 @@ import {
 } from '../utils/edit-cooldown';
 import { validateData, createClinicSchema } from '../utils/validation';
 import { effectiveTier, getSubscriptionsBatch } from '../utils/subscription-service';
+import { getClinicIncludedPodiatrists } from '../utils/billing-pricing';
 
 const clinicsRoutes = new Hono();
 
@@ -54,16 +55,24 @@ clinicsRoutes.use('*', requireAuth);
 clinicsRoutes.get('/', requireRole('super_admin', 'admin'), async (c) => {
   try {
     const rows = await database.select().from(clinicsTable).orderBy(clinicsTable.clinicName);
-    // Contar podólogos por clínica (solo para super_admin)
+    // Contar podólogos ACTIVOS por clínica (mismo criterio que countActivePodiatristsForClinic
+    // en billing-pricing.ts: excluye deshabilitados/baneados — si no, el número mostrado no
+    // coincide con lo que realmente cuenta contra el cupo del plan).
     const clinicIds = rows.map((r) => r.clinicId);
     let podiatristCounts: Record<string, number> = {};
     if (clinicIds.length > 0) {
       const podiatristRows = await database
-        .select({ clinicId: createdUsersTable.clinicId })
+        .select({
+          clinicId: createdUsersTable.clinicId,
+          isEnabled: createdUsersTable.isEnabled,
+          isBanned: createdUsersTable.isBanned,
+        })
         .from(createdUsersTable)
         .where(and(eq(createdUsersTable.role, 'podiatrist')));
       for (const p of podiatristRows) {
-        if (p.clinicId) podiatristCounts[p.clinicId] = (podiatristCounts[p.clinicId] ?? 0) + 1;
+        if (!p.clinicId) continue;
+        if (p.isEnabled === false || p.isBanned) continue;
+        podiatristCounts[p.clinicId] = (podiatristCounts[p.clinicId] ?? 0) + 1;
       }
     }
     const subsByClinic = await getSubscriptionsBatch(clinicIds, []);
@@ -71,6 +80,16 @@ clinicsRoutes.get('/', requireRole('super_admin', 'admin'), async (c) => {
       success: true,
       clinics: rows.map((r) => {
         const sub = subsByClinic.get(`clinic:${r.clinicId}`) ?? null;
+        const tier = sub ? effectiveTier(sub) : 'base';
+        // Límite REAL aplicado por la app (mismo cálculo que getClinicPodiatristCapacity):
+        // max(override manual, incluidos-por-plan + asientos extra comprados). El campo
+        // `podiatristLimit` crudo de abajo es solo el override manual (puede estar
+        // desactualizado tras un cambio de plan) — se conserva sin tocar para no romper
+        // el formulario de edición del override, que sí necesita ese valor crudo.
+        const overrideLimit = r.podiatristLimit != null && r.podiatristLimit >= 1 ? r.podiatristLimit : null;
+        const includedPodiatrists = getClinicIncludedPodiatrists(tier);
+        const extraPodiatristSeats = Math.max(0, sub?.extraPodiatristSeats ?? 0);
+        const effectivePodiatristLimit = Math.max(overrideLimit ?? 0, includedPodiatrists + extraPodiatristSeats);
         return {
           clinicId: r.clinicId,
           clinicName: r.clinicName,
@@ -83,6 +102,7 @@ clinicsRoutes.get('/', requireRole('super_admin', 'admin'), async (c) => {
           postalCode: r.postalCode ?? '',
           countryCode: r.countryCode ?? 'MX',
           podiatristLimit: r.podiatristLimit ?? null,
+          effectivePodiatristLimit,
           podiatristCount: podiatristCounts[r.clinicId] ?? 0,
           planTier: sub?.planTier ?? null,
           planTierOverride: sub?.planTierOverride ?? null,
@@ -258,6 +278,7 @@ clinicsRoutes.get('/:clinicId', async (c) => {
       address: row.address ?? '',
       city: row.city ?? '',
       postalCode: row.postalCode ?? '',
+      mapsUrl: row.mapsUrl ?? '',
       countryCode: row.countryCode ?? 'MX',
       licenseNumber: row.licenseNumber ?? '',
       legalName: row.legalName ?? '',
@@ -303,9 +324,16 @@ clinicsRoutes.patch('/:clinicId', async (c) => {
   }
   const body = await c.req.json().catch(() => ({})) as Record<string, unknown>;
   const updates: Record<string, unknown> = {};
-  const allowed = ['clinicName', 'clinicCode', 'phone', 'email', 'address', 'city', 'postalCode', 'countryCode', 'licenseNumber', 'website', 'consentText', 'legalName', 'rfc', 'clues', 'establishmentType', 'cofeprisRegistration'];
+  const allowed = ['clinicName', 'clinicCode', 'phone', 'email', 'address', 'city', 'postalCode', 'mapsUrl', 'countryCode', 'licenseNumber', 'website', 'consentText', 'legalName', 'rfc', 'clues', 'establishmentType', 'cofeprisRegistration'];
   for (const k of allowed) {
     if (body[k] !== undefined) updates[k] = body[k];
+  }
+  if (updates.mapsUrl !== undefined) {
+    const trimmed = String(updates.mapsUrl ?? '').trim();
+    if (trimmed && !/^https:\/\/\S+$/.test(trimmed)) {
+      return c.json({ error: 'Datos inválidos', message: 'El link de Google Maps debe ser una URL https:// válida' }, 400);
+    }
+    updates.mapsUrl = trimmed || null;
   }
   // podiatrist_limit: solo super_admin
   if (user.role === 'super_admin' && body.podiatristLimit !== undefined) {
@@ -398,6 +426,7 @@ clinicsRoutes.patch('/:clinicId', async (c) => {
       address: updated.address ?? '',
       city: updated.city ?? '',
       postalCode: updated.postalCode ?? '',
+      mapsUrl: updated.mapsUrl ?? '',
       countryCode: updated.countryCode ?? 'MX',
       licenseNumber: updated.licenseNumber ?? '',
       legalName: updated.legalName ?? '',

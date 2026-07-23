@@ -449,8 +449,8 @@ const ClinicPage = () => {
     !rec.isBlocked && !rec.isBanned && rec.isEnabled !== false;
 
   const activeReceptionistCount = clinicReceptionists.filter(isReceptionistActive).length;
-  const MAX_ACTIVE_RECEPTIONISTS = 10;
-  const canCreateReceptionist = activeReceptionistCount < MAX_ACTIVE_RECEPTIONISTS;
+  // Recepcionistas ilimitadas para clínicas.
+  const canCreateReceptionist = true;
 
   const handleToggleReceptionistBlock = async (rec: User) => {
     try {
@@ -498,10 +498,6 @@ const ClinicPage = () => {
   const handleCreateReceptionist = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!currentUser?.clinicId || !currentUser?.id) return;
-    if (!canCreateReceptionist) {
-      setReceptionistError(t.clinic.maxActiveReceptionists.replace("{max}", String(MAX_ACTIVE_RECEPTIONISTS)));
-      return;
-    }
     setReceptionistError(null);
     if (isEmailTaken(receptionistForm.email.trim())) {
       setReceptionistError(t.clinic.emailTaken);
@@ -1129,7 +1125,7 @@ const ClinicPage = () => {
                   {t.clinic.receptionistsHint}
                 </p>
                 <p className="text-xs text-gray-400 mt-1">
-                  {t.clinic.receptionistsActive.replace("{active}", String(activeReceptionistCount)).replace("{max}", String(MAX_ACTIVE_RECEPTIONISTS))}
+                  {t.clinic.receptionistsActive.replace("{active}", String(activeReceptionistCount))}
                 </p>
               </div>
               <button

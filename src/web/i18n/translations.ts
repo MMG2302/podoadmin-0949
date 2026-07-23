@@ -2188,7 +2188,6 @@ export interface Translations {
     assignedPodiatristsTitle: string;
     noPodiatristsInClinic: string;
     confirmDeleteReceptionist: string;
-    maxActiveReceptionists: string;
     emailTaken: string;
     createReceptionistError: string;
     saveAssignmentError: string;
@@ -3246,7 +3245,7 @@ views: {
         extraSeatsTrialSaved: "Cupo de podólogos actualizado. Ya puedes agregar más podólogos a tu clínica.",
         growthTitle: "¿Tu consulta crece?",
         growthHint: "Sube a Premium para desbloquear analíticas, herramientas clínicas avanzadas y campañas de WhatsApp, o pasa a un plan Clínica para sumar podólogos y recepción.",
-        growthClinicBullet: "Plan Clínica: desde $100 USD/mes con 3 podólogos incluidos (6 en Premium) y podólogos adicionales por $10 USD/mes.",
+        growthClinicBullet: "Plan Clínica: desde $100 USD/mes con 5 podólogos incluidos (8 en Premium) y podólogos adicionales por $10 USD/mes.",
         growthContact: "Quiero pasar a plan Clínica",
       },
       dashboardLogo: {
@@ -4215,7 +4214,7 @@ views: {
       reassign: "Reasignar",
       noPatientsFound: "No se encontraron pacientes",
       receptionistsHint: "Las recepcionistas tienen acceso sin créditos a crear pacientes, crear y editar citas en el calendario de los podólogos que les asignes.",
-      receptionistsActive: "Activas: {active} / {max}. Deben cambiar la contraseña en el primer inicio de sesión.",
+      receptionistsActive: "Activas: {active} (sin límite). Deben cambiar la contraseña en el primer inicio de sesión.",
       createReceptionist: "Crear recepcionista",
       colName: "Nombre",
       colAssignedPodiatrists: "Podólogos asignados",
@@ -4239,7 +4238,6 @@ views: {
       assignedPodiatristsTitle: "Podólogos asignados",
       noPodiatristsInClinic: "No hay podólogos en la clínica.",
       confirmDeleteReceptionist: "¿Eliminar a la recepcionista {name} ({email})? Esta acción no se puede deshacer.",
-      maxActiveReceptionists: "Máximo {max} recepcionistas activas en la clínica.",
       emailTaken: "Ya existe una cuenta con este correo electrónico",
       createReceptionistError: "Error al crear recepcionista",
       saveAssignmentError: "Error al guardar asignación",
@@ -5644,7 +5642,7 @@ views: {
         extraSeatsTrialSaved: "Podiatrist seats updated. You can now add more podiatrists to your clinic.",
         growthTitle: "Is your practice growing?",
         growthHint: "Upgrade to Premium to unlock analytics, advanced clinical tools and WhatsApp campaigns, or move to a Clinic plan to add podiatrists and reception.",
-        growthClinicBullet: "Clinic plan: from $100 USD/mo with 3 podiatrists included (6 on Premium) and additional podiatrists for $10 USD/mo.",
+        growthClinicBullet: "Clinic plan: from $100 USD/mo with 5 podiatrists included (8 on Premium) and additional podiatrists for $10 USD/mo.",
         growthContact: "I want to move to a Clinic plan",
         subscribe: "Subscribe — ${amount} USD/month",
         manageStripe: "Manage billing in Stripe",
@@ -6614,7 +6612,7 @@ views: {
       reassign: "Reassign",
       noPatientsFound: "No patients found",
       receptionistsHint: "Receptionists can create patients and create/edit appointments on the calendars of assigned podiatrists, without using credits.",
-      receptionistsActive: "Active: {active} / {max}. They must change the password on first sign-in.",
+      receptionistsActive: "Active: {active} (no limit). They must change the password on first sign-in.",
       createReceptionist: "Create receptionist",
       colName: "Name",
       colAssignedPodiatrists: "Assigned podiatrists",
@@ -6638,7 +6636,6 @@ views: {
       assignedPodiatristsTitle: "Assigned podiatrists",
       noPodiatristsInClinic: "No podiatrists in the clinic.",
       confirmDeleteReceptionist: "Delete receptionist {name} ({email})? This cannot be undone.",
-      maxActiveReceptionists: "Maximum {max} active receptionists in the clinic.",
       emailTaken: "An account with this email already exists",
       createReceptionistError: "Error creating receptionist",
       saveAssignmentError: "Error saving assignment",
@@ -8043,7 +8040,7 @@ views: {
         extraSeatsTrialSaved: "Lugares de podólogos atualizados. Já pode adicionar mais podólogos à sua clínica.",
         growthTitle: "A sua consulta está a crescer?",
         growthHint: "Suba para Premium para desbloquear analíticas, ferramentas clínicas avançadas e campanhas de WhatsApp, ou mude para um plano Clínica para somar podólogos e receção.",
-        growthClinicBullet: "Plano Clínica: desde $100 USD/mês com 3 podólogos incluídos (6 no Premium) e podólogos adicionais por $10 USD/mês.",
+        growthClinicBullet: "Plano Clínica: desde $100 USD/mês com 5 podólogos incluídos (8 no Premium) e podólogos adicionais por $10 USD/mês.",
         growthContact: "Quero mudar para o plano Clínica",
       },
       dashboardLogo: {
@@ -9010,7 +9007,7 @@ views: {
       reassign: "Reatribuir",
       noPatientsFound: "Nenhum paciente encontrado",
       receptionistsHint: "As recepcionistas têm acesso sem créditos para criar pacientes e criar/editar consultas no calendário dos podólogos que lhes atribuir.",
-      receptionistsActive: "Ativas: {active} / {max}. Devem alterar a palavra-passe no primeiro início de sessão.",
+      receptionistsActive: "Ativas: {active} (sem limite). Devem alterar a palavra-passe no primeiro início de sessão.",
       createReceptionist: "Criar recepcionista",
       colName: "Nome",
       colAssignedPodiatrists: "Podólogos atribuídos",
@@ -9034,7 +9031,6 @@ views: {
       assignedPodiatristsTitle: "Podólogos atribuídos",
       noPodiatristsInClinic: "Não há podólogos na clínica.",
       confirmDeleteReceptionist: "Eliminar a recepcionista {name} ({email})? Esta ação não pode ser desfeita.",
-      maxActiveReceptionists: "Máximo de {max} recepcionistas ativas na clínica.",
       emailTaken: "Já existe uma conta com este email",
       createReceptionistError: "Erro ao criar recepcionista",
       saveAssignmentError: "Erro ao guardar atribuição",
@@ -10414,7 +10410,7 @@ views: {
         extraSeatsTrialSaved: "Sièges de podologues mis à jour. Vous pouvez maintenant ajouter d'autres podologues à votre clinique.",
         growthTitle: "Votre cabinet grandit ?",
         growthHint: "Passez à Premium pour débloquer les analytiques, les outils cliniques avancés et les campagnes WhatsApp, ou passez à un forfait Clinique pour ajouter podologues et accueil.",
-        growthClinicBullet: "Forfait Clinique : à partir de 100 $ USD/mois avec 3 podologues inclus (6 en Premium) et podologues supplémentaires pour 10 $ USD/mois.",
+        growthClinicBullet: "Forfait Clinique : à partir de 100 $ USD/mois avec 5 podologues inclus (8 en Premium) et podologues supplémentaires pour 10 $ USD/mois.",
         growthContact: "Je veux passer au forfait Clinique",
       },
       dashboardLogo: {
@@ -11381,7 +11377,7 @@ views: {
       reassign: "Réassigner",
       noPatientsFound: "Aucun patient trouvé",
       receptionistsHint: "Les réceptionnistes peuvent créer des patients et créer/modifier des rendez-vous sur les calendriers des podologues assignés, sans utiliser de crédits.",
-      receptionistsActive: "Actives : {active} / {max}. Elles doivent changer le mot de passe à la première connexion.",
+      receptionistsActive: "Actives : {active} (sans limite). Elles doivent changer le mot de passe à la première connexion.",
       createReceptionist: "Créer une réceptionniste",
       colName: "Nom",
       colAssignedPodiatrists: "Podologues assignés",
@@ -11405,7 +11401,6 @@ views: {
       assignedPodiatristsTitle: "Podologues assignés",
       noPodiatristsInClinic: "Aucun podologue dans la clinique.",
       confirmDeleteReceptionist: "Supprimer la réceptionniste {name} ({email}) ? Cette action est irréversible.",
-      maxActiveReceptionists: "Maximum {max} réceptionnistes actives dans la clinique.",
       emailTaken: "Un compte avec cet e-mail existe déjà",
       createReceptionistError: "Erreur lors de la création de la réceptionniste",
       saveAssignmentError: "Erreur lors de l'enregistrement de l'assignation",

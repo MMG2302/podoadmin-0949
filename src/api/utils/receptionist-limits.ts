@@ -4,7 +4,8 @@ import { database } from '../database';
 import { createdUsers } from '../database/schema';
 import { getCreatedUserByIdOrUserId } from './tenant-isolation';
 
-export const MAX_CLINIC_ACTIVE_RECEPTIONISTS = 10;
+/** Las clínicas no tienen tope de recepcionistas (ilimitadas). El independiente sí: 1. */
+export const CLINIC_RECEPTIONISTS_UNLIMITED = true;
 export const MAX_INDEPENDENT_RECEPTIONISTS = 1;
 
 type ReceptionistRow = {
@@ -47,13 +48,10 @@ export async function countReceptionistsForIndependentPodiatrist(podiatristUserI
   return rows.length;
 }
 
-export async function assertClinicCanAddActiveReceptionist(clinicId: string): Promise<void> {
-  const count = await countActiveReceptionistsForClinic(clinicId);
-  if (count >= MAX_CLINIC_ACTIVE_RECEPTIONISTS) {
-    throw new Error(
-      `Tu clínica alcanzó el límite de ${MAX_CLINIC_ACTIVE_RECEPTIONISTS} recepcionistas activas. Deshabilita o elimina una antes de crear o habilitar otra.`
-    );
-  }
+// Las clínicas tienen recepcionistas ilimitadas: nunca bloquea. Se mantiene la
+// firma (y la llamada en users.ts/receptionists.ts) para no dispersar el control.
+export async function assertClinicCanAddActiveReceptionist(_clinicId: string): Promise<void> {
+  // no-op: sin tope para clínicas.
 }
 
 export async function assertIndependentCanAddReceptionist(podiatristUserId: string): Promise<void> {

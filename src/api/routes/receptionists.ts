@@ -14,7 +14,6 @@ import {
   assertIndependentCanAddReceptionist,
   filterValidClinicPodiatristIds,
   getClinicPodiatristUserIds,
-  MAX_CLINIC_ACTIVE_RECEPTIONISTS,
 } from '../utils/receptionist-limits';
 
 const receptionistsRoutes = new Hono();
@@ -281,9 +280,9 @@ receptionistsRoutes.get('/limits', async (c) => {
     const activeCount = await countActiveReceptionistsForClinic(user.clinicId);
     return c.json({
       success: true,
-      maxActive: MAX_CLINIC_ACTIVE_RECEPTIONISTS,
+      unlimited: true,
       activeCount,
-      canCreate: activeCount < MAX_CLINIC_ACTIVE_RECEPTIONISTS,
+      canCreate: true,
     });
   }
 

@@ -6,8 +6,8 @@ import { isPlanTier, type PlanTier } from './plan-entitlements';
 export type BillingInterval = 'month';
 
 /** Podólogos incluidos por tier del plan clínica; extras a $10/mes c/u. */
-export const CLINIC_INCLUDED_PODIATRISTS_BASE = 3;
-export const CLINIC_INCLUDED_PODIATRISTS_PREMIUM = 6;
+export const CLINIC_INCLUDED_PODIATRISTS_BASE = 5;
+export const CLINIC_INCLUDED_PODIATRISTS_PREMIUM = 8;
 export const BILLING_PRICE_INDEPENDENT_USD = 25;
 export const BILLING_PRICE_CLINIC_USD = 100;
 export const BILLING_PRICE_INDEPENDENT_PREMIUM_USD = 40;

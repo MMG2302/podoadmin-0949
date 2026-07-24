@@ -148,7 +148,7 @@ function PricingCard({ plan, highlighted }: { plan: LandingPlan; highlighted?: b
         <span
           className={cn(
             "absolute -top-3 left-8 rounded-full px-3 py-1 text-xs font-medium",
-            highlighted ? "bg-white text-brand-ink" : "bg-brand-ink text-white"
+            highlighted ? "bg-white text-gray-900" : "bg-brand-ink text-brand-ink-fg"
           )}
         >
           {plan.badge}
@@ -188,7 +188,7 @@ function PricingCard({ plan, highlighted }: { plan: LandingPlan; highlighted?: b
         className={cn(
           "mt-8 inline-flex items-center justify-center gap-2 rounded-lg px-6 py-3.5 text-sm font-medium transition-colors min-h-[44px]",
           highlighted
-            ? "bg-white text-brand-ink hover:bg-gray-100"
+            ? "bg-white text-gray-900 hover:bg-gray-100"
             : "bg-brand-ink text-brand-ink-fg hover:bg-brand-ink-hover"
         )}
       >
@@ -424,7 +424,7 @@ const LandingPage = () => {
       {/* CTA */}
       <section className="py-16 sm:py-24 px-4 sm:px-6">
         <div className="mx-auto max-w-6xl">
-          <div className="relative overflow-hidden rounded-2xl bg-brand-ink px-6 py-12 sm:px-12 sm:py-16 text-center text-white">
+          <div className="relative overflow-hidden rounded-2xl bg-brand-ink dark:bg-gray-900 px-6 py-12 sm:px-12 sm:py-16 text-center text-white">
             <div className="absolute inset-0 opacity-[0.04]">{gridPattern}</div>
             <div className="relative z-10">
               <h2 className="text-2xl sm:text-3xl font-light">{l.ctaTitle}</h2>
@@ -432,7 +432,7 @@ const LandingPage = () => {
               <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-3">
                 <Link
                   href="/register"
-                  className="inline-flex items-center justify-center gap-2 px-6 py-3.5 text-sm font-medium rounded-lg bg-white text-brand-ink hover:bg-gray-100 transition-colors min-h-[44px] w-full sm:w-auto"
+                  className="inline-flex items-center justify-center gap-2 px-6 py-3.5 text-sm font-medium rounded-lg bg-white text-gray-900 hover:bg-gray-100 transition-colors min-h-[44px] w-full sm:w-auto"
                 >
                   {l.ctaButton}
                   <ArrowRight className="h-4 w-4" />

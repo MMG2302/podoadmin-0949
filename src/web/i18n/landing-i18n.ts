@@ -72,6 +72,9 @@ export type LandingI18n = {
   /** Cuatro planes: Independiente/Clínica × Base/Premium. */
   pricingPlans: LandingPlan[];
   pricingNote: string;
+  rolesCardTitle: string;
+  rolesCardSubtitle: string;
+  rolesCardRows: { role: string; cost: string; note: string }[];
   ctaTitle: string;
   ctaSubtitle: string;
   ctaButton: string;
@@ -239,6 +242,14 @@ const es: LandingI18n = {
     },
   ],
   pricingNote: "Recordatorios de WhatsApp sin límites en todos los planes. Precios en USD.",
+  rolesCardTitle: "¿Cuánto cuesta agregar usuarios?",
+  rolesCardSubtitle: "Aplica a los planes de Clínica (Base y Premium)",
+  rolesCardRows: [
+    { role: "Podólogo incluido", cost: "Gratis", note: "5 en Base · 8 en Premium" },
+    { role: "Podólogo adicional", cost: "$10/mes", note: "Por cada profesional extra" },
+    { role: "Recepcionista", cost: "Gratis", note: "Sin límite de recepcionistas" },
+    { role: "Admin de clínica", cost: "Incluido", note: "1 por clínica (el titular)" },
+  ],
   ctaTitle: "Empieza hoy y enfócate en tus pacientes",
   ctaSubtitle: "Regístrate en minutos y descubre lo fácil que es llevar tu consulta.",
   ctaButton: "Crear mi cuenta",
@@ -406,6 +417,14 @@ const en: LandingI18n = {
     },
   ],
   pricingNote: "Unlimited WhatsApp reminders on every plan. Prices in USD.",
+  rolesCardTitle: "How much does it cost to add users?",
+  rolesCardSubtitle: "Applies to Clinic plans (Base and Premium)",
+  rolesCardRows: [
+    { role: "Included podiatrist", cost: "Free", note: "5 in Base · 8 in Premium" },
+    { role: "Additional podiatrist", cost: "$10/mo", note: "Per extra professional" },
+    { role: "Receptionist", cost: "Free", note: "Unlimited receptionists" },
+    { role: "Clinic admin", cost: "Included", note: "1 per clinic (the owner)" },
+  ],
   ctaTitle: "Start today and focus on your patients",
   ctaSubtitle: "Sign up in minutes and see how easy running your practice can be.",
   ctaButton: "Create my account",
@@ -573,6 +592,14 @@ const pt: LandingI18n = {
     },
   ],
   pricingNote: "Lembretes de WhatsApp sem limites em todos os planos. Preços em USD.",
+  rolesCardTitle: "Quanto custa adicionar utilizadores?",
+  rolesCardSubtitle: "Aplica-se aos planos de Clínica (Base e Premium)",
+  rolesCardRows: [
+    { role: "Podólogo incluído", cost: "Grátis", note: "5 no Base · 8 no Premium" },
+    { role: "Podólogo adicional", cost: "$10/mês", note: "Por cada profissional extra" },
+    { role: "Recepcionista", cost: "Grátis", note: "Recepcionistas ilimitadas" },
+    { role: "Admin de clínica", cost: "Incluído", note: "1 por clínica (o titular)" },
+  ],
   ctaTitle: "Comece hoje e concentre-se nos seus pacientes",
   ctaSubtitle: "Registe-se em minutos e veja como é fácil gerir a sua consulta.",
   ctaButton: "Criar a minha conta",
@@ -740,6 +767,14 @@ const fr: LandingI18n = {
     },
   ],
   pricingNote: "Rappels WhatsApp illimités sur tous les plans. Prix en USD.",
+  rolesCardTitle: "Combien coûte l'ajout d'utilisateurs ?",
+  rolesCardSubtitle: "S'applique aux plans Clinique (Base et Premium)",
+  rolesCardRows: [
+    { role: "Podologue inclus", cost: "Gratuit", note: "5 en Base · 8 en Premium" },
+    { role: "Podologue supplémentaire", cost: "10 $/mois", note: "Par professionnel en plus" },
+    { role: "Réceptionniste", cost: "Gratuit", note: "Réceptionnistes illimitées" },
+    { role: "Admin de clinique", cost: "Inclus", note: "1 par clinique (le titulaire)" },
+  ],
   ctaTitle: "Commencez aujourd'hui et concentrez-vous sur vos patients",
   ctaSubtitle: "Inscrivez-vous en quelques minutes et découvrez à quel point gérer votre cabinet peut être simple.",
   ctaButton: "Créer mon compte",

@@ -417,6 +417,26 @@ const LandingPage = () => {
               <PricingCard key={plan.name} plan={plan} highlighted={plan.highlighted} />
             ))}
           </div>
+
+          {/* Roles cost info card */}
+          <div className="mt-8 rounded-2xl border border-brand-border bg-brand-surface px-6 py-5 sm:px-8 sm:py-6">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-3 mb-4">
+              <h3 className="text-sm font-semibold text-brand-ink">{l.rolesCardTitle}</h3>
+              <span className="text-xs text-brand-muted">{l.rolesCardSubtitle}</span>
+            </div>
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+              {l.rolesCardRows.map((row) => (
+                <div key={row.role} className="flex items-start gap-3 rounded-xl border border-brand-border bg-brand-bg px-4 py-3">
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs font-medium text-brand-ink truncate">{row.role}</p>
+                    <p className="text-xs text-brand-muted mt-0.5">{row.note}</p>
+                  </div>
+                  <span className="shrink-0 text-sm font-semibold text-brand-ink">{row.cost}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
           <p className="mt-6 text-center text-sm text-brand-muted">{l.pricingNote}</p>
         </div>
       </section>

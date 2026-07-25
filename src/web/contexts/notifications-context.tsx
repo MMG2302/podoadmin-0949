@@ -2,7 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useRef, useState, ty
 import { useLocation } from "wouter";
 import { useAuth } from "./auth-context";
 import { api } from "../lib/api-client";
-import { fetchShared, invalidateShared, invalidateSharedPrefix } from "../lib/shared-query";
+import { fetchShared, invalidateSharedPrefix } from "../lib/shared-query";
 import type { Notification } from "../types/notification";
 
 const POLL_MS = 25_000;

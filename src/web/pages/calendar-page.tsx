@@ -405,8 +405,7 @@ const CalendarPage = () => {
     const month = currentDate.getMonth();
     
     const firstDay = new Date(year, month, 1);
-    const lastDay = new Date(year, month + 1, 0);
-    
+      
     // Start from Monday (adjust if first day is Sunday)
     let startDate = new Date(firstDay);
     const dayOfWeek = startDate.getDay();
@@ -817,7 +816,6 @@ const isSelected = (date: Date) => {
 
   const isPendingPatientMode = appointmentPatientMode === "pending";
 
-  const getPatientById = (id: string) => allPatients.find((p) => p.id === id) ?? null;
 
   /** Detecta si el error de la API es por solapamiento de horarios (por código o por texto del mensaje). */
   const isOverlapError = (res: { data?: { code?: string; message?: string }; message?: string }) => {

@@ -1,11 +1,4 @@
 import type { ClinicalSession } from "../types/clinical";
-import type {
-  DigitalAlterationEntry,
-  HelomaEntry,
-  LimbAssessmentEntry,
-  OnychopathyEntry,
-  SweatDisorderEntry,
-} from "../types/podiatry";
 import {
   PODIATRY_DIGITAL_OPTIONS,
   PODIATRY_HELOMA_OPTIONS,

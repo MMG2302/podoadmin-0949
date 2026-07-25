@@ -30,9 +30,6 @@ export interface User {
 
 import {
   getPostLoginPath,
-  hasActiveSystemAccess,
-  isAllowedWithoutSystemAccess,
-  isClinicalAppPath,
   normalizeUserSystemAccess,
 } from "../lib/system-access";
 import { refreshReceptionistAssignmentsInBackground } from "../lib/receptionist-assignments";

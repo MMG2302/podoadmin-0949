@@ -240,7 +240,7 @@ const SessionsPage = () => {
     filters: sessionFilters,
   });
 
-  const [patientPickerUseFullList, setPatientPickerUseFullList] = useState(false);
+  const [, setPatientPickerUseFullList] = useState(false);
   const [patientPickerMode, setPatientPickerMode] = useState<"loading" | "select" | "search">("loading");
   const [compactPatients, setCompactPatients] = useState<Patient[]>([]);
   const [formSelectedPatient, setFormSelectedPatient] = useState<Patient | null>(null);

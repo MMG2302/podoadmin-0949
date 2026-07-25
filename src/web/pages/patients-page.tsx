@@ -49,7 +49,7 @@ import {
 } from "../components/patients/patient-antecedents-fields";
 import { useTenantCountry } from "../hooks/use-tenant-country";
 import { formatPhoneDisplay, phonePlaceholderForCountry } from "../lib/whatsapp-web-link";
-import { formErrorClass, formHintClass, formLabelClass, formSuccessClass, semanticAlertErrorClass, semanticAlertWarningClass } from "../lib/form-field-classes";
+import { formErrorClass, formHintClass, formSuccessClass, semanticAlertErrorClass, semanticAlertWarningClass } from "../lib/form-field-classes";
 
 interface PatientFormData {
   firstName: string;
@@ -94,14 +94,14 @@ const PatientsPage = () => {
   const eng = t.patients.engagement;
   const { user, getAllUsers } = useAuth();
   const tenantCountry = useTenantCountry(user);
-  const { isSuperAdmin, isPodiatrist, isClinicAdmin, isReceptionist } = usePermissions();
+  const { isPodiatrist, isClinicAdmin, isReceptionist } = usePermissions();
   const { layout: clinicalLayout } = useClinicalLayout();
   const showPatientCurp = isPatientFieldEnabled(clinicalLayout, "patient_curp");
   const showPatientEmail = isPatientFieldEnabled(clinicalLayout, "patient_email");
   const showPatientAddress = isPatientFieldEnabled(clinicalLayout, "patient_address");
   const showPatientMedicalHistory = isPatientFieldEnabled(clinicalLayout, "patient_medical_history");
   const showPatientFamilyHistory = isPatientFieldEnabled(clinicalLayout, "patient_family_history");
-  const [location, setLocation] = useLocation();
+  const [, setLocation] = useLocation();
 
   useEffect(() => {
     if (isClinicAdmin) setLocation("/clinic");
@@ -266,7 +266,6 @@ const PatientsPage = () => {
     e.preventDefault();
   setFormErrors({});
   setGraceError(null);
-    const createdBy = isReceptionist && receptionistPodiatristId ? receptionistPodiatristId : (user?.id || "");
     if (isReceptionist && !receptionistPodiatristId && !editingPatient) {
       return; // receptionist must select podiatrist when creating
     }

@@ -28,7 +28,6 @@ import {
   semanticAlertErrorClass,
   semanticAlertInfoClass,
   semanticAlertSuccessClass,
-  semanticAlertWarningClass,
   semanticChipErrorClass,
   semanticChipSuccessClass,
   semanticChipWarningClass,
@@ -59,9 +58,6 @@ interface ClinicInfoForm {
 }
 
 // Nombre de clínica desde datos cargados o fallback
-const getClinicNameFrom = (clinic: Clinic | null, clinicId: string, fallbackTpl: string): string =>
-  clinic?.clinicName ?? (clinicId ? fallbackTpl.replace("{id}", clinicId) : "");
-
 // Get logo for a user (considering clinic membership) - exported for PDF/async use (API)
 export async function getLogoForUser(userId: string, clinicId?: string): Promise<string | null> {
   if (clinicId) {
@@ -238,8 +234,6 @@ const SettingsPage = () => {
   const [professionalInfoSaved, setProfessionalInfoSaved] = useState(false);
   
   // Professional License state (for all podiatrists)
-  const [professionalLicense, setProfessionalLicenseState] = useState<string>("");
-  const [licenseSaved, setLicenseSaved] = useState(false);
   
   // Professional Credentials state (for clinic subaltern podiatrists)
   const [credentialsCedula, setCredentialsCedula] = useState<string>("");
@@ -329,11 +323,6 @@ const SettingsPage = () => {
   
   // Cargar professional license desde API
   useEffect(() => {
-    if (user?.role === "podiatrist" && user?.id) {
-      api.get<{ success?: boolean; license?: string | null }>(`/professionals/license/${user.id}`).then((res) => {
-        if (res.success && res.data?.license != null) setProfessionalLicenseState(res.data.license || "");
-      });
-    }
   }, [user?.role, user?.id]);
   
   // Cargar podólogos asignados para recepcionista desde API
@@ -379,7 +368,6 @@ const SettingsPage = () => {
     void loadMyReceptionists();
   }, [loadMyReceptionists]);
 
-  const clinicName = userClinic?.clinicName ?? getClinicNameFrom(userClinic, user?.clinicId ?? "", t.settings.clinic.fallbackName);
   const isInfoBlocked = !!infoBlockedUntil && new Date(infoBlockedUntil) > new Date();
   const isLogoBlocked = !!logoBlockedUntil && new Date(logoBlockedUntil) > new Date();
   const isProfessionalInfoBlocked =
@@ -506,20 +494,6 @@ const SettingsPage = () => {
       }
     } catch {
       // No marcar como guardado si la API falla
-    }
-  };
-  
-  // Professional license handler (for all podiatrists)
-  const handleSaveProfessionalLicense = async () => {
-    if (user?.role !== "podiatrist" || !user?.id) return;
-    try {
-      const res = await api.put<{ success?: boolean }>(`/professionals/license/${user.id}`, { license: professionalLicense });
-      if (res.success) {
-        setLicenseSaved(true);
-        setTimeout(() => setLicenseSaved(false), 2000);
-      }
-    } catch {
-      // Silenciar, no marcar como guardado
     }
   };
   

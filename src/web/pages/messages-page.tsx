@@ -16,10 +16,9 @@ type ViewMode = "compose" | "sent";
 const MessagesPage = () => {
   const { t, language } = useLanguage();
   const { user, getAllUsers, ensureVisibleUsers } = useAuth();
-  const [usersReady, setUsersReady] = useState(false);
 
   useEffect(() => {
-    void ensureVisibleUsers().then(() => setUsersReady(true));
+    void ensureVisibleUsers();
   }, [ensureVisibleUsers]);
 
   const allUsers = getAllUsers().filter(u => u.id !== user?.id);

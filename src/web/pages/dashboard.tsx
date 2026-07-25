@@ -588,7 +588,7 @@ const ReceptionistDashboard = () => {
 
 // Dashboard Home - routes to appropriate dashboard based on role
 const DashboardHome = () => {
-  const { isSuperAdmin, isClinicAdmin, isAdmin, isPodiatrist, isReceptionist } = usePermissions();
+  const { isSuperAdmin, isClinicAdmin, isAdmin, isReceptionist } = usePermissions();
 
   if (isSuperAdmin) return <SuperAdminDashboard />;
   if (isClinicAdmin) return <ClinicAdminDashboard />;

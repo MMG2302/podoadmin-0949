@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useLocation, useLocation as useWouterLocation } from "wouter";
+import { useLocation as useWouterLocation } from "wouter";
 import { useLanguage } from "../contexts/language-context";
 import { LanguageSwitcher } from "../components/language-switcher";
 import { AuthBrandPanel, AuthBrandMobile } from "../components/auth/auth-brand-link";
@@ -11,8 +11,8 @@ import {
 
 const VerifyEmail = () => {
   const { t } = useLanguage();
-  const [location, setLocation] = useWouterLocation();
-  const [token, setToken] = useState<string | null>(null);
+  const [, setLocation] = useWouterLocation();
+  const [, setToken] = useState<string | null>(null);
   const [isVerifying, setIsVerifying] = useState(false);
   const [isVerified, setIsVerified] = useState(false);
   const [error, setError] = useState<string | null>(null);

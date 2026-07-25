@@ -84,7 +84,7 @@ const ReassignPatientModal = ({
   currentPodiatristId: string;
   onReassign: (patientId: string, newPodiatristId: string) => void;
 }) => {
-  const { t, language } = useLanguage();
+  const { t } = useLanguage();
   const [selectedPodiatrist, setSelectedPodiatrist] = useState("");
 
   if (!isOpen || !patient) return null;

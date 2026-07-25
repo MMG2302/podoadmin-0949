@@ -3,7 +3,7 @@ import { Link, useLocation } from "wouter";
 import { useLanguage } from "../contexts/language-context";
 import { useNotifications } from "../contexts/notifications-context";
 import { api } from "../lib/api-client";
-import { Notification, NotificationType } from "../types/notification";
+import { NotificationType } from "../types/notification";
 
 const NotificationIcon = ({ type }: { type: NotificationType }) => {
   switch (type) {

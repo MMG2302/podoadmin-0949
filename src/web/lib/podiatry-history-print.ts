@@ -32,7 +32,6 @@ import {
   svgDualPlantarFeet,
   svgFootTypeSelector,
   svgNumberedToesReference,
-  type PodiatryDiagramContext,
 } from "./podiatry-print-diagrams";
 import { resolvePodiatryDiagramContext } from "./podiatry-print-detect";
 

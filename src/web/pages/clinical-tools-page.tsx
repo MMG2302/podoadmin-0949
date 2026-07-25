@@ -30,7 +30,6 @@ import {
 import {
   getTemplateCategoryLabel,
   getTemplatePresetName,
-  getTemplateScopeLabel,
 } from "../i18n/clinical-labels";
 
 type Tab = "templates" | "inventory" | "referrals";

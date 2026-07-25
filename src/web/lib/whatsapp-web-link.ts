@@ -5,7 +5,6 @@ import {
   normalizePhoneDigits,
   normalizePhoneE164,
   resolveTenantCountryCode,
-  type TenantCountryCode,
 } from '../../lib/phone-country';
 
 export const DEFAULT_WHATSAPP_WEB_TEMPLATE =

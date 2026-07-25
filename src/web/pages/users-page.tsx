@@ -328,7 +328,6 @@ const BulkImportModal = ({
   isOpen,
   onClose,
   onImportComplete,
-  clinics = [],
   isSuperAdmin,
   currentUserClinicId,
 }: {
@@ -340,7 +339,7 @@ const BulkImportModal = ({
   currentUserClinicId?: string;
 }) => {
   const { t } = useLanguage();
-  const [file, setFile] = useState<File | null>(null);
+  const [, setFile] = useState<File | null>(null);
   const [defaultPassword, setDefaultPassword] = useState("");
   const [parsedRows, setParsedRows] = useState<Array<{ name: string; email: string; password: string; role: UserRole; clinicMode: string; clinicId: string; podiatristLimit?: number | null }>>([]);
   const [parseError, setParseError] = useState<string | null>(null);

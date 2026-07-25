@@ -446,6 +446,10 @@ export interface Translations {
     title: string;
     addPatient: string;
     editPatient: string;
+    deleteTitle: string;
+    deleteConfirmBody: string;
+    deleteCascadeTitle: string;
+    deleteCascadeBody: string;
     patientList: string;
     patientDetails: string;
     searchPatients: string;
@@ -1898,6 +1902,15 @@ export interface Translations {
     subjectRequired: string;
     recipientRequired: string;
     fromAdmin: string;
+    sendError: string;
+    searchUsersPlaceholder: string;
+    selectFiltered: string;
+    clearSelection: string;
+    showingUsers: string;
+    showingUsersCount: string;
+    selectedCount: string;
+    selectedUser: string;
+    selected: string;
   };
   // Clinical shared UI (layout kinds, podiatry options, component strings)
   clinicalLayout: ClinicalLayoutI18n;
@@ -2721,6 +2734,10 @@ views: {
       title: "Pacientes",
       addPatient: "Añadir paciente",
       editPatient: "Editar paciente",
+      deleteTitle: "Eliminar paciente",
+      deleteConfirmBody: "¿Seguro que quieres eliminar a {name}? Esta acción no se puede deshacer.",
+      deleteCascadeTitle: "Eliminar paciente y sus datos",
+      deleteCascadeBody: "Se eliminarán también sus sesiones, citas e historial asociados. Esta acción no se puede deshacer.",
       patientList: "Lista de pacientes",
       patientDetails: "Detalles del paciente",
       searchPatients: "Buscar pacientes...",
@@ -4162,6 +4179,15 @@ views: {
       subjectRequired: "El asunto es obligatorio",
       recipientRequired: "Selecciona al menos un destinatario",
       fromAdmin: "Mensaje del Administrador",
+      sendError: "No se pudo enviar el mensaje. Inténtalo de nuevo.",
+      searchUsersPlaceholder: "Buscar por nombre, email o rol...",
+      selectFiltered: "Seleccionar filtrados",
+      clearSelection: "Limpiar selección",
+      showingUsers: "{n} usuarios",
+      showingUsersCount: "{n} usuarios",
+      selectedCount: "{n} seleccionado(s)",
+      selectedUser: "Seleccionado: {name}",
+      selected: "Seleccionado",
     },
 
     clinic: {
@@ -5121,6 +5147,10 @@ views: {
       title: "Patients",
       addPatient: "Add Patient",
       editPatient: "Edit Patient",
+      deleteTitle: "Delete patient",
+      deleteConfirmBody: "Are you sure you want to delete {name}? This action cannot be undone.",
+      deleteCascadeTitle: "Delete patient and their data",
+      deleteCascadeBody: "Their associated sessions, appointments and history will also be deleted. This action cannot be undone.",
       patientList: "Patient List",
       patientDetails: "Patient Details",
       searchPatients: "Search patients...",
@@ -6560,6 +6590,15 @@ views: {
       subjectRequired: "Subject is required",
       recipientRequired: "Select at least one recipient",
       fromAdmin: "Admin Message",
+      sendError: "Couldn't send the message. Please try again.",
+      searchUsersPlaceholder: "Search by name, email or role...",
+      selectFiltered: "Select filtered",
+      clearSelection: "Clear selection",
+      showingUsers: "{n} users",
+      showingUsersCount: "{n} users",
+      selectedCount: "{n} selected",
+      selectedUser: "Selected: {name}",
+      selected: "Selected",
     },
 
     clinic: {
@@ -7516,6 +7555,10 @@ views: {
       title: "Pacientes",
       addPatient: "Adicionar Paciente",
       editPatient: "Editar Paciente",
+      deleteTitle: "Eliminar paciente",
+      deleteConfirmBody: "Tens a certeza de que queres eliminar {name}? Esta ação não pode ser desfeita.",
+      deleteCascadeTitle: "Eliminar paciente e os seus dados",
+      deleteCascadeBody: "As sessões, consultas e histórico associados também serão eliminados. Esta ação não pode ser desfeita.",
       patientList: "Lista de Pacientes",
       patientDetails: "Detalhes do Paciente",
       searchPatients: "Buscar pacientes...",
@@ -8955,6 +8998,15 @@ views: {
       subjectRequired: "O assunto é obrigatório",
       recipientRequired: "Selecione pelo menos um destinatário",
       fromAdmin: "Mensagem do Administrador",
+      sendError: "Não foi possível enviar a mensagem. Tenta novamente.",
+      searchUsersPlaceholder: "Pesquisar por nome, email ou função...",
+      selectFiltered: "Selecionar filtrados",
+      clearSelection: "Limpar seleção",
+      showingUsers: "{n} utilizadores",
+      showingUsersCount: "{n} utilizadores",
+      selectedCount: "{n} selecionado(s)",
+      selectedUser: "Selecionado: {name}",
+      selected: "Selecionado",
     },
 
     clinic: {
@@ -9886,6 +9938,10 @@ views: {
       title: "Patients",
       addPatient: "Ajouter un Patient",
       editPatient: "Modifier le Patient",
+      deleteTitle: "Supprimer le patient",
+      deleteConfirmBody: "Voulez-vous vraiment supprimer {name} ? Cette action est irréversible.",
+      deleteCascadeTitle: "Supprimer le patient et ses données",
+      deleteCascadeBody: "Ses séances, rendez-vous et historique associés seront également supprimés. Cette action est irréversible.",
       patientList: "Liste des Patients",
       patientDetails: "Détails du Patient",
       searchPatients: "Rechercher des patients...",
@@ -11325,6 +11381,15 @@ views: {
       subjectRequired: "Le sujet est obligatoire",
       recipientRequired: "Sélectionnez au moins un destinataire",
       fromAdmin: "Message de l'Administrateur",
+      sendError: "Impossible d'envoyer le message. Réessaie.",
+      searchUsersPlaceholder: "Rechercher par nom, e-mail ou rôle...",
+      selectFiltered: "Sélectionner les filtrés",
+      clearSelection: "Effacer la sélection",
+      showingUsers: "{n} utilisateurs",
+      showingUsersCount: "{n} utilisateurs",
+      selectedCount: "{n} sélectionné(s)",
+      selectedUser: "Sélectionné : {name}",
+      selected: "Sélectionné",
     },
 
     clinic: {

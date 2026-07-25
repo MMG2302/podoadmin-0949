@@ -1130,6 +1130,9 @@ const UsersPage = () => {
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [deleteConfirmUser, setDeleteConfirmUser] = useState<User | null>(null);
   const [deletingUser, setDeletingUser] = useState(false);
+  const [cooldownUser, setCooldownUser] = useState<User | null>(null);
+  const [cooldownReason, setCooldownReason] = useState("");
+  const [cooldownInProgress, setCooldownInProgress] = useState(false);
   const [approvedResetLink, setApprovedResetLink] = useState<string | null>(null);
   const [openAccountMenuId, setOpenAccountMenuId] = useState<string | null>(null);
   const [accountMenuPosition, setAccountMenuPosition] = useState<{ top?: number; bottom?: number; left: number } | null>(null);
@@ -1852,6 +1855,8 @@ const UsersPage = () => {
     })();
   };
 
+  // Abre el modal de autorización (reemplaza el prompt+confirm nativos apilados,
+  // que algunos navegadores suprimen silenciosamente en diálogos repetidos).
   const handleResetEditCooldown = (user: User) => {
     const appliesToClinic = user.role === "clinic_admin" && !!user.clinicId;
     const appliesToProfessional = user.role === "podiatrist";
@@ -1859,53 +1864,46 @@ const UsersPage = () => {
       alert(t.usersPage.cooldown.notApplicable);
       return;
     }
+    setCooldownReason("");
+    setCooldownUser(user);
+  };
 
-    const scopeLabel = appliesToClinic ? t.usersPage.cooldown.scopeClinic : t.usersPage.cooldown.scopeProfessional;
-    const reason = window.prompt(
-      t.usersPage.cooldown.reasonPrompt
-        .replace("{name}", user.name)
-        .replace("{scope}", scopeLabel)
-    );
-    if (reason === null) {
-      return;
-    }
-    if (
-      !window.confirm(
-        t.usersPage.cooldown.confirm.replace("{name}", user.name).replace("{scope}", scopeLabel)
-      )
-    ) {
-      return;
-    }
+  const executeResetEditCooldown = async () => {
+    const user = cooldownUser;
+    if (!user) return;
+    const appliesToClinic = user.role === "clinic_admin" && !!user.clinicId;
+    const reason = cooldownReason;
+    setCooldownInProgress(true);
+    try {
+      const payload = { scopes: ["info", "logo"] as const, reason: reason.trim() || undefined };
+      const response = appliesToClinic
+        ? await api.post<{ success: boolean; message?: string }>(`/clinics/${user.clinicId}/reset-edit-cooldown`, payload)
+        : await api.post<{ success: boolean; message?: string }>(`/professionals/${user.id}/reset-edit-cooldown`, payload);
 
-    (async () => {
-      try {
-        const payload = { scopes: ["info", "logo"] as const, reason: reason.trim() || undefined };
-        const response = appliesToClinic
-          ? await api.post<{ success: boolean; message?: string }>(`/clinics/${user.clinicId}/reset-edit-cooldown`, payload)
-          : await api.post<{ success: boolean; message?: string }>(`/professionals/${user.id}/reset-edit-cooldown`, payload);
-
-        if (response.success && response.data?.success) {
-          void postAuditLog({
-            action: "RESET_EDIT_COOLDOWN",
-            resourceType: appliesToClinic ? "clinic" : "user",
-            resourceId: appliesToClinic ? user.clinicId! : user.id,
-            details: {
-              action: appliesToClinic ? "reset_clinic_edit_cooldown" : "reset_professional_edit_cooldown",
-              targetUserId: user.id,
-              targetUserName: user.name,
-              targetUserEmail: user.email,
-              reason: reason.trim() || null,
-            },
-          });
-          alert(response.data.message || t.usersPage.cooldown.applied);
-        } else {
-          alert(response.error || response.data?.message || t.usersPage.cooldown.error);
-        }
-      } catch (error) {
-        console.error("Error autorizando cambio excepcional:", error);
-        alert(t.usersPage.cooldown.error);
+      if (response.success && response.data?.success) {
+        void postAuditLog({
+          action: "RESET_EDIT_COOLDOWN",
+          resourceType: appliesToClinic ? "clinic" : "user",
+          resourceId: appliesToClinic ? user.clinicId! : user.id,
+          details: {
+            action: appliesToClinic ? "reset_clinic_edit_cooldown" : "reset_professional_edit_cooldown",
+            targetUserId: user.id,
+            targetUserName: user.name,
+            targetUserEmail: user.email,
+            reason: reason.trim() || null,
+          },
+        });
+        setCooldownUser(null);
+        alert(response.data.message || t.usersPage.cooldown.applied);
+      } else {
+        alert(response.error || response.message || t.usersPage.cooldown.error);
       }
-    })();
+    } catch (error) {
+      console.error("Error autorizando cambio excepcional:", error);
+      alert(t.usersPage.cooldown.error);
+    } finally {
+      setCooldownInProgress(false);
+    }
   };
 
   // Abre el modal de confirmación (reemplaza el doble window.confirm nativo,
@@ -2679,6 +2677,59 @@ const UsersPage = () => {
           </div>
         </div>
       )}
+
+      {/* Autorizar edición excepcional (cooldown) — modal in-app con motivo */}
+      {cooldownUser && (() => {
+        const scopeLabel = cooldownUser.role === "clinic_admin" && cooldownUser.clinicId
+          ? t.usersPage.cooldown.scopeClinic
+          : t.usersPage.cooldown.scopeProfessional;
+        return (
+          <div
+            className="fixed inset-0 bg-black/50 z-[60] flex items-center justify-center p-4"
+            onClick={() => { if (!cooldownInProgress) setCooldownUser(null); }}
+          >
+            <div
+              className="bg-brand-surface rounded-xl border border-brand-border w-full max-w-md shadow-xl"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="p-6">
+                <h3 className="text-lg font-semibold text-brand-ink mb-2">{t.usersPage.menu.authorizeCooldown}</h3>
+                <p className="text-brand-muted text-sm mb-4">
+                  {t.usersPage.cooldown.confirm.replace("{name}", cooldownUser.name).replace("{scope}", scopeLabel)}
+                </p>
+                <label className="block text-sm font-medium text-brand-muted mb-1">
+                  {t.usersPage.cooldown.reasonPrompt.replace("{name}", cooldownUser.name).replace("{scope}", scopeLabel)}
+                </label>
+                <textarea
+                  value={cooldownReason}
+                  onChange={(e) => setCooldownReason(e.target.value)}
+                  rows={3}
+                  autoFocus
+                  className="w-full px-3 py-2 border border-brand-border rounded-lg bg-brand-surface text-brand-ink text-sm focus:border-brand-ink focus:ring-1 focus:ring-brand-ink outline-none resize-none"
+                />
+              </div>
+              <div className="px-6 py-4 border-t border-brand-border flex flex-col sm:flex-row gap-3">
+                <button
+                  type="button"
+                  onClick={() => setCooldownUser(null)}
+                  disabled={cooldownInProgress}
+                  className="flex-1 py-2.5 bg-brand-canvas text-brand-ink rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors font-medium disabled:opacity-50"
+                >
+                  {t.common.cancel}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => void executeResetEditCooldown()}
+                  disabled={cooldownInProgress}
+                  className="flex-1 py-2.5 bg-brand-ink text-brand-ink-fg rounded-lg hover:bg-brand-ink-hover transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {cooldownInProgress ? t.common.loading : t.common.confirm}
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Portal: menú de 3 puntos (evita scrollbar por overflow) */}
       {openAccountMenuId && accountMenuPosition && (() => {

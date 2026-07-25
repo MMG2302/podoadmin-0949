@@ -180,7 +180,7 @@ const es: LandingI18n = {
       tagline: "Para el podólogo que trabaja solo: todo lo necesario día a día.",
       price: "$25",
       period: "/mes por profesional",
-      cta: "Empezar",
+      cta: "Elegir",
       features: [
         "Agenda y calendario operativo",
         "Pacientes e historia clínica",
@@ -208,7 +208,7 @@ const es: LandingI18n = {
       ],
     },
     {
-      name: "PROFESSIONAL",
+      name: "CLINIC",
       tagline: "Para equipos: la operación diaria de toda la clínica.",
       price: "$100",
       period: "/mes por clínica",
@@ -231,7 +231,7 @@ const es: LandingI18n = {
       badge: "Recomendado",
       highlighted: true,
       features: [
-        "Todo lo de PROFESSIONAL",
+        "Todo lo de CLINIC",
         "8 podólogos incluidos",
         "Podólogo adicional: $10/mes",
         "Analíticas: Ventas, Cobros y Rentabilidad",
@@ -355,7 +355,7 @@ const en: LandingI18n = {
       tagline: "For the solo podiatrist: everything you need day to day.",
       price: "$25",
       period: "/mo per professional",
-      cta: "Get started",
+      cta: "Choose",
       features: [
         "Scheduling and operational calendar",
         "Patients and clinical records",
@@ -383,7 +383,7 @@ const en: LandingI18n = {
       ],
     },
     {
-      name: "PROFESSIONAL",
+      name: "CLINIC",
       tagline: "For teams: the daily operation of the whole clinic.",
       price: "$100",
       period: "/mo per clinic",
@@ -406,7 +406,7 @@ const en: LandingI18n = {
       badge: "Recommended",
       highlighted: true,
       features: [
-        "Everything in PROFESSIONAL",
+        "Everything in CLINIC",
         "8 podiatrists included",
         "Extra podiatrist: $10/mo",
         "Analytics: Sales, Collections and Profitability",
@@ -530,7 +530,7 @@ const pt: LandingI18n = {
       tagline: "Para o podólogo que trabalha sozinho: tudo o que precisa no dia a dia.",
       price: "$25",
       period: "/mês por profissional",
-      cta: "Começar",
+      cta: "Escolher",
       features: [
         "Agenda e calendário operacional",
         "Pacientes e história clínica",
@@ -558,7 +558,7 @@ const pt: LandingI18n = {
       ],
     },
     {
-      name: "PROFESSIONAL",
+      name: "CLINIC",
       tagline: "Para equipas: a operação diária de toda a clínica.",
       price: "$100",
       period: "/mês por clínica",
@@ -581,7 +581,7 @@ const pt: LandingI18n = {
       badge: "Recomendado",
       highlighted: true,
       features: [
-        "Tudo do PROFESSIONAL",
+        "Tudo do CLINIC",
         "8 podólogos incluídos",
         "Podólogo adicional: $10/mês",
         "Analíticas: Vendas, Cobranças e Rentabilidade",
@@ -705,7 +705,7 @@ const fr: LandingI18n = {
       tagline: "Pour le podologue en solo : tout le nécessaire au quotidien.",
       price: "$25",
       period: "/mois par praticien",
-      cta: "Commencer",
+      cta: "Choisir",
       features: [
         "Agenda et calendrier opérationnel",
         "Patients et dossier clinique",
@@ -733,7 +733,7 @@ const fr: LandingI18n = {
       ],
     },
     {
-      name: "PROFESSIONAL",
+      name: "CLINIC",
       tagline: "Pour les équipes : l'opération quotidienne de toute la clinique.",
       price: "$100",
       period: "/mois par clinique",
@@ -756,7 +756,7 @@ const fr: LandingI18n = {
       badge: "Recommandé",
       highlighted: true,
       features: [
-        "Tout de PROFESSIONAL",
+        "Tout de CLINIC",
         "8 podologues inclus",
         "Podologue supplémentaire : $10/mois",
         "Analytiques : Ventes, Encaissements et Rentabilité",

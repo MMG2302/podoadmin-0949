@@ -450,6 +450,54 @@ export interface Translations {
     deleteConfirmBody: string;
     deleteCascadeTitle: string;
     deleteCascadeBody: string;
+    deleting: string;
+    deleteAll: string;
+    deleteFailed: string;
+    deleteError: string;
+    firstNameRequired: string;
+    lastNameRequired: string;
+    dateOfBirthRequired: string;
+    genderRequired: string;
+    idNumberRequired: string;
+    phoneRequired: string;
+    emailInvalid: string;
+    updateFailed: string;
+    createFailed: string;
+    saveError: string;
+    gracePeriodMessage: string;
+    gracePeriodTitle: string;
+    folio: string;
+    personalData: string;
+    none: string;
+    noConsent: string;
+    noConsentTerms: string;
+    needsReconsentBadge: string;
+    needsReconsentHint: string;
+    protectedFieldsTitle: string;
+    protectedFieldsBody: string;
+    podiatristForPatient: string;
+    selectPodiatrist: string;
+    selectPatient: string;
+    patientAssignedHint: string;
+    fieldLockedTitle: string;
+    fieldLockedAfterCreate: string;
+    idNumberPlaceholder: string;
+    idNumberFieldTitle: string;
+    idNumberHint: string;
+    curpLockedTitle: string;
+    emailPlaceholder: string;
+    allergiesComma: string;
+    medicationsComma: string;
+    conditionsComma: string;
+    allergiesPlaceholder: string;
+    medicationsPlaceholder: string;
+    conditionsPlaceholder: string;
+    onlyPodiatristsCanCreate: string;
+    loadingPatients: string;
+    addFirstPatient: string;
+    noEmail: string;
+    loadingMore: string;
+    loadMorePatients: string;
     patientList: string;
     patientDetails: string;
     searchPatients: string;
@@ -1378,6 +1426,10 @@ export interface Translations {
     confirmTitle: string;
     cancelTitle: string;
     rescheduleTitle: string;
+    pageCloseable: string;
+    closePageNow: string;
+    keepOpen: string;
+    cantAutoClose: string;
     loading: string;
     greeting: string;
     confirmQuestion: string;
@@ -2738,6 +2790,54 @@ views: {
       deleteConfirmBody: "¿Seguro que quieres eliminar a {name}? Esta acción no se puede deshacer.",
       deleteCascadeTitle: "Eliminar paciente y sus datos",
       deleteCascadeBody: "Se eliminarán también sus sesiones, citas e historial asociados. Esta acción no se puede deshacer.",
+      deleting: "Eliminando...",
+      deleteAll: "Eliminar todo",
+      deleteFailed: "No se pudo eliminar el paciente",
+      deleteError: "Ocurrió un error al eliminar. Intenta de nuevo.",
+      firstNameRequired: "El nombre es obligatorio",
+      lastNameRequired: "El apellido es obligatorio",
+      dateOfBirthRequired: "La fecha de nacimiento es obligatoria",
+      genderRequired: "El sexo es obligatorio",
+      idNumberRequired: "El número de identificación es obligatorio",
+      phoneRequired: "El teléfono es obligatorio",
+      emailInvalid: "El email no es válido",
+      updateFailed: "No se pudo actualizar el paciente",
+      createFailed: "No se pudo crear el paciente",
+      saveError: "Ocurrió un error al guardar. Intenta de nuevo.",
+      gracePeriodMessage: "Tu suscripción está en periodo de gracia; podrás seguir editando por tiempo limitado.",
+      gracePeriodTitle: "Periodo de gracia",
+      folio: "Folio",
+      personalData: "Datos personales",
+      none: "Ninguno",
+      noConsent: "Sin consentimiento registrado",
+      noConsentTerms: "El paciente aún no ha aceptado los términos de consentimiento.",
+      needsReconsentBadge: "(requiere reconsentimiento)",
+      needsReconsentHint: "Los términos cambiaron; el paciente debe volver a dar su consentimiento.",
+      protectedFieldsTitle: "Campos protegidos",
+      protectedFieldsBody: "Algunos datos no se pueden modificar después de crear el paciente por seguridad clínica.",
+      podiatristForPatient: "Podólogo del paciente",
+      selectPodiatrist: "Selecciona un podólogo",
+      selectPatient: "Selecciona un paciente",
+      patientAssignedHint: "El paciente quedará asignado a este podólogo.",
+      fieldLockedTitle: "Este campo no se puede modificar",
+      fieldLockedAfterCreate: "Este campo no se puede modificar después de crear el paciente",
+      idNumberPlaceholder: "Número de identificación",
+      idNumberFieldTitle: "Número de identificación del paciente",
+      idNumberHint: "Se usa para identificar de forma única al paciente.",
+      curpLockedTitle: "La CURP no se puede modificar una vez guardada",
+      emailPlaceholder: "correo@ejemplo.com",
+      allergiesComma: "Alergias (separadas por comas)",
+      medicationsComma: "Medicamentos (separados por comas)",
+      conditionsComma: "Condiciones (separadas por comas)",
+      allergiesPlaceholder: "Ej.: penicilina, látex",
+      medicationsPlaceholder: "Ej.: ibuprofeno, insulina",
+      conditionsPlaceholder: "Ej.: diabetes, hipertensión",
+      onlyPodiatristsCanCreate: "Solo los podólogos pueden crear pacientes.",
+      loadingPatients: "Cargando pacientes...",
+      addFirstPatient: "Agrega tu primer paciente",
+      noEmail: "Sin email",
+      loadingMore: "Cargando más...",
+      loadMorePatients: "Cargar más pacientes",
       patientList: "Lista de pacientes",
       patientDetails: "Detalles del paciente",
       searchPatients: "Buscar pacientes...",
@@ -5151,6 +5251,54 @@ views: {
       deleteConfirmBody: "Are you sure you want to delete {name}? This action cannot be undone.",
       deleteCascadeTitle: "Delete patient and their data",
       deleteCascadeBody: "Their associated sessions, appointments and history will also be deleted. This action cannot be undone.",
+      deleting: "Deleting...",
+      deleteAll: "Delete all",
+      deleteFailed: "Couldn't delete the patient",
+      deleteError: "An error occurred while deleting. Please try again.",
+      firstNameRequired: "First name is required",
+      lastNameRequired: "Last name is required",
+      dateOfBirthRequired: "Date of birth is required",
+      genderRequired: "Sex is required",
+      idNumberRequired: "ID number is required",
+      phoneRequired: "Phone is required",
+      emailInvalid: "The email is not valid",
+      updateFailed: "Couldn't update the patient",
+      createFailed: "Couldn't create the patient",
+      saveError: "An error occurred while saving. Please try again.",
+      gracePeriodMessage: "Your subscription is in a grace period; you can keep editing for a limited time.",
+      gracePeriodTitle: "Grace period",
+      folio: "Ref. no.",
+      personalData: "Personal data",
+      none: "None",
+      noConsent: "No consent on record",
+      noConsentTerms: "The patient hasn't accepted the consent terms yet.",
+      needsReconsentBadge: "(re-consent required)",
+      needsReconsentHint: "The terms changed; the patient must give consent again.",
+      protectedFieldsTitle: "Protected fields",
+      protectedFieldsBody: "Some data can't be changed after the patient is created, for clinical safety.",
+      podiatristForPatient: "Patient's podiatrist",
+      selectPodiatrist: "Select a podiatrist",
+      selectPatient: "Select a patient",
+      patientAssignedHint: "The patient will be assigned to this podiatrist.",
+      fieldLockedTitle: "This field can't be changed",
+      fieldLockedAfterCreate: "This field can't be changed after the patient is created",
+      idNumberPlaceholder: "ID number",
+      idNumberFieldTitle: "Patient's ID number",
+      idNumberHint: "Used to uniquely identify the patient.",
+      curpLockedTitle: "The national ID can't be changed once saved",
+      emailPlaceholder: "email@example.com",
+      allergiesComma: "Allergies (comma-separated)",
+      medicationsComma: "Medications (comma-separated)",
+      conditionsComma: "Conditions (comma-separated)",
+      allergiesPlaceholder: "e.g. penicillin, latex",
+      medicationsPlaceholder: "e.g. ibuprofen, insulin",
+      conditionsPlaceholder: "e.g. diabetes, hypertension",
+      onlyPodiatristsCanCreate: "Only podiatrists can create patients.",
+      loadingPatients: "Loading patients...",
+      addFirstPatient: "Add your first patient",
+      noEmail: "No email",
+      loadingMore: "Loading more...",
+      loadMorePatients: "Load more patients",
       patientList: "Patient List",
       patientDetails: "Patient Details",
       searchPatients: "Search patients...",
@@ -7559,6 +7707,54 @@ views: {
       deleteConfirmBody: "Tens a certeza de que queres eliminar {name}? Esta ação não pode ser desfeita.",
       deleteCascadeTitle: "Eliminar paciente e os seus dados",
       deleteCascadeBody: "As sessões, consultas e histórico associados também serão eliminados. Esta ação não pode ser desfeita.",
+      deleting: "A eliminar...",
+      deleteAll: "Eliminar tudo",
+      deleteFailed: "Não foi possível eliminar o paciente",
+      deleteError: "Ocorreu um erro ao eliminar. Tenta novamente.",
+      firstNameRequired: "O nome é obrigatório",
+      lastNameRequired: "O apelido é obrigatório",
+      dateOfBirthRequired: "A data de nascimento é obrigatória",
+      genderRequired: "O sexo é obrigatório",
+      idNumberRequired: "O número de identificação é obrigatório",
+      phoneRequired: "O telefone é obrigatório",
+      emailInvalid: "O email não é válido",
+      updateFailed: "Não foi possível atualizar o paciente",
+      createFailed: "Não foi possível criar o paciente",
+      saveError: "Ocorreu um erro ao guardar. Tenta novamente.",
+      gracePeriodMessage: "A tua subscrição está em período de tolerância; podes continuar a editar por tempo limitado.",
+      gracePeriodTitle: "Período de tolerância",
+      folio: "N.º de registo",
+      personalData: "Dados pessoais",
+      none: "Nenhum",
+      noConsent: "Sem consentimento registado",
+      noConsentTerms: "O paciente ainda não aceitou os termos de consentimento.",
+      needsReconsentBadge: "(requer novo consentimento)",
+      needsReconsentHint: "Os termos mudaram; o paciente deve dar o consentimento novamente.",
+      protectedFieldsTitle: "Campos protegidos",
+      protectedFieldsBody: "Alguns dados não podem ser alterados após criar o paciente, por segurança clínica.",
+      podiatristForPatient: "Podólogo do paciente",
+      selectPodiatrist: "Seleciona um podólogo",
+      selectPatient: "Seleciona um paciente",
+      patientAssignedHint: "O paciente ficará atribuído a este podólogo.",
+      fieldLockedTitle: "Este campo não pode ser alterado",
+      fieldLockedAfterCreate: "Este campo não pode ser alterado após criar o paciente",
+      idNumberPlaceholder: "Número de identificação",
+      idNumberFieldTitle: "Número de identificação do paciente",
+      idNumberHint: "Usado para identificar o paciente de forma única.",
+      curpLockedTitle: "O documento de identidade não pode ser alterado depois de guardado",
+      emailPlaceholder: "email@exemplo.com",
+      allergiesComma: "Alergias (separadas por vírgulas)",
+      medicationsComma: "Medicamentos (separados por vírgulas)",
+      conditionsComma: "Condições (separadas por vírgulas)",
+      allergiesPlaceholder: "Ex.: penicilina, látex",
+      medicationsPlaceholder: "Ex.: ibuprofeno, insulina",
+      conditionsPlaceholder: "Ex.: diabetes, hipertensão",
+      onlyPodiatristsCanCreate: "Apenas os podólogos podem criar pacientes.",
+      loadingPatients: "A carregar pacientes...",
+      addFirstPatient: "Adiciona o teu primeiro paciente",
+      noEmail: "Sem email",
+      loadingMore: "A carregar mais...",
+      loadMorePatients: "Carregar mais pacientes",
       patientList: "Lista de Pacientes",
       patientDetails: "Detalhes do Paciente",
       searchPatients: "Buscar pacientes...",
@@ -9942,6 +10138,54 @@ views: {
       deleteConfirmBody: "Voulez-vous vraiment supprimer {name} ? Cette action est irréversible.",
       deleteCascadeTitle: "Supprimer le patient et ses données",
       deleteCascadeBody: "Ses séances, rendez-vous et historique associés seront également supprimés. Cette action est irréversible.",
+      deleting: "Suppression...",
+      deleteAll: "Tout supprimer",
+      deleteFailed: "Impossible de supprimer le patient",
+      deleteError: "Une erreur s'est produite lors de la suppression. Réessaie.",
+      firstNameRequired: "Le prénom est obligatoire",
+      lastNameRequired: "Le nom est obligatoire",
+      dateOfBirthRequired: "La date de naissance est obligatoire",
+      genderRequired: "Le sexe est obligatoire",
+      idNumberRequired: "Le numéro d'identification est obligatoire",
+      phoneRequired: "Le téléphone est obligatoire",
+      emailInvalid: "L'e-mail n'est pas valide",
+      updateFailed: "Impossible de mettre à jour le patient",
+      createFailed: "Impossible de créer le patient",
+      saveError: "Une erreur s'est produite lors de l'enregistrement. Réessaie.",
+      gracePeriodMessage: "Votre abonnement est en période de grâce ; vous pouvez continuer à modifier pendant une durée limitée.",
+      gracePeriodTitle: "Période de grâce",
+      folio: "N° de dossier",
+      personalData: "Données personnelles",
+      none: "Aucun",
+      noConsent: "Aucun consentement enregistré",
+      noConsentTerms: "Le patient n'a pas encore accepté les conditions de consentement.",
+      needsReconsentBadge: "(nouveau consentement requis)",
+      needsReconsentHint: "Les conditions ont changé ; le patient doit donner son consentement à nouveau.",
+      protectedFieldsTitle: "Champs protégés",
+      protectedFieldsBody: "Certaines données ne peuvent pas être modifiées après la création du patient, pour la sécurité clinique.",
+      podiatristForPatient: "Podologue du patient",
+      selectPodiatrist: "Sélectionne un podologue",
+      selectPatient: "Sélectionne un patient",
+      patientAssignedHint: "Le patient sera attribué à ce podologue.",
+      fieldLockedTitle: "Ce champ ne peut pas être modifié",
+      fieldLockedAfterCreate: "Ce champ ne peut pas être modifié après la création du patient",
+      idNumberPlaceholder: "Numéro d'identification",
+      idNumberFieldTitle: "Numéro d'identification du patient",
+      idNumberHint: "Sert à identifier le patient de manière unique.",
+      curpLockedTitle: "La pièce d'identité ne peut pas être modifiée une fois enregistrée",
+      emailPlaceholder: "email@exemple.com",
+      allergiesComma: "Allergies (séparées par des virgules)",
+      medicationsComma: "Médicaments (séparés par des virgules)",
+      conditionsComma: "Pathologies (séparées par des virgules)",
+      allergiesPlaceholder: "Ex. : pénicilline, latex",
+      medicationsPlaceholder: "Ex. : ibuprofène, insuline",
+      conditionsPlaceholder: "Ex. : diabète, hypertension",
+      onlyPodiatristsCanCreate: "Seuls les podologues peuvent créer des patients.",
+      loadingPatients: "Chargement des patients...",
+      addFirstPatient: "Ajoutez votre premier patient",
+      noEmail: "Sans e-mail",
+      loadingMore: "Chargement...",
+      loadMorePatients: "Charger plus de patients",
       patientList: "Liste des Patients",
       patientDetails: "Détails du Patient",
       searchPatients: "Rechercher des patients...",

@@ -40,7 +40,7 @@ export const MainLayout = ({ children, title }: MainLayoutProps) => {
   useEffect(() => {
     const s = getSidebarSettings();
     setSidebarCollapsed(s.collapsed);
-    setSidebarLocked(s.locked);
+    setSidebarLocked(s.locked ?? null);
   }, []);
 
   // En móvil: asegurar que header/layout estén visibles tras login (evita pantalla en blanco hasta refresh)

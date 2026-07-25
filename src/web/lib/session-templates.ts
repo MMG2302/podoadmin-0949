@@ -233,7 +233,7 @@ export function buildPresetFields(
   const sectionLayout = createTemplateSectionLayoutFromGlobal(globalLayout);
   sectionLayout.sections = sectionLayout.sections.map((s) => ({
     ...s,
-    enabled: s.kind === "custom" ? false : s.builtinKey ? enabled.has(s.builtinKey) : false,
+    enabled: s.kind !== "builtin" ? false : s.builtinKey ? enabled.has(s.builtinKey) : false,
   }));
   return {
     ...normalizeTemplateFields(preset.fields),

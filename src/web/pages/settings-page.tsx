@@ -153,6 +153,7 @@ const SettingsPage = () => {
         const c = res.data.clinic as Record<string, unknown>;
         setUserClinic({
           clinicId: String(c.clinicId ?? user.clinicId),
+          createdAt: String(c.createdAt ?? ""),
           clinicName: String(c.clinicName ?? ""),
           clinicCode: String(c.clinicCode ?? ""),
           ownerId: String(c.ownerId ?? ""),
@@ -795,7 +796,7 @@ const SettingsPage = () => {
             id: convId,
             subject: subj,
             status: "open",
-            messages: (detail.data.messages || []).map((m: { id: string; senderId: string; body: string; createdAt: string; readAt: string | null; isFromSupport: boolean }) => ({
+            messages: ((detail.data.messages as Array<{ id: string; senderId: string; body: string; createdAt: string; readAt: string | null; isFromSupport: boolean }> | undefined) || []).map((m) => ({
               id: m.id, senderId: m.senderId, body: m.body, createdAt: m.createdAt, readAt: m.readAt, isFromSupport: m.isFromSupport,
             })),
           });
@@ -1975,9 +1976,10 @@ const SettingsPage = () => {
                         className="font-medium text-blue-600 hover:underline"
                         onClick={(e) => {
                           // Validar que la URL sea válida antes de abrir
-                          const url = userClinic.website.startsWith('http://') || userClinic.website.startsWith('https://')
-                            ? userClinic.website
-                            : `https://${userClinic.website}`;
+                          const website = userClinic.website ?? '';
+                          const url = website.startsWith('http://') || website.startsWith('https://')
+                            ? website
+                            : `https://${website}`;
                           
                           try {
                             new URL(url);

@@ -94,6 +94,7 @@ const SuperAdminDashboard = () => {
                 clinic_admin: t.roles.clinicAdmin,
                 admin: t.roles.admin,
                 podiatrist: t.roles.podiatrist,
+                receptionist: t.roles.receptionist,
               }[u.role];
               
               return (

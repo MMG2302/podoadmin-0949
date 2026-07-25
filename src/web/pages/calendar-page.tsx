@@ -1459,7 +1459,7 @@ const isSelected = (date: Date) => {
                   date,
                   dayLabel: dayNames[index],
                   isToday: isToday(date),
-                  isSelected: isSelected(date),
+                  isSelected: isSelected(date) ?? false,
                   onSelect: () => setSelectedDate(date),
                 }))}
                 getTimedBlocks={buildTimedBlocksForDate}

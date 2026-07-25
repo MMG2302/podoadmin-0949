@@ -1100,7 +1100,7 @@ const PatientsPage = () => {
               <div className="space-y-3">
                 {(() => {
                   const patientForConsent = editingPatient ?? selectedPatient;
-                  const hadOldConsent = (patientForConsent?.consent?.consentedToVersion ?? null) != null && (patientForConsent.consent.consentedToVersion ?? 0) !== consentTextVersion;
+                  const hadOldConsent = (patientForConsent?.consent?.consentedToVersion ?? null) != null && (patientForConsent?.consent?.consentedToVersion ?? 0) !== consentTextVersion;
                   const dataCleared = !patientForConsent?.idNumber?.trim();
                   const needsReconsent = !!editingPatient && (dataCleared || hadOldConsent);
                   const consentLocked = !!editingPatient && !needsReconsent;

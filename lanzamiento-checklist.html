@@ -1,0 +1,368 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Checklist de lanzamiento — PodoAdmin</title>
+<style>
+  :root{
+    --bg:#EEF1F4; --surface:#FFFFFF; --surface-2:#F6F8FA;
+    --ink:#14181D; --muted:#59636F; --line:#DCE2E8;
+    --accent:#0E7C6B; --accent-strong:#0A5A4E;
+    --can:#0E7C6B; --can-bg:#E2F1ED; --can-line:#B9DED4;
+    --partial:#B45309; --partial-bg:#FBEEDD; --partial-line:#F0D6AF;
+    --ask:#3F566E; --ask-bg:#E7ECF2; --ask-line:#CBD6E2;
+    --shadow:0 1px 2px rgba(20,24,29,.05), 0 6px 20px rgba(20,24,29,.06);
+    --radius:14px;
+    --ff-display:"Iowan Old Style",Georgia,"Times New Roman",serif;
+    --ff-ui:-apple-system,"Segoe UI",system-ui,Roboto,"Helvetica Neue",sans-serif;
+    --ff-mono:ui-monospace,"Cascadia Code","SF Mono",Consolas,monospace;
+  }
+  @media (prefers-color-scheme:dark){
+    :root{
+      --bg:#0E1216; --surface:#171C22; --surface-2:#1E242B;
+      --ink:#EEF2F6; --muted:#9AA6B2; --line:#2A323B;
+      --accent:#34D0B8; --accent-strong:#5BE0CB;
+      --can:#34D0B8; --can-bg:rgba(52,208,184,.12); --can-line:rgba(52,208,184,.30);
+      --partial:#F0A85A; --partial-bg:rgba(240,168,90,.12); --partial-line:rgba(240,168,90,.30);
+      --ask:#A9B7C6; --ask-bg:rgba(169,183,198,.12); --ask-line:rgba(169,183,198,.28);
+      --shadow:0 1px 2px rgba(0,0,0,.30), 0 8px 24px rgba(0,0,0,.35);
+    }
+  }
+  :root[data-theme="light"]{
+    --bg:#EEF1F4; --surface:#FFFFFF; --surface-2:#F6F8FA;
+    --ink:#14181D; --muted:#59636F; --line:#DCE2E8;
+    --accent:#0E7C6B; --accent-strong:#0A5A4E;
+    --can:#0E7C6B; --can-bg:#E2F1ED; --can-line:#B9DED4;
+    --partial:#B45309; --partial-bg:#FBEEDD; --partial-line:#F0D6AF;
+    --ask:#3F566E; --ask-bg:#E7ECF2; --ask-line:#CBD6E2;
+    --shadow:0 1px 2px rgba(20,24,29,.05), 0 6px 20px rgba(20,24,29,.06);
+  }
+  :root[data-theme="dark"]{
+    --bg:#0E1216; --surface:#171C22; --surface-2:#1E242B;
+    --ink:#EEF2F6; --muted:#9AA6B2; --line:#2A323B;
+    --accent:#34D0B8; --accent-strong:#5BE0CB;
+    --can:#34D0B8; --can-bg:rgba(52,208,184,.12); --can-line:rgba(52,208,184,.30);
+    --partial:#F0A85A; --partial-bg:rgba(240,168,90,.12); --partial-line:rgba(240,168,90,.30);
+    --ask:#A9B7C6; --ask-bg:rgba(169,183,198,.12); --ask-line:rgba(169,183,198,.28);
+    --shadow:0 1px 2px rgba(0,0,0,.30), 0 8px 24px rgba(0,0,0,.35);
+  }
+
+  *{box-sizing:border-box}
+  html{-webkit-text-size-adjust:100%}
+  body{
+    margin:0; background:var(--bg); color:var(--ink);
+    font-family:var(--ff-ui); line-height:1.55;
+    font-size:16px; -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:860px; margin:0 auto; padding:32px 20px 80px}
+
+  /* Header */
+  .head{
+    background:var(--surface); border:1px solid var(--line);
+    border-radius:var(--radius); box-shadow:var(--shadow);
+    padding:26px 26px 22px; margin-bottom:26px;
+    position:relative; overflow:hidden;
+  }
+  .head::before{
+    content:""; position:absolute; inset:0 0 auto 0; height:3px;
+    background:linear-gradient(90deg,var(--accent),transparent 70%);
+  }
+  .eyebrow{
+    font-family:var(--ff-mono); font-size:12px; letter-spacing:.14em;
+    text-transform:uppercase; color:var(--muted); margin:0 0 8px;
+  }
+  h1{
+    font-family:var(--ff-display); font-weight:600; font-size:30px;
+    line-height:1.15; margin:0 0 6px; text-wrap:balance; letter-spacing:-.01em;
+  }
+  .sub{margin:0; color:var(--muted); max-width:60ch}
+
+  /* Progress */
+  .progress{margin-top:20px; display:flex; align-items:center; gap:14px; flex-wrap:wrap}
+  .bar{
+    flex:1 1 220px; height:9px; border-radius:999px;
+    background:var(--surface-2); border:1px solid var(--line); overflow:hidden; min-width:180px;
+  }
+  .bar>span{
+    display:block; height:100%; width:0%;
+    background:linear-gradient(90deg,var(--accent-strong),var(--accent));
+    transition:width .35s ease;
+  }
+  .count{font-family:var(--ff-mono); font-size:13px; color:var(--muted); font-variant-numeric:tabular-nums; white-space:nowrap}
+  .count b{color:var(--ink)}
+  .reset{
+    font:inherit; font-size:13px; color:var(--muted); cursor:pointer;
+    background:transparent; border:1px solid var(--line); border-radius:8px;
+    padding:6px 12px; transition:border-color .15s,color .15s;
+  }
+  .reset:hover{color:var(--ink); border-color:var(--muted)}
+  .reset:focus-visible{outline:2px solid var(--accent); outline-offset:2px}
+
+  /* Legend */
+  .legend{display:flex; gap:8px; flex-wrap:wrap; margin:18px 0 4px}
+  .tag{
+    display:inline-flex; align-items:center; gap:6px; font-size:12px; font-weight:600;
+    padding:4px 10px; border-radius:999px; border:1px solid;
+  }
+  .tag .dot{width:7px; height:7px; border-radius:50%}
+  .tag.can{color:var(--can); background:var(--can-bg); border-color:var(--can-line)}
+  .tag.can .dot{background:var(--can)}
+  .tag.partial{color:var(--partial); background:var(--partial-bg); border-color:var(--partial-line)}
+  .tag.partial .dot{background:var(--partial)}
+  .tag.ask{color:var(--ask); background:var(--ask-bg); border-color:var(--ask-line)}
+  .tag.ask .dot{background:var(--ask)}
+
+  /* Sections */
+  .section{margin-top:30px}
+  .section-head{display:flex; align-items:baseline; gap:12px; margin:0 0 12px; padding:0 4px}
+  .idx{font-family:var(--ff-mono); font-size:12px; color:var(--accent); letter-spacing:.05em}
+  .section-head h2{font-size:15px; font-weight:700; margin:0; letter-spacing:.01em; text-transform:uppercase}
+  .section-head h2 .cat-count{color:var(--muted); font-weight:500; text-transform:none; margin-left:6px; font-size:13px; font-family:var(--ff-mono)}
+
+  .items{display:flex; flex-direction:column; gap:10px}
+
+  /* Item card = label */
+  .item{
+    display:grid; grid-template-columns:26px 1fr; gap:14px; align-items:start;
+    background:var(--surface); border:1px solid var(--line); border-radius:var(--radius);
+    padding:16px 18px; cursor:pointer; box-shadow:var(--shadow);
+    transition:border-color .15s, transform .05s, opacity .2s;
+  }
+  .item:hover{border-color:var(--muted)}
+  .item:active{transform:translateY(1px)}
+  .item:focus-within{border-color:var(--accent); box-shadow:var(--shadow),0 0 0 3px color-mix(in srgb,var(--accent) 22%,transparent)}
+
+  .item input{position:absolute; opacity:0; width:1px; height:1px; margin:0}
+  .box{
+    margin-top:2px; width:22px; height:22px; border-radius:7px;
+    border:1.5px solid var(--line); background:var(--surface-2);
+    display:grid; place-items:center; transition:background .15s,border-color .15s;
+  }
+  .box svg{width:13px; height:13px; opacity:0; transform:scale(.6); transition:opacity .15s,transform .15s; color:#fff}
+  .item input:checked ~ .box{background:var(--accent); border-color:var(--accent)}
+  .item input:checked ~ .box svg{opacity:1; transform:scale(1)}
+
+  .body{min-width:0}
+  .row1{display:flex; gap:10px 12px; align-items:flex-start; justify-content:space-between; flex-wrap:wrap}
+  .title{font-weight:650; font-size:16.5px; letter-spacing:-.005em; margin:0}
+  .desc{margin:6px 0 0; color:var(--muted); font-size:14px; line-height:1.5}
+  .desc .lead{color:var(--ink); font-weight:600}
+
+  .item.done{opacity:.62}
+  .item.done .title{text-decoration:line-through; text-decoration-color:var(--muted); text-decoration-thickness:1.5px}
+
+  /* Footer note */
+  .foot{
+    margin-top:34px; padding:18px 20px; border-radius:var(--radius);
+    background:var(--surface-2); border:1px dashed var(--line); color:var(--muted); font-size:14px;
+  }
+  .foot b{color:var(--ink)}
+
+  @media (max-width:520px){
+    h1{font-size:25px}
+    .wrap{padding:22px 14px 60px}
+    .item{padding:14px}
+  }
+  @media (prefers-reduced-motion:reduce){*{transition:none !important}}
+  @media print{
+    body{background:#fff}
+    .reset,.head::before{display:none}
+    .item,.head{box-shadow:none}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="head">
+    <p class="eyebrow">PodoAdmin · Pre-lanzamiento</p>
+    <h1>Checklist de lanzamiento</h1>
+    <p class="sub">Los pendientes para salir al mercado, con una nota clara de en qué te puedo ayudar en cada uno. Marca lo que quieras que empiece.</p>
+
+    <div class="progress">
+      <div class="bar"><span id="fill"></span></div>
+      <span class="count"><b id="done">0</b> de <b id="total">0</b> completadas</span>
+      <button class="reset" id="reset" type="button">Reiniciar</button>
+    </div>
+
+    <div class="legend" aria-hidden="true">
+      <span class="tag can"><span class="dot"></span>Lo hago completo</span>
+      <span class="tag partial"><span class="dot"></span>Parcial · requiere apoyo externo</span>
+      <span class="tag ask"><span class="dot"></span>Necesito que me aclares</span>
+    </div>
+  </header>
+
+  <!-- MARKETING -->
+  <section class="section">
+    <div class="section-head"><span class="idx">01</span><h2>Marketing &amp; lanzamiento <span class="cat-count" data-cat="mkt"></span></h2></div>
+    <div class="items">
+      <label class="item">
+        <input type="checkbox" data-key="promos">
+        <span class="box"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span>
+        <div class="body">
+          <div class="row1"><p class="title">Promos de lanzamiento</p><span class="tag can"><span class="dot"></span>Lo hago completo</span></div>
+          <p class="desc"><span class="lead">Diseño e implemento.</span> Mecánica (descuentos, cupones, trials extendidos, referidos), copy en los 4 idiomas y la implementación en código: cupones en Stripe + badges y banners en la landing.</p>
+        </div>
+      </label>
+
+      <label class="item">
+        <input type="checkbox" data-key="videos">
+        <span class="box"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span>
+        <div class="body">
+          <div class="row1"><p class="title">Videos de capacitación</p><span class="tag partial"><span class="dot"></span>Parcial</span></div>
+          <p class="desc"><span class="lead">No genero video, sí lo estructuro.</span> Guion por rol, lista de videos necesarios, storyboard y textos en pantalla. Tú grabas, yo dejo todo listo para grabar.</p>
+        </div>
+      </label>
+    </div>
+  </section>
+
+  <!-- OPERACION -->
+  <section class="section">
+    <div class="section-head"><span class="idx">02</span><h2>Operación &amp; soporte <span class="cat-count" data-cat="ops"></span></h2></div>
+    <div class="items">
+      <label class="item">
+        <input type="checkbox" data-key="callrate">
+        <span class="box"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span>
+        <div class="body">
+          <div class="row1"><p class="title">Claim / call rate</p><span class="tag ask"><span class="dot"></span>Necesito que me aclares</span></div>
+          <p class="desc"><span class="lead">¿A qué te refieres exactamente?</span> ¿La tasa de llamadas/reclamos de soporte, un SLA de atención, o el ritmo de contactos comerciales? Si es una métrica, te ayudo a definirla e instrumentar el tracking dentro de la app.</p>
+        </div>
+      </label>
+    </div>
+  </section>
+
+  <!-- LEGAL -->
+  <section class="section">
+    <div class="section-head"><span class="idx">03</span><h2>Legal &amp; cumplimiento <span class="cat-count" data-cat="legal"></span></h2></div>
+    <div class="items">
+      <label class="item">
+        <input type="checkbox" data-key="reclamos">
+        <span class="box"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span>
+        <div class="body">
+          <div class="row1"><p class="title">Marco legal para reclamos del consumidor</p><span class="tag partial"><span class="dot"></span>Parcial</span></div>
+          <p class="desc"><span class="lead">Redacto borradores, no doy asesoría legal.</span> Política de reclamos/PQR, flujo de atención y términos. Requiere revisión de un abogado local (p. ej. PROFECO en México) antes de publicar.</p>
+        </div>
+      </label>
+
+      <label class="item">
+        <input type="checkbox" data-key="datos">
+        <span class="box"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span>
+        <div class="body">
+          <div class="row1"><p class="title">Protección de datos</p><span class="tag can"><span class="dot"></span>Lo hago completo</span></div>
+          <p class="desc"><span class="lead">Documento y aterrizo en código.</span> Política de privacidad, checklist de cumplimiento (LFPDPPP / GDPR / LGPD), retención, cifrado, backups, DPA con proveedores y medidas técnicas en la plataforma.</p>
+        </div>
+      </label>
+
+      <label class="item">
+        <input type="checkbox" data-key="pi">
+        <span class="box"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span>
+        <div class="body">
+          <div class="row1"><p class="title">Propiedad intelectual</p><span class="tag partial"><span class="dot"></span>Parcial</span></div>
+          <p class="desc"><span class="lead">Preparo lo previo.</span> Avisos de copyright, licencia del código y guía para registrar tu marca. El registro formal (IMPI u oficina local) lo tramita un abogado.</p>
+        </div>
+      </label>
+
+      <label class="item">
+        <input type="checkbox" data-key="nda">
+        <span class="box"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span>
+        <div class="body">
+          <div class="row1"><p class="title">NDA para proveedores</p><span class="tag partial"><span class="dot"></span>Parcial</span></div>
+          <p class="desc"><span class="lead">Redacto la plantilla.</span> NDA lista para usar con proveedores/colaboradores. Conviene una revisión legal rápida antes de firmarla.</p>
+        </div>
+      </label>
+    </div>
+  </section>
+
+  <!-- FINANZAS -->
+  <section class="section">
+    <div class="section-head"><span class="idx">04</span><h2>Finanzas &amp; pricing <span class="cat-count" data-cat="fin"></span></h2></div>
+    <div class="items">
+      <label class="item">
+        <input type="checkbox" data-key="precios">
+        <span class="box"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span>
+        <div class="body">
+          <div class="row1"><p class="title">Categorías y precios en base a costos</p><span class="tag can"><span class="dot"></span>Lo hago completo</span></div>
+          <p class="desc"><span class="lead">Modelo costos → precios.</span> Break-even, margen por plan (ESSENTIAL / ESSENTIAL PRO / CLINIC / CLINIC PRO) y una calculadora para mover supuestos. Es modelado de tu negocio, no asesoría de inversión.</p>
+        </div>
+      </label>
+
+      <label class="item">
+        <input type="checkbox" data-key="costos">
+        <span class="box"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span>
+        <div class="body">
+          <div class="row1"><p class="title">Costos fijos completos</p><span class="tag can"><span class="dot"></span>Lo hago completo</span></div>
+          <p class="desc"><span class="lead">Plataforma + los tuyos.</span> Modelo integral: Cloudflare, dominios, comisiones de Stripe, WhatsApp API, correos… más tus costos personales y operativos, para que el pricing los cubra de verdad.</p>
+        </div>
+      </label>
+    </div>
+  </section>
+
+  <p class="foot">Tu progreso se guarda solo en este navegador (no se sube a ningún lado). <b>Dime por cuál empiezo</b> y me pongo manos a la obra — mi recomendación: cerrar primero <b>costos fijos → precios</b>, porque de ahí depende todo lo demás (promos incluidas).</p>
+
+</div>
+
+<script>
+(function(){
+  var KEY = "podoadmin-launch-checklist-v1";
+  var boxes = Array.prototype.slice.call(document.querySelectorAll(".item input[type=checkbox]"));
+  var state = {};
+  try { state = JSON.parse(localStorage.getItem(KEY) || "{}") || {}; } catch(e){ state = {}; }
+
+  var fill = document.getElementById("fill");
+  var doneEl = document.getElementById("done");
+  var totalEl = document.getElementById("total");
+  var catCounts = Array.prototype.slice.call(document.querySelectorAll(".cat-count"));
+
+  function catOf(input){
+    var sec = input.closest(".section").querySelector(".cat-count");
+    return sec ? sec.getAttribute("data-cat") : null;
+  }
+  var byCat = {};
+  boxes.forEach(function(b){
+    var c = catOf(b);
+    if(!byCat[c]) byCat[c] = {total:0, done:0};
+    byCat[c].total++;
+  });
+
+  function render(){
+    var done = 0;
+    var perCat = {};
+    Object.keys(byCat).forEach(function(c){ perCat[c] = 0; });
+
+    boxes.forEach(function(b){
+      var on = !!state[b.getAttribute("data-key")];
+      b.checked = on;
+      b.closest(".item").classList.toggle("done", on);
+      if(on){ done++; perCat[catOf(b)]++; }
+    });
+
+    totalEl.textContent = boxes.length;
+    doneEl.textContent = done;
+    fill.style.width = (boxes.length ? (done/boxes.length*100) : 0) + "%";
+
+    catCounts.forEach(function(el){
+      var c = el.getAttribute("data-cat");
+      el.textContent = perCat[c] + "/" + byCat[c].total;
+    });
+  }
+
+  boxes.forEach(function(b){
+    b.addEventListener("change", function(){
+      state[b.getAttribute("data-key")] = b.checked;
+      try { localStorage.setItem(KEY, JSON.stringify(state)); } catch(e){}
+      render();
+    });
+  });
+
+  document.getElementById("reset").addEventListener("click", function(){
+    state = {};
+    try { localStorage.removeItem(KEY); } catch(e){}
+    render();
+  });
+
+  render();
+})();
+</script>
+</body>
+</html>

@@ -26,6 +26,7 @@ export interface ThemeSettings {
 
 export interface SidebarSettings {
   collapsed: boolean;
+  locked?: "hidden" | "visible" | null;
 }
 
 export const getThemeSettings = (): ThemeSettings => {

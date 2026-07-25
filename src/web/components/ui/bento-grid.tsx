@@ -63,7 +63,7 @@ const BentoCard = ({
 
 /** Variante para estadísticas rápidas: muestra label + valor destacado */
 interface BentoStatCardProps {
-  Icon: React.ComponentType<{ className?: string }>;
+  Icon: React.ComponentType<{ className?: string; strokeWidth?: number }>;
   name: string;
   value: string;
   href: string;

@@ -426,7 +426,7 @@ const ClinicPage = () => {
   // Handle patient reassignment (persiste en DB vía API)
   const handleReassign = async (patientId: string, newPodiatristId: string) => {
     // Persistir reasignación en backend/DB (auditoría y notificaciones en el servidor)
-    const reassignRes = await api.post<{ success?: boolean; patient?: PatientApi | null; error?: string; message?: string }>(
+    const reassignRes = await api.post<{ success?: boolean; patient?: Patient | null; error?: string; message?: string }>(
       `/patients/${patientId}/reassign`,
       { newPodiatristId }
     );

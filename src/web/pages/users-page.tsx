@@ -1518,7 +1518,7 @@ const UsersPage = () => {
       const response = await api.post<{ success: boolean; user: User }>("/users", userPayload);
 
       if (!response.success || !response.data?.success) {
-        const msg = response.data?.message || response.error || t.usersPage.create.errors.createFailed;
+        const msg = response.message || response.error || t.usersPage.create.errors.createFailed;
         const issues = (response.data as any)?.issues as Array<{ message?: string; path?: (string | number)[] }> | undefined;
         const details = issues?.length ? issues.map((i) => i.message || i.path?.join(".")).join(". ") : "";
         alert(details ? `${msg}\n\n${t.common.details}: ${details}` : msg);
@@ -1595,7 +1595,7 @@ const UsersPage = () => {
             details: { action: "user_update", targetUserId: userId, targetUserName: updates.name },
           });
         } else {
-          alert(response.error || response.data?.message || t.usersPage.edit.errors.updateFailed);
+          alert(response.error || response.message || t.usersPage.edit.errors.updateFailed);
         }
       } catch (error) {
         console.error("Error actualizando usuario:", error);

@@ -11,10 +11,12 @@ export interface Clinic {
   city?: string;
   postalCode?: string;
   mapsUrl?: string;
+  countryCode?: string;
   licenseNumber?: string;
   website?: string;
   consentText?: string;
   consentTextVersion?: number;
+  consentDocumentUrl?: string;
 }
 
 /** Créditos de clínica (solo seed local legacy; producción usa D1). */

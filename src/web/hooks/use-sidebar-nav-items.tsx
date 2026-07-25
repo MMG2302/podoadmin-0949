@@ -235,7 +235,7 @@ export function useSidebarNavItems() {
       );
   }, [navItems, user, hasPermission, canViewWhatsAppMessages, canViewWhatsAppWeb, isReceptionist, hasFeature]);
 
-  const visibleItems = useMemo(() => {
+  const visibleItems = useMemo((): SidebarNavItem[] => {
     const filtered = permittedItems.filter((item) => navVisibility[item.path] !== false);
     if (filtered.length > 0) return filtered;
 

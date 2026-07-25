@@ -53,7 +53,7 @@ const AuditLogPage = () => {
         if (response.success && response.data?.success) {
           setLogs(response.data.logs);
         } else {
-          console.error("Error cargando auditoría:", response.error || response.data?.message);
+          console.error("Error cargando auditoría:", response.error || response.message);
         }
       } catch (error) {
         console.error("Error cargando auditoría:", error);

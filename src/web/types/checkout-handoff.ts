@@ -25,7 +25,7 @@ export interface CheckoutHandoff {
   podiatristName?: string;
 }
 
-export function formatCheckoutAmount(amountCents: number | null | undefined, currency: string): string {
+export function formatCheckoutAmount(amountCents: number | null | undefined, currency = "MXN"): string {
   if (amountCents == null) return "—";
   const amount = amountCents / 100;
   try {

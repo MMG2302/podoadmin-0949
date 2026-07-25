@@ -725,8 +725,8 @@ const SessionsPage = () => {
     }));
   };
 
-  const sessionSaveErrorMessage = (response: { error?: string; message?: string; data?: { message?: string } }) =>
-    response.message || response.data?.message || response.error || t.sessions.saveFailed;
+  const sessionSaveErrorMessage = (response: { error?: string; message?: string; data?: unknown }) =>
+    response.message || (response.data as { message?: string } | undefined)?.message || response.error || t.sessions.saveFailed;
 
   const handleSubmit = async (e: React.FormEvent, asDraft: boolean) => {
     e.preventDefault();

@@ -195,9 +195,9 @@ export async function apiRequest<T = any>(
   const url = `${API_BASE_URL}${endpoint}`;
   const method = options.method || 'GET';
 
-  const headers: HeadersInit = {
+  const headers: Record<string, string> = {
     'Content-Type': 'application/json',
-    ...options.headers,
+    ...(options.headers as Record<string, string> | undefined),
   };
 
   // Agregar token CSRF para métodos que modifican estado

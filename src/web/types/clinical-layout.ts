@@ -325,7 +325,7 @@ export function normalizeClinicalLayout(raw: unknown): ClinicalLayoutConfig {
     const key = row.builtinKey ?? (row.id as BuiltInClinicalSectionId);
     if (!BUILTIN_SECTION_META[key as BuiltInClinicalSectionId]) continue;
     const meta = BUILTIN_SECTION_META[key as BuiltInClinicalSectionId];
-    byId.set(row.id, {
+    byId.set(row.id as string, {
       id: key,
       kind: "builtin",
       builtinKey: key as BuiltInClinicalSectionId,

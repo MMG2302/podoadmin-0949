@@ -295,7 +295,7 @@ const WhatsAppCampaignsPage = () => {
             <p className="text-sm text-brand-muted">
               {c.assistantPatientOf.replace("{current}", String(webAssistant.index + 1)).replace("{total}", String(assistantRecipients.length))}{" "}
               <strong>
-                {assistantCurrent.firstName} {assistantCurrent.lastName}
+                {assistantCurrent.name}
               </strong>{" "}
               · {assistantCurrent.phone}
             </p>
@@ -389,11 +389,11 @@ const WhatsAppCampaignsPage = () => {
                           ) : (
                             recipients.map((r) => (
                               <li
-                                key={r.id}
+                                key={r.patientId}
                                 className="flex flex-wrap items-center justify-between gap-2 p-3 text-sm"
                               >
                                 <span>
-                                  {r.firstName} {r.lastName} · {r.phone}
+                                  {r.name} · {r.phone}
                                 </span>
                                 <button
                                   type="button"

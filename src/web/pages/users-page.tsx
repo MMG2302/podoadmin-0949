@@ -1128,6 +1128,8 @@ const UsersPage = () => {
   const [showTransferModal, setShowTransferModal] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
+  const [deleteConfirmUser, setDeleteConfirmUser] = useState<User | null>(null);
+  const [deletingUser, setDeletingUser] = useState(false);
   const [approvedResetLink, setApprovedResetLink] = useState<string | null>(null);
   const [openAccountMenuId, setOpenAccountMenuId] = useState<string | null>(null);
   const [accountMenuPosition, setAccountMenuPosition] = useState<{ top?: number; bottom?: number; left: number } | null>(null);
@@ -1906,40 +1908,42 @@ const UsersPage = () => {
     })();
   };
 
+  // Abre el modal de confirmación (reemplaza el doble window.confirm nativo,
+  // que algunos navegadores suprimen silenciosamente en diálogos repetidos).
   const handleDeleteUser = (user: User) => {
-    if (!window.confirm(t.usersPage.confirm.delete.replace("{name}", user.name))) {
-      return;
-    }
-    
-    if (!window.confirm(t.usersPage.confirm.deletePermanent.replace("{name}", user.name))) {
-      return;
-    }
-    
-    (async () => {
-      try {
-        const response = await api.delete<{ success: boolean; message?: string }>(`/users/${user.id}`);
-        if (response.success && response.data?.success) {
-          await fetchUsers();
+    setDeleteConfirmUser(user);
+  };
 
-          void postAuditLog({
-            action: "DELETE_USER",
-            resourceType: "user",
-            resourceId: user.id,
-            details: {
-              action: "delete_user",
-              targetUserId: user.id,
-              targetUserName: user.name,
-              targetUserEmail: user.email,
-            },
-          });
-        } else {
-          alert(response.error || response.data?.message || t.usersPage.errors.delete);
-        }
-      } catch (error) {
-        console.error("Error eliminando usuario:", error);
-        alert(t.usersPage.errors.delete);
+  const executeDeleteUser = async () => {
+    const user = deleteConfirmUser;
+    if (!user) return;
+    setDeletingUser(true);
+    try {
+      const response = await api.delete<{ success: boolean; message?: string }>(`/users/${user.id}`);
+      if (response.success && response.data?.success) {
+        setDeleteConfirmUser(null);
+        await fetchUsers();
+
+        void postAuditLog({
+          action: "DELETE_USER",
+          resourceType: "user",
+          resourceId: user.id,
+          details: {
+            action: "delete_user",
+            targetUserId: user.id,
+            targetUserName: user.name,
+            targetUserEmail: user.email,
+          },
+        });
+      } else {
+        alert(response.error || response.message || t.usersPage.errors.delete);
       }
-    })();
+    } catch (error) {
+      console.error("Error eliminando usuario:", error);
+      alert(t.usersPage.errors.delete);
+    } finally {
+      setDeletingUser(false);
+    }
   };
 
   /** Override de plan (Base/Premium) por super_admin sobre clínica o podólogo independiente. */
@@ -2625,6 +2629,56 @@ const UsersPage = () => {
         onClose={() => setShowProfileModal(false)}
         user={selectedUser}
       />
+
+      {/* Confirmación de eliminación de usuario (modal in-app, no window.confirm) */}
+      {deleteConfirmUser && (
+        <div
+          className="fixed inset-0 bg-black/50 z-[60] flex items-center justify-center p-4"
+          onClick={() => { if (!deletingUser) setDeleteConfirmUser(null); }}
+        >
+          <div
+            className="bg-brand-surface rounded-xl border border-brand-border w-full max-w-md shadow-xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="p-6">
+              <div className="flex items-start gap-4">
+                <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center flex-shrink-0">
+                  <svg className="w-6 h-6 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                  </svg>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <h3 className="text-lg font-semibold text-brand-ink mb-2">{t.usersPage.menu.deleteAccount}</h3>
+                  <p className="text-brand-muted text-sm">
+                    {t.usersPage.confirm.delete.replace("{name}", deleteConfirmUser.name)}
+                  </p>
+                  <p className="text-semantic-error text-sm mt-2 font-medium">
+                    {t.usersPage.confirm.deletePermanent.replace("{name}", deleteConfirmUser.name)}
+                  </p>
+                </div>
+              </div>
+            </div>
+            <div className="px-6 py-4 border-t border-brand-border flex flex-col sm:flex-row gap-3">
+              <button
+                type="button"
+                onClick={() => setDeleteConfirmUser(null)}
+                disabled={deletingUser}
+                className="flex-1 py-2.5 bg-brand-canvas text-brand-ink rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors font-medium disabled:opacity-50"
+              >
+                {t.common.cancel}
+              </button>
+              <button
+                type="button"
+                onClick={() => void executeDeleteUser()}
+                disabled={deletingUser}
+                className="flex-1 py-2.5 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {deletingUser ? t.common.loading : t.common.delete}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Portal: menú de 3 puntos (evita scrollbar por overflow) */}
       {openAccountMenuId && accountMenuPosition && (() => {

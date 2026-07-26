@@ -8,6 +8,8 @@ type CampaignFilter = {
   clinicId?: string;
   hasPhone?: boolean;
   clinicOnly?: boolean;
+  /** Segmentar por el podólogo que creó al paciente (patients.createdBy). */
+  podiatristId?: string;
 };
 
 export async function fetchPatientsForWhatsAppCampaign(
@@ -28,6 +30,7 @@ export async function fetchPatientsForWhatsAppCampaign(
       id: patients.id,
       phone: patients.phone,
       clinicId: patients.clinicId,
+      createdBy: patients.createdBy,
       firstName: patients.firstName,
       lastName: patients.lastName,
     })
@@ -43,6 +46,11 @@ export async function fetchPatientsForWhatsAppCampaign(
   }
   if (filter.clinicId) {
     rows = rows.filter((p) => p.clinicId === filter.clinicId);
+  }
+  // El scope del rol ya se aplicó arriba: este filtro solo estrecha, nunca amplía.
+  const podiatristId = filter.podiatristId?.trim();
+  if (podiatristId && podiatristId !== 'all') {
+    rows = rows.filter((p) => p.createdBy === podiatristId);
   }
 
   return rows.filter((p) => String(p.phone ?? '').trim().length > 0);

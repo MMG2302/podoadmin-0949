@@ -390,9 +390,9 @@ export const appointmentsExportQuerySchema = z.object({
   podiatristId: z.string().max(128).optional(),
 });
 
-/** Query: listas de registro pendientes */
+/** Query: listas de registro pendientes. Estados reales en BD: draft | pending | approved | rejected. */
 export const registrationListStatusQuerySchema = z.object({
-  status: z.enum(['draft', 'submitted', 'approved', 'rejected']).optional(),
+  status: z.enum(['draft', 'pending', 'approved', 'rejected']).optional(),
 });
 
 export const createRegistrationListSchema = z.object({

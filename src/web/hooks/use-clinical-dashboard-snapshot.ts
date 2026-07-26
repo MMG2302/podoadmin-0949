@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { api } from "../lib/api-client";
+import { useAuth } from "../contexts/auth-context";
 import { useEntitlements } from "./use-entitlements";
 import type { AppointmentAgendaMetrics } from "../types/agenda";
 import type { CheckoutAnalytics } from "../types/checkout-analytics";
@@ -47,10 +48,14 @@ export function useClinicalDashboardSnapshot(opts: {
   includeClinicStats?: boolean;
 }) {
   const { enabled, includeCheckout = false, includeClinicStats = false } = opts;
+  const { user } = useAuth();
   const { has: hasFeature } = useEntitlements();
   // Métricas/analíticas del plan Premium: no se piden en Base (evita 402).
   const canAgendaMetrics = hasFeature("agenda_analytics");
-  const canCheckoutAnalytics = hasFeature("checkout_analytics");
+  // Además del plan, el backend restringe las analíticas de cobro a podólogo y admin de
+  // clínica: la recepcionista tiene la entitlement heredada de la clínica pero recibiría 403.
+  const canCheckoutAnalytics =
+    hasFeature("checkout_analytics") && (user?.role === "podiatrist" || user?.role === "clinic_admin");
   const [data, setData] = useState<Snapshot>(EMPTY);
   const [loading, setLoading] = useState(false);
 

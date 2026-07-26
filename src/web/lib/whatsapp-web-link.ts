@@ -204,10 +204,29 @@ export type CampaignWebRecipient = {
   waPhone: string;
 };
 
-export function parseCampaignFilterJson(filterJson: string): { clinicOnly: boolean } {
+/**
+ * ¿Esta fila (paciente o cita) entra en el filtro por podólogo?
+ * `filter` vacío, ausente o "all" no filtra nada.
+ */
+export function matchesPodiatristFilter(
+  rowPodiatristId: string | null | undefined,
+  filter: string | null | undefined
+): boolean {
+  const wanted = filter?.trim();
+  if (!wanted || wanted === 'all') return true;
+  return rowPodiatristId === wanted;
+}
+
+export function parseCampaignFilterJson(
+  filterJson: string
+): { clinicOnly: boolean; podiatristId?: string } {
   try {
-    const parsed = JSON.parse(filterJson) as { clinicOnly?: boolean };
-    return { clinicOnly: parsed.clinicOnly !== false };
+    const parsed = JSON.parse(filterJson) as { clinicOnly?: boolean; podiatristId?: string };
+    const podiatristId = parsed.podiatristId?.trim();
+    return {
+      clinicOnly: parsed.clinicOnly !== false,
+      ...(podiatristId ? { podiatristId } : {}),
+    };
   } catch {
     return { clinicOnly: true };
   }
@@ -215,12 +234,19 @@ export function parseCampaignFilterJson(filterJson: string): { clinicOnly: boole
 
 export function filterCampaignWebRecipients(
   patients: Patient[],
-  opts: { clinicOnly: boolean; userClinicId?: string; defaultCountry: string }
+  opts: {
+    clinicOnly: boolean;
+    userClinicId?: string;
+    defaultCountry: string;
+    /** Solo pacientes de este podólogo (patients.createdBy). Vacío o "all" = todos. */
+    podiatristId?: string;
+  }
 ): CampaignWebRecipient[] {
   return patients
     .filter((p) => {
       if (!p.phone?.trim()) return false;
       if (opts.clinicOnly && opts.userClinicId && p.clinicId !== opts.userClinicId) return false;
+      if (!matchesPodiatristFilter(p.createdBy, opts.podiatristId)) return false;
       return true;
     })
     .map((p) => {

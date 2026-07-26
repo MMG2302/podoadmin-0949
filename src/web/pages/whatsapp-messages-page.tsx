@@ -14,6 +14,7 @@ import {
   getRelativeLocalDateString,
   loadWaRescheduleTemplate,
   loadWhatsAppWebTemplate,
+  matchesPodiatristFilter,
   normalizePhoneForWaMe,
   saveWaRescheduleTemplate,
   saveWhatsAppWebTemplate,
@@ -22,6 +23,7 @@ import {
 } from "../lib/whatsapp-web-link";
 import { useTenantCountry } from "../hooks/use-tenant-country";
 import { useRescheduleMessage } from "../hooks/use-reschedule-message";
+import { usePodiatristOptions } from "../hooks/use-podiatrist-options";
 import {
   formErrorClass,
   semanticAlertErrorClass,
@@ -152,6 +154,9 @@ export default function WhatsAppMessagesPage() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [dayOffset, setDayOffset] = useState(1); // 0 = hoy, 1 = mañana, 2, 5...
+  // Filtrar los recordatorios del día por podólogo (recepción y admin de clínica).
+  const [podiatristFilter, setPodiatristFilter] = useState("all");
+  const { options: podiatristOptions, hasChoice: hasPodiatristChoice } = usePodiatristOptions();
 
   const {
     message: rescheduleMessage,
@@ -356,6 +361,7 @@ export default function WhatsAppMessagesPage() {
   const targetDateAppointments = useMemo((): ReminderTargetRow[] => {
     return appointments
       .filter((a) => a.date === targetDateIso && a.status !== "cancelled" && a.status !== "completed")
+      .filter((a) => matchesPodiatristFilter(a.podiatristId, podiatristFilter))
       .sort((a, b) => a.time.localeCompare(b.time))
       .map((a) => {
         const { patientName, phone, waPhone } = resolveAppointmentContact(a);
@@ -390,7 +396,7 @@ export default function WhatsAppMessagesPage() {
           appointmentCost,
         };
       });
-  }, [appointments, targetDateIso, targetDateLabel, patientById, doctorById, tenantCountry, clinicInfo]);
+  }, [appointments, targetDateIso, targetDateLabel, podiatristFilter, patientById, doctorById, tenantCountry, clinicInfo]);
 
   const pendingRescheduleRows = useMemo((): ReminderTargetRow[] => {
     return pendingReschedule
@@ -757,6 +763,24 @@ export default function WhatsAppMessagesPage() {
                 </button>
               ))}
             </div>
+            {hasPodiatristChoice && (
+              <label className="flex items-center gap-2 text-sm text-brand-muted sm:ml-auto">
+                <span className="shrink-0">{t.common.podiatristFilter}</span>
+                <select
+                  value={podiatristFilter}
+                  onChange={(e) => setPodiatristFilter(e.target.value)}
+                  className="px-3 py-1.5 rounded-lg border border-brand-border bg-brand-surface text-sm text-brand-ink"
+                  aria-label={t.common.podiatristFilter}
+                >
+                  <option value="all">{t.common.allPodiatrists}</option>
+                  {podiatristOptions.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            )}
           </div>
 
           <h4 className="text-sm font-semibold text-brand-ink mb-2">

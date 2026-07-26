@@ -49,8 +49,11 @@ export interface Translations {
     seeAllShort: string;
     viewMore: string;
     go: string;
+    /** Filtro por podólogo (pacientes, campañas y mensajes de WhatsApp). */
+    podiatristFilter: string;
+    allPodiatrists: string;
   };
-  
+
   // Auth
   auth: {
     login: string;
@@ -2531,6 +2534,8 @@ export const translations: Record<Language, Translations> = {
       seeAllShort: "Ver todo",
       viewMore: "Ver más",
       go: "Ir",
+      podiatristFilter: "Podólogo",
+      allPodiatrists: "Todos los podólogos",
     },
     auth: {
       login: "Iniciar sesión",
@@ -4998,6 +5003,8 @@ views: {
       seeAllShort: "See all",
       viewMore: "View more",
       go: "Go",
+      podiatristFilter: "Podiatrist",
+      allPodiatrists: "All podiatrists",
     },
     auth: {
       login: "Log in",
@@ -7460,6 +7467,8 @@ views: {
       seeAllShort: "Ver tudo",
       viewMore: "Ver mais",
       go: "Ir",
+      podiatristFilter: "Podologista",
+      allPodiatrists: "Todos os podologistas",
     },
     auth: {
       login: "Entrar",
@@ -9897,6 +9906,8 @@ views: {
       seeAllShort: "Tout voir",
       viewMore: "Voir plus",
       go: "Aller",
+      podiatristFilter: "Podologue",
+      allPodiatrists: "Tous les podologues",
     },
     auth: {
       login: "Connexion",

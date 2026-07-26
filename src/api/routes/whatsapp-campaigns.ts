@@ -84,7 +84,7 @@ campaignsRoutes.post('/:id/send', async (c) => {
   if (!waRow?.enabled) return c.json({ error: 'WhatsApp no configurado' }, 400);
 
   const token = await decryptSecret(waRow.accessTokenEnc);
-  let filter: { clinicId?: string; hasPhone?: boolean; clinicOnly?: boolean } = {};
+  let filter: { clinicId?: string; hasPhone?: boolean; clinicOnly?: boolean; podiatristId?: string } = {};
   try {
     filter = JSON.parse(campaign.filterJson);
   } catch {

@@ -16,6 +16,7 @@ import {
   type CampaignWebRecipient,
 } from "../lib/whatsapp-web-link";
 import { useTenantCountry } from "../hooks/use-tenant-country";
+import { usePodiatristOptions } from "../hooks/use-podiatrist-options";
 import {
   whatsappButtonClass,
   whatsappButtonSmClass,
@@ -53,6 +54,9 @@ const WhatsAppCampaignsPage = () => {
   const [name, setName] = useState("");
   const [messageBody, setMessageBody] = useState("");
   const [filterClinicOnly, setFilterClinicOnly] = useState(true);
+  // Segmentar la campaña por podólogo (pacientes creados por él).
+  const [filterPodiatristId, setFilterPodiatristId] = useState("all");
+  const { options: podiatristOptions, hasChoice: hasPodiatristChoice } = usePodiatristOptions();
   const [loading, setLoading] = useState(true);
   const [sendingId, setSendingId] = useState<string | null>(null);
   const [feedback, setFeedback] = useState<string | null>(null);
@@ -110,20 +114,32 @@ const WhatsAppCampaignsPage = () => {
         clinicOnly: filterClinicOnly,
         userClinicId: user?.clinicId,
         defaultCountry: tenantCountry,
+        podiatristId: filterPodiatristId,
       }),
-    [patients, filterClinicOnly, user?.clinicId, tenantCountry]
+    [patients, filterClinicOnly, filterPodiatristId, user?.clinicId, tenantCountry]
   );
 
   const recipientsForCampaign = useCallback(
     (campaign: Campaign): CampaignWebRecipient[] => {
-      const { clinicOnly } = parseCampaignFilterJson(campaign.filterJson);
+      const { clinicOnly, podiatristId } = parseCampaignFilterJson(campaign.filterJson);
       return filterCampaignWebRecipients(patients, {
         clinicOnly,
         userClinicId: user?.clinicId,
         defaultCountry: tenantCountry,
+        podiatristId,
       });
     },
     [patients, user?.clinicId, tenantCountry]
+  );
+
+  /** Nombre del podólogo al que se segmentó una campaña ya guardada (para la lista). */
+  const campaignPodiatristName = useCallback(
+    (campaign: Campaign): string | null => {
+      const { podiatristId } = parseCampaignFilterJson(campaign.filterJson);
+      if (!podiatristId) return null;
+      return podiatristOptions.find((p) => p.id === podiatristId)?.name ?? podiatristId;
+    },
+    [podiatristOptions]
   );
 
   const openWaMe = (campaign: Campaign, recipient: CampaignWebRecipient) => {
@@ -155,6 +171,7 @@ const WhatsAppCampaignsPage = () => {
     const filterJson = JSON.stringify({
       hasPhone: true,
       clinicOnly: filterClinicOnly,
+      ...(filterPodiatristId !== "all" ? { podiatristId: filterPodiatristId } : {}),
     });
     const res = await api.post<{ success?: boolean; id?: string }>("/whatsapp-campaigns", {
       name: name.trim(),
@@ -262,6 +279,24 @@ const WhatsAppCampaignsPage = () => {
             />
             {c.clinicOnlyFilter}
           </label>
+          {hasPodiatristChoice && (
+            <label className="flex items-center gap-2 text-sm text-brand-muted">
+              <span className="shrink-0">{t.common.podiatristFilter}</span>
+              <select
+                value={filterPodiatristId}
+                onChange={(e) => setFilterPodiatristId(e.target.value)}
+                className={`px-3 py-2 ${whatsappInputBorderClass} bg-brand-surface text-sm text-brand-ink`}
+                aria-label={t.common.podiatristFilter}
+              >
+                <option value="all">{t.common.allPodiatrists}</option>
+                {podiatristOptions.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
           <p className={`text-sm ${whatsappMutedTextClass}`}>
             {c.recipientsWithPhone} <strong>{previewRecipients.length}</strong>
             {previewRecipients.length === 0 && patients.length > 0 && (
@@ -461,6 +496,9 @@ const WhatsAppCampaignsPage = () => {
                       <p className="font-medium text-brand-ink">{campaign.name}</p>
                       <p className="text-xs text-gray-400 mt-1">
                         {campaign.status}
+                        {campaignPodiatristName(campaign)
+                          ? ` · ${t.common.podiatristFilter}: ${campaignPodiatristName(campaign)}`
+                          : ""}
                         {campaign.sentAt
                           ? ` · ${c.sentAt.replace("{date}", new Date(campaign.sentAt).toLocaleString())}`
                           : ""}

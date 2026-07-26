@@ -15,6 +15,7 @@ import { PatientEvolutionReportButton } from "../components/sessions/session-cli
 import { api } from "../lib/api-client";
 import { useClinicalLayout } from "../hooks/use-clinical-layout";
 import { useClinicalListPage } from "../hooks/use-clinical-list-page";
+import { usePodiatristOptions } from "../hooks/use-podiatrist-options";
 import { fetchPatientById } from "../hooks/use-patient-picker";
 import { invalidateClinicalListCache } from "../lib/clinical-list-cache";
 import { ClinicalListError, ClinicalListLoading } from "../components/clinical/clinical-list-states";
@@ -120,6 +121,9 @@ const PatientsPage = () => {
   const [inactiveFilter, setInactiveFilter] = useState<"all" | PatientInactiveFilter>("all");
   const [minVisitsFilter, setMinVisitsFilter] = useState("");
   const [maxVisitsFilter, setMaxVisitsFilter] = useState("");
+  // Filtro "ver pacientes de un podólogo" (recepcionista con varios asignados).
+  const [podiatristFilter, setPodiatristFilter] = useState("all");
+  const { options: podiatristOptions, hasChoice: hasPodiatristChoice } = usePodiatristOptions();
   const [ltvPeriod, setLtvPeriod] = useState<PatientLtvPeriod>(() => {
     try {
       return parseStoredLtvPeriod(localStorage.getItem(LTV_PERIOD_STORAGE_KEY));
@@ -151,6 +155,7 @@ const PatientsPage = () => {
     () =>
       buildPatientListFilters({
         q: debouncedQ || undefined,
+        createdBy: podiatristFilter,
         segment: segmentFilter,
         ageRangeId: ageRangeFilter,
         inactive: inactiveFilter,
@@ -160,6 +165,7 @@ const PatientsPage = () => {
       }),
     [
       debouncedQ,
+      podiatristFilter,
       segmentFilter,
       ageRangeFilter,
       inactiveFilter,
@@ -1233,6 +1239,24 @@ const PatientsPage = () => {
               className="w-full pl-10 pr-4 py-2.5 border border-brand-border rounded-lg bg-brand-surface text-brand-ink focus:outline-none focus:border-brand-ink focus:ring-1 focus:ring-brand-ink placeholder:text-gray-400 dark:placeholder:text-gray-500"
             />
           </div>
+          {hasPodiatristChoice && (
+            <label className="flex items-center gap-2 text-sm text-brand-muted">
+              <span className="shrink-0">{t.common.podiatristFilter}</span>
+              <select
+                value={podiatristFilter}
+                onChange={(e) => setPodiatristFilter(e.target.value)}
+                className="px-3 py-2.5 rounded-lg border border-brand-border bg-brand-surface text-sm text-brand-ink"
+                aria-label={t.common.podiatristFilter}
+              >
+                <option value="all">{t.common.allPodiatrists}</option>
+                {podiatristOptions.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
           {canCreatePatient ? (
             <button
               onClick={() => {

@@ -44,6 +44,8 @@ const ALLOWED_API_FIRST_SEGMENTS: ReadonlySet<string> = new Set([
   'trial',
   'whatsapp-campaigns',
   'stripe',
+  'access-events',
+  'location-announcements',
 ]);
 
 /** Caracteres permitidos en un segmento de path (evita encoding raro o inyección). */

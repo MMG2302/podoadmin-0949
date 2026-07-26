@@ -1,8 +1,8 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { MainLayout } from "../components/layout/main-layout";
 import { useLanguage } from "../contexts/language-context";
 import { api } from "../lib/api-client";
-import { MapPin, Plus, Play, Pause, Users } from "lucide-react";
+import { MapPin, Plus, Play, Pause, Users, ChevronDown, ChevronUp } from "lucide-react";
 
 interface Advertiser {
   id: string;
@@ -26,13 +26,25 @@ interface Campaign {
   endsAt: number;
 }
 
+interface AnnouncementInterest {
+  id: string;
+  announcementId: string;
+  userName: string | null;
+  userEmail: string | null;
+  userState: string | null;
+  userCountry: string | null;
+  createdAt: string;
+}
+
 const SponsoredAnnouncementsPage = () => {
   const { t } = useLanguage();
   const sa = t.sponsoredAnnouncements;
 
   const [advertisers, setAdvertisers] = useState<Advertiser[]>([]);
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
+  const [interests, setInterests] = useState<AnnouncementInterest[]>([]);
   const [loading, setLoading] = useState(true);
+  const [expandedCampaignId, setExpandedCampaignId] = useState<string | null>(null);
   const [showForm, setShowForm] = useState(false);
   const [audienceEstimate, setAudienceEstimate] = useState<number | null>(null);
   const [form, setForm] = useState({
@@ -58,14 +70,26 @@ const SponsoredAnnouncementsPage = () => {
 
   const load = useCallback(async () => {
     setLoading(true);
-    const [advRes, campRes] = await Promise.all([
+    const [advRes, campRes, interestsRes] = await Promise.all([
       api.get<{ success?: boolean; advertisers?: Advertiser[] }>("/location-announcements/admin/advertisers"),
       api.get<{ success?: boolean; campaigns?: Campaign[] }>("/location-announcements/admin/campaigns"),
+      api.get<{ success?: boolean; interests?: AnnouncementInterest[] }>("/location-announcements/admin/interests"),
     ]);
     if (advRes.success && advRes.data?.advertisers) setAdvertisers(advRes.data.advertisers);
     if (campRes.success && campRes.data?.campaigns) setCampaigns(campRes.data.campaigns);
+    if (interestsRes.success && interestsRes.data?.interests) setInterests(interestsRes.data.interests);
     setLoading(false);
   }, []);
+
+  const interestsByCampaign = useMemo(() => {
+    const map = new Map<string, AnnouncementInterest[]>();
+    for (const i of interests) {
+      const list = map.get(i.announcementId) ?? [];
+      list.push(i);
+      map.set(i.announcementId, list);
+    }
+    return map;
+  }, [interests]);
 
   useEffect(() => {
     void load();
@@ -261,42 +285,84 @@ const SponsoredAnnouncementsPage = () => {
             <p className="p-4 text-sm text-brand-muted">{sa.noCampaigns}</p>
           ) : (
             <ul className="divide-y divide-brand-border">
-              {campaigns.map((c) => (
-                <li key={c.id} className="p-4 flex flex-wrap items-start justify-between gap-3">
-                  <div>
-                    <p className="font-medium text-brand-ink">{c.title}</p>
-                    <p className="text-xs text-brand-muted mt-1">
-                      {c.targetState}, {c.targetCountry} · {c.advertiserName} ·{" "}
-                      <span className={
-                        c.status === "active" ? "text-green-600" : c.status === "draft" ? "text-gray-500" : "text-amber-600"
-                      }>{statusLabel(c.status)}</span>
-                    </p>
-                    {c.promoCode && (
-                      <p className="text-xs mt-1">{sa.advertiserCode} <code>{c.promoCode}</code></p>
+              {campaigns.map((c) => {
+                const campaignInterests = interestsByCampaign.get(c.id) ?? [];
+                const isExpanded = expandedCampaignId === c.id;
+                return (
+                  <li key={c.id}>
+                    <div className="p-4 flex flex-wrap items-start justify-between gap-3">
+                      <div>
+                        <p className="font-medium text-brand-ink">{c.title}</p>
+                        <p className="text-xs text-brand-muted mt-1">
+                          {c.targetState}, {c.targetCountry} · {c.advertiserName} ·{" "}
+                          <span className={
+                            c.status === "active" ? "text-green-600" : c.status === "draft" ? "text-gray-500" : "text-amber-600"
+                          }>{statusLabel(c.status)}</span>
+                        </p>
+                        {c.promoCode && (
+                          <p className="text-xs mt-1">{sa.advertiserCode} <code>{c.promoCode}</code></p>
+                        )}
+                      </div>
+                      <div className="flex gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setExpandedCampaignId(isExpanded ? null : c.id)}
+                          className="inline-flex items-center gap-1 px-3 py-1.5 text-xs border border-brand-border rounded-lg text-brand-ink"
+                        >
+                          <Users className="w-3 h-3" />
+                          {sa.interestedCount.replace("{n}", String(campaignInterests.length))}
+                          {isExpanded ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+                        </button>
+                        {c.status !== "active" && (
+                          <button
+                            type="button"
+                            onClick={() => void setStatus(c.id, "active")}
+                            className="inline-flex items-center gap-1 px-3 py-1.5 text-xs bg-green-600 text-white rounded-lg"
+                          >
+                            <Play className="w-3 h-3" /> {sa.activate}
+                          </button>
+                        )}
+                        {c.status === "active" && (
+                          <button
+                            type="button"
+                            onClick={() => void setStatus(c.id, "paused")}
+                            className="inline-flex items-center gap-1 px-3 py-1.5 text-xs border border-brand-border rounded-lg"
+                          >
+                            <Pause className="w-3 h-3" /> {sa.pause}
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                    {isExpanded && (
+                      <div className="px-4 pb-4">
+                        <div className="bg-brand-canvas rounded-lg p-3">
+                          <p className="text-xs font-medium text-brand-ink mb-2">{sa.interestedListTitle}</p>
+                          {campaignInterests.length === 0 ? (
+                            <p className="text-xs text-brand-muted">{sa.noInterested}</p>
+                          ) : (
+                            <ul className="space-y-2">
+                              {campaignInterests.map((i) => (
+                                <li key={i.id} className="text-xs flex flex-wrap items-center justify-between gap-2 border-b border-brand-border/50 pb-2 last:border-0 last:pb-0">
+                                  <span className="text-brand-ink font-medium">
+                                    {i.userName || i.userEmail || i.id}
+                                    {i.userEmail && i.userName && (
+                                      <span className="text-brand-muted font-normal"> · {i.userEmail}</span>
+                                    )}
+                                  </span>
+                                  <span className="text-brand-muted">
+                                    {i.userState ? `${i.userState}, ${i.userCountry} · ` : ""}
+                                    {new Date(i.createdAt).toLocaleString()}
+                                  </span>
+                                </li>
+                              ))}
+                            </ul>
+                          )}
+                        </div>
+                      </div>
                     )}
-                  </div>
-                  <div className="flex gap-2">
-                    {c.status !== "active" && (
-                      <button
-                        type="button"
-                        onClick={() => void setStatus(c.id, "active")}
-                        className="inline-flex items-center gap-1 px-3 py-1.5 text-xs bg-green-600 text-white rounded-lg"
-                      >
-                        <Play className="w-3 h-3" /> {sa.activate}
-                      </button>
-                    )}
-                    {c.status === "active" && (
-                      <button
-                        type="button"
-                        onClick={() => void setStatus(c.id, "paused")}
-                        className="inline-flex items-center gap-1 px-3 py-1.5 text-xs border border-brand-border rounded-lg"
-                      >
-                        <Pause className="w-3 h-3" /> {sa.pause}
-                      </button>
-                    )}
-                  </div>
-                </li>
-              ))}
+                  </li>
+                );
+              })}
             </ul>
           )}
         </div>

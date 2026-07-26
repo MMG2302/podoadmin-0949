@@ -2471,6 +2471,12 @@ export interface Translations {
     statusDraft: string;
     statusPaused: string;
     defaultCta: string;
+    viewInterested: string;
+    hideInterested: string;
+    interestedCount: string;
+    noInterested: string;
+    interestedListTitle: string;
+    loadingInterests: string;
   };
 
 }
@@ -4574,6 +4580,12 @@ views: {
       statusDraft: "borrador",
       statusPaused: "pausada",
       defaultCta: "Ver más",
+      viewInterested: "Ver interesados",
+      hideInterested: "Ocultar interesados",
+      interestedCount: "{n} interesado(s)",
+      noInterested: "Aún nadie mostró interés en esta campaña.",
+      interestedListTitle: "Usuarios interesados",
+      loadingInterests: "Cargando interesados...",
     },
     terms: {
       title: "Términos y Condiciones",
@@ -7033,6 +7045,12 @@ views: {
       statusDraft: "draft",
       statusPaused: "paused",
       defaultCta: "Learn more",
+      viewInterested: "View interested users",
+      hideInterested: "Hide interested users",
+      interestedCount: "{n} interested",
+      noInterested: "No one has shown interest in this campaign yet.",
+      interestedListTitle: "Interested users",
+      loadingInterests: "Loading interested users...",
     },
     terms: {
       title: "Terms and Conditions",
@@ -9489,6 +9507,12 @@ views: {
       statusDraft: "rascunho",
       statusPaused: "pausada",
       defaultCta: "Ver mais",
+      viewInterested: "Ver interessados",
+      hideInterested: "Ocultar interessados",
+      interestedCount: "{n} interessado(s)",
+      noInterested: "Ainda ninguém demonstrou interesse nesta campanha.",
+      interestedListTitle: "Utilizadores interessados",
+      loadingInterests: "A carregar interessados...",
     },
     terms: {
       title: "Termos e Condições",
@@ -11920,6 +11944,12 @@ views: {
       statusDraft: "brouillon",
       statusPaused: "en pause",
       defaultCta: "En savoir plus",
+      viewInterested: "Voir les intéressés",
+      hideInterested: "Masquer les intéressés",
+      interestedCount: "{n} intéressé(s)",
+      noInterested: "Personne n'a encore manifesté d'intérêt pour cette campagne.",
+      interestedListTitle: "Utilisateurs intéressés",
+      loadingInterests: "Chargement des intéressés...",
     },
     terms: {
       title: "Termes et Conditions",

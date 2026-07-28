@@ -231,7 +231,7 @@
           </div>
           <div class="field">
             <div class="field-top"><label for="vida">Tu vida al mes (renta, comidas, salud)</label><output id="o-vida"></output></div>
-            <input type="range" id="vida" min="10000" max="90000" step="1000" value="30000">
+            <input type="range" id="vida" min="0" max="90000" step="1000" value="30000">
           </div>
           <div class="field">
             <div class="field-top"><label for="fx">Tipo de cambio</label><output id="o-fx"></output></div>
@@ -654,7 +654,7 @@
     ritmo: function (v) { return v.toFixed(1) + "×"; },
     churn: function (v) { return v.toFixed(1) + "% / mes"; },
     arpu: function (v) { return "$" + v.toFixed(2) + " USD"; },
-    vida: function (v) { return "$" + nf(v) + " MXN"; },
+    vida: function (v) { return v === 0 ? "sin tu vida" : "$" + nf(v) + " MXN"; },
     fx: function (v) { return v.toFixed(2) + " MXN/USD"; },
     ia: function (v) { return "$" + nf(v) + " USD"; },
     cac: function (v) { return "$" + nf(v) + " USD"; }

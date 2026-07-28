@@ -96,6 +96,38 @@ Tu vida            $1,714  (79.6%)
 PISO FIJO          $2,152 USD/mes  =  $37,668 MXN/mes
 ```
 
+### 3.1 El montaje: lo que cuesta una sola vez
+
+Poner la plataforma de pie es sorprendentemente barato porque el software ya está escrito y la nube no cobra por existir, solo por usarse.
+
+| Concepto | MXN | USD | Nota |
+|---|---|---|---|
+| Dominio .com (primer año) | $190 | $11 | Cloudflare Registrar vende a precio de costo |
+| Dominio .mx (primer año) | $610 | $35 | |
+| Registro de marca ante el IMPI, 1 clase | $3,126 | $179 | Tarifa oficial 2026 con IVA; hay programas con hasta 90% de descuento |
+| Aviso de privacidad, términos y contrato de servicio | $8,000 – $15,000 | $457 – $857 | Estimado de abogado en México; es el rubro que domina |
+| Alta en SAT, e.firma, cuentas de Cloudflare, Stripe y Resend | $0 | $0 | |
+| Certificado SSL, WAF, protección DDoS | $0 | $0 | Incluidos en Cloudflare |
+| **Total del montaje** | **$11,926 – $18,926** | **$682 – $1,082** | Pago único |
+
+**Versión mínima viable** (sin registro de marca, con plantillas legales revisadas por ti): **~$800 MXN / $46 USD**. Literalmente los dos dominios.
+
+No incluye la laptop, que ya tienes y entra como amortización mensual ($1,111 MXN), ni tu tiempo de desarrollo, que es la inversión real y está contada en el valle de caja de la sección 7.
+
+### 3.2 Cuánto cuesta tener el negocio prendido, sin pagarte a ti
+
+Tres niveles, según qué consideres "el negocio":
+
+| Nivel | Qué incluye | USD/mes | MXN/mes | Clientes para cubrirlo |
+|---|---|---|---|---|
+| **1. Solo la plataforma** | Cloudflare Workers, D1, R2, KV, Queues, dominios, correo transaccional, backups | **$19** | $333 | **0.4** — el primer cliente la paga y sobra |
+| **2. + tus herramientas de trabajo** | Claude Max $100, GitHub y Figma $30, internet y luz $69, laptop amortizada $63 | **$281** | $4,918 | **6** |
+| **3. + el negocio formal** | Contador $114, legal, marca y renovaciones $43 | **$438** | $7,665 | **9** |
+
+Con **9 clientes** la plataforma se sostiene sola: paga su nube, tus herramientas, tu contador y tu IA. Del cliente 10 en adelante todo lo que entra va a ti, hasta el cliente 43 donde ya cubres también tu vida completa.
+
+El costo marginal de un cliente más es **$0.11 USD de nube** más la comisión de Stripe. No hay licencias por asiento, no hay servidores que crecer. Por eso el modelo aguanta: entre el cliente 9 y el 120 (donde entra el primer soporte) no aparece prácticamente ningún costo nuevo.
+
 ---
 
 ## 4. Costos variables por cliente
@@ -269,4 +301,5 @@ Un peso que se aprecia a 16 te cuesta ~$12,600 USD en 7 años. Es un riesgo mode
 - [WhatsApp Business API Pricing México 2026](https://www.go4whatsup.com/mexico/whatsapp-business-api-pricing/) · [guía de precios por mensaje](https://www.uptail.ai/blog/whatsapp-business-api-pricing-2026-what-it-costs-and-how-billing-works) — México: utility $0.0080, authentication $0.0207, marketing $0.0436; mensajes de servicio en ventana de 24 h sin costo
 - [Resend Pricing 2026](https://nuntly.com/resend-pricing) — free 3,000/mes (100/día), Pro $20 por 50,000, Scale $90 por 100,000
 - [RESICO personas físicas 2026](https://www.miskuentas.com/noticias/regimenes-fiscales/resico-2026-mexico-isr-iva-obligaciones/) · [tablas de retenciones ISR e IVA 2026](https://tesio.com.mx/blog/tablas-retenciones-isr-iva-2026/) — ISR 1% a 2.5%, tope de ingresos $3.5M MXN/año
+- [Registro de marca IMPI 2026](https://www.simetrialegal.mx/negocio-sin-riesgo/registro-de-marca-impi-2026-guia-precios-requisitos) — $2,695.18 MXN + IVA = $3,126.41 por clase; los honorarios legales del aviso de privacidad son estimados de mercado, no tarifa publicada
 - [Tipo de cambio USD/MXN julio 2026](https://es.tradingeconomics.com/mexico/currency) — ~17.5 MXN/USD

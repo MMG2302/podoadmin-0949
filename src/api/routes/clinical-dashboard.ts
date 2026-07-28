@@ -4,7 +4,13 @@ import { z } from 'zod';
 import { requireAuth } from '../middleware/auth';
 import { requireActiveSubscription } from '../middleware/subscription';
 import { database } from '../database';
-import { clinicalSessions, patients, createdUsers, professionalLicenses } from '../database/schema';
+import {
+  clinicalSessions,
+  patients,
+  createdUsers,
+  professionalLicenses,
+  agendaBlocks as agendaBlocksTable,
+} from '../database/schema';
 import { mergeScopeWhere, resolveClinicalListScope } from '../utils/clinical-list-scope';
 import { fetchAppointmentMetrics } from '../utils/clinic-appointment-metrics';
 import { sanitizePathParam } from '../utils/sanitization';
@@ -14,6 +20,19 @@ import {
   resolveAgendaSettingsForPodiatrist,
   saveAgendaSettings,
 } from '../utils/agenda-settings';
+import {
+  AGENDA_BLOCK_CATEGORIES,
+  AGENDA_BLOCK_RECURRENCES,
+  canManageBlocksForPodiatrist,
+  canManageClinicWideBlocks,
+  getAgendaBlockById,
+  loadBlocksForClinic,
+  loadBlocksForPodiatrist,
+  serializeWeekdays,
+  validateAgendaBlockInput,
+  type AgendaBlock,
+} from '../utils/agenda-blocks';
+import type { JWTPayload } from '../utils/jwt';
 import {
   canAccessRescheduleMessageForPodiatrist,
   getClinicRescheduleMessage,
@@ -358,6 +377,264 @@ clinicalDashboardRoutes.put('/agenda-settings', async (c) => {
 
   return c.json({ success: false, error: 'No autorizado' }, 403);
 });
+
+/* ── Bloqueos de agenda (comida, salidas, vacaciones, festivos) ───────────── */
+
+const agendaBlockBodySchema = z.object({
+  // 'clinic' bloquea a todos los podólogos de la clínica (solo clinic_admin).
+  scope: z.enum(['podiatrist', 'clinic']).optional(),
+  podiatristId: z.string().trim().min(1).max(128).optional(),
+  title: z.string().trim().min(2).max(120),
+  category: z.enum(AGENDA_BLOCK_CATEGORIES).optional(),
+  recurrence: z.enum(AGENDA_BLOCK_RECURRENCES),
+  weekdays: z.array(z.number().int().min(0).max(6)).max(7).optional(),
+  startDate: z.string().trim().max(10).nullable().optional(),
+  endDate: z.string().trim().max(10).nullable().optional(),
+  startTime: z.string().trim().max(5),
+  endTime: z.string().trim().max(5),
+});
+
+const newBlockId = () => `blk_${crypto.randomUUID().replace(/-/g, '')}`;
+
+/** Podólogo cuya agenda se está consultando/editando, según el rol. */
+async function resolveBlockPodiatristTarget(
+  user: JWTPayload,
+  requested?: string
+): Promise<{ podiatristId: string | null; error?: string; status?: 400 | 403 }> {
+  if (user.role === 'podiatrist') {
+    if (requested && requested !== user.userId) {
+      return { podiatristId: null, error: 'No autorizado', status: 403 };
+    }
+    return { podiatristId: user.userId };
+  }
+
+  if (user.role === 'clinic_admin') {
+    if (!user.clinicId) return { podiatristId: null, error: 'Sin clínica asignada', status: 400 };
+    if (!requested) return { podiatristId: null };
+    const ok = await canManageBlocksForPodiatrist(user, requested);
+    if (!ok) return { podiatristId: null, error: 'No autorizado', status: 403 };
+    return { podiatristId: requested };
+  }
+
+  if (user.role === 'receptionist') {
+    const targetId = requested || (await getAssignedPodiatristUserIds(user.userId))[0] || null;
+    if (!targetId) return { podiatristId: null, error: 'Sin podólogo asignado', status: 400 };
+    const ok = await canManageBlocksForPodiatrist(user, targetId);
+    if (!ok) return { podiatristId: null, error: 'No autorizado', status: 403 };
+    return { podiatristId: targetId };
+  }
+
+  return { podiatristId: null, error: 'No autorizado', status: 403 };
+}
+
+/**
+ * GET /clinical-dashboard/agenda-blocks — bloqueos vigentes del podólogo (o de la clínica).
+ * Con ?all=1 devuelve todo lo que el usuario puede ver (para pintar el calendario):
+ * recepción recibe los de todos sus podólogos asignados, no solo el primero.
+ */
+clinicalDashboardRoutes.get('/agenda-blocks', async (c) => {
+  const user = c.get('user')!;
+  const requested = sanitizePathParam(c.req.query('podiatristId') ?? '', 128) || undefined;
+  const wantsAll = c.req.query('all') === '1';
+
+  if (wantsAll && !requested) {
+    if (user.role === 'podiatrist') {
+      return c.json({
+        success: true,
+        blocks: await loadBlocksForPodiatrist(user.userId),
+        podiatristId: user.userId,
+        canManage: true,
+        canManageClinicWide: canManageClinicWideBlocks(user),
+      });
+    }
+    if (user.role === 'clinic_admin' && user.clinicId) {
+      return c.json({
+        success: true,
+        blocks: await loadBlocksForClinic(user.clinicId),
+        podiatristId: null,
+        canManage: true,
+        canManageClinicWide: true,
+      });
+    }
+    if (user.role === 'receptionist') {
+      const assigned = await getAssignedPodiatristUserIds(user.userId);
+      const perPodiatrist = await Promise.all(assigned.map((id) => loadBlocksForPodiatrist(id)));
+      // Un bloqueo clínica-wide aparece en la lista de cada podólogo: deduplicar por id.
+      const byId = new Map<string, AgendaBlock>();
+      for (const block of perPodiatrist.flat()) byId.set(block.id, block);
+      return c.json({
+        success: true,
+        blocks: [...byId.values()],
+        podiatristId: assigned[0] ?? null,
+        canManage: assigned.length > 0,
+        canManageClinicWide: false,
+      });
+    }
+    return c.json({ success: true, blocks: [], podiatristId: null, canManage: false, canManageClinicWide: false });
+  }
+
+  const target = await resolveBlockPodiatristTarget(user, requested);
+  if (target.error) return c.json({ success: false, error: target.error }, target.status ?? 403);
+
+  // clinic_admin sin podiatristId: vista de toda la clínica.
+  const blocks = target.podiatristId
+    ? await loadBlocksForPodiatrist(target.podiatristId)
+    : user.clinicId
+      ? await loadBlocksForClinic(user.clinicId)
+      : [];
+
+  return c.json({
+    success: true,
+    blocks,
+    podiatristId: target.podiatristId,
+    canManage: true,
+    canManageClinicWide: canManageClinicWideBlocks(user),
+  });
+});
+
+/** POST /clinical-dashboard/agenda-blocks — crea un bloqueo. */
+clinicalDashboardRoutes.post('/agenda-blocks', async (c) => {
+  const user = c.get('user')!;
+  const body = await c.req.json().catch(() => ({}));
+  const parsed = agendaBlockBodySchema.safeParse(body);
+  if (!parsed.success) return c.json({ success: false, error: 'Datos inválidos' }, 400);
+  const data = parsed.data;
+
+  let podiatristId: string | null = null;
+  let clinicId: string | null = null;
+
+  if (data.scope === 'clinic') {
+    if (!canManageClinicWideBlocks(user)) {
+      return c.json({ success: false, error: 'Solo el admin de clínica puede bloquear toda la clínica' }, 403);
+    }
+    clinicId = user.clinicId!;
+  } else {
+    const requested = data.podiatristId ? sanitizePathParam(data.podiatristId, 128) : undefined;
+    const target = await resolveBlockPodiatristTarget(user, requested || undefined);
+    if (target.error) return c.json({ success: false, error: target.error }, target.status ?? 403);
+    if (!target.podiatristId) {
+      return c.json({ success: false, error: 'Selecciona el podólogo del bloqueo' }, 400);
+    }
+    podiatristId = target.podiatristId;
+    clinicId = await getClinicIdForBlockOwner(podiatristId);
+  }
+
+  const validated = validateAgendaBlockInput({
+    podiatristId,
+    clinicId,
+    title: data.title,
+    category: data.category ?? 'other',
+    recurrence: data.recurrence,
+    weekdays: data.weekdays ?? [],
+    startDate: data.startDate?.trim() || null,
+    endDate: data.endDate?.trim() || null,
+    startTime: data.startTime,
+    endTime: data.endTime,
+  });
+  if (!validated.ok) return c.json({ success: false, error: validated.error }, 400);
+
+  const now = new Date().toISOString();
+  const id = newBlockId();
+  await database.insert(agendaBlocksTable).values({
+    id,
+    podiatristId: validated.value.podiatristId,
+    clinicId: validated.value.clinicId,
+    title: validated.value.title,
+    category: validated.value.category,
+    recurrence: validated.value.recurrence,
+    weekdays: serializeWeekdays(validated.value.weekdays) || null,
+    startDate: validated.value.startDate,
+    endDate: validated.value.endDate,
+    startTime: validated.value.startTime,
+    endTime: validated.value.endTime,
+    createdBy: user.userId,
+    createdAt: now,
+    updatedAt: now,
+  });
+
+  const block = await getAgendaBlockById(id);
+  return c.json({ success: true, block }, 201);
+});
+
+/** PUT /clinical-dashboard/agenda-blocks/:id — edita un bloqueo existente. */
+clinicalDashboardRoutes.put('/agenda-blocks/:id', async (c) => {
+  const user = c.get('user')!;
+  const id = sanitizePathParam(c.req.param('id') ?? '', 128);
+  const existing = id ? await getAgendaBlockById(id) : null;
+  if (!id || !existing) return c.json({ success: false, error: 'Bloqueo no encontrado' }, 404);
+  if (!(await canManageExistingBlock(user, existing))) {
+    return c.json({ success: false, error: 'No autorizado' }, 403);
+  }
+
+  const body = await c.req.json().catch(() => ({}));
+  const parsed = agendaBlockBodySchema.safeParse(body);
+  if (!parsed.success) return c.json({ success: false, error: 'Datos inválidos' }, 400);
+  const data = parsed.data;
+
+  // El alcance (podólogo vs clínica) no se cambia al editar: para eso se borra y se recrea.
+  const validated = validateAgendaBlockInput({
+    podiatristId: existing.podiatristId,
+    clinicId: existing.clinicId,
+    title: data.title,
+    category: data.category ?? existing.category,
+    recurrence: data.recurrence,
+    weekdays: data.weekdays ?? [],
+    startDate: data.startDate?.trim() || null,
+    endDate: data.endDate?.trim() || null,
+    startTime: data.startTime,
+    endTime: data.endTime,
+  });
+  if (!validated.ok) return c.json({ success: false, error: validated.error }, 400);
+
+  await database
+    .update(agendaBlocksTable)
+    .set({
+      title: validated.value.title,
+      category: validated.value.category,
+      recurrence: validated.value.recurrence,
+      weekdays: serializeWeekdays(validated.value.weekdays) || null,
+      startDate: validated.value.startDate,
+      endDate: validated.value.endDate,
+      startTime: validated.value.startTime,
+      endTime: validated.value.endTime,
+      updatedAt: new Date().toISOString(),
+    })
+    .where(eq(agendaBlocksTable.id, id));
+
+  return c.json({ success: true, block: await getAgendaBlockById(id) });
+});
+
+/** DELETE /clinical-dashboard/agenda-blocks/:id */
+clinicalDashboardRoutes.delete('/agenda-blocks/:id', async (c) => {
+  const user = c.get('user')!;
+  const id = sanitizePathParam(c.req.param('id') ?? '', 128);
+  const existing = id ? await getAgendaBlockById(id) : null;
+  if (!id || !existing) return c.json({ success: false, error: 'Bloqueo no encontrado' }, 404);
+  if (!(await canManageExistingBlock(user, existing))) {
+    return c.json({ success: false, error: 'No autorizado' }, 403);
+  }
+
+  await database.delete(agendaBlocksTable).where(eq(agendaBlocksTable.id, id));
+  return c.json({ success: true });
+});
+
+/** Clínica a la que pertenece el podólogo dueño del bloqueo (para el scope clínica-wide). */
+async function getClinicIdForBlockOwner(podiatristId: string): Promise<string | null> {
+  const rows = await database
+    .select({ clinicId: createdUsers.clinicId })
+    .from(createdUsers)
+    .where(eq(createdUsers.userId, podiatristId))
+    .limit(1);
+  return rows[0]?.clinicId ?? null;
+}
+
+/** Un bloqueo clínica-wide solo lo toca su clinic_admin; el resto, según el podólogo dueño. */
+async function canManageExistingBlock(user: JWTPayload, block: AgendaBlock): Promise<boolean> {
+  if (!block.podiatristId) {
+    return canManageClinicWideBlocks(user) && block.clinicId === user.clinicId;
+  }
+  return canManageBlocksForPodiatrist(user, block.podiatristId);
+}
 
 /** GET /clinical-dashboard/reschedule-message */
 clinicalDashboardRoutes.get('/reschedule-message', async (c) => {

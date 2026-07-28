@@ -757,6 +757,8 @@ export interface Translations {
     legendSessionDraft: string;
     legendCancelled: string;
     cancelledSlotHint: string;
+    blockedSlot: string;
+    errorSlotBlocked: string;
     formTitleNew: string;
     formTitleEdit: string;
     patientLabel: string;
@@ -3102,6 +3104,8 @@ views: {
       legendSessionDraft: "Sesión borrador",
       legendCancelled: "Cancelada",
       cancelledSlotHint: "En este horario había una cita que fue cancelada. El horario está libre: puedes agendar sin problema.",
+      blockedSlot: "Bloqueado",
+      errorSlotBlocked: "El horario está bloqueado por \"{title}\". Elige otra hora o elimina el bloqueo desde Agenda.",
       formTitleNew: "Nueva Cita",
       formTitleEdit: "Editar Cita",
       patientLabel: "Paciente",
@@ -5571,6 +5575,8 @@ views: {
       legendSessionDraft: "Session draft",
       legendCancelled: "Cancelled",
       cancelledSlotHint: "There was a cancelled appointment in this time slot. The slot is free: you can book without issues.",
+      blockedSlot: "Blocked",
+      errorSlotBlocked: "This slot is blocked by \"{title}\". Pick another time or delete the block from Agenda.",
       formTitleNew: "New Appointment",
       formTitleEdit: "Edit Appointment",
       patientLabel: "Patient",
@@ -8035,6 +8041,8 @@ views: {
       legendSessionDraft: "Sessão rascunho",
       legendCancelled: "Cancelada",
       cancelledSlotHint: "Havia uma consulta cancelada neste horário. O horário está livre: pode agendar sem problema.",
+      blockedSlot: "Bloqueado",
+      errorSlotBlocked: "O horário está bloqueado por \"{title}\". Escolha outra hora ou elimine o bloqueio em Agenda.",
       formTitleNew: "Nova Consulta",
       formTitleEdit: "Editar Consulta",
       patientLabel: "Paciente",
@@ -10474,6 +10482,8 @@ views: {
       legendSessionDraft: "Séance brouillon",
       legendCancelled: "Annulée",
       cancelledSlotHint: "Il y avait un rendez-vous annulé sur ce créneau. Le créneau est libre : vous pouvez réserver sans problème.",
+      blockedSlot: "Bloqué",
+      errorSlotBlocked: "Ce créneau est bloqué par « {title} ». Choisissez une autre heure ou supprimez le blocage depuis Agenda.",
       formTitleNew: "Nouveau rendez-vous",
       formTitleEdit: "Modifier le rendez-vous",
       patientLabel: "Patient",

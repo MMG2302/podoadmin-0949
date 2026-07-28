@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { api } from "../lib/api-client";
 import { useLanguage } from "../contexts/language-context";
-import type { AgendaSettings } from "../types/agenda";
+import type { AgendaBlock, AgendaBlockCategory, AgendaBlockRecurrence, AgendaSettings } from "../types/agenda";
 import type { AppointmentAgendaMetrics, SatisfactionSummary } from "../types/agenda";
 import type { DailyCloseSnapshot, DailyCloseTodayStatus } from "../types/agenda";
 
@@ -202,4 +202,108 @@ export function useDailySalesClose(enabled: boolean, podiatristId?: string) {
   );
 
   return { today, history, loading, closing, error, reload: load, closeDay };
+}
+
+export type AgendaBlockDraft = {
+  scope?: "podiatrist" | "clinic";
+  podiatristId?: string;
+  title: string;
+  category: AgendaBlockCategory;
+  recurrence: AgendaBlockRecurrence;
+  weekdays?: number[];
+  startDate?: string | null;
+  endDate?: string | null;
+  startTime: string;
+  endTime: string;
+};
+
+/** Bloqueos de agenda (comida, salidas, vacaciones, festivos) del podólogo o de la clínica. */
+export function useAgendaBlocks(enabled: boolean, podiatristId?: string) {
+  const [blocks, setBlocks] = useState<AgendaBlock[]>([]);
+  const [canManage, setCanManage] = useState(false);
+  const [canManageClinicWide, setCanManageClinicWide] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const load = useCallback(async () => {
+    if (!enabled) return;
+    setLoading(true);
+    setError(null);
+    try {
+      const params = new URLSearchParams();
+      if (podiatristId) params.set("podiatristId", podiatristId);
+      const qs = params.toString();
+      const res = await api.get<{
+        success: boolean;
+        blocks?: AgendaBlock[];
+        canManage?: boolean;
+        canManageClinicWide?: boolean;
+        error?: string;
+      }>(qs ? `/clinical-dashboard/agenda-blocks?${qs}` : "/clinical-dashboard/agenda-blocks");
+      if (res.success && res.data?.success) {
+        setBlocks(res.data.blocks ?? []);
+        setCanManage(Boolean(res.data.canManage));
+        setCanManageClinicWide(Boolean(res.data.canManageClinicWide));
+      } else {
+        setBlocks([]);
+        setCanManage(false);
+        setError(res.data?.error || res.error || null);
+      }
+    } catch {
+      setBlocks([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [enabled, podiatristId]);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
+
+  const create = useCallback(
+    async (draft: AgendaBlockDraft): Promise<{ ok: boolean; error?: string }> => {
+      setSaving(true);
+      setError(null);
+      try {
+        const res = await api.post<{ success: boolean; block?: AgendaBlock; error?: string }>(
+          "/clinical-dashboard/agenda-blocks",
+          draft
+        );
+        if (res.success && res.data?.success) {
+          await load();
+          return { ok: true };
+        }
+        const message = res.data?.error || res.error || null;
+        setError(message);
+        return { ok: false, error: message ?? undefined };
+      } finally {
+        setSaving(false);
+      }
+    },
+    [load]
+  );
+
+  const remove = useCallback(
+    async (id: string): Promise<boolean> => {
+      setSaving(true);
+      setError(null);
+      try {
+        const res = await api.delete<{ success: boolean; error?: string }>(
+          `/clinical-dashboard/agenda-blocks/${encodeURIComponent(id)}`
+        );
+        if (res.success && res.data?.success) {
+          await load();
+          return true;
+        }
+        setError(res.data?.error || res.error || null);
+        return false;
+      } finally {
+        setSaving(false);
+      }
+    },
+    [load]
+  );
+
+  return { blocks, canManage, canManageClinicWide, loading, saving, error, create, remove, reload: load };
 }

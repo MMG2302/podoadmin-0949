@@ -33,6 +33,7 @@ import {
   isClinicAdminWithoutClinic,
 } from '../utils/tenant-isolation';
 import { assertReceptionistAgendaSlot, getAgendaOutsideHoursAdvisory } from '../utils/agenda-settings';
+import { assertSlotNotBlocked } from '../utils/agenda-blocks';
 import { getRequestBaseUrl } from '../utils/stripe-client';
 
 const appointmentsRoutes = new Hono();
@@ -414,6 +415,21 @@ appointmentsRoutes.post('/', requirePermission('manage_appointments'), async (c)
       );
     }
 
+    // Bloqueos de agenda (comida, salidas, vacaciones, festivos): bloqueo duro para todos
+    // los roles. Para agendar encima hay que borrar el bloqueo desde la sección Agenda.
+    const blocked = await assertSlotNotBlocked(podiatristUserId, date, time, duration);
+    if (blocked) {
+      return c.json(
+        {
+          error: 'Horario bloqueado',
+          message: blocked.message,
+          code: blocked.code,
+          block: { id: blocked.block.id, title: blocked.block.title, startTime: blocked.block.startTime, endTime: blocked.block.endTime },
+        },
+        409
+      );
+    }
+
     const agendaBlock = await assertReceptionistAgendaSlot(user, podiatristUserId, time, duration);
     if (agendaBlock) {
       return c.json(
@@ -666,6 +682,25 @@ appointmentsRoutes.put('/:id', requirePermission('manage_appointments'), async (
       (body.podiatristId !== undefined && body.podiatristId !== null && String(body.podiatristId).trim() !== '');
 
     if (schedulingTouched) {
+      // Mover una cita tampoco puede pisar un bloqueo de agenda (mismo criterio que al crearla).
+      const blocked = await assertSlotNotBlocked(
+        effectivePodiatristId,
+        effectiveDate,
+        effectiveTime,
+        duration
+      );
+      if (blocked) {
+        return c.json(
+          {
+            error: 'Horario bloqueado',
+            message: blocked.message,
+            code: blocked.code,
+            block: { id: blocked.block.id, title: blocked.block.title, startTime: blocked.block.startTime, endTime: blocked.block.endTime },
+          },
+          409
+        );
+      }
+
       const agendaBlock = await assertReceptionistAgendaSlot(
         user,
         effectivePodiatristId,

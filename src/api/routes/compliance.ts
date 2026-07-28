@@ -9,6 +9,7 @@ import { sanitizePathParam } from '../utils/sanitization';
 import { getClientIP } from '../utils/ip-tracking';
 import { getSafeUserAgent } from '../utils/request-headers';
 import { buildPatientClinicalExport } from '../utils/clinical-admin';
+import { getPatientAccessDeniedReason } from '../utils/tenant-isolation';
 import { retentionSummary } from '../utils/retention-policy';
 import { applyLegalHoldToPatient, releaseLegalHold } from '../utils/legal-hold';
 import { logAuditEvent } from '../utils/audit-log';
@@ -193,7 +194,11 @@ complianceRoutes.get('/patients/:patientId/portable-export', requirePermission('
   const user = c.get('user')!;
   const patientId = sanitizePathParam(c.req.param('patientId'));
   const patientRows = await database.select().from(patients).where(eq(patients.id, patientId)).limit(1);
-  if (!patientRows[0]) return c.json({ error: 'Paciente no encontrado' }, 404);
+  const patientRow = patientRows[0];
+  if (!patientRow) return c.json({ error: 'Paciente no encontrado' }, 404);
+
+  const accessDenied = await getPatientAccessDeniedReason(user, patientRow);
+  if (accessDenied) return c.json({ error: accessDenied }, 403);
 
   const exportData = await buildPatientClinicalExport(patientId, user.email);
   if (!exportData) return c.json({ error: 'Paciente no encontrado' }, 404);

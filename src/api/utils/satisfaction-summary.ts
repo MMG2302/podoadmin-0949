@@ -48,14 +48,20 @@ export async function fetchSatisfactionSummary(options: {
     lte(appointmentsTable.sessionDate, toDate),
     isNotNull(appointmentsTable.satisfactionRating),
   ];
-  if (options.podiatristUserId) {
-    conditions.push(eq(appointmentsTable.createdBy, options.podiatristUserId));
-  } else if (options.scope.mode === 'clinic') {
+  // El alcance derivado del rol se aplica siempre primero. El filtro opcional
+  // por podólogo solo puede acotar (AND) ese alcance, nunca reemplazarlo:
+  // si el podiatristUserId solicitado queda fuera del alcance del llamador,
+  // la combinación de condiciones no devolverá filas (sin filtrar datos de
+  // otro tenant), igual que hace resolveCheckoutAnalyticsScope().
+  if (options.scope.mode === 'clinic') {
     conditions.push(eq(appointmentsTable.clinicId, options.scope.clinicId));
   } else if (options.scope.mode === 'podiatrist') {
     conditions.push(eq(appointmentsTable.createdBy, options.scope.createdBy));
   } else if (options.scope.mode === 'receptionist') {
     conditions.push(inArray(appointmentsTable.createdBy, options.scope.createdByIn));
+  }
+  if (options.podiatristUserId) {
+    conditions.push(eq(appointmentsTable.createdBy, options.podiatristUserId));
   }
 
   const rows = await database

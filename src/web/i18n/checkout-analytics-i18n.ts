@@ -168,6 +168,44 @@ export type AgendaAnalyticsI18n = {
   loadMetricsNetworkError: string;
   loadDailyCloseFailed: string;
   closeDayFailed: string;
+  blocksTitle: string;
+  blocksHint: string;
+  blocksLoading: string;
+  blocksEmpty: string;
+  blocksAdd: string;
+  blocksCancel: string;
+  blocksSave: string;
+  blocksSaving: string;
+  blocksDelete: string;
+  blocksDeleteConfirm: string;
+  blocksTitleLabel: string;
+  blocksTitlePlaceholder: string;
+  blocksCategory: string;
+  blocksCategoryLunch: string;
+  blocksCategoryPersonal: string;
+  blocksCategoryAdmin: string;
+  blocksCategoryVacation: string;
+  blocksCategoryOther: string;
+  blocksRecurrence: string;
+  blocksRecurrenceOnce: string;
+  blocksRecurrenceWeekly: string;
+  blocksWeekdays: string;
+  blocksDate: string;
+  blocksDateFrom: string;
+  blocksDateTo: string;
+  blocksDateToOptional: string;
+  blocksValidityHint: string;
+  blocksFrom: string;
+  blocksTo: string;
+  blocksAllDay: string;
+  blocksAllDayLabel: string;
+  blocksScope: string;
+  blocksScopeMine: string;
+  blocksScopeClinic: string;
+  blocksScopeClinicHint: string;
+  blocksEveryDay: string;
+  blocksReadOnlyHint: string;
+  blocksClinicWideTag: string;
 };
 
 const analyticsEs: CheckoutAnalyticsI18n = {
@@ -642,6 +680,45 @@ const agendaEs: AgendaAnalyticsI18n = {
   loadMetricsNetworkError: "Error de red al cargar métricas de agenda",
   loadDailyCloseFailed: "No se pudo cargar el cierre diario",
   closeDayFailed: "No se pudo cerrar el día",
+  blocksTitle: "Bloqueos de horario",
+  blocksHint:
+    "Tramos en los que no se agenda: comida, salidas, vacaciones o festivos. Nadie puede crear citas encima, y el enlace de reserva en línea no los ofrece.",
+  blocksLoading: "Cargando bloqueos…",
+  blocksEmpty: "Sin bloqueos. Agrega la comida o una salida prevista.",
+  blocksAdd: "Agregar bloqueo",
+  blocksCancel: "Cancelar",
+  blocksSave: "Guardar bloqueo",
+  blocksSaving: "Guardando…",
+  blocksDelete: "Eliminar",
+  blocksDeleteConfirm: "¿Eliminar este bloqueo? El horario volverá a quedar disponible.",
+  blocksTitleLabel: "Nombre",
+  blocksTitlePlaceholder: "Comida, Salida al banco…",
+  blocksCategory: "Tipo",
+  blocksCategoryLunch: "Comida",
+  blocksCategoryPersonal: "Asunto personal",
+  blocksCategoryAdmin: "Administrativo",
+  blocksCategoryVacation: "Vacaciones",
+  blocksCategoryOther: "Otro",
+  blocksRecurrence: "Repetición",
+  blocksRecurrenceOnce: "Una vez",
+  blocksRecurrenceWeekly: "Cada semana",
+  blocksWeekdays: "Días",
+  blocksDate: "Fecha",
+  blocksDateFrom: "Desde",
+  blocksDateTo: "Hasta",
+  blocksDateToOptional: "Hasta (opcional)",
+  blocksValidityHint: "Deja las fechas vacías para que el bloqueo semanal sea permanente.",
+  blocksFrom: "De",
+  blocksTo: "A",
+  blocksAllDay: "Todo el día",
+  blocksAllDayLabel: "Todo el día",
+  blocksScope: "Aplica a",
+  blocksScopeMine: "Este podólogo",
+  blocksScopeClinic: "Toda la clínica",
+  blocksScopeClinicHint: "Bloquea la agenda de todos los podólogos de la clínica (ej. día festivo).",
+  blocksEveryDay: "Todos los días",
+  blocksReadOnlyHint: "No tienes permiso para editar los bloqueos de esta agenda.",
+  blocksClinicWideTag: "Clínica",
 };
 
 const agendaEn: AgendaAnalyticsI18n = {
@@ -710,6 +787,45 @@ const agendaEn: AgendaAnalyticsI18n = {
   loadMetricsNetworkError: "Network error loading agenda metrics",
   loadDailyCloseFailed: "Could not load daily close",
   closeDayFailed: "Could not close the day",
+  blocksTitle: "Schedule blocks",
+  blocksHint:
+    "Time you are not available: lunch, errands, holidays or time off. Nobody can book over them, and the online booking link hides those slots.",
+  blocksLoading: "Loading blocks…",
+  blocksEmpty: "No blocks yet. Add lunch or a planned errand.",
+  blocksAdd: "Add block",
+  blocksCancel: "Cancel",
+  blocksSave: "Save block",
+  blocksSaving: "Saving…",
+  blocksDelete: "Delete",
+  blocksDeleteConfirm: "Delete this block? The slot becomes available again.",
+  blocksTitleLabel: "Name",
+  blocksTitlePlaceholder: "Lunch, bank errand…",
+  blocksCategory: "Type",
+  blocksCategoryLunch: "Lunch",
+  blocksCategoryPersonal: "Personal",
+  blocksCategoryAdmin: "Admin work",
+  blocksCategoryVacation: "Time off",
+  blocksCategoryOther: "Other",
+  blocksRecurrence: "Repeat",
+  blocksRecurrenceOnce: "Once",
+  blocksRecurrenceWeekly: "Weekly",
+  blocksWeekdays: "Days",
+  blocksDate: "Date",
+  blocksDateFrom: "From",
+  blocksDateTo: "To",
+  blocksDateToOptional: "To (optional)",
+  blocksValidityHint: "Leave the dates empty to make the weekly block permanent.",
+  blocksFrom: "From",
+  blocksTo: "To",
+  blocksAllDay: "All day",
+  blocksAllDayLabel: "All day",
+  blocksScope: "Applies to",
+  blocksScopeMine: "This podiatrist",
+  blocksScopeClinic: "Whole clinic",
+  blocksScopeClinicHint: "Blocks every podiatrist in the clinic (e.g. a public holiday).",
+  blocksEveryDay: "Every day",
+  blocksReadOnlyHint: "You do not have permission to edit blocks on this schedule.",
+  blocksClinicWideTag: "Clinic",
 };
 
 const agendaPt: AgendaAnalyticsI18n = {
@@ -779,6 +895,45 @@ const agendaPt: AgendaAnalyticsI18n = {
   loadMetricsNetworkError: "Erro de rede ao carregar métricas da agenda",
   loadDailyCloseFailed: "Não foi possível carregar o fecho diário",
   closeDayFailed: "Não foi possível fechar o dia",
+  blocksTitle: "Bloqueios de horário",
+  blocksHint:
+    "Períodos em que não se marcam consultas: almoço, saídas, férias ou feriados. Ninguém consegue marcar por cima e a marcação online não os mostra.",
+  blocksLoading: "A carregar bloqueios…",
+  blocksEmpty: "Sem bloqueios. Adicione o almoço ou uma saída prevista.",
+  blocksAdd: "Adicionar bloqueio",
+  blocksCancel: "Cancelar",
+  blocksSave: "Guardar bloqueio",
+  blocksSaving: "A guardar…",
+  blocksDelete: "Eliminar",
+  blocksDeleteConfirm: "Eliminar este bloqueio? O horário volta a ficar disponível.",
+  blocksTitleLabel: "Nome",
+  blocksTitlePlaceholder: "Almoço, ida ao banco…",
+  blocksCategory: "Tipo",
+  blocksCategoryLunch: "Almoço",
+  blocksCategoryPersonal: "Assunto pessoal",
+  blocksCategoryAdmin: "Administrativo",
+  blocksCategoryVacation: "Férias",
+  blocksCategoryOther: "Outro",
+  blocksRecurrence: "Repetição",
+  blocksRecurrenceOnce: "Uma vez",
+  blocksRecurrenceWeekly: "Todas as semanas",
+  blocksWeekdays: "Dias",
+  blocksDate: "Data",
+  blocksDateFrom: "De",
+  blocksDateTo: "Até",
+  blocksDateToOptional: "Até (opcional)",
+  blocksValidityHint: "Deixe as datas vazias para que o bloqueio semanal seja permanente.",
+  blocksFrom: "Das",
+  blocksTo: "Às",
+  blocksAllDay: "Todo o dia",
+  blocksAllDayLabel: "Todo o dia",
+  blocksScope: "Aplica-se a",
+  blocksScopeMine: "Este podologista",
+  blocksScopeClinic: "Toda a clínica",
+  blocksScopeClinicHint: "Bloqueia a agenda de todos os podologistas da clínica (ex.: feriado).",
+  blocksEveryDay: "Todos os dias",
+  blocksReadOnlyHint: "Não tem permissão para editar os bloqueios desta agenda.",
+  blocksClinicWideTag: "Clínica",
 };
 
 const agendaFr: AgendaAnalyticsI18n = {
@@ -848,6 +1003,45 @@ const agendaFr: AgendaAnalyticsI18n = {
   loadMetricsNetworkError: "Erreur réseau lors du chargement des métriques d'agenda",
   loadDailyCloseFailed: "Impossible de charger la clôture journalière",
   closeDayFailed: "Impossible de clôturer la journée",
+  blocksTitle: "Blocages d'horaire",
+  blocksHint:
+    "Créneaux sans rendez-vous : déjeuner, sorties, congés ou jours fériés. Personne ne peut réserver par-dessus et la réservation en ligne ne les propose pas.",
+  blocksLoading: "Chargement des blocages…",
+  blocksEmpty: "Aucun blocage. Ajoutez le déjeuner ou une sortie prévue.",
+  blocksAdd: "Ajouter un blocage",
+  blocksCancel: "Annuler",
+  blocksSave: "Enregistrer le blocage",
+  blocksSaving: "Enregistrement…",
+  blocksDelete: "Supprimer",
+  blocksDeleteConfirm: "Supprimer ce blocage ? Le créneau redevient disponible.",
+  blocksTitleLabel: "Nom",
+  blocksTitlePlaceholder: "Déjeuner, passage à la banque…",
+  blocksCategory: "Type",
+  blocksCategoryLunch: "Déjeuner",
+  blocksCategoryPersonal: "Motif personnel",
+  blocksCategoryAdmin: "Administratif",
+  blocksCategoryVacation: "Congés",
+  blocksCategoryOther: "Autre",
+  blocksRecurrence: "Répétition",
+  blocksRecurrenceOnce: "Une fois",
+  blocksRecurrenceWeekly: "Chaque semaine",
+  blocksWeekdays: "Jours",
+  blocksDate: "Date",
+  blocksDateFrom: "Du",
+  blocksDateTo: "Au",
+  blocksDateToOptional: "Au (facultatif)",
+  blocksValidityHint: "Laissez les dates vides pour que le blocage hebdomadaire soit permanent.",
+  blocksFrom: "De",
+  blocksTo: "À",
+  blocksAllDay: "Toute la journée",
+  blocksAllDayLabel: "Toute la journée",
+  blocksScope: "S'applique à",
+  blocksScopeMine: "Ce podologue",
+  blocksScopeClinic: "Toute la clinique",
+  blocksScopeClinicHint: "Bloque l'agenda de tous les podologues de la clinique (ex. jour férié).",
+  blocksEveryDay: "Tous les jours",
+  blocksReadOnlyHint: "Vous n'avez pas la permission de modifier les blocages de cet agenda.",
+  blocksClinicWideTag: "Clinique",
 };
 
 export const checkoutAnalyticsByLang = {

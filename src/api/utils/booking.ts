@@ -7,6 +7,7 @@ import {
   professionalInfo,
 } from '../database/schema';
 import { resolveAgendaSettingsForPodiatrist, localHourInTimezone } from './agenda-settings';
+import { blocksForDate, blockMinutes, loadBlocksForPodiatrist } from './agenda-blocks';
 
 export const BOOKING_SLOT_MINUTES = 30;
 export const BOOKING_WINDOW_DAYS = 21;
@@ -140,6 +141,13 @@ export async function computeAvailableSlots(
     const start = timeToMinutes(e.time);
     return { start, end: start + parseDurationFromNotes(e.notes) };
   });
+
+  // Los bloqueos de agenda (comida, salidas, vacaciones, festivos) ocupan huecos igual que
+  // una cita: el paciente nunca llega a verlos en el enlace público de auto-agendado.
+  const blocks = blocksForDate(await loadBlocksForPodiatrist(podiatristUserId), date);
+  for (const block of blocks) {
+    busy.push(blockMinutes(block));
+  }
 
   // Si la fecha es hoy en la zona de la clínica, excluir horas ya pasadas.
   const nowLocalHour = localHourInTimezone(settings.timezone);

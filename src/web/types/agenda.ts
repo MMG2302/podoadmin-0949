@@ -8,6 +8,32 @@ export type AgendaSettings = {
   timezone: string;
 };
 
+export type AgendaBlockCategory = "lunch" | "personal" | "admin" | "vacation" | "other";
+export type AgendaBlockRecurrence = "once" | "weekly";
+
+/**
+ * Tramo bloqueado de la agenda (comida, salida personal, vacaciones, festivo).
+ * podiatristId null = bloqueo de toda la clínica. La ventana es [startTime, endTime)
+ * y "24:00" significa fin del día, así que 00:00–24:00 es un bloqueo de día completo.
+ */
+export type AgendaBlock = {
+  id: string;
+  podiatristId: string | null;
+  clinicId: string | null;
+  title: string;
+  category: AgendaBlockCategory;
+  recurrence: AgendaBlockRecurrence;
+  /** Días de la semana (0=domingo) en los que aplica, solo si recurrence="weekly". */
+  weekdays: number[];
+  startDate: string | null;
+  endDate: string | null;
+  startTime: string;
+  endTime: string;
+  createdBy: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
 export type SatisfactionSummary = {
   periodDays: number;
   fromDate: string;

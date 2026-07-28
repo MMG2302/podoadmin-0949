@@ -10,6 +10,7 @@ import {
 } from "../../hooks/use-agenda-analytics";
 import { translateSystemScopeLabel } from "../../lib/system-scope-label";
 import { SimpleBarChart } from "./simple-bar-chart";
+import { AgendaBlocksSection } from "./agenda-blocks-section";
 import type { AgendaSettings } from "../../types/agenda";
 
 const LOCALE_BY_LANG: Record<string, string> = {
@@ -79,6 +80,8 @@ type Props = {
   canEditSchedule?: boolean;
   canCloseDay?: boolean;
   isClinicAdmin?: boolean;
+  /** Los bloqueos (comida, salidas) los gestionan también recepción, no solo quien edita el horario. */
+  canEditBlocks?: boolean;
 };
 
 export function AgendaAnalyticsPanel({
@@ -86,6 +89,7 @@ export function AgendaAnalyticsPanel({
   canEditSchedule = false,
   canCloseDay = true,
   isClinicAdmin = false,
+  canEditBlocks = false,
 }: Props) {
   const { t, language } = useLanguage();
   const aa = t.checkout.agendaAnalytics;
@@ -220,8 +224,8 @@ export function AgendaAnalyticsPanel({
           label={t.dashboard.agendaOccupancy}
           value={`${metrics?.occupancy.percent ?? 0}%`}
           sub={aa.occupiedAvailable
-            .replace("{occ}", String(metrics?.occupancy.occupiedMinutes ?? 0))
-            .replace("{avail}", String(metrics?.occupancy.availableMinutes ?? 0))}
+            .replace("{occupied}", String(metrics?.occupancy.occupiedMinutes ?? 0))
+            .replace("{available}", String(metrics?.occupancy.availableMinutes ?? 0))}
         />
         <MetricCard
           label={aa.demand30d}
@@ -492,6 +496,8 @@ export function AgendaAnalyticsPanel({
           </div>
         )}
       </SectionCard>
+
+      <AgendaBlocksSection podiatristId={podiatristId} canEdit={canEditBlocks} />
 
       <SectionCard title={aa.dailyCloseTitle}>
         {closeError && <p className="text-sm text-semantic-error">{closeError}</p>}

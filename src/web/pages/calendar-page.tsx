@@ -32,8 +32,16 @@ import { useCheckoutTariffs } from "../hooks/use-checkout-tariffs";
 import { QuickTariffChips } from "../components/checkout/quick-tariff-chips";
 import type { CheckoutQuickTariff } from "../types/checkout-tariff";
 import type { ClinicalSession, Patient, Appointment } from "../types/clinical";
-import type { AgendaSettings } from "../types/agenda";
+import type { AgendaBlock, AgendaSettings } from "../types/agenda";
 import { isAppointmentOutsideAgendaHours } from "../lib/agenda-hours";
+import {
+  AGENDA_BLOCK_CATEGORY_ICONS,
+  agendaTimeToMinutes,
+  blocksForDate,
+  blocksAffectingPodiatrist,
+  findOverlappingBlock,
+  isAllDayBlock,
+} from "../lib/agenda-blocks";
 import {
   CalendarDayResourceGrid,
   CalendarDayTimeGrid,
@@ -108,12 +116,21 @@ const CalendarPage = () => {
   }, [ensureVisibleUsers]);
 
   const allUsers = getAllUsers();
-  const clinicPodiatrists = isReceptionist && user?.assignedPodiatristIds?.length
-    ? allUsers.filter((u) => user.assignedPodiatristIds!.includes(u.id))
-    : allUsers.filter(
-        (u) => u.role === "podiatrist" && u.clinicId === user?.clinicId
-      );
-  
+  // Clave primitiva: el array de asignados cambia de identidad al rehidratar el usuario,
+  // pero mientras su contenido sea el mismo el memo no debe invalidarse.
+  const assignedPodiatristKey = user?.assignedPodiatristIds?.join(",") ?? "";
+  // Memoizado a propósito: sin esto el .filter() devuelve un array nuevo en cada render,
+  // lo que invalida filterPatientsForClinic y dispara en bucle el efecto del selector de
+  // pacientes (setAppointmentCompactPatients([]) → render → repeat).
+  const clinicPodiatrists = useMemo(
+    () =>
+      isReceptionist && assignedPodiatristKey
+        ? allUsers.filter((u) => assignedPodiatristKey.split(",").includes(u.id))
+        : allUsers.filter((u) => u.role === "podiatrist" && u.clinicId === user?.clinicId),
+    [allUsers, isReceptionist, assignedPodiatristKey, user?.clinicId]
+  );
+
+
   const [viewMode, setViewMode] = useState<ViewMode>("month");
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
@@ -140,6 +157,9 @@ const CalendarPage = () => {
   const [appointmentSubmitError, setAppointmentSubmitError] = useState("");
   const [appointmentAgendaSettings, setAppointmentAgendaSettings] = useState<AgendaSettings | null>(null);
   const [appointmentAgendaWarning, setAppointmentAgendaWarning] = useState<string | null>(null);
+  // Bloqueos de agenda (comida, salidas, festivos): se pintan en la rejilla y el backend
+  // impide agendar encima (409 AGENDA_BLOCKED).
+  const [agendaBlocks, setAgendaBlocks] = useState<AgendaBlock[]>([]);
   const [agendaExportBusy, setAgendaExportBusy] = useState(false);
   const [showIcsInfoCard, setShowIcsInfoCard] = useState(true);
   const [agendaMetrics, setAgendaMetrics] = useState<{
@@ -179,7 +199,7 @@ const CalendarPage = () => {
     const from = formatLocalDateString(rangeStart);
     const to = formatLocalDateString(rangeEnd);
 
-    const [sessRes, aptRes, metricsRes, waitRes, demandRes] = await Promise.all([
+    const [sessRes, aptRes, metricsRes, waitRes, demandRes, blocksRes] = await Promise.all([
       api.get<{ success?: boolean; sessions?: ClinicalSession[] }>(
         `/sessions?from=${from}&to=${to}&limit=500`
       ),
@@ -198,12 +218,16 @@ const CalendarPage = () => {
             };
           }>("/clinical-dashboard/appointment-metrics?days=30")
         : Promise.resolve({ success: false as const, data: undefined }),
+      api.get<{ success?: boolean; blocks?: AgendaBlock[] }>("/clinical-dashboard/agenda-blocks?all=1"),
     ]);
 
     const sess = sessRes.success && Array.isArray(sessRes.data?.sessions) ? sessRes.data.sessions : [];
     const apt = aptRes.success && Array.isArray(aptRes.data?.appointments) ? aptRes.data.appointments : [];
     setAllSessions(sess);
     setAllAppointments(apt);
+    setAgendaBlocks(
+      blocksRes.success && Array.isArray(blocksRes.data?.blocks) ? blocksRes.data.blocks : []
+    );
 
     const patientIds = [
       ...new Set([
@@ -693,6 +717,36 @@ const isSelected = (date: Date) => {
       });
     }
 
+    // Bloqueos de agenda: se pintan rayados. Un bloqueo de clínica (podiatristId null) se
+    // repite en la columna de cada podólogo visible para que se vea en la vista por recursos.
+    const isoDate = formatLocalDateString(date);
+    const blockOwners = colorByPodiatrist
+      ? orderedPodiatristIds
+      : [podiatristFilter !== "all" ? podiatristFilter : user?.id ?? ""];
+
+    for (const block of blocksForDate(agendaBlocks, isoDate)) {
+      const owners = block.podiatristId ? [block.podiatristId] : blockOwners;
+      for (const ownerId of owners) {
+        if (!ownerId) continue;
+        if (block.podiatristId && colorByPodiatrist && !orderedPodiatristIds.includes(ownerId)) continue;
+        const start = agendaTimeToMinutes(block.startTime);
+        const clamped = clampEventToGrid(start, agendaTimeToMinutes(block.endTime) - start);
+        if (!clamped) continue;
+        blocks.push({
+          id: `block_${block.id}_${ownerId}`,
+          kind: "blocked",
+          startMinutes: clamped.startMinutes,
+          durationMinutes: clamped.durationMinutes,
+          podiatristId: ownerId,
+          title: block.title,
+          subtitle: t.calendar.blockedSlot,
+          meta: isAllDayBlock(block)
+            ? `${AGENDA_BLOCK_CATEGORY_ICONS[block.category]}`
+            : `${AGENDA_BLOCK_CATEGORY_ICONS[block.category]} ${block.startTime}`,
+        });
+      }
+    }
+
     return blocks;
   };
 
@@ -829,6 +883,35 @@ const isSelected = (date: Date) => {
     return code === "AGENDA_OUTSIDE_HOURS" || code === "AGENDA_OVERTIME_LIMIT";
   };
 
+  /** El backend rechazó la cita por caer sobre un bloqueo de agenda (comida, salida, festivo). */
+  const blockedErrorMessage = (res: {
+    data?: { code?: string; block?: { title?: string } };
+  }): string | null => {
+    if ((res.data as { code?: string })?.code !== "AGENDA_BLOCKED") return null;
+    const title = (res.data as { block?: { title?: string } })?.block?.title ?? "";
+    return t.calendar.errorSlotBlocked.replace("{title}", title);
+  };
+
+  /**
+   * Aviso antes de guardar: el backend igual devuelve 409, pero así el usuario ve el choque
+   * mientras elige la hora.
+   */
+  const appointmentBlockedHit = useMemo(() => {
+    if (!appointmentForm.date || !appointmentForm.time || !appointmentForm.podiatristId) return null;
+    return findOverlappingBlock(
+      blocksAffectingPodiatrist(agendaBlocks, appointmentForm.podiatristId),
+      appointmentForm.date,
+      appointmentForm.time,
+      appointmentForm.duration || 30
+    );
+  }, [
+    agendaBlocks,
+    appointmentForm.date,
+    appointmentForm.time,
+    appointmentForm.duration,
+    appointmentForm.podiatristId,
+  ]);
+
   const handleAppointmentSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setAppointmentSubmitError("");
@@ -847,6 +930,14 @@ const isSelected = (date: Date) => {
         setAppointmentSubmitError(t.calendar.errorPendingPatientRequired);
         return;
       }
+    }
+
+    // Bloqueo duro: ningún rol agenda sobre un bloqueo; hay que borrarlo primero.
+    if (appointmentBlockedHit) {
+      setAppointmentSubmitError(
+        t.calendar.errorSlotBlocked.replace("{title}", appointmentBlockedHit.title)
+      );
+      return;
     }
 
     if (appointmentAgendaWarning && (isPodiatrist || isClinicAdmin) && !isReceptionist) {
@@ -888,13 +979,15 @@ const isSelected = (date: Date) => {
           agendaWarning?: { message: string };
         }>(`/appointments/${editingAppointment.id}`, body);
         if (!res.success) {
-          const errMsg = isOverlapError(res)
-            ? t.calendar.errorOverlap
-            : isAgendaHoursError(res)
-              ? (res.data as { message?: string })?.message ||
-                res.message ||
-                t.calendar.outsideHoursBlocked
-              : (res.message || res.error || (res.data as { message?: string })?.message || t.calendar.errorUpdateFailed);
+          const errMsg =
+            blockedErrorMessage(res) ??
+            (isOverlapError(res)
+              ? t.calendar.errorOverlap
+              : isAgendaHoursError(res)
+                ? (res.data as { message?: string })?.message ||
+                  res.message ||
+                  t.calendar.outsideHoursBlocked
+                : (res.message || res.error || (res.data as { message?: string })?.message || t.calendar.errorUpdateFailed));
           setAppointmentSubmitError(errMsg);
           return;
         }
@@ -917,13 +1010,15 @@ const isSelected = (date: Date) => {
           agendaWarning?: { message: string };
         }>("/appointments", body);
         if (!res.success) {
-          const errMsg = isOverlapError(res)
-            ? t.calendar.errorOverlap
-            : isAgendaHoursError(res)
-              ? (res.data as { message?: string })?.message ||
-                res.message ||
-                t.calendar.outsideHoursBlocked
-              : (res.message || res.error || (res.data as { message?: string })?.message || t.calendar.errorCreateFailed);
+          const errMsg =
+            blockedErrorMessage(res) ??
+            (isOverlapError(res)
+              ? t.calendar.errorOverlap
+              : isAgendaHoursError(res)
+                ? (res.data as { message?: string })?.message ||
+                  res.message ||
+                  t.calendar.outsideHoursBlocked
+                : (res.message || res.error || (res.data as { message?: string })?.message || t.calendar.errorCreateFailed));
           setAppointmentSubmitError(errMsg);
           return;
         }
@@ -1009,7 +1104,9 @@ const isSelected = (date: Date) => {
   useEffect(() => {
     if (!showAppointmentForm) {
       setAppointmentPatientPickerMode("loading");
-      setAppointmentCompactPatients([]);
+      // Reusar el array si ya está vacío: un [] nuevo cuenta como cambio de estado y
+      // volvería a disparar este efecto en bucle si alguna dependencia cambia de identidad.
+      setAppointmentCompactPatients((prev) => (prev.length === 0 ? prev : []));
       return;
     }
     if (isPendingPatientMode) return;
@@ -1510,7 +1607,10 @@ const isSelected = (date: Date) => {
 
                 {getAppointmentsForDate(currentDate).length === 0 &&
                 getSessionsForDate(currentDate).length === 0 &&
-                getCancelledAppointmentsForDate(currentDate).length === 0 ? (
+                getCancelledAppointmentsForDate(currentDate).length === 0 &&
+                // Un día sin citas pero con bloqueos igual muestra la rejilla: si no, la comida
+                // o la salida quedarían invisibles.
+                blocksForDate(agendaBlocks, formatLocalDateString(currentDate)).length === 0 ? (
                   <div className="text-center py-12 text-brand-muted">
                     <svg className="w-12 h-12 mx-auto text-brand-border mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
@@ -2124,6 +2224,12 @@ const isSelected = (date: Date) => {
                 placeholder={t.calendar.notesPlaceholder}
               />
             </section>
+
+            {appointmentBlockedHit && (
+              <div className="rounded-lg border border-semantic-error/40 bg-semantic-error-bg/40 px-3 py-2 text-sm text-semantic-error">
+                {t.calendar.errorSlotBlocked.replace("{title}", appointmentBlockedHit.title)}
+              </div>
+            )}
 
             {appointmentAgendaWarning && (
               <div

@@ -860,3 +860,33 @@ export const announcementDismissals = sqliteTable('announcement_dismissals', {
   userId: text('user_id').notNull(),
   dismissedAt: text('dismissed_at').notNull(),
 });
+
+/**
+ * Bloqueos de agenda: tramos en los que NO se puede agendar (comida, salida personal,
+ * vacaciones, día festivo de la clínica). Se aplican como bloqueo duro tanto al staff
+ * como a la reserva pública en línea.
+ *
+ * - podiatristId con valor  → bloquea la agenda de ese podólogo.
+ * - podiatristId NULL + clinicId → bloquea a todos los podólogos de esa clínica.
+ * - recurrence 'weekly' → se repite en los `weekdays` indicados; startDate/endDate acotan la vigencia (opcionales).
+ * - recurrence 'once'   → tramo entre startDate y endDate (endDate = startDate si es de un solo día).
+ *
+ * startTime/endTime son HH:MM y la ventana es [start, end); '24:00' significa fin del día,
+ * así que un bloqueo de día completo es 00:00–24:00.
+ */
+export const agendaBlocks = sqliteTable('agenda_blocks', {
+  id: text('id').primaryKey(),
+  podiatristId: text('podiatrist_id'),
+  clinicId: text('clinic_id'),
+  title: text('title').notNull(),
+  category: text('category').notNull().default('other'), // lunch | personal | admin | vacation | other
+  recurrence: text('recurrence').notNull().default('once'), // once | weekly
+  weekdays: text('weekdays'), // CSV '1,2,3,4,5' (0=domingo), solo si recurrence='weekly'
+  startDate: text('start_date'), // YYYY-MM-DD
+  endDate: text('end_date'), // YYYY-MM-DD
+  startTime: text('start_time').notNull(), // HH:MM
+  endTime: text('end_time').notNull(), // HH:MM exclusivo ('24:00' = fin del día)
+  createdBy: text('created_by').notNull(),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+});

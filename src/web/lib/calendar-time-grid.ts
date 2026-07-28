@@ -113,7 +113,8 @@ export function sortPodiatristsByName<T extends { name: string }>(podiatrists: T
 
 export type TimedCalendarEvent = {
   id: string;
-  kind: "appointment" | "session";
+  /** "blocked" = bloqueo de agenda (comida, salida, festivo). */
+  kind: "appointment" | "session" | "blocked";
   startMinutes: number;
   durationMinutes: number;
   podiatristId?: string;

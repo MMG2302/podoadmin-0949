@@ -1,0 +1,96 @@
+# Reglas de seguridad de datos de pacientes
+
+Estas reglas nacen de un escaneo de Claude Security (2026-07-28, `CLAUDE-SECURITY-20260728-063004/`) que encontró varios endpoints que devolvían datos de pacientes de **otras clínicas** porque nadie comprobaba a quién pertenecía el dato antes de entregarlo (findings F1-F5). Se corrigieron, pero el mismo error puede volver a aparecer en cualquier endpoint nuevo o editado si no se aplica esta regla de forma consistente. Por eso quedan documentadas acá: se cargan automáticamente en cada sesión de Claude Code sobre este proyecto.
+
+## La regla
+
+Cualquier endpoint o función nueva o editada que lea o escriba datos ligados a un paciente (sesiones clínicas, adjuntos de laboratorio, exportaciones, métricas, mensajes, citas, etc.) **debe** comprobar que ese dato pertenece al tenant (clínica/podólogo) del usuario que hace el pedido — nunca confiar solo en un permiso por rol (`requirePermission`).
+
+### Para un solo registro (ej. `GET /:id`, `GET /:id/download`)
+
+Cargar el registro dueño (paciente o sesión) y llamar, antes de devolver nada:
+
+```ts
+const accessDenied = await getPatientAccessDeniedReason(user, patientRow);
+if (accessDenied) return c.json({ error: accessDenied }, 403);
+```
+
+(`getSessionAccessDeniedReason` para sesiones). Ambas viven en `src/api/utils/tenant-isolation.ts`.
+
+Si el registro que se está protegiendo (ej. un adjunto de laboratorio) no tiene su propio `createdBy`/`clinicId` normalizado al podólogo titular, hay que cargar el **paciente dueño** y comprobar contra ese, no contra el registro en sí — el `createdBy` de un adjunto suele ser quien lo subió (podólogo o recepcionista en su nombre), no el titular del paciente. Ver el fix de F2 en `src/api/routes/lab-attachments.ts` como ejemplo de este error y su corrección.
+
+### Para listados (ej. `GET /`)
+
+Nunca hacer un `select()` sin `where` de alcance. Usar:
+
+```ts
+const scope = await resolveClinicalListScope(user);
+const where = mergeScopeWhere(scope, { createdBy: tabla.createdBy, clinicId: tabla.clinicId });
+```
+
+de `src/api/utils/clinical-list-scope.ts`. Si la tabla no tiene sus propias columnas `createdBy`/`clinicId` normalizadas (como los adjuntos de laboratorio), hacer `join` a la tabla que sí las tiene (`patients`) y aplicar el scope contra esas columnas — ver el fix de F3.
+
+### Parámetros opcionales que acotan una consulta (ej. `?podiatristId=`)
+
+Un parámetro que el cliente puede mandar para "filtrar por otro podólogo" solo puede **acotar (AND)** el alcance ya calculado del usuario — nunca **reemplazarlo**. Si el valor pedido queda fuera del alcance del usuario, la consulta debe devolver una lista vacía, nunca los datos de otro tenant. Ver el fix de F5 en `src/api/utils/satisfaction-summary.ts`.
+
+### Claves de almacenamiento (R2, buckets)
+
+Nunca aceptar una `fileKey`/ruta de almacenamiento tal cual la manda el cliente. Generarla en el servidor, o si el cliente debe declararla, validar que esté confinada al namespace del propio paciente (`lab/<patientId>/<archivo>`, sin `..` ni segmentos extra). Ver el fix de F1.
+
+## Antes de dar por terminada cualquier tarea que toque datos de pacientes
+
+1. ¿El endpoint nuevo o editado sigue alguna de las reglas de arriba? Si falta, agregarla — no asumir que el permiso por rol (`requirePermission`) alcanza.
+2. Antes de publicar cambios grandes, correr `/claude-security` (nivel `medium` o más) para volver a escanear. Los escaneos no son deterministas: correrlos seguido construye cobertura con el tiempo.
+3. Si el escaneo encuentra algo nuevo, seguir el mismo patrón: parche revisado por el panel de agentes, nunca aplicado a ciegas.
+
+---
+
+Las secciones de abajo vienen de los demás documentos de seguridad ya existentes en este repo (`AUDITORIA_VULNERABILIDADES.md`, `ARQUITECTURA_SAAS_SEGURIDAD.md`, `CONFIGURACION_SEGURIDAD.md`, `CHECKLIST_DEPLOY_PRODUCCION.md`, `COMPLIANCE_CONFIANZA.md`, `docs/COMPLIANCE_RUNBOOK.md`, `src/api/CSRF_IMPLEMENTATION.md`, `src/api/INPUT_SECURITY.md`, `src/api/RATE_LIMITING.md`, `src/api/COOKIES_IMPLEMENTATION.md`, `src/api/security/README.md`). Son las reglas que no deben romperse en ningún cambio futuro — no lo que ya está bien, sino lo que hay que seguir cumpliendo.
+
+**Aviso sobre documentos desactualizados:** `src/api/SECURITY_CHECKLIST.md` y partes de `SECURITY_IMPLEMENTATION.md`/`SECURITY_SUMMARY.md` tienen una sección "Pendientes" (migrar a base de datos, email real, 2FA, etc.) que **ya está hecha** según documentos más nuevos (`CONFIGURACION_SEGURIDAD.md`, `CHECKLIST_DEPLOY_PRODUCCION.md`) — no confiar en esa lista de pendientes sin verificar el código actual primero.
+
+## Autenticación, sesiones y secretos
+
+- **Nunca** un valor por defecto para `JWT_SECRET`, `REFRESH_TOKEN_SECRET` ni `CSRF_SECRET`. Ya está así en `src/api/utils/jwt.ts` (`encodeSecret`) y `src/api/utils/csrf.ts` (`getCsrfSecret`): si falta el env var o mide menos de 32 caracteres, **debe lanzar un error y no arrancar** — no volver a introducir un fallback tipo `|| 'clave-por-defecto'`.
+- Access token: 15 minutos. Refresh token: 7 días. Ambos en cookies `HttpOnly`, `Secure` en producción, `SameSite=Lax` (`src/api/utils/cookies.ts`). No pasar tokens a `localStorage`.
+- Logout debe invalidar el token de inmediato vía blacklist (`src/api/utils/token-blacklist.ts`), no solo borrar la cookie del lado del cliente.
+- Cuentas baneadas/bloqueadas/deshabilitadas: si se agrega un nuevo middleware de autorización que dependa de `resolveSystemAccess`, debe seguir revisando `isBanned`/`isBlocked`/`disabledAt` (esto ya fue un finding del escaneo — ver F9/F10 en el reporte).
+- **2FA**: los códigos de respaldo y el secreto TOTP deben generarse con `crypto.getRandomValues()`, nunca `Math.random()` (finding F7/F13/F14/F16/F20 del mismo escaneo — quedaron pendientes de parche, no confundir con "ya arreglado").
+- Login: rate limit progresivo por `email:IP` — 3 fallos → 5s, 5 fallos → 30s, 10 fallos → bloqueo 15 min — más tope de 50 fallos/hora por IP (`rate-limit-d1.ts`). No debilitar ni quitar estos límites al tocar `auth.ts`.
+
+## CSRF
+
+- Todo `POST`/`PUT`/`PATCH`/`DELETE` nuevo debe quedar cubierto por `csrfProtection` (middleware global en `src/api/index.ts`) — si se agrega una excepción nueva a la lista de rutas sin CSRF, tiene que ser porque el usuario todavía no tiene sesión (como `/auth/login`), nunca por comodidad.
+- El patrón es double-submit cookie: token en cookie `csrf-token` (no HttpOnly, a propósito) + header `X-CSRF-Token` que el cliente ya maneja solo vía `src/web/lib/api-client.ts`. No mover el token a `localStorage`.
+
+## Validación, sanitización y consultas a la base de datos
+
+- Toda consulta a D1 pasa por Drizzle ORM parametrizado. **Nunca** SQL crudo con valores interpolados (`sql\`...${valorSinEscapar}...\`` sin placeholder, o concatenación de strings).
+- Cualquier `orderBy` o filtro cuyo **nombre de columna** (no el valor) pudiera venir del cliente debe mapearse contra una allowlist fija de columnas — el usuario elige valores, nunca claves/nombres de columna.
+- Path params (`:id`, `:userId`, `:clinicId`, etc.) pasan por `sanitizePathParam()` antes de usarse en una consulta o loguearse.
+- Body/query pasan por el middleware de sanitización global (`sanitizationMiddleware` → `sanitizeInput`/`escapeHtml`).
+- **No devolver `error.message` ni el stack de una excepción al cliente en una respuesta 4xx/5xx.** Esto sigue roto hoy en `src/api/routes/users.ts` (líneas ~704 y ~754) y `src/api/routes/clinics.ts` (línea ~236) — no copiar ese patrón en código nuevo, y si se toca alguno de esos archivos, corregirlo: mensaje genérico al cliente, el detalle solo al log/métrica interna.
+- Campos que deben ser una URL: pasarlos por `sanitizeUrlField()`/`containsObfuscatedOrSuspiciousUrl()` (`src/api/utils/sanitization.ts`) antes de guardarlos o mostrarlos, por la detección anti-phishing de URLs ofuscadas (`hxxp`, `[.]`, base64, etc.).
+
+## Cabeceras de seguridad (CSP, clickjacking)
+
+- La CSP real (headers HTTP) vive en `src/api/middleware/csp.ts` y solo se aplica a `/api/*` — **no cubre las páginas HTML servidas como assets estáticos** (login, dashboard, etc.). Ver finding F17 del escaneo: el `<meta>` de `index.html` no es un sustituto válido de `X-Frame-Options`/`frame-ancestors` para esas páginas. Si se toca el enrutamiento de `wrangler.json` (`run_worker_first`) o el pipeline de assets, no perder de vista este hueco.
+- **Sigue abierto:** `index.html` (y `scripts/html-csp.ts`) declaran `script-src 'self' 'unsafe-inline' 'unsafe-eval'` en la CSP del frontend — esto debilita la protección XSS. No es algo ya resuelto; si se edita esa CSP, el objetivo es sacar `unsafe-inline`/`unsafe-eval` (nonces o hashes), no ampliarla más.
+
+## Cumplimiento y retención de datos clínicos
+
+- Antes de borrar un paciente, sesión clínica o cualquier registro con retención legal, comprobar que no tenga un **legal hold** activo (`src/api/utils/legal-hold.ts`) — un hold activo bloquea el borrado automático, sin excepción.
+- La purga automática de datos vencidos corre por cron (`clinical-retention-purge`, 05:00 UTC) y respeta `retainUntil` y los legal holds; no agregar un borrado manual/directo que se salte ese motor de retención (`src/api/utils/retention-policy.ts`).
+- Los audit logs (`audit_log`) son de solo escritura por la app — no exponer un endpoint que permita editarlos o borrarlos.
+- Cualquier acción sensible nueva (crear/editar/borrar usuario, bloquear, cambiar permisos, 2FA, exportar datos, etc.) debe registrarse con `logAuditEvent`, igual que las existentes.
+
+## Variables de entorno obligatorias antes de producción
+
+No desplegar a producción sin definir (como Secrets de Cloudflare Workers, no en `[vars]` plano):
+
+- `JWT_SECRET`, `REFRESH_TOKEN_SECRET`, `CSRF_SECRET` — ≥32 caracteres, distintos entre sí.
+- `NODE_ENV=production`, `APP_BASE_URL`, `ALLOWED_ORIGINS`, `OFFICIAL_APP_DOMAIN`.
+- Si hay registro público habilitado: proveedor de email (Resend/SendGrid/SES) + CAPTCHA configurados — sin esto, no dejar `publicRegistrationEnabled: true` en producción.
+- No usar `IP_WHITELIST` con rangos CIDR amplios en producción — además `isIPWhitelisted()` en `src/api/utils/ip-tracking.ts` compara por *prefijo de texto*, no por máscara real, así que un rango CIDR puede matchear IPs que no debería (bug pendiente de arreglar, no solo de configurar con cuidado).
+- Rutas de solo-desarrollo (`/api/test/*`, `/api/auth/clear-ip-block`) deben seguir exigiendo `requireNonProductionDev` — nunca quitar ese guard para "probar algo rápido" en un entorno accesible desde internet.

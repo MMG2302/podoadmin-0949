@@ -20,7 +20,8 @@ import {
 
 export type CalendarTimedBlock = {
   id: string;
-  kind: "appointment" | "session";
+  /** "blocked" = bloqueo de agenda (comida, salida): no se puede agendar encima. */
+  kind: "appointment" | "session" | "blocked";
   startMinutes: number;
   durationMinutes: number;
   podiatristId?: string;
@@ -42,6 +43,17 @@ const MUTED_BLOCK_STYLE: PodiatristColorStyle = {
   text: "text-gray-500",
   dot: "bg-gray-400",
 };
+
+/** Bloqueo de agenda: rayado diagonal para que se lea como "aquí no se agenda". */
+const BLOCKED_BLOCK_STYLE: PodiatristColorStyle = {
+  bg: "bg-gray-200/70",
+  border: "border-gray-400",
+  text: "text-gray-600",
+  dot: "bg-gray-500",
+};
+
+const BLOCKED_STRIPES =
+  "repeating-linear-gradient(45deg, rgba(107,114,128,0.18) 0, rgba(107,114,128,0.18) 5px, transparent 5px, transparent 10px)";
 
 export type CalendarUntimedBlock = {
   id: string;
@@ -85,7 +97,8 @@ function TimedEventBlock({
   const clamped = clampEventToGrid(layout.startMinutes, layout.durationMinutes);
   if (!clamped) return null;
 
-  const effectiveStyle = block.muted ? MUTED_BLOCK_STYLE : style;
+  const isBlocked = block.kind === "blocked";
+  const effectiveStyle = isBlocked ? BLOCKED_BLOCK_STYLE : block.muted ? MUTED_BLOCK_STYLE : style;
   const top = eventTopPx(clamped.startMinutes);
   const height = eventHeightPx(clamped.durationMinutes);
   const widthPct = 100 / layout.totalColumns;
@@ -93,7 +106,7 @@ function TimedEventBlock({
 
   const className = `absolute rounded-md border px-1.5 py-1 overflow-hidden text-left transition-shadow ${effectiveStyle.bg} ${effectiveStyle.border} ${effectiveStyle.text} ${
     block.muted ? "border-dashed opacity-80" : ""
-  } ${
+  } ${isBlocked ? "border-dashed" : ""} ${
     block.canEdit || block.href ? "cursor-pointer hover:shadow-md hover:z-10" : "cursor-default"
   }`;
 
@@ -119,6 +132,7 @@ function TimedEventBlock({
       height: `${height}px`,
       left: `calc(${leftPct}% + 2px)`,
       width: `calc(${widthPct}% - 4px)`,
+      ...(isBlocked ? { backgroundImage: BLOCKED_STRIPES } : {}),
     },
     onClick: block.onClick,
     title: [block.meta, block.title, block.subtitle].filter(Boolean).join(" · "),

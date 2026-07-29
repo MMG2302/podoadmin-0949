@@ -203,8 +203,8 @@ export function AgendaAnalyticsPanel({
           label={t.dashboard.agendaOccupancy}
           value={`${metrics?.occupancy.percent ?? 0}%`}
           sub={aa.occupiedAvailable
-            .replace("{occ}", String(metrics?.occupancy.occupiedMinutes ?? 0))
-            .replace("{avail}", String(metrics?.occupancy.availableMinutes ?? 0))}
+            .replace("{occupied}", String(metrics?.occupancy.occupiedMinutes ?? 0))
+            .replace("{available}", String(metrics?.occupancy.availableMinutes ?? 0))}
         />
         <MetricCard
           label={aa.demand30d}

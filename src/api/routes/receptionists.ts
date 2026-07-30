@@ -287,15 +287,15 @@ receptionistsRoutes.get('/limits', async (c) => {
   }
 
   if (user.role === 'podiatrist' && !user.clinicId) {
-    const { countReceptionistsForIndependentPodiatrist, MAX_INDEPENDENT_RECEPTIONISTS } = await import(
+    const { countReceptionistsForIndependentPodiatrist } = await import(
       '../utils/receptionist-limits'
     );
     const count = await countReceptionistsForIndependentPodiatrist(user.userId);
     return c.json({
       success: true,
-      maxTotal: MAX_INDEPENDENT_RECEPTIONISTS,
+      unlimited: true,
       currentCount: count,
-      canCreate: count < MAX_INDEPENDENT_RECEPTIONISTS,
+      canCreate: true,
     });
   }
 

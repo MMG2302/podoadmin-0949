@@ -526,7 +526,7 @@ const SettingsPage = () => {
     });
     if (res.success && (res.data as { user?: { id: string; name: string; email: string } })?.user) {
       const u = (res.data as { user: { id: string; name: string; email: string } }).user;
-      setMyReceptionists([{ ...u, isBlocked: false, isEnabled: true }]);
+      setMyReceptionists([...myReceptionists, { ...u, isBlocked: false, isEnabled: true }]);
       setReceptionistForm({ name: "", email: "", password: "" });
       setReceptionistSuccess(true);
       setTimeout(() => setReceptionistSuccess(false), 3000);
@@ -1527,108 +1527,106 @@ const SettingsPage = () => {
           </div>
         )}
 
-        {/* Recepcionista - Solo podólogo independiente: una sola recepcionista ligada directamente */}
+        {/* Recepcionista - Podólogo independiente: ilimitadas recepcionistas */}
         {isPodiatristIndependent && user?.id && (() => {
-          const hasReceptionist = myReceptionists.length >= 1;
-          const rec = myReceptionists[0];
           return (
             <div className="bg-brand-surface rounded-xl border border-brand-border p-6">
               <h3 className="text-lg font-semibold text-brand-ink mb-2">{t.settings.receptionist.title}</h3>
               <p className="text-sm text-gray-500 mb-4">
                 {t.settings.receptionist.description}
               </p>
-              {hasReceptionist && rec ? (
-                <div className="space-y-4">
-                  <div className="bg-gray-50 border border-gray-100 rounded-lg p-4">
-                    <p className="font-medium text-brand-ink">{rec.name}</p>
-                    <p className="text-sm text-gray-600">{rec.email}</p>
-                    <div className="flex flex-wrap gap-2 mt-3">
-                      {rec.isBlocked ? (
-                        <span className={semanticChipErrorClass}>{t.settings.receptionist.status.blocked}</span>
-                      ) : rec.isEnabled === false ? (
-                        <span className={semanticChipWarningClass}>{t.settings.receptionist.status.disabled}</span>
-                      ) : (
-                        <span className={semanticChipSuccessClass}>{t.settings.receptionist.status.active}</span>
-                      )}
+              {myReceptionists.length > 0 && (
+                <div className="space-y-4 mb-6">
+                  {myReceptionists.map((rec) => (
+                    <div key={rec.id} className="bg-gray-50 border border-gray-100 rounded-lg p-4">
+                      <p className="font-medium text-brand-ink">{rec.name}</p>
+                      <p className="text-sm text-gray-600">{rec.email}</p>
+                      <div className="flex flex-wrap gap-2 mt-3 mb-3">
+                        {rec.isBlocked ? (
+                          <span className={semanticChipErrorClass}>{t.settings.receptionist.status.blocked}</span>
+                        ) : rec.isEnabled === false ? (
+                          <span className={semanticChipWarningClass}>{t.settings.receptionist.status.disabled}</span>
+                        ) : (
+                          <span className={semanticChipSuccessClass}>{t.settings.receptionist.status.active}</span>
+                        )}
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        <button
+                          type="button"
+                          onClick={() => handleToggleMyReceptionistBlock(rec)}
+                          disabled={receptionistActionLoadingId === rec.id}
+                          className="px-3 py-1.5 text-xs rounded-lg border border-gray-200 text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+                        >
+                          {rec.isBlocked ? t.settings.receptionist.unblock : t.settings.receptionist.block}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleToggleMyReceptionistEnabled(rec)}
+                          disabled={receptionistActionLoadingId === rec.id}
+                          className="px-3 py-1.5 text-xs rounded-lg border border-gray-200 text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+                        >
+                          {rec.isEnabled === false ? t.settings.receptionist.enable : t.settings.receptionist.disable}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteMyReceptionist(rec)}
+                          disabled={receptionistActionLoadingId === rec.id}
+                          className={`px-3 py-1.5 text-xs rounded-lg border border-semantic-error/30 ${semanticDestructiveTextClass} disabled:opacity-50`}
+                        >
+                          {t.settings.receptionist.delete}
+                        </button>
+                      </div>
                     </div>
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    <button
-                      type="button"
-                      onClick={() => handleToggleMyReceptionistBlock(rec)}
-                      disabled={receptionistActionLoadingId === rec.id}
-                      className="px-3 py-1.5 text-xs rounded-lg border border-gray-200 text-gray-700 hover:bg-gray-50 disabled:opacity-50"
-                    >
-                      {rec.isBlocked ? t.settings.receptionist.unblock : t.settings.receptionist.block}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleToggleMyReceptionistEnabled(rec)}
-                      disabled={receptionistActionLoadingId === rec.id}
-                      className="px-3 py-1.5 text-xs rounded-lg border border-gray-200 text-gray-700 hover:bg-gray-50 disabled:opacity-50"
-                    >
-                      {rec.isEnabled === false ? t.settings.receptionist.enable : t.settings.receptionist.disable}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleDeleteMyReceptionist(rec)}
-                      disabled={receptionistActionLoadingId === rec.id}
-                      className={`px-3 py-1.5 text-xs rounded-lg border border-semantic-error/30 ${semanticDestructiveTextClass} disabled:opacity-50`}
-                    >
-                      {t.settings.receptionist.delete}
-                    </button>
-                  </div>
-                  <p className="text-xs text-gray-500">{t.settings.receptionist.oneOnlyHint}</p>
+                  ))}
                 </div>
-              ) : (
-                <form onSubmit={handleCreateReceptionist} className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">{t.settings.receptionist.fields.name}</label>
-                    <input
-                      type="text"
-                      value={receptionistForm.name}
-                      onChange={(e) => setReceptionistForm((f) => ({ ...f, name: e.target.value }))}
-                      className="w-full px-4 py-2.5 border border-brand-border rounded-lg bg-brand-surface text-brand-ink focus:ring-2 focus:ring-brand-ink focus:border-transparent"
-                      required
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">{t.settings.receptionist.fields.email}</label>
-                    <input
-                      type="email"
-                      value={receptionistForm.email}
-                      onChange={(e) => setReceptionistForm((f) => ({ ...f, email: e.target.value }))}
-                      className="w-full px-4 py-2.5 border border-brand-border rounded-lg bg-brand-surface text-brand-ink focus:ring-2 focus:ring-brand-ink focus:border-transparent"
-                      required
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">{t.settings.receptionist.fields.initialPassword}</label>
-                    <input
-                      type="password"
-                      value={receptionistForm.password}
-                      onChange={(e) => setReceptionistForm((f) => ({ ...f, password: e.target.value }))}
-                      className="w-full px-4 py-2.5 border border-brand-border rounded-lg bg-brand-surface text-brand-ink focus:ring-2 focus:ring-brand-ink focus:border-transparent"
-                      required
-                      minLength={6}
-                    />
-                  </div>
-                  {receptionistError && (
-                    <div className={`${semanticAlertErrorClass} !p-3`}>{receptionistError}</div>
-                  )}
-                  {receptionistSuccess && (
-                    <div className={`${semanticAlertSuccessClass} !p-3`}>
-                      {t.settings.receptionist.createdSuccess}
-                    </div>
-                  )}
-                  <button
-                    type="submit"
-                    className="px-4 py-2.5 bg-brand-ink text-brand-ink-fg rounded-lg text-sm font-medium hover:bg-brand-ink-hover transition-colors"
-                  >
-                    {t.settings.receptionist.create}
-                  </button>
-                </form>
               )}
+              <form onSubmit={handleCreateReceptionist} className="space-y-4 border-t border-gray-200 pt-6">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">{t.settings.receptionist.fields.name}</label>
+                  <input
+                    type="text"
+                    value={receptionistForm.name}
+                    onChange={(e) => setReceptionistForm((f) => ({ ...f, name: e.target.value }))}
+                    className="w-full px-4 py-2.5 border border-brand-border rounded-lg bg-brand-surface text-brand-ink focus:ring-2 focus:ring-brand-ink focus:border-transparent"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">{t.settings.receptionist.fields.email}</label>
+                  <input
+                    type="email"
+                    value={receptionistForm.email}
+                    onChange={(e) => setReceptionistForm((f) => ({ ...f, email: e.target.value }))}
+                    className="w-full px-4 py-2.5 border border-brand-border rounded-lg bg-brand-surface text-brand-ink focus:ring-2 focus:ring-brand-ink focus:border-transparent"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">{t.settings.receptionist.fields.initialPassword}</label>
+                  <input
+                    type="password"
+                    value={receptionistForm.password}
+                    onChange={(e) => setReceptionistForm((f) => ({ ...f, password: e.target.value }))}
+                    className="w-full px-4 py-2.5 border border-brand-border rounded-lg bg-brand-surface text-brand-ink focus:ring-2 focus:ring-brand-ink focus:border-transparent"
+                    required
+                    minLength={6}
+                  />
+                </div>
+                {receptionistError && (
+                  <div className={`${semanticAlertErrorClass} !p-3`}>{receptionistError}</div>
+                )}
+                {receptionistSuccess && (
+                  <div className={`${semanticAlertSuccessClass} !p-3`}>
+                    {t.settings.receptionist.createdSuccess}
+                  </div>
+                )}
+                <button
+                  type="submit"
+                  className="px-4 py-2.5 bg-brand-ink text-brand-ink-fg rounded-lg text-sm font-medium hover:bg-brand-ink-hover transition-colors"
+                >
+                  {t.settings.receptionist.create}
+                </button>
+              </form>
             </div>
           );
         })()}

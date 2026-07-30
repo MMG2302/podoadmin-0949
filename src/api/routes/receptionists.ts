@@ -13,6 +13,7 @@ import {
   assertClinicCanAddActiveReceptionist,
   assertIndependentCanAddReceptionist,
   filterValidClinicPodiatristIds,
+  filterValidIndependentPodiatristIds,
   getClinicPodiatristUserIds,
 } from '../utils/receptionist-limits';
 
@@ -242,6 +243,10 @@ receptionistsRoutes.patch('/:receptionistId/assigned-podiatrists', async (c) => 
     ids = await filterValidClinicPodiatristIds(row.clinicId, ids);
   } else if (user.role === 'receptionist' && user.userId === row.userId) {
     return c.json({ error: 'Acceso denegado', message: 'No puedes modificar la asignación en modo independiente' }, 403);
+  } else {
+    // Recepcionista independiente: los IDs del body solo pueden acotar el alcance
+    // (el podólogo dueño), nunca reemplazarlo por el de otro tenant.
+    ids = filterValidIndependentPodiatristIds(row.createdBy, ids);
   }
 
   await database

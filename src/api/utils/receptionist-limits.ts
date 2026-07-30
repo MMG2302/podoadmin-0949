@@ -87,6 +87,20 @@ export async function filterValidClinicPodiatristIds(
   return [...new Set(normalized)];
 }
 
+/**
+ * Alcance de una recepcionista independiente (sin clínica): solo puede quedar
+ * asignada al podólogo dueño. Los IDs que manda el cliente solo pueden acotar
+ * ese alcance, nunca reemplazarlo — si pide otro podólogo, la lista queda vacía.
+ */
+export function filterValidIndependentPodiatristIds(
+  ownerUserId: string | null | undefined,
+  candidateIds: unknown
+): string[] {
+  if (!ownerUserId) return [];
+  if (!Array.isArray(candidateIds)) return [];
+  return candidateIds.includes(ownerUserId) ? [ownerUserId] : [];
+}
+
 export function canPodiatristManageReceptionist(
   requester: { userId: string; role?: string; clinicId?: string | null },
   row: { role: string; createdBy?: string | null; clinicId?: string | null }

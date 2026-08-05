@@ -10,6 +10,8 @@ export default tseslint.config(
     ignores: [
       "dist/**",
       "node_modules/**",
+      // Worktrees y datos internos de Claude Code: son copias del repo, no fuente propia.
+      ".claude/**",
       "**/*.cjs",
       "scripts/**",
       // Script de inyección i18n de un solo uso, mismo caso que scripts/**

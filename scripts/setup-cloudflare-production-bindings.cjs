@@ -32,7 +32,7 @@ try {
 }
 
 try {
-  run('bunx wrangler queues create podoadmin-notifications-prod --env production');
+  run('bunx wrangler queues create podoraa-notifications-prod --env production');
 } catch {
   console.warn('Cola production: revisar manualmente');
 }

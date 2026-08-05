@@ -58,8 +58,8 @@ if ($login -ne "s") {
 Write-Step 5 "Dashboard Cloudflare (manual)"
 Write-Host @"
 En https://dash.cloudflare.com :
-  1) D1 -> Create database (ej. podoadmin-prod) -> copia Database ID
-  2) R2 -> Create bucket (ej. podoadmin-prod)
+  1) D1 -> Create database (podoraa-prod) -> copia Database ID
+  2) R2 -> Create bucket (podoraa-prod)
   3) Edita wrangler.toml: name, database_id, database_name, bucket_name
   4) Anade [vars] con APP_BASE_URL (la URL *.workers.dev tras el primer deploy)
 "@ -ForegroundColor Yellow

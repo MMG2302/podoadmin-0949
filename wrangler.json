@@ -52,12 +52,12 @@
   },
   "env": {
     "production": {
-      "name": "podoadmin-pendiente",
+      "name": "podoraa",
       "vars": {
         "NODE_ENV": "production",
-        "APP_BASE_URL": "https://podoadmin-pendiente.workers.dev",
-        "ALLOWED_ORIGINS": "https://podoadmin-pendiente.workers.dev",
-        "OFFICIAL_APP_DOMAIN": "https://podoadmin-pendiente.workers.dev",
+        "APP_BASE_URL": "https://PENDIENTE-URL-PRODUCCION",
+        "ALLOWED_ORIGINS": "https://PENDIENTE-URL-PRODUCCION",
+        "OFFICIAL_APP_DOMAIN": "https://PENDIENTE-URL-PRODUCCION",
         "RATE_LIMIT_ANON_READ_PER_MIN": "180",
         "RATE_LIMIT_ANON_WRITE_PER_MIN": "90",
         "RATE_LIMIT_AUTH_READ_PER_MIN": "600",
@@ -69,14 +69,14 @@
       "d1_databases": [
         {
           "binding": "DB",
-          "database_name": "podoadmin-prod",
+          "database_name": "podoraa-prod",
           "database_id": "PENDIENTE-DATABASE-ID",
           "migrations_dir": "src/api/migrations"
         }
       ],
       "r2_buckets": [
         {
-          "bucket_name": "podoadmin-prod",
+          "bucket_name": "podoraa-prod",
           "binding": "BUCKET"
         }
       ],
@@ -90,12 +90,12 @@
         "producers": [
           {
             "binding": "NOTIFICATIONS_QUEUE",
-            "queue": "podoadmin-notifications-prod"
+            "queue": "podoraa-notifications-prod"
           }
         ],
         "consumers": [
           {
-            "queue": "podoadmin-notifications-prod",
+            "queue": "podoraa-notifications-prod",
             "max_batch_size": 10,
             "max_batch_timeout": 5,
             "max_retries": 3

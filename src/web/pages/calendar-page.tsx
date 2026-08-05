@@ -357,7 +357,7 @@ const CalendarPage = () => {
       pendingPatientName: a.pendingPatientName,
       pendingPatientPhone: a.pendingPatientPhone,
     }));
-  }, [allAppointments, allPatients, isClinicAdmin, isReceptionist, podiatristFilter, clinicPodiatrists]);
+  }, [allAppointments, allPatients, isClinicAdmin, isReceptionist, podiatristFilter, clinicPodiatrists, t]);
 
   // Calendar navigation
   const navigatePrev = () => {
@@ -431,7 +431,7 @@ const CalendarPage = () => {
     const firstDay = new Date(year, month, 1);
       
     // Start from Monday (adjust if first day is Sunday)
-    let startDate = new Date(firstDay);
+    const startDate = new Date(firstDay);
     const dayOfWeek = startDate.getDay();
     const diff = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
     startDate.setDate(startDate.getDate() - diff);
@@ -1137,6 +1137,9 @@ const isSelected = (date: Date) => {
       pendingPatientName: "",
       pendingPatientPhone: "",
     }));
+    // Solo debe correr al abrir/cambiar de modo el formulario: incluir appointmentForm.patientId
+    // haria que pisara la seleccion del usuario en cuanto la cambia.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     showAppointmentForm,
     editingAppointment,

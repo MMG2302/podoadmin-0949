@@ -1,11 +1,11 @@
 import { Hono } from 'hono';
-import { eq, and, desc } from 'drizzle-orm';
+import { eq, desc } from 'drizzle-orm';
 import { z } from 'zod';
 import { requireAuth } from '../middleware/auth';
 import { requirePermission } from '../middleware/authorization';
 import { requireActiveSubscription } from '../middleware/subscription';
 import { database } from '../database';
-import { prescriptions, clinicalSessions, patients } from '../database/schema';
+import { prescriptions, clinicalSessions } from '../database/schema';
 import { sanitizePathParam } from '../utils/sanitization';
 import { getSessionAccessDeniedReason } from '../utils/tenant-isolation';
 import { logAuditEvent } from '../utils/audit-log';

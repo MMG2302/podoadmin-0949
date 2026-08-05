@@ -402,7 +402,7 @@ const ClinicPage = () => {
         podiatristName: podiatristMap.get(p.createdBy) || t.clinic.unknownPodiatrist,
         lastSessionDate: p.lastSessionDate ?? null,
       }));
-  }, [clinicPatientsList, clinicPodiatrists, clinicPodiatristIds]);
+  }, [clinicPatientsList, clinicPodiatrists, clinicPodiatristIds, t]);
 
   const filteredPatients = patientsWithPodiatrist;
 

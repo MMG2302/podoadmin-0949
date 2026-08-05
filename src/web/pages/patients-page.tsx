@@ -354,7 +354,7 @@ const PatientsPage = () => {
             },
           });
         } else {
-          const errData = response.data as any;
+          const errData = response.data as { issues?: unknown } | undefined;
           if (errData?.issues && Array.isArray(errData.issues)) {
             const fieldErrors: Record<string, string> = {};
             for (const issue of errData.issues as { path?: unknown[]; message?: string }[]) {
@@ -394,7 +394,7 @@ const PatientsPage = () => {
             },
           });
         } else {
-          const errData = response.data as any;
+          const errData = response.data as { issues?: unknown } | undefined;
           const errorCode = response.error || errData?.error;
 
           if (errorCode === "usuario_en_periodo_gracia") {

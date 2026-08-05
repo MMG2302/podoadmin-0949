@@ -8,9 +8,7 @@ export function Metadata() {
 			<meta
 				name="keywords"
 				content={
-					Array.isArray((siteConfig as any).keywords)
-						? (siteConfig as any).keywords.join(", ")
-						: ((siteConfig as any).keywords || "")
+					Array.isArray(siteConfig.keywords) ? siteConfig.keywords.join(", ") : ""
 				}
 			/>
 

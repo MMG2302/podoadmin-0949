@@ -438,7 +438,7 @@ const SettingsPage = () => {
         setInfoBlockedUntil(res.data.infoBlockedUntil);
         setClinicInfoError(res.message ?? t.settings.cooldown.clinicInfoBlocked);
       }
-    } catch (err) {
+    } catch {
       // Error ya se muestra en consola desde api-client; no marcamos como guardado
     }
   };
@@ -745,6 +745,8 @@ const SettingsPage = () => {
     const r = await api.get<{ success?: boolean; conversations?: typeof supportConversations }>("/support/conversations");
     if (r.success && Array.isArray(r.data?.conversations)) setSupportConversations(r.data.conversations);
   };
+  // loadSupportConversations se redefine en cada render; cargar solo al cambiar el rol.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { loadSupportConversations(); }, [isAdminRole]);
 
   const handleCreateSupportConversation = async (e: React.FormEvent) => {
@@ -1955,7 +1957,7 @@ const SettingsPage = () => {
                           
                           try {
                             new URL(url);
-                          } catch (error) {
+                          } catch {
                             e.preventDefault();
                             alert(t.settings.clinic.errors.invalidWebsite);
                           }

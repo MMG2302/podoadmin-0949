@@ -1,6 +1,5 @@
 import { Hono } from 'hono';
 import { requireAuth } from '../middleware/auth';
-import { requirePermission } from '../middleware/authorization';
 import {
   generateTOTPSecret,
   enable2FA,

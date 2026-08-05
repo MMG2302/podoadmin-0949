@@ -1,5 +1,5 @@
 import { Hono } from 'hono';
-import { eq, or, and, inArray, desc } from 'drizzle-orm';
+import { eq, or, inArray } from 'drizzle-orm';
 import { requireAuth } from '../middleware/auth';
 import { requireRole } from '../middleware/authorization';
 import { validateData, createUserSchema, updateUserSchema, validateQuery, roleFilterQuerySchema } from '../utils/validation';
@@ -790,9 +790,6 @@ usersRoutes.delete('/:userId', requireRole('super_admin', 'clinic_admin', 'podia
         );
       }
     }
-
-    const clinicIdForBilling = row.clinicId;
-    const roleForBilling = row.role;
 
     const result = await deleteUserCascade(row.userId, row.id);
     if (!result.deleted) {

@@ -283,12 +283,10 @@ function mapStripeStatus(status: string): SubscriptionStatus {
 
       return 'past_due';
 
+    // Los tres estados de Stripe mapean al mismo estado interno.
     case 'canceled':
-
     case 'unpaid':
-
     case 'incomplete_expired':
-
       return 'cancelled';
 
     default:

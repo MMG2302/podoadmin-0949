@@ -112,6 +112,8 @@ const SecurityMetricsPage = () => {
 
   useEffect(() => {
     loadData();
+    // loadData se redefine en cada render; recargar solo al cambiar usuario o rango.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id, days]);
 
   const topStats = useMemo(

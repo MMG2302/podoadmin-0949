@@ -50,8 +50,8 @@ const ForgotPassword = () => {
             msg.includes("try again later"));
         setError(msg && !isGenericError ? msg : t.auth.forgotPasswordErrorRequest);
       }
-    } catch (err: any) {
-      setError(err?.message || t.auth.forgotPasswordErrorConnection);
+    } catch (err) {
+      setError(err instanceof Error && err.message ? err.message : t.auth.forgotPasswordErrorConnection);
     } finally {
       setIsLoading(false);
     }

@@ -4,6 +4,7 @@ import { useLanguage } from "../contexts/language-context";
 import { useNotifications } from "../contexts/notifications-context";
 import { api } from "../lib/api-client";
 import { NotificationType } from "../types/notification";
+import type { Translations } from "../i18n/translations";
 
 const NotificationIcon = ({ type }: { type: NotificationType }) => {
   switch (type) {
@@ -41,7 +42,7 @@ const NotificationIcon = ({ type }: { type: NotificationType }) => {
   }
 };
 
-const formatTimeAgo = (dateStr: string, t: any): string => {
+const formatTimeAgo = (dateStr: string, t: Pick<Translations, "notifications">): string => {
   const date = new Date(dateStr);
   const now = new Date();
   const diffMs = now.getTime() - date.getTime();

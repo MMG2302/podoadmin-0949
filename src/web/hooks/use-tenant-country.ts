@@ -38,6 +38,8 @@ export function useTenantCountry(user: User | null): TenantCountryCode {
     }
 
     setCountry(DEFAULT_TENANT_COUNTRY);
+    // Se depende de los campos y no del objeto `user`, cuya identidad cambia en cada refresco de sesion.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id, user?.clinicId, user?.role]);
 
   return country;

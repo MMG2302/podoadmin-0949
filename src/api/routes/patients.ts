@@ -6,7 +6,7 @@ import { validateData, createPatientSchema, updatePatientSchema, patientsListQue
 import { database } from '../database';
 import { patients as patientsTable, clinicalSessions as sessionsTable, appointments as appointmentsTable, creditTransactions as creditTransactionsTable, createdUsers as createdUsersTable } from '../database/schema';
 import { canUserAccess } from '../utils/user-retention';
-import { and, eq, inArray, sql } from 'drizzle-orm';
+import { eq, inArray } from 'drizzle-orm';
 import { logAuditEvent } from '../utils/audit-log';
 import { notifyPatientReassignment } from '../utils/notifications-service';
 import { getClientIP } from '../utils/ip-tracking';
@@ -20,7 +20,7 @@ import { normalizePhoneE164 } from '../../lib/phone-country';
 import { resolvePatientPhoneCountry } from '../utils/tenant-country';
 import { resolveClinicalListScope, mergeScopeWhere } from '../utils/clinical-list-scope';
 import { buildPatientSearchCondition, mergeAnd } from '../utils/clinical-list-search';
-import { parsePaginationQuery, buildPaginationMeta } from '../utils/pagination';
+import { parsePaginationQuery } from '../utils/pagination';
 import { generateNextPatientFolio } from '../utils/patient-folio';
 import {
   buildDemographicsSummary,

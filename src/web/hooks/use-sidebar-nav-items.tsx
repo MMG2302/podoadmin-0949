@@ -22,12 +22,7 @@ export function useSidebarNavItems() {
   const { user } = useAuth();
   const { t } = useLanguage();
   const navVisibility = useNavVisibility();
-  const {
-    hasPermission,
-    canViewWhatsAppMessages,
-    canViewWhatsAppWeb,
-    isReceptionist,
-  } = usePermissions();
+  const { hasPermission, canViewWhatsAppWeb } = usePermissions();
   const { has: hasFeature } = useEntitlements();
 
   const navItems = useMemo((): SidebarNavItem[] => {
@@ -233,7 +228,7 @@ export function useSidebarNavItems() {
           ? { ...item, locked: true }
           : item
       );
-  }, [navItems, user, hasPermission, canViewWhatsAppMessages, canViewWhatsAppWeb, isReceptionist, hasFeature]);
+  }, [navItems, user, hasPermission, canViewWhatsAppWeb, hasFeature]);
 
   const visibleItems = useMemo((): SidebarNavItem[] => {
     const filtered = permittedItems.filter((item) => navVisibility[item.path] !== false);
@@ -266,7 +261,7 @@ export function useSidebarNavItems() {
 
     if (permittedItems.length > 0) return permittedItems;
     return navItems.filter((item) => item.path === "/");
-  }, [permittedItems, navVisibility, user, navItems]);
+  }, [permittedItems, navVisibility, user, navItems, t]);
 
   return { navItems, permittedItems, visibleItems };
 }

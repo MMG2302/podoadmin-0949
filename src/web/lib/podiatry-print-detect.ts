@@ -138,9 +138,9 @@ function pickBest<T extends string>(text: string, rules: ScoredRule<T>[]): { id:
 
 const FOOT_RULES: ScoredRule<FootTypeId>[] = [
   // —— Egipcio / Egyptian ——
-  { id: "egyptian", score: 100, re: /tipo\s+de\s+pie\s*[:\-]?\s*egipc/i, label: "tipo de pie: egipcio" },
-  { id: "egyptian", score: 100, re: /foot\s+type\s*[:\-]?\s*egypt/i, label: "foot type: egyptian" },
-  { id: "egyptian", score: 100, re: /type\s+de\s+pied\s*[:\-]?\s*egypt/i, label: "type de pied: égyptien" },
+  { id: "egyptian", score: 100, re: /tipo\s+de\s+pie\s*[:-]?\s*egipc/i, label: "tipo de pie: egipcio" },
+  { id: "egyptian", score: 100, re: /foot\s+type\s*[:-]?\s*egypt/i, label: "foot type: egyptian" },
+  { id: "egyptian", score: 100, re: /type\s+de\s+pied\s*[:-]?\s*egypt/i, label: "type de pied: égyptien" },
   { id: "egyptian", score: 95, re: /pie\s+egipcio|egipcio\s+pie|pe\s+egipcio|pes\s+egipcio/i, label: "pie egipcio" },
   { id: "egyptian", score: 95, re: /egyptian\s+foot|foot\s+egyptian|egyptian\s+type/i, label: "egyptian foot" },
   { id: "egyptian", score: 95, re: /pied\s+egyptien|egyptien\s+pied|pe\s+egyptien/i, label: "pied égyptien" },
@@ -149,8 +149,8 @@ const FOOT_RULES: ScoredRule<FootTypeId>[] = [
   { id: "egyptian", score: 55, re: /\bmorton\b/i, label: "morton" },
 
   // —— Romano / Roman ——
-  { id: "roman", score: 100, re: /tipo\s+de\s+pie\s*[:\-]?\s*roman/i, label: "tipo de pie: romano" },
-  { id: "roman", score: 100, re: /foot\s+type\s*[:\-]?\s*roman/i, label: "foot type: roman" },
+  { id: "roman", score: 100, re: /tipo\s+de\s+pie\s*[:-]?\s*roman/i, label: "tipo de pie: romano" },
+  { id: "roman", score: 100, re: /foot\s+type\s*[:-]?\s*roman/i, label: "foot type: roman" },
   { id: "roman", score: 95, re: /pie\s+romano|romano\s+pie|pe\s+romano|pes\s+romano/i, label: "pie romano" },
   { id: "roman", score: 95, re: /roman\s+foot|foot\s+roman|roman\s+type/i, label: "roman foot" },
   { id: "roman", score: 95, re: /pied\s+romain|romain\s+pied|pe\s+romain/i, label: "pied romain" },
@@ -160,8 +160,8 @@ const FOOT_RULES: ScoredRule<FootTypeId>[] = [
   { id: "roman", score: 108, re: /no\s+es\s+grieg\w*[^,.]{0,25}\s+es\s+roman/i, label: "no es griego, es romano" },
 
   // —— Griego / Greek ——
-  { id: "greek", score: 100, re: /tipo\s+de\s+pie\s*[:\-]?\s*grieg/i, label: "tipo de pie: griego" },
-  { id: "greek", score: 100, re: /foot\s+type\s*[:\-]?\s*greek/i, label: "foot type: greek" },
+  { id: "greek", score: 100, re: /tipo\s+de\s+pie\s*[:-]?\s*grieg/i, label: "tipo de pie: griego" },
+  { id: "greek", score: 100, re: /foot\s+type\s*[:-]?\s*greek/i, label: "foot type: greek" },
   { id: "greek", score: 95, re: /pie\s+grieg|grieg\w*\s+pie|pe\s+grego|pes\s+grego/i, label: "pie griego" },
   { id: "greek", score: 95, re: /greek\s+foot|foot\s+greek|greek\s+type/i, label: "greek foot" },
   { id: "greek", score: 95, re: /pied\s+grec|grec\s+pied|pe\s+grec/i, label: "pied grec" },
@@ -169,16 +169,16 @@ const FOOT_RULES: ScoredRule<FootTypeId>[] = [
   { id: "greek", score: 70, re: /\bgrieg\w*\b|\bgreek\b|\bgrec\b|\bgrego\b/i, label: "griego / greek" },
 
   // —— Germánico / Germanic ——
-  { id: "germanic", score: 100, re: /tipo\s+de\s+pie\s*[:\-]?\s*german/i, label: "tipo de pie: germánico" },
-  { id: "germanic", score: 100, re: /foot\s+type\s*[:\-]?\s*german/i, label: "foot type: germanic" },
+  { id: "germanic", score: 100, re: /tipo\s+de\s+pie\s*[:-]?\s*german/i, label: "tipo de pie: germánico" },
+  { id: "germanic", score: 100, re: /foot\s+type\s*[:-]?\s*german/i, label: "foot type: germanic" },
   { id: "germanic", score: 95, re: /pie\s+german|german\w*\s+pie|pe\s+germanico/i, label: "pie germánico" },
   { id: "germanic", score: 95, re: /germanic\s+foot|german\s+foot|pied\s+allemand/i, label: "germanic foot" },
   { id: "germanic", score: 85, re: /pie\s+cu[nñ]a|wedge\s+foot|pe\s+em\s+cunha/i, label: "pie en cuña" },
   { id: "germanic", score: 70, re: /\bgermanic\w*\b|\bgermanico\b|\ballemand\b/i, label: "germánico" },
 
   // —— Celta / Celtic ——
-  { id: "celtic", score: 100, re: /tipo\s+de\s+pie\s*[:\-]?\s*celt/i, label: "tipo de pie: celta" },
-  { id: "celtic", score: 100, re: /foot\s+type\s*[:\-]?\s*celt/i, label: "foot type: celtic" },
+  { id: "celtic", score: 100, re: /tipo\s+de\s+pie\s*[:-]?\s*celt/i, label: "tipo de pie: celta" },
+  { id: "celtic", score: 100, re: /foot\s+type\s*[:-]?\s*celt/i, label: "foot type: celtic" },
   { id: "celtic", score: 95, re: /pie\s+celt|celt\w*\s+pie|pe\s+celta|pes\s+celta/i, label: "pie celta" },
   { id: "celtic", score: 95, re: /celtic\s+foot|foot\s+celtic|pied\s+celte/i, label: "celtic foot" },
   { id: "celtic", score: 70, re: /\bcelt\w*\b|\bcelta\b|\bcelte\b/i, label: "celta / celtic" },
@@ -186,8 +186,8 @@ const FOOT_RULES: ScoredRule<FootTypeId>[] = [
 
 const ARCH_RULES: ScoredRule<ArchTypeId>[] = [
   // —— Plano / Flat (antes que "normal") ——
-  { id: "flat", score: 100, re: /tipo\s+de\s+(?:planta|arco)\s*[:\-]?\s*plan/i, label: "tipo de planta: plano" },
-  { id: "flat", score: 100, re: /arch\s+type\s*[:\-]?\s*flat|flat\s+foot\s+type/i, label: "arch type: flat" },
+  { id: "flat", score: 100, re: /tipo\s+de\s+(?:planta|arco)\s*[:-]?\s*plan/i, label: "tipo de planta: plano" },
+  { id: "flat", score: 100, re: /arch\s+type\s*[:-]?\s*flat|flat\s+foot\s+type/i, label: "arch type: flat" },
   { id: "flat", score: 95, re: /pie\s+plano|plano\s+pie|pe\s+plano|pes\s+plano|pied\s+plat|plat\s+pied/i, label: "pie plano" },
   { id: "flat", score: 95, re: /flat\s+foot|foot\s+flat|fallen\s+arch|pes\s+plano/i, label: "flat foot" },
   { id: "flat", score: 90, re: /arco\s+plano|plano\s+arco|planta\s+plana|plana\s+planta/i, label: "arco/planta plana" },
@@ -196,8 +196,8 @@ const ARCH_RULES: ScoredRule<ArchTypeId>[] = [
   { id: "flat", score: 75, re: /pe\s+plano|pé\s+plano|arche\s+plat/i, label: "pé plano (PT/FR)" },
 
   // —— Cavo / Cavus ——
-  { id: "cavus", score: 100, re: /tipo\s+de\s+(?:planta|arco)\s*[:\-]?\s*cav/i, label: "tipo de arco: cavo" },
-  { id: "cavus", score: 100, re: /arch\s+type\s*[:\-]?\s*cav/i, label: "arch type: cavus" },
+  { id: "cavus", score: 100, re: /tipo\s+de\s+(?:planta|arco)\s*[:-]?\s*cav/i, label: "tipo de arco: cavo" },
+  { id: "cavus", score: 100, re: /arch\s+type\s*[:-]?\s*cav/i, label: "arch type: cavus" },
   { id: "cavus", score: 95, re: /pie\s+cav|cav\w*\s+pie|pe\s+cavo|pes\s+cavo|pied\s+creux/i, label: "pie cavo" },
   { id: "cavus", score: 95, re: /cavus\s+foot|foot\s+cavus|high\s+arch|arched\s+foot/i, label: "cavus / high arch" },
   { id: "cavus", score: 90, re: /arco\s+cav|cav\w*\s+arco|arco\s+alto|alto\s+arco|arco\s+excavad/i, label: "arco cavo / alto" },
@@ -205,7 +205,7 @@ const ARCH_RULES: ScoredRule<ArchTypeId>[] = [
   { id: "cavus", score: 70, re: /\bcavus\b|\bcavo\b(?!\s*varo\s*plano)/i, label: "cavus / cavo" },
 
   // —— Normal (menor prioridad; frases explícitas) ——
-  { id: "normal", score: 100, re: /tipo\s+de\s+(?:planta|arco)\s*[:\-]?\s*normal/i, label: "tipo de arco: normal" },
+  { id: "normal", score: 100, re: /tipo\s+de\s+(?:planta|arco)\s*[:-]?\s*normal/i, label: "tipo de arco: normal" },
   { id: "normal", score: 95, re: /arco\s+normal|normal\s+arco|planta\s+normal|normal\s+planta/i, label: "arco/planta normal" },
   { id: "normal", score: 95, re: /normal\s+arch|arch\s+normal|physiolog\w*\s+arch/i, label: "normal arch" },
   { id: "normal", score: 90, re: /pie\s+normal|normal\s+pie|arco\s+fisiolog/i, label: "pie/arco fisiológico" },

@@ -356,11 +356,12 @@ const SessionsPage = () => {
 
   const isPatientCompleteForSessions = (p: Patient | undefined) => {
     if (!p) return false;
-    const fn = (p as any).firstName ?? (p as any).first_name ?? "";
-    const ln = (p as any).lastName ?? (p as any).last_name ?? "";
-    const dob = (p as any).dateOfBirth ?? (p as any).date_of_birth ?? "";
-    const g = (p as any).gender ?? "";
-    const idn = (p as any).idNumber ?? (p as any).id_number ?? "";
+    const raw = p as unknown as Record<string, unknown>;
+    const fn = raw.firstName ?? raw.first_name ?? "";
+    const ln = raw.lastName ?? raw.last_name ?? "";
+    const dob = raw.dateOfBirth ?? raw.date_of_birth ?? "";
+    const g = raw.gender ?? "";
+    const idn = raw.idNumber ?? raw.id_number ?? "";
     return !!String(fn).trim() && !!String(ln).trim() && !!String(dob).trim() &&
       !!String(g).trim() && !!String(idn).trim();
   };
@@ -820,7 +821,7 @@ const SessionsPage = () => {
             },
           };
         } else {
-          const errData = response.data as any;
+          const errData = response.data as { issues?: unknown } | undefined;
           const errorCode = response.error || errData?.error;
 
           if (errorCode === "usuario_en_periodo_gracia") {

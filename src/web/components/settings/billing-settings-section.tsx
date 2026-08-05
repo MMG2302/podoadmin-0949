@@ -137,7 +137,7 @@ export function BillingSettingsSection() {
   useEffect(() => {
     if (success === "1") setMessage(t.settings.billing.paymentReceived);
     if (cancelled === "1") setMessage(t.settings.billing.paymentCancelled);
-  }, [success, cancelled]);
+  }, [success, cancelled, t]);
 
   useEffect(() => {
     const completeCard = async () => {
@@ -154,7 +154,7 @@ export function BillingSettingsSection() {
       }
     };
     void completeCard();
-  }, [trialCard, trialCardSessionId, load, setLocation]);
+  }, [trialCard, trialCardSessionId, load, setLocation, t]);
 
   useEffect(() => {
     const mockCard = async () => {
@@ -169,7 +169,7 @@ export function BillingSettingsSection() {
       }
     };
     void mockCard();
-  }, [trialCardMock, load, setLocation]);
+  }, [trialCardMock, load, setLocation, t]);
 
   const startCardSetup = async () => {
     setBusy(true);

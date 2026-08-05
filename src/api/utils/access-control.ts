@@ -3,7 +3,7 @@ import { eq } from 'drizzle-orm';
 import { database } from '../database';
 import { createdUsers } from '../database/schema';
 
-import { effectiveTier, getSubscriptionForUser, getSubscriptionsBatch, lookupSubscriptionFromBatch, type SubscriptionPublic } from './subscription-service';
+import { effectiveTier, getSubscriptionForUser, type SubscriptionPublic } from './subscription-service';
 import { canUserAccess } from './user-retention';
 import { entitlementsForTier, type Entitlements, type PlanTier } from './plan-entitlements';
 

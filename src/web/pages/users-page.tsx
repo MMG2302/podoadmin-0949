@@ -429,7 +429,7 @@ const BulkImportModal = ({
           const row = rows[i];
           const name = (row[nameIdx] ?? "").trim();
           const email = (row[emailIdx] ?? "").trim();
-          let password = (row[passIdx] ?? "").trim();
+          const password = (row[passIdx] ?? "").trim();
           const roleRaw = (row[roleIdx] ?? "").trim().toLowerCase();
           const role = (validRoles.includes(roleRaw) ? roleRaw : "podiatrist") as UserRole;
           const clinicMode = clinicModeIdx >= 0 ? (row[clinicModeIdx] ?? "").trim().toLowerCase() : "existing";
@@ -1103,6 +1103,8 @@ const UserProfileModal = ({
 };
 
 // Main Users Page
+const roleOrder: Record<string, number> = { super_admin: 0, clinic_admin: 1, admin: 2, receptionist: 3, podiatrist: 4 };
+
 const UsersPage = () => {
   const { t } = useLanguage();
   const { user: currentUser, users: allUsers, usersLoading, fetchUsers } = useAuth();
@@ -1331,7 +1333,6 @@ const UsersPage = () => {
   }, [clinicsForLimits]);
 
   // Orden de rol para ordenar (clínica/subalternos: clinic_admin primero, luego podiatrist, etc.)
-  const roleOrder: Record<string, number> = { super_admin: 0, clinic_admin: 1, admin: 2, receptionist: 3, podiatrist: 4 };
   const statusOrder = (u: User): number => {
     if (u.isBanned) return 4;
     if (u.isBlocked) return 3;
@@ -1523,7 +1524,7 @@ const UsersPage = () => {
 
       if (!response.success || !response.data?.success) {
         const msg = response.message || response.error || t.usersPage.create.errors.createFailed;
-        const issues = (response.data as any)?.issues as Array<{ message?: string; path?: (string | number)[] }> | undefined;
+        const issues = (response.data as { issues?: unknown })?.issues as Array<{ message?: string; path?: (string | number)[] }> | undefined;
         const details = issues?.length ? issues.map((i) => i.message || i.path?.join(".")).join(". ") : "";
         alert(details ? `${msg}\n\n${t.common.details}: ${details}` : msg);
         return false;
@@ -1638,7 +1639,7 @@ const UsersPage = () => {
       } else {
         alert(r.error || r.data?.message || t.usersPage.passwordReset.approveError);
       }
-    } catch (e) {
+    } catch {
       alert(t.usersPage.passwordReset.approveError);
     }
   };
@@ -1653,7 +1654,7 @@ const UsersPage = () => {
       } else {
         alert(r.error || r.data?.message || t.usersPage.passwordReset.rejectError);
       }
-    } catch (e) {
+    } catch {
       alert(t.usersPage.passwordReset.rejectError);
     }
   };

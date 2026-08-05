@@ -5,6 +5,7 @@ import { useNotifications } from "../contexts/notifications-context";
 import { useRefreshOnFocus } from "../hooks/use-refresh-on-focus";
 import { api } from "../lib/api-client";
 import { NotificationType } from "../types/notification";
+import type { Translations } from "../i18n/translations";
 
 type FilterTab = "all" | "unread" | "read";
 type TypeFilter = "all" | NotificationType;
@@ -47,7 +48,7 @@ const NotificationIcon = ({ type, size = "md" }: { type: NotificationType; size?
   }
 };
 
-const formatTimeAgo = (dateStr: string, t: any): string => {
+const formatTimeAgo = (dateStr: string, t: Pick<Translations, "notifications">): string => {
   const date = new Date(dateStr);
   const now = new Date();
   const diffMs = now.getTime() - date.getTime();

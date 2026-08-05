@@ -287,7 +287,7 @@ appointmentsRoutes.get('/export/ics', requirePermission('manage_appointments'), 
       return c.json({ error: 'Acceso denegado', message: access.message }, access.status);
     }
 
-    const { ics, count, calendarName } = await buildAppointmentsIcsForUser(user, date, podiatristId);
+    const { ics, count } = await buildAppointmentsIcsForUser(user, date, podiatristId);
 
     await logAuditEvent({
       userId: user.userId,
@@ -398,7 +398,7 @@ appointmentsRoutes.post('/', requirePermission('manage_appointments'), async (c)
     const time = body.time || '09:00';
     const duration = typeof body.duration === 'number' ? body.duration : 30;
     const notes = buildNotes(body.notes ?? '', duration);
-    let clinicId =
+    const clinicId =
       user.role === 'clinic_admin'
         ? user.clinicId ?? null
         : body.clinicId ?? user.clinicId ?? podiatristRow.clinicId ?? null;

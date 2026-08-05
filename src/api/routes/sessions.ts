@@ -22,7 +22,7 @@ import {
   labAttachments as labAttachmentsTable,
   creditTransactions as creditTransactionsTable,
 } from '../database/schema';
-import { eq, and, desc, gte, lte } from 'drizzle-orm';
+import { eq, desc, gte, lte } from 'drizzle-orm';
 import { validateImageDataUri, MAX_SESSION_IMAGE_BYTES, MAX_D1_STORED_DATA_URI_BYTES } from '../utils/logo-upload';
 import { syncClinicalRetentionForSession } from '../utils/clinical-retention';
 import { isR2Reference, isSessionImageFilePath, getR2Bucket } from '../utils/r2-media';

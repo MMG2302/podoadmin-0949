@@ -32,7 +32,7 @@ import { resolveSystemAccess } from '../utils/access-control';
 
 import { invalidateBillingSubjectAccessCache } from '../utils/access-cache';
 
-import { entitlementsForTier, isPlanTier } from '../utils/plan-entitlements';
+import { entitlementsForTier } from '../utils/plan-entitlements';
 
 import { getClientIP } from '../utils/ip-tracking';
 

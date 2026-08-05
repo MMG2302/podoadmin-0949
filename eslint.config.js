@@ -12,6 +12,8 @@ export default tseslint.config(
       "node_modules/**",
       "**/*.cjs",
       "scripts/**",
+      // Script de inyección i18n de un solo uso, mismo caso que scripts/**
+      "_tmp_i18n_inject.mjs",
       "public/**",
       "worker-configuration.d.ts",
       "**/*-DESKTOP-62AB2BV.*",
@@ -39,6 +41,10 @@ export default tseslint.config(
       "src/web/contexts/**/*.tsx",
       "src/web/components/ui/button.tsx",
       "src/web/pages/settings-page.tsx",
+      // Exportan helpers/constantes junto al componente: sólo afecta a Fast Refresh en dev.
+      "src/web/components/error-boundary.tsx",
+      "src/web/components/sessions/podiatry-examination-fields.tsx",
+      "src/web/components/settings/paint-color-picker.tsx",
     ],
     rules: {
       "react-refresh/only-export-components": "off",

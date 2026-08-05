@@ -330,7 +330,6 @@ async function computeCheckoutAnalytics(
 
   const paidRows = indexPaidRows(paidRowsRaw);
   const sumPaidIn = (start: Date, end: Date) => sumCountPaidIn(paidRows, start, end).total;
-  const countPaidIn = (start: Date, end: Date) => sumCountPaidIn(paidRows, start, end).count;
 
   const currentPeriod = sumCountPaidIn(paidRows, from, to);
   const previousPeriod = sumCountPaidIn(paidRows, prevFrom, prevTo);

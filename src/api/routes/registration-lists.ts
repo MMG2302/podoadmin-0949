@@ -782,9 +782,6 @@ registrationListsRoutes.post('/:id/approve', requireRole('super_admin'), async (
           mustChangePassword: true,
         } as Record<string, unknown>);
 
-        if (clinicIdToSet && role === 'podiatrist') {
-        }
-
         await logAuditEvent({
           userId: user.userId,
           action: 'CREATE_USER',

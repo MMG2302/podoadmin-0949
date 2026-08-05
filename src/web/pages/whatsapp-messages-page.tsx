@@ -396,6 +396,8 @@ export default function WhatsAppMessagesPage() {
           appointmentCost,
         };
       });
+    // resolveAppointmentContact se redefine en cada render; incluirla anularia el memo.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [appointments, targetDateIso, targetDateLabel, podiatristFilter, patientById, doctorById, tenantCountry, clinicInfo]);
 
   const pendingRescheduleRows = useMemo((): ReminderTargetRow[] => {

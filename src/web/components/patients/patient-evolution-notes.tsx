@@ -30,6 +30,8 @@ export function PatientEvolutionNotesSection({ patient }: { patient: Patient }) 
 
   useEffect(() => {
     void load();
+    // load se redefine en cada render; el efecto debe correr solo al cambiar de paciente.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [patient.id]);
 
   const addNote = async () => {

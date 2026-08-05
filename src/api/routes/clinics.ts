@@ -59,7 +59,7 @@ clinicsRoutes.get('/', requireRole('super_admin', 'admin'), async (c) => {
     // en billing-pricing.ts: excluye deshabilitados/baneados — si no, el número mostrado no
     // coincide con lo que realmente cuenta contra el cupo del plan).
     const clinicIds = rows.map((r) => r.clinicId);
-    let podiatristCounts: Record<string, number> = {};
+    const podiatristCounts: Record<string, number> = {};
     if (clinicIds.length > 0) {
       const podiatristRows = await database
         .select({
@@ -311,7 +311,7 @@ clinicsRoutes.patch('/:clinicId', async (c) => {
   if (!user || !canEditClinic(user, clinicId)) {
     return c.json({ error: 'Acceso denegado' }, 403);
   }
-  let clinicRows = await database.select().from(clinicsTable).where(eq(clinicsTable.clinicId, clinicId)).limit(1);
+  const clinicRows = await database.select().from(clinicsTable).where(eq(clinicsTable.clinicId, clinicId)).limit(1);
   if (!clinicRows[0]) return c.json({ error: 'Clínica no encontrada' }, 404);
   if (!canBypassCooldown(user) && isWithinCooldown(clinicRows[0].infoUpdatedAt)) {
     const nextAt = getNextAllowedAt(clinicRows[0].infoUpdatedAt);

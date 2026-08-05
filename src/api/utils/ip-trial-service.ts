@@ -231,7 +231,7 @@ export async function checkIpTrialEligibility(
     };
   }
 
-  let ip = resolveClientIpForTrial(clientIp);
+  const ip = resolveClientIpForTrial(clientIp);
   if (!ip) {
     return {
       eligible: false,

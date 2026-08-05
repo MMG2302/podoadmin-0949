@@ -169,6 +169,8 @@ export function PatientLabAttachmentsSection({ patientId }: { patientId: string 
 
   useEffect(() => {
     load();
+    // load se redefine en cada render; el efecto debe correr solo al cambiar de paciente.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [patientId]);
 
   const upload = async (file: File) => {

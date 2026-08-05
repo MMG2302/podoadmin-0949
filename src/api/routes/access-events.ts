@@ -127,7 +127,6 @@ announcementsRoutes.post('/admin/campaigns', async (c) => {
 });
 
 announcementsRoutes.post('/admin/campaigns/:id/status', async (c) => {
-  const user = c.get('user');
   const id = sanitizePathParam(c.req.param('id'), 128);
   if (!id) return c.json({ error: 'ID inválido' }, 400);
   const body = await c.req.json().catch(() => ({}));

@@ -48,7 +48,8 @@ export const MainLayout = ({ children, title }: MainLayoutProps) => {
     window.scrollTo(0, 0);
     // Forzar reflow para que el navegador recalcule el layout (arregla header/sidebar que no aparecen hasta refresh)
     requestAnimationFrame(() => {
-      document.body.offsetHeight;
+      // Leer offsetHeight fuerza el reflow; el valor se descarta a propósito.
+      void document.body.offsetHeight;
     });
   }, []);
 

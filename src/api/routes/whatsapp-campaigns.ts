@@ -2,7 +2,6 @@ import { Hono } from 'hono';
 import { eq, desc } from 'drizzle-orm';
 import { z } from 'zod';
 import { requireAuth } from '../middleware/auth';
-import { requirePermission } from '../middleware/authorization';
 import { requireActiveSubscription } from '../middleware/subscription';
 import { database } from '../database';
 import { whatsappCampaigns } from '../database/schema';

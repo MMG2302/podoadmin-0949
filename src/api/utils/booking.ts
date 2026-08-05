@@ -78,7 +78,7 @@ export async function getOrCreateBookingToken(
 export async function getBookingBranding(target: BookingTarget) {
   let clinicName: string | null = null;
   let mapsUrl: string | null = null;
-  let clinicId = target.clinicId;
+  const clinicId = target.clinicId;
   if (clinicId) {
     const c = await database
       .select({ clinicName: clinicsTable.clinicName, mapsUrl: clinicsTable.mapsUrl })

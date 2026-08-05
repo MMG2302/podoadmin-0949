@@ -509,7 +509,7 @@ export function BillingSettingsSection() {
               <p className="text-xs text-brand-muted">{t.settings.billing.growthHint}</p>
               <p className="text-xs text-brand-muted">{t.settings.billing.growthClinicBullet}</p>
               <a
-                href={`mailto:soporte@podoadmin.com?subject=${encodeURIComponent("Cambio a plan Clínica - PodoAdmin")}`}
+                href={`mailto:soporte@podoadmin.com?subject=${encodeURIComponent("Cambio a plan Clínica - Podoraa")}`}
                 className="inline-flex items-center justify-center w-full py-2.5 rounded-lg border border-brand-border text-sm font-medium text-brand-ink hover:bg-brand-canvas min-h-[44px]"
               >
                 {t.settings.billing.growthContact}

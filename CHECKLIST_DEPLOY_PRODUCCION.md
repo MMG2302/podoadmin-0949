@@ -1,6 +1,6 @@
-# Checklist de Deploy a ProducciÃ³n (PodoAdmin)
+# Checklist de Deploy a ProducciÃ³n (Podoraa)
 
-Este documento resume, en formato de checklist accionable, lo que hay que revisar/ejecutar antes de desplegar PodoAdmin en producciÃ³n.
+Este documento resume, en formato de checklist accionable, lo que hay que revisar/ejecutar antes de desplegar Podoraa en producciÃ³n.
 
 **Contexto vibecoding:** revisar cada Ã­tem en dashboard y en cÃ³digo; no asumir que â€œestÃ¡ en el repoâ€ implica que estÃ¡ activo en producciÃ³n.
 

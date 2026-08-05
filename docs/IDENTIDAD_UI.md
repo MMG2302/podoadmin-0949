@@ -7,7 +7,7 @@
 > 3. **Cursor / reglas persistentes:** copia la sección [Regla para Cursor](#regla-para-cursorrules) a `.cursor/rules/identidad-ui.mdc`.
 > 4. **Revisión visual:** usa el [Checklist de conformidad](#checklist-de-conformidad) antes de dar por cerrada una pantalla.
 
-Esta identidad nació en **PodoAdmin** y aplica a cualquier producto del ecosistema: SaaS clínicos, paneles admin, landings de producto y herramientas internas.
+Esta identidad nació en **Podoraa** y aplica a cualquier producto del ecosistema: SaaS clínicos, paneles admin, landings de producto y herramientas internas.
 
 ---
 
@@ -531,7 +531,7 @@ Sin colores de acento salvo links y alertas.
 
 ## Referencia de implementación
 
-La implementación canónica vive en **PodoAdmin**:
+La implementación canónica vive en **Podoraa**:
 
 | Qué | Dónde |
 |-----|-------|
@@ -554,6 +554,6 @@ Al iniciar un proyecto nuevo, **copiar y adaptar** `auth-page-styles.ts` y `form
 | Campo | Valor |
 |-------|-------|
 | Versión | 1.0 |
-| Origen | PodoAdmin UI |
+| Origen | Podoraa UI |
 | Fecha | 2026-07-06 |
 | Mantenedor | Equipo de producto |

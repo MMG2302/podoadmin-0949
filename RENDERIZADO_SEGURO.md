@@ -1,6 +1,6 @@
 # Renderizado seguro (headless / sandbox)
 
-Cuándo tiene sentido un **renderizado seguro** (navegador headless aislado, ejecución de JS en sandbox, captura de DOM final, screenshot) y si PodoAdmin lo necesita.
+Cuándo tiene sentido un **renderizado seguro** (navegador headless aislado, ejecución de JS en sandbox, captura de DOM final, screenshot) y si Podoraa lo necesita.
 
 ---
 
@@ -14,7 +14,7 @@ Sirve para: **vista previa de enlaces** (fetch de una URL y mostrar thumbnail/sn
 
 ---
 
-## ¿Es aplicable o necesario en PodoAdmin hoy?
+## ¿Es aplicable o necesario en Podoraa hoy?
 
 **No es necesario** con el diseño actual:
 
@@ -62,7 +62,7 @@ En ambos casos, el checklist que comentas es el adecuado:
 
 ## Resumen
 
-- **Hoy en PodoAdmin**: no es necesario implementar headless/sandbox ni “renderizado seguro” en servidor; los mensajes son texto y se muestran sin interpretar HTML.
+- **Hoy en Podoraa**: no es necesario implementar headless/sandbox ni “renderizado seguro” en servidor; los mensajes son texto y se muestran sin interpretar HTML.
 - **Si más adelante** añades vista previa de enlaces o generación de PDF/HTML desde contenido de usuario, entonces sí aplica y conviene diseñar el flujo con sandbox, límite de red y el checklist anterior (escapado, llamadas externas, fingerprinting).
 
 Para medidas ya aplicadas en la app (escapado de entradas, detección de URLs ofuscadas, Safe Browsing en mensajes, etc.), ver **INPUT_SECURITY.md** y **PHISHING_PROTECTION.md**.

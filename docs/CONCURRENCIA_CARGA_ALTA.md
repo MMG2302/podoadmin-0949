@@ -1,4 +1,4 @@
-# Concurrencia y carga alta — PodoAdmin
+# Concurrencia y carga alta — Podoraa
 
 Documento técnico: qué ocurre cuando llegan **cientos de peticiones simultáneas** y cómo el sistema responde.
 

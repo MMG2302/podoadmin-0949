@@ -1054,7 +1054,7 @@ const settingsExtraEs = {
   errors: {
     connectionSave: "Error de conexión al guardar.",
   },
-  supportSenderLabel: "PodoAdmin",
+  supportSenderLabel: "Podoraa",
 };
 
 const settingsExtraEn = {
@@ -1233,7 +1233,7 @@ const settingsExtraEn = {
     ellipsis: "...",
   },
   errors: { connectionSave: "Connection error while saving." },
-  supportSenderLabel: "PodoAdmin",
+  supportSenderLabel: "Podoraa",
 };
 
 const settingsExtraPt = {
@@ -1412,7 +1412,7 @@ const settingsExtraPt = {
     ellipsis: "...",
   },
   errors: { connectionSave: "Erro de ligação ao guardar." },
-  supportSenderLabel: "PodoAdmin",
+  supportSenderLabel: "Podoraa",
 };
 
 const settingsExtraFr = {
@@ -1591,7 +1591,7 @@ const settingsExtraFr = {
     ellipsis: "...",
   },
   errors: { connectionSave: "Erreur de connexion lors de l'enregistrement." },
-  supportSenderLabel: "PodoAdmin",
+  supportSenderLabel: "Podoraa",
 };
 
 // --- 1) checkout.confirmPaidTitle in interface ---
@@ -1688,7 +1688,7 @@ const settingsPrintClosers = [
       },
     },
     support: {
-      title: "Contactar PodoAdmin",`,
+      title: "Contactar Podoraa",`,
     extra: settingsExtraEs,
   },
   {
@@ -1699,7 +1699,7 @@ const settingsPrintClosers = [
       },
     },
     support: {
-      title: "Contact PodoAdmin",`,
+      title: "Contact Podoraa",`,
     extra: settingsExtraEn,
   },
   {
@@ -1710,7 +1710,7 @@ const settingsPrintClosers = [
       },
     },
     support: {
-      title: "Contactar PodoAdmin",`,
+      title: "Contactar Podoraa",`,
     extra: settingsExtraPt,
   },
   {
@@ -1721,7 +1721,7 @@ const settingsPrintClosers = [
       },
     },
     support: {
-      title: "Contacter PodoAdmin",`,
+      title: "Contacter Podoraa",`,
     extra: settingsExtraFr,
   },
 ];

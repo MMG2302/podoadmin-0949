@@ -39,7 +39,7 @@ const gridPattern = (
 function Wordmark({ className }: { className?: string }) {
   return (
     <span className={cn("tracking-tight", className)}>
-      Podo<span className="font-bold">Admin</span>
+      Pod<span className="font-bold">oraa</span>
     </span>
   );
 }
@@ -266,6 +266,9 @@ const LandingPage = () => {
             <a href="#pricing" className="hover:text-brand-ink transition-colors">
               {l.navPricing}
             </a>
+            <a href="#steps" className="hover:text-brand-ink transition-colors">
+              {l.navSteps}
+            </a>
             <a href="#audience" className="hover:text-brand-ink transition-colors">
               {l.navAudience}
             </a>
@@ -390,6 +393,42 @@ const LandingPage = () => {
         </div>
       </section>
 
+      {/* Cómo empezar — cuatro pasos numerados */}
+      <section id="steps" className="py-16 sm:py-24 px-4 sm:px-6 bg-brand-surface border-y border-brand-border">
+        <div className="mx-auto max-w-6xl">
+          <h2 className="max-w-3xl text-3xl sm:text-4xl font-semibold tracking-tight text-brand-ink">
+            {l.stepsTitle}
+          </h2>
+          <p className="mt-6 inline-flex items-start gap-2.5 rounded-full border border-brand-border bg-brand-canvas px-5 py-2.5 text-sm text-brand-muted">
+            <span aria-hidden className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-brand-ink" />
+            <span>{l.stepsBadge}</span>
+          </p>
+
+          <ol className="mt-12 grid gap-y-10 border-t border-brand-border pt-10 sm:grid-cols-2 lg:grid-cols-4 lg:gap-y-0">
+            {l.steps.map((step, i) => (
+              <li
+                key={step.title}
+                className={cn(
+                  "px-0 sm:px-6",
+                  i === 0 && "sm:pl-0",
+                  i > 0 && "sm:border-l sm:border-brand-border"
+                )}
+              >
+                <div className="font-mono text-xs tracking-widest text-brand-muted/70">
+                  {String(i + 1).padStart(2, "0")}
+                  <span className="mx-1.5">/</span>
+                  {String(l.steps.length).padStart(2, "0")}
+                </div>
+                <h3 className="mt-4 text-lg font-semibold leading-snug text-brand-ink">
+                  {step.title}
+                </h3>
+                <p className="mt-3 text-sm leading-relaxed text-brand-muted">{step.description}</p>
+              </li>
+            ))}
+          </ol>
+        </div>
+      </section>
+
       {/* Audience */}
       <section id="audience" className="py-16 sm:py-24 px-4 sm:px-6 bg-brand-surface border-y border-brand-border">
         <div className="mx-auto max-w-6xl">
@@ -438,6 +477,9 @@ const LandingPage = () => {
           </div>
 
           <p className="mt-6 text-center text-sm text-brand-muted">{l.pricingNote}</p>
+          <p className="mx-auto mt-3 max-w-2xl text-center text-xs leading-relaxed text-brand-muted/80">
+            {l.pricingNoteDisclaimer}
+          </p>
         </div>
       </section>
 
@@ -485,7 +527,7 @@ const LandingPage = () => {
             </Link>
           </div>
           <p className="text-xs sm:text-sm">
-            © {new Date().getFullYear()} PodoAdmin. {l.footerRights}
+            © {new Date().getFullYear()} Podoraa. {l.footerRights}
           </p>
         </div>
       </footer>

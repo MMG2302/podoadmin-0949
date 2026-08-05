@@ -1,4 +1,4 @@
-# Propuesta: Tier Premium para PodoAdmin
+# Propuesta: Tier Premium para Podoraa
 
 > Estado: **implementado** (julio 2026). Ajustes sobre la propuesta original:
 > - Se añadió el entitlement `clinical_tools`: la página Herramientas clínicas (diseñador de plantillas, inventario, derivaciones) es Premium. `GET /clinical/templates` queda en Base (aplicar plantillas en sesiones).

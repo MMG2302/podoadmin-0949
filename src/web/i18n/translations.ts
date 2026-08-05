@@ -1404,7 +1404,7 @@ export interface Translations {
     supportSenderLabel: string;
   };
 
-  // Contact PodoAdmin / Support (2-way messaging)
+  // Contact Podoraa / Support (2-way messaging)
   premium: {
     badge: string;
     baseBadge: string;
@@ -1488,7 +1488,7 @@ export interface Translations {
 
   support: {
     title: string;
-    contactPodoAdmin: string;
+    contactPodoraa: string;
     contactSubtitle: string;
     newConversation: string;
     subject: string;
@@ -2564,7 +2564,7 @@ export const translations: Record<Language, Translations> = {
       // Registration
       register: "Registrarse",
       registerTitle: "Crea tu cuenta",
-      registerSubtitle: "Completa el formulario para registrarte en PodoAdmin",
+      registerSubtitle: "Completa el formulario para registrarte en Podoraa",
       nameLabel: "Nombre completo",
       namePlaceholder: "Juan Pérez",
       clinicCodeLabel: "Código de clínica (opcional)",
@@ -2752,7 +2752,7 @@ views: {
     },
     dashboard: {
       title: "Panel principal",
-      welcomeMessage: "Bienvenido a PodoAdmin",
+      welcomeMessage: "Bienvenido a Podoraa",
       quickStats: "Estadísticas rápidas",
       totalPatients: "Total de pacientes",
       sessionsThisMonth: "Sesiones este mes",
@@ -3328,7 +3328,7 @@ views: {
       },
       billing: {
         title: "Suscripción",
-        subscriptionTitle: "Suscripción PodoAdmin",
+        subscriptionTitle: "Suscripción Podoraa",
         independentPlan: "Plan podólogo independiente",
         status: "Estado",
         trialPeriod: "Periodo de prueba",
@@ -3356,7 +3356,7 @@ views: {
         stepCard: "2. Tarjeta",
         verifyCard: "Verificar tarjeta (sin cobro hoy)",
         activateMonthTrial: "Activar prueba de 1 mes",
-        overLimit: "Tu clínica tiene {count} podólogos activos, por encima de los {limit} incluidos, y el cobro de adicionales no está configurado. Contacta a PodoAdmin.",
+        overLimit: "Tu clínica tiene {count} podólogos activos, por encima de los {limit} incluidos, y el cobro de adicionales no está configurado. Contacta a Podoraa.",
         overCapacityAfterDowngrade: "Tienes {count} podólogos activos, más de los {limit} que permite tu plan actual. Siguen funcionando con normalidad, pero no podrás añadir ninguno nuevo hasta que compres asientos adicionales o reduzcas tu equipo.",
         loading: "Cargando…",
         clinicPlan: "Plan clínica",
@@ -3472,7 +3472,7 @@ views: {
         alignCenter: "Centrada",
         monochrome: "Imprimir en blanco y negro",
         monochromeHint: "Escala de grises, ideal para ahorrar tinta.",
-        showGeneratedBy: "Mostrar \"Generado por PodoAdmin\" en el pie",
+        showGeneratedBy: "Mostrar \"Generado por Podoraa\" en el pie",
         footerText: "Texto de pie de página personalizado",
         footerPlaceholder: "Ej. Horario de atención, aviso legal, redes sociales…",
         historyTitle: "Historia clínica",
@@ -3529,7 +3529,7 @@ views: {
         demoTreatment: "Desbridamiento",
         demoMoreRows: "+ {count} filas más…",
         demoPhotos: "Fotografías",
-        demoFooter: "PodoAdmin · vista previa",
+        demoFooter: "Podoraa · vista previa",
         demoDoctor: "Dr. Podólogo Demo",
         demoCedula: "Cédula: 12345678",
         demoTel: "Tel: 555 123 4567",
@@ -3743,7 +3743,7 @@ views: {
       errors: {
         connectionSave: "Error de conexión al guardar.",
       },
-      supportSenderLabel: "PodoAdmin",
+      supportSenderLabel: "Podoraa",
     },
     premium: {
       badge: "Premium",
@@ -3827,8 +3827,8 @@ views: {
     },
 
     support: {
-      title: "Contactar PodoAdmin",
-      contactPodoAdmin: "Contactar PodoAdmin",
+      title: "Contactar Podoraa",
+      contactPodoraa: "Contactar Podoraa",
       contactSubtitle: "Envía un mensaje directo a soporte. Te responderemos lo antes posible.",
       newConversation: "Nuevo mensaje",
       subject: "Asunto",
@@ -3849,7 +3849,7 @@ views: {
       sent: "Enviado",
     },
     layout: {
-      brandFallback: "PodoAdmin",
+      brandFallback: "Podoraa",
       unlockSidebarVisible: "Desbloquear (bloqueado visible)",
       unlockSidebarHidden: "Desbloquear (bloqueado oculto)",
       lockSidebarVisible: "Bloquear sidebar visible",
@@ -4103,7 +4103,7 @@ views: {
         opinionWhatsAppMessage:
           "Hola {name}, ¿cómo estuvo tu visita en {clinica}? Tu opinión nos ayuda mucho:\n👍 Bien: {good}\n😐 Regular: {regular}\n👎 Mal: {bad}",
         bookingLinkTitle: "Reserva en línea",
-        bookingLinkHint: "Comparte este enlace con tus pacientes para que agenden solos. Muestra la marca de tu clínica; ellos no ven PodoAdmin.",
+        bookingLinkHint: "Comparte este enlace con tus pacientes para que agenden solos. Muestra la marca de tu clínica; ellos no ven Podoraa.",
         bookingLinkEnabled: "Reserva en línea activada",
         bookingLinkDisabled: "Activar reserva en línea",
         bookingLinkCopy: "Copiar enlace",
@@ -4605,15 +4605,15 @@ views: {
       back: "Volver",
       section1: {
         title: "1. Aceptación de los Términos",
-        content: "Al acceder y utilizar PodoAdmin, usted acepta cumplir y estar sujeto a estos Términos y Condiciones. Si no está de acuerdo con alguna parte de estos términos, no debe utilizar nuestro servicio.",
+        content: "Al acceder y utilizar Podoraa, usted acepta cumplir y estar sujeto a estos Términos y Condiciones. Si no está de acuerdo con alguna parte de estos términos, no debe utilizar nuestro servicio.",
       },
       section2: {
         title: "2. Descripción del Servicio",
-        content: "PodoAdmin es una plataforma de gestión clínica diseñada para profesionales de la podología. El servicio incluye gestión de pacientes, sesiones clínicas, créditos y otras funcionalidades relacionadas con la administración de una práctica podológica.",
+        content: "Podoraa es una plataforma de gestión clínica diseñada para profesionales de la podología. El servicio incluye gestión de pacientes, sesiones clínicas, créditos y otras funcionalidades relacionadas con la administración de una práctica podológica.",
       },
       section3: {
         title: "3. Registro de Usuario",
-        intro: "Para utilizar PodoAdmin, debe:",
+        intro: "Para utilizar Podoraa, debe:",
         item1: "Proporcionar información precisa, actual y completa durante el registro",
         item2: "Mantener y actualizar su información de cuenta",
         item3: "Mantener la confidencialidad de su contraseña",
@@ -4640,11 +4640,11 @@ views: {
       },
       section7: {
         title: "7. Propiedad Intelectual",
-        content: "Todo el contenido, diseño, código y funcionalidades de PodoAdmin son propiedad de sus respectivos dueños y están protegidos por leyes de propiedad intelectual. No se permite la reproducción, distribución o uso comercial sin autorización previa.",
+        content: "Todo el contenido, diseño, código y funcionalidades de Podoraa son propiedad de sus respectivos dueños y están protegidos por leyes de propiedad intelectual. No se permite la reproducción, distribución o uso comercial sin autorización previa.",
       },
       section8: {
         title: "8. Limitación de Responsabilidad",
-        content: "PodoAdmin se proporciona \"tal cual\" sin garantías de ningún tipo. No garantizamos que el servicio esté libre de errores, interrupciones o defectos. No seremos responsables de ningún daño directo, indirecto, incidental o consecuente derivado del uso o imposibilidad de uso del servicio.",
+        content: "Podoraa se proporciona \"tal cual\" sin garantías de ningún tipo. No garantizamos que el servicio esté libre de errores, interrupciones o defectos. No seremos responsables de ningún daño directo, indirecto, incidental o consecuente derivado del uso o imposibilidad de uso del servicio.",
       },
       section9: {
         title: "9. Modificaciones del Servicio",
@@ -4660,7 +4660,7 @@ views: {
       },
       section12: {
         title: "12. Ley Aplicable",
-        content: "Estos términos se rigen por las leyes del país donde opera PodoAdmin. Cualquier disputa será resuelta en los tribunales competentes de dicha jurisdicción.",
+        content: "Estos términos se rigen por las leyes del país donde opera Podoraa. Cualquier disputa será resuelta en los tribunales competentes de dicha jurisdicción.",
       },
       section13: {
         title: "13. Contacto",
@@ -4674,7 +4674,7 @@ views: {
       section1: {
         title: "1. Responsable del tratamiento",
         content:
-          "PodoAdmin actúa como encargado de plataforma tecnológica. El profesional o clínica que utiliza el servicio es responsable del tratamiento de los datos de salud de sus pacientes conforme a la normativa local (LFPDPPP, LGPD, Habeas Data, GDPR, entre otras).",
+          "Podoraa actúa como encargado de plataforma tecnológica. El profesional o clínica que utiliza el servicio es responsable del tratamiento de los datos de salud de sus pacientes conforme a la normativa local (LFPDPPP, LGPD, Habeas Data, GDPR, entre otras).",
       },
       section2: {
         title: "2. Datos que tratamos",
@@ -5035,7 +5035,7 @@ views: {
       // Registration
       register: "Sign up",
       registerTitle: "Create your account",
-      registerSubtitle: "Complete the form to register in PodoAdmin",
+      registerSubtitle: "Complete the form to register in Podoraa",
       nameLabel: "Full name",
       namePlaceholder: "John Doe",
       clinicCodeLabel: "Clinic code (optional)",
@@ -5223,7 +5223,7 @@ views: {
     },
     dashboard: {
       title: "Dashboard",
-      welcomeMessage: "Welcome to PodoAdmin",
+      welcomeMessage: "Welcome to Podoraa",
       quickStats: "Quick Stats",
       totalPatients: "Total Patients",
       sessionsThisMonth: "Sessions This Month",
@@ -5799,7 +5799,7 @@ views: {
       },
       billing: {
         title: "Subscription",
-        subscriptionTitle: "PodoAdmin subscription",
+        subscriptionTitle: "Podoraa subscription",
         independentPlan: "Independent podiatrist plan",
         status: "Status",
         trialPeriod: "Trial period",
@@ -5827,7 +5827,7 @@ views: {
         stepCard: "2. Card",
         verifyCard: "Verify card (no charge today)",
         activateMonthTrial: "Activate 1-month trial",
-        overLimit: "Your clinic has {count} active podiatrists, above the {limit} included, and extra-seat billing is not configured. Contact PodoAdmin.",
+        overLimit: "Your clinic has {count} active podiatrists, above the {limit} included, and extra-seat billing is not configured. Contact Podoraa.",
         overCapacityAfterDowngrade: "You have {count} active podiatrists, more than the {limit} your current plan allows. They keep working normally, but you won't be able to add any new one until you buy extra seats or reduce your team.",
         loading: "Loading…",
         clinicPlan: "Clinic plan",
@@ -5943,7 +5943,7 @@ views: {
         alignCenter: "Centered",
         monochrome: "Print in black and white",
         monochromeHint: "Grayscale, ideal to save ink.",
-        showGeneratedBy: "Show \"Generated by PodoAdmin\" in the footer",
+        showGeneratedBy: "Show \"Generated by Podoraa\" in the footer",
         footerText: "Custom footer text",
         footerPlaceholder: "E.g. Business hours, legal notice, social media…",
         historyTitle: "Clinical history",
@@ -6000,7 +6000,7 @@ views: {
         demoTreatment: "Debridement",
         demoMoreRows: "+ {count} more rows…",
         demoPhotos: "Photographs",
-        demoFooter: "PodoAdmin · preview",
+        demoFooter: "Podoraa · preview",
         demoDoctor: "Dr. Demo Podiatrist",
         demoCedula: "License: 12345678",
         demoTel: "Tel: 555 123 4567",
@@ -6214,7 +6214,7 @@ views: {
       errors: {
         connectionSave: "Connection error while saving.",
       },
-      supportSenderLabel: "PodoAdmin",
+      supportSenderLabel: "Podoraa",
     },
     premium: {
       badge: "Premium",
@@ -6298,8 +6298,8 @@ views: {
     },
 
     support: {
-      title: "Contact PodoAdmin",
-      contactPodoAdmin: "Contact PodoAdmin",
+      title: "Contact Podoraa",
+      contactPodoraa: "Contact Podoraa",
       contactSubtitle: "Send a direct message to support. We will respond as soon as possible.",
       newConversation: "New message",
       subject: "Subject",
@@ -6320,7 +6320,7 @@ views: {
       sent: "Sent",
     },
     layout: {
-      brandFallback: "PodoAdmin",
+      brandFallback: "Podoraa",
       unlockSidebarVisible: "Unlock (locked visible)",
       unlockSidebarHidden: "Unlock (locked hidden)",
       lockSidebarVisible: "Lock sidebar visible",
@@ -6572,7 +6572,7 @@ views: {
         opinionWhatsAppMessage:
           "Hi {name}, how was your visit at {clinica}? Your feedback helps us a lot:\n👍 Good: {good}\n😐 Okay: {regular}\n👎 Bad: {bad}",
         bookingLinkTitle: "Online booking",
-        bookingLinkHint: "Share this link with your patients so they can book themselves. It shows your clinic's brand; they never see PodoAdmin.",
+        bookingLinkHint: "Share this link with your patients so they can book themselves. It shows your clinic's brand; they never see Podoraa.",
         bookingLinkEnabled: "Online booking enabled",
         bookingLinkDisabled: "Enable online booking",
         bookingLinkCopy: "Copy link",
@@ -7074,15 +7074,15 @@ views: {
       back: "Back",
       section1: {
         title: "1. Acceptance of Terms",
-        content: "By accessing and using PodoAdmin, you agree to comply with and be bound by these Terms and Conditions. If you do not agree with any part of these terms, you must not use our service.",
+        content: "By accessing and using Podoraa, you agree to comply with and be bound by these Terms and Conditions. If you do not agree with any part of these terms, you must not use our service.",
       },
       section2: {
         title: "2. Service Description",
-        content: "PodoAdmin is a clinical management platform designed for podiatry professionals. The service includes patient management, clinical sessions, credits, and other functionalities related to the administration of a podiatric practice.",
+        content: "Podoraa is a clinical management platform designed for podiatry professionals. The service includes patient management, clinical sessions, credits, and other functionalities related to the administration of a podiatric practice.",
       },
       section3: {
         title: "3. User Registration",
-        intro: "To use PodoAdmin, you must:",
+        intro: "To use Podoraa, you must:",
         item1: "Provide accurate, current, and complete information during registration",
         item2: "Maintain and update your account information",
         item3: "Maintain the confidentiality of your password",
@@ -7109,11 +7109,11 @@ views: {
       },
       section7: {
         title: "7. Intellectual Property",
-        content: "All content, design, code, and functionalities of PodoAdmin are the property of their respective owners and are protected by intellectual property laws. Reproduction, distribution, or commercial use is not permitted without prior authorization.",
+        content: "All content, design, code, and functionalities of Podoraa are the property of their respective owners and are protected by intellectual property laws. Reproduction, distribution, or commercial use is not permitted without prior authorization.",
       },
       section8: {
         title: "8. Limitation of Liability",
-        content: "PodoAdmin is provided \"as is\" without warranties of any kind. We do not guarantee that the service is free from errors, interruptions, or defects. We will not be liable for any direct, indirect, incidental, or consequential damages arising from the use or inability to use the service.",
+        content: "Podoraa is provided \"as is\" without warranties of any kind. We do not guarantee that the service is free from errors, interruptions, or defects. We will not be liable for any direct, indirect, incidental, or consequential damages arising from the use or inability to use the service.",
       },
       section9: {
         title: "9. Service Modifications",
@@ -7129,7 +7129,7 @@ views: {
       },
       section12: {
         title: "12. Applicable Law",
-        content: "These terms are governed by the laws of the country where PodoAdmin operates. Any dispute will be resolved in the competent courts of that jurisdiction.",
+        content: "These terms are governed by the laws of the country where Podoraa operates. Any dispute will be resolved in the competent courts of that jurisdiction.",
       },
       section13: {
         title: "13. Contact",
@@ -7143,7 +7143,7 @@ views: {
       section1: {
         title: "1. Data controller",
         content:
-          "PodoAdmin is the technology platform provider. The professional or clinic using the service is the data controller for patient health data under local law (LFPDPPP, LGPD, Habeas Data, GDPR, etc.).",
+          "Podoraa is the technology platform provider. The professional or clinic using the service is the data controller for patient health data under local law (LFPDPPP, LGPD, Habeas Data, GDPR, etc.).",
       },
       section2: {
         title: "2. Data we process",
@@ -7501,7 +7501,7 @@ views: {
       // Registration
       register: "Registrar-se",
       registerTitle: "Crie sua conta",
-      registerSubtitle: "Preencha o formulário para se registrar no PodoAdmin",
+      registerSubtitle: "Preencha o formulário para se registrar em Podoraa",
       nameLabel: "Nome completo",
       namePlaceholder: "João Silva",
       clinicCodeLabel: "Código da clínica (opcional)",
@@ -7689,7 +7689,7 @@ views: {
     },
     dashboard: {
       title: "Painel",
-      welcomeMessage: "Bem-vindo ao PodoAdmin",
+      welcomeMessage: "Bem-vindo a Podoraa",
       quickStats: "Estatísticas Rápidas",
       totalPatients: "Total de Pacientes",
       sessionsThisMonth: "Sessões Este Mês",
@@ -8265,7 +8265,7 @@ views: {
       },
       billing: {
         title: "Subscrição",
-        subscriptionTitle: "Assinatura PodoAdmin",
+        subscriptionTitle: "Assinatura Podoraa",
         independentPlan: "Plano podólogo independente",
         status: "Estado",
         trialPeriod: "Período de teste",
@@ -8293,7 +8293,7 @@ views: {
         stepCard: "2. Cartão",
         verifyCard: "Verificar cartão (sem cobrança hoje)",
         activateMonthTrial: "Ativar teste de 1 mês",
-        overLimit: "A sua clínica tem {count} podólogos ativos, acima dos {limit} incluídos, e a cobrança de adicionais não está configurada. Contacte o PodoAdmin.",
+        overLimit: "A sua clínica tem {count} podólogos ativos, acima dos {limit} incluídos, e a cobrança de adicionais não está configurada. Contacte Podoraa.",
         overCapacityAfterDowngrade: "Tem {count} podólogos ativos, mais do que os {limit} que o seu plano atual permite. Continuam a funcionar normalmente, mas não poderá adicionar nenhum novo até comprar assentos adicionais ou reduzir a sua equipa.",
         loading: "A carregar…",
         clinicPlan: "Plano clínica",
@@ -8409,7 +8409,7 @@ views: {
         alignCenter: "Centrada",
         monochrome: "Imprimir a preto e branco",
         monochromeHint: "Escala de cinzentos, ideal para poupar tinta.",
-        showGeneratedBy: "Mostrar \"Gerado por PodoAdmin\" no rodapé",
+        showGeneratedBy: "Mostrar \"Gerado por Podoraa\" no rodapé",
         footerText: "Texto de rodapé personalizado",
         footerPlaceholder: "Ex. Horário de atendimento, aviso legal, redes sociais…",
         historyTitle: "História clínica",
@@ -8466,7 +8466,7 @@ views: {
         demoTreatment: "Debridement",
         demoMoreRows: "+ {count} more rows…",
         demoPhotos: "Photographs",
-        demoFooter: "PodoAdmin · preview",
+        demoFooter: "Podoraa · preview",
         demoDoctor: "Dr. Podólogo Demo",
         demoCedula: "License: 12345678",
         demoTel: "Tel: 555 123 4567",
@@ -8680,7 +8680,7 @@ views: {
       errors: {
         connectionSave: "Erro de ligação ao guardar.",
       },
-      supportSenderLabel: "PodoAdmin",
+      supportSenderLabel: "Podoraa",
     },
     premium: {
       badge: "Premium",
@@ -8764,8 +8764,8 @@ views: {
     },
 
     support: {
-      title: "Contactar PodoAdmin",
-      contactPodoAdmin: "Contactar PodoAdmin",
+      title: "Contactar Podoraa",
+      contactPodoraa: "Contactar Podoraa",
       contactSubtitle: "Envie uma mensagem direta ao suporte. Responderemos o mais rápido possível.",
       newConversation: "Nova mensagem",
       subject: "Assunto",
@@ -8786,7 +8786,7 @@ views: {
       sent: "Enviado",
     },
     layout: {
-      brandFallback: "PodoAdmin",
+      brandFallback: "Podoraa",
       unlockSidebarVisible: "Desbloquear (bloqueado visível)",
       unlockSidebarHidden: "Desbloquear (bloqueado oculto)",
       lockSidebarVisible: "Bloquear barra lateral visível",
@@ -9038,7 +9038,7 @@ views: {
         opinionWhatsAppMessage:
           "Olá {name}, como foi a sua visita em {clinica}? A sua opinião ajuda-nos muito:\n👍 Bem: {good}\n😐 Regular: {regular}\n👎 Mal: {bad}",
         bookingLinkTitle: "Reserva online",
-        bookingLinkHint: "Partilhe este link com os seus pacientes para agendarem sozinhos. Mostra a marca da sua clínica; eles não veem o PodoAdmin.",
+        bookingLinkHint: "Partilhe este link com os seus pacientes para agendarem sozinhos. Mostra a marca da sua clínica; eles não veem Podoraa.",
         bookingLinkEnabled: "Reserva online ativada",
         bookingLinkDisabled: "Ativar reserva online",
         bookingLinkCopy: "Copiar link",
@@ -9540,15 +9540,15 @@ views: {
       back: "Voltar",
       section1: {
         title: "1. Aceitação dos Termos",
-        content: "Ao acessar e usar o PodoAdmin, você concorda em cumprir e estar sujeito a estes Termos e Condições. Se você não concordar com alguma parte destes termos, não deve usar nosso serviço.",
+        content: "Ao acessar e usar Podoraa, você concorda em cumprir e estar sujeito a estes Termos e Condições. Se você não concordar com alguma parte destes termos, não deve usar nosso serviço.",
       },
       section2: {
         title: "2. Descrição do Serviço",
-        content: "PodoAdmin é uma plataforma de gestão clínica projetada para profissionais de podologia. O serviço inclui gestão de pacientes, sessões clínicas, créditos e outras funcionalidades relacionadas à administração de uma prática podológica.",
+        content: "Podoraa é uma plataforma de gestão clínica projetada para profissionais de podologia. O serviço inclui gestão de pacientes, sessões clínicas, créditos e outras funcionalidades relacionadas à administração de uma prática podológica.",
       },
       section3: {
         title: "3. Registro de Usuário",
-        intro: "Para usar o PodoAdmin, você deve:",
+        intro: "Para usar Podoraa, você deve:",
         item1: "Fornecer informações precisas, atuais e completas durante o registro",
         item2: "Manter e atualizar suas informações de conta",
         item3: "Manter a confidencialidade de sua senha",
@@ -9575,11 +9575,11 @@ views: {
       },
       section7: {
         title: "7. Propriedade Intelectual",
-        content: "Todo o conteúdo, design, código e funcionalidades do PodoAdmin são propriedade de seus respectivos proprietários e estão protegidos por leis de propriedade intelectual. Não é permitida a reprodução, distribuição ou uso comercial sem autorização prévia.",
+        content: "Todo o conteúdo, design, código e funcionalidades de Podoraa são propriedade de seus respectivos proprietários e estão protegidos por leis de propriedade intelectual. Não é permitida a reprodução, distribuição ou uso comercial sem autorização prévia.",
       },
       section8: {
         title: "8. Limitação de Responsabilidade",
-        content: "O PodoAdmin é fornecido \"como está\" sem garantias de qualquer tipo. Não garantimos que o serviço esteja livre de erros, interrupções ou defeitos. Não seremos responsáveis por quaisquer danos diretos, indiretos, incidentais ou consequenciais decorrentes do uso ou impossibilidade de uso do serviço.",
+        content: "O serviço Podoraa é fornecido \"como está\" sem garantias de qualquer tipo. Não garantimos que o serviço esteja livre de erros, interrupções ou defeitos. Não seremos responsáveis por quaisquer danos diretos, indiretos, incidentais ou consequenciais decorrentes do uso ou impossibilidade de uso do serviço.",
       },
       section9: {
         title: "9. Modificações do Serviço",
@@ -9595,7 +9595,7 @@ views: {
       },
       section12: {
         title: "12. Lei Aplicável",
-        content: "Estes termos são regidos pelas leis do país onde o PodoAdmin opera. Qualquer disputa será resolvida nos tribunais competentes dessa jurisdição.",
+        content: "Estes termos são regidos pelas leis do país onde Podoraa opera. Qualquer disputa será resolvida nos tribunais competentes dessa jurisdição.",
       },
       section13: {
         title: "13. Contato",
@@ -9942,7 +9942,7 @@ views: {
       // Registration
       register: "S'inscrire",
       registerTitle: "Créez votre compte",
-      registerSubtitle: "Remplissez le formulaire pour vous inscrire à PodoAdmin",
+      registerSubtitle: "Remplissez le formulaire pour vous inscrire à Podoraa",
       nameLabel: "Nom complet",
       namePlaceholder: "Jean Dupont",
       clinicCodeLabel: "Code clinique (facultatif)",
@@ -10130,7 +10130,7 @@ views: {
     },
     dashboard: {
       title: "Tableau de bord",
-      welcomeMessage: "Bienvenue sur PodoAdmin",
+      welcomeMessage: "Bienvenue sur Podoraa",
       quickStats: "Statistiques Rapides",
       totalPatients: "Total des Patients",
       sessionsThisMonth: "Séances ce Mois",
@@ -10706,7 +10706,7 @@ views: {
       },
       billing: {
         title: "Abonnement",
-        subscriptionTitle: "Abonnement PodoAdmin",
+        subscriptionTitle: "Abonnement Podoraa",
         independentPlan: "Plan podologue indépendant",
         status: "État",
         trialPeriod: "Période d'essai",
@@ -10734,7 +10734,7 @@ views: {
         stepCard: "2. Carte",
         verifyCard: "Vérifier la carte (sans frais aujourd'hui)",
         activateMonthTrial: "Activer l'essai d'1 mois",
-        overLimit: "Votre clinique a {count} podologues actifs, au-dessus des {limit} inclus, et la facturation des sièges supplémentaires n'est pas configurée. Contactez PodoAdmin.",
+        overLimit: "Votre clinique a {count} podologues actifs, au-dessus des {limit} inclus, et la facturation des sièges supplémentaires n'est pas configurée. Contactez Podoraa.",
         overCapacityAfterDowngrade: "Vous avez {count} podologues actifs, plus que les {limit} permis par votre forfait actuel. Ils continuent de fonctionner normalement, mais vous ne pourrez en ajouter aucun tant que vous n'aurez pas acheté de sièges supplémentaires ou réduit votre équipe.",
         loading: "Chargement…",
         clinicPlan: "Plan clinique",
@@ -10850,7 +10850,7 @@ views: {
         alignCenter: "Centré",
         monochrome: "Imprimer en noir et blanc",
         monochromeHint: "Niveaux de gris, idéal pour économiser l'encre.",
-        showGeneratedBy: "Afficher « Généré par PodoAdmin » dans le pied",
+        showGeneratedBy: "Afficher « Généré par Podoraa » dans le pied",
         footerText: "Texte de pied de page personnalisé",
         footerPlaceholder: "E.g. Business hours, legal notice, social media…",
         historyTitle: "Histoire clinique",
@@ -10907,7 +10907,7 @@ views: {
         demoTreatment: "Debridement",
         demoMoreRows: "+ {count} more rows…",
         demoPhotos: "Photographs",
-        demoFooter: "PodoAdmin · preview",
+        demoFooter: "Podoraa · preview",
         demoDoctor: "Dr Podologue Démo",
         demoCedula: "License: 12345678",
         demoTel: "Tel: 555 123 4567",
@@ -11121,7 +11121,7 @@ views: {
       errors: {
         connectionSave: "Erreur de connexion lors de l'enregistrement.",
       },
-      supportSenderLabel: "PodoAdmin",
+      supportSenderLabel: "Podoraa",
     },
     premium: {
       badge: "Premium",
@@ -11205,8 +11205,8 @@ views: {
     },
 
     support: {
-      title: "Contacter PodoAdmin",
-      contactPodoAdmin: "Contacter PodoAdmin",
+      title: "Contacter Podoraa",
+      contactPodoraa: "Contacter Podoraa",
       contactSubtitle: "Envoyez un message direct au support. Nous répondrons dès que possible.",
       newConversation: "Nouveau message",
       subject: "Sujet",
@@ -11227,7 +11227,7 @@ views: {
       sent: "Envoyé",
     },
     layout: {
-      brandFallback: "PodoAdmin",
+      brandFallback: "Podoraa",
       unlockSidebarVisible: "Déverrouiller (verrouillé visible)",
       unlockSidebarHidden: "Déverrouiller (verrouillé masqué)",
       lockSidebarVisible: "Verrouiller la barre latérale visible",
@@ -11479,7 +11479,7 @@ views: {
         opinionWhatsAppMessage:
           "Bonjour {name}, comment s'est passée votre visite à {clinica} ? Votre avis nous aide beaucoup :\n👍 Bien : {good}\n😐 Moyen : {regular}\n👎 Mauvais : {bad}",
         bookingLinkTitle: "Réservation en ligne",
-        bookingLinkHint: "Partagez ce lien avec vos patients pour qu'ils réservent eux-mêmes. Il affiche la marque de votre clinique ; ils ne voient jamais PodoAdmin.",
+        bookingLinkHint: "Partagez ce lien avec vos patients pour qu'ils réservent eux-mêmes. Il affiche la marque de votre clinique ; ils ne voient jamais Podoraa.",
         bookingLinkEnabled: "Réservation en ligne activée",
         bookingLinkDisabled: "Activer la réservation en ligne",
         bookingLinkCopy: "Copier le lien",
@@ -11981,15 +11981,15 @@ views: {
       back: "Retour",
       section1: {
         title: "1. Acceptation des Termes",
-        content: "En accédant et en utilisant PodoAdmin, vous acceptez de respecter et d'être lié par ces Termes et Conditions. Si vous n'êtes pas d'accord avec une partie de ces termes, vous ne devez pas utiliser notre service.",
+        content: "En accédant et en utilisant Podoraa, vous acceptez de respecter et d'être lié par ces Termes et Conditions. Si vous n'êtes pas d'accord avec une partie de ces termes, vous ne devez pas utiliser notre service.",
       },
       section2: {
         title: "2. Description du Service",
-        content: "PodoAdmin est une plateforme de gestion clinique conçue pour les professionnels de la podologie. Le service comprend la gestion des patients, les séances cliniques, les crédits et d'autres fonctionnalités liées à l'administration d'une pratique podologique.",
+        content: "Podoraa est une plateforme de gestion clinique conçue pour les professionnels de la podologie. Le service comprend la gestion des patients, les séances cliniques, les crédits et d'autres fonctionnalités liées à l'administration d'une pratique podologique.",
       },
       section3: {
         title: "3. Inscription Utilisateur",
-        intro: "Pour utiliser PodoAdmin, vous devez:",
+        intro: "Pour utiliser Podoraa, vous devez:",
         item1: "Fournir des informations précises, actuelles et complètes lors de l'inscription",
         item2: "Maintenir et mettre à jour vos informations de compte",
         item3: "Maintenir la confidentialité de votre mot de passe",
@@ -12016,11 +12016,11 @@ views: {
       },
       section7: {
         title: "7. Propriété Intellectuelle",
-        content: "Tout le contenu, la conception, le code et les fonctionnalités de PodoAdmin sont la propriété de leurs propriétaires respectifs et sont protégés par les lois sur la propriété intellectuelle. La reproduction, la distribution ou l'utilisation commerciale n'est pas autorisée sans autorisation préalable.",
+        content: "Tout le contenu, la conception, le code et les fonctionnalités de Podoraa sont la propriété de leurs propriétaires respectifs et sont protégés par les lois sur la propriété intellectuelle. La reproduction, la distribution ou l'utilisation commerciale n'est pas autorisée sans autorisation préalable.",
       },
       section8: {
         title: "8. Limitation de Responsabilité",
-        content: "PodoAdmin est fourni \"tel quel\" sans garanties d'aucune sorte. Nous ne garantissons pas que le service soit exempt d'erreurs, d'interruptions ou de défauts. Nous ne serons pas responsables de tout dommage direct, indirect, accessoire ou consécutif résultant de l'utilisation ou de l'impossibilité d'utiliser le service.",
+        content: "Podoraa est fourni \"tel quel\" sans garanties d'aucune sorte. Nous ne garantissons pas que le service soit exempt d'erreurs, d'interruptions ou de défauts. Nous ne serons pas responsables de tout dommage direct, indirect, accessoire ou consécutif résultant de l'utilisation ou de l'impossibilité d'utiliser le service.",
       },
       section9: {
         title: "9. Modifications du Service",
@@ -12036,7 +12036,7 @@ views: {
       },
       section12: {
         title: "12. Loi Applicable",
-        content: "Ces termes sont régis par les lois du pays où PodoAdmin opère. Tout litige sera résolu dans les tribunaux compétents de cette juridiction.",
+        content: "Ces termes sont régis par les lois du pays où Podoraa opère. Tout litige sera résolu dans les tribunaux compétents de cette juridiction.",
       },
       section13: {
         title: "13. Contact",

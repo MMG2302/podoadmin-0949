@@ -375,7 +375,7 @@ authRoutes.post('/login', async (c) => {
           message:
             'Tu cuenta está deshabilitada y no puedes acceder a la aplicación.' +
             daysLeftText +
-            ' Si crees que se trata de un error, contacta con el administrador o con PodoAdmin.',
+            ' Si crees que se trata de un error, contacta con el administrador o con Podoraa.',
         },
         403
       );
@@ -1414,7 +1414,7 @@ authRoutes.post('/register', async (c) => {
           error: 'Email ya registrado',
           code: 'email_already_registered',
           message:
-            'Este correo ya tiene una cuenta en PodoAdmin. Inicia sesión o recupera tu contraseña si la olvidaste.',
+            'Este correo ya tiene una cuenta en Podoraa. Inicia sesión o recupera tu contraseña si la olvidaste.',
         },
         409
       );

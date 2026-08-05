@@ -1,5 +1,5 @@
 /**
- * Paths exactos del logo PodoAdmin (/favicon.svg) + alteraciones clínicas.
+ * Paths exactos del logo Podoraa (/favicon.svg) + alteraciones clínicas.
  */
 
 export const BRAND = {
@@ -157,7 +157,7 @@ export function brandMark(x: number, y: number, selected = false): string {
   `;
 }
 
-/** Logo PodoAdmin con alteraciones clínicas de dedos y arco */
+/** Logo Podoraa con alteraciones clínicas de dedos y arco */
 export function renderLogoFoot(opts: LogoFootOptions): string {
   const {
     showBrandDisc = true,

@@ -48,7 +48,7 @@ export function buildIcsCalendar(events: IcsAppointmentEvent[], calendarName: st
   const lines: string[] = [
     'BEGIN:VCALENDAR',
     'VERSION:2.0',
-    'PRODID:-//PodoAdmin//Agenda//ES',
+    'PRODID:-//Podoraa//Agenda//ES',
     'CALSCALE:GREGORIAN',
     'METHOD:PUBLISH',
     `X-WR-CALNAME:${escapeIcsText(calendarName)}`,

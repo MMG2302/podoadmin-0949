@@ -31,7 +31,7 @@ Esto abrirá Drizzle Studio donde puedes ver todas las tablas.
 3. Navega a **Turnstile** en el menú lateral
 4. Haz clic en **Add Site**
 5. Completa el formulario:
-   - **Site name**: PodoAdmin
+   - **Site name**: Podoraa
    - **Domain**: localhost (para desarrollo) o tu dominio
    - **Widget mode**: Managed (recomendado)
 6. Copia las claves generadas:
@@ -94,7 +94,7 @@ curl -X POST http://localhost:5173/api/2fa/setup \
 {
   "success": true,
   "secret": "JBSWY3DPEHPK3PXP",
-  "qrCodeUrl": "otpauth://totp/PodoAdmin:admin@podoadmin.com?secret=JBSWY3DPEHPK3PXP&issuer=PodoAdmin",
+  "qrCodeUrl": "otpauth://totp/Podoraa:admin@podoadmin.com?secret=JBSWY3DPEHPK3PXP&issuer=Podoraa",
   "message": "Escanea el código QR con tu aplicación de autenticación"
 }
 ```

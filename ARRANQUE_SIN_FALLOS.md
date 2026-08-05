@@ -1,6 +1,6 @@
 # Arranque sin fallos (dev local + túnel para demo)
 
-Runbook para levantar PodoAdmin localmente y exponerlo por túnel público (demo/pruebas en otro PC) sin caer en los problemas ya diagnosticados en esta sesión.
+Runbook para levantar Podoraa localmente y exponerlo por túnel público (demo/pruebas en otro PC) sin caer en los problemas ya diagnosticados en esta sesión.
 
 ## TL;DR (comandos, en orden)
 

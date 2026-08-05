@@ -276,7 +276,7 @@ supportRoutes.post('/conversations/:id/messages', async (c) => {
           userId: conv.userId,
           type: 'system',
           title: '💬 Respuesta de soporte',
-          message: `PodoAdmin ha respondido en "${conv.subject.slice(0, 40)}${conv.subject.length > 40 ? '...' : ''}": ${preview}`,
+          message: `Podoraa ha respondido en "${conv.subject.slice(0, 40)}${conv.subject.length > 40 ? '...' : ''}": ${preview}`,
           read: false,
           metadata: JSON.stringify({ conversationId: convId, subject: conv.subject, messageId: msgId }),
           createdAt: now,

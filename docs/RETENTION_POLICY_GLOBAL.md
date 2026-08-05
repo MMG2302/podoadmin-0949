@@ -2,7 +2,7 @@
 
 ## Alcance
 
-Esta política aplica a PodoAdmin en operación multi-país (México, Brasil, Argentina, Colombia, Chile, Perú, Uruguay, Costa Rica) usando una configuración global única.
+Esta política aplica a Podoraa en operación multi-país (México, Brasil, Argentina, Colombia, Chile, Perú, Uruguay, Costa Rica) usando una configuración global única.
 
 ## Regla global principal
 

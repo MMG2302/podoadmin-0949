@@ -3,7 +3,7 @@ import { authPage as ap } from "../../lib/auth-page-styles";
 import { cn } from "../../lib/utils";
 
 const LANDING_HREF = "/landing";
-const ARIA = "PodoAdmin — ir a la página de inicio";
+const ARIA = "Podoraa — ir a la página de inicio";
 
 /** Logo + wordmark del panel izquierdo (auth / legales), siempre a la landing. */
 export function AuthBrandPanel({ className }: { className?: string }) {
@@ -18,7 +18,7 @@ export function AuthBrandPanel({ className }: { className?: string }) {
     >
       <img src="/favicon.svg" alt="" aria-hidden className="w-40 h-40 mb-8" />
       <span className="text-white text-5xl font-light tracking-tight mb-4">
-        Podo<span className="font-bold">Admin</span>
+        Pod<span className="font-bold">oraa</span>
       </span>
     </Link>
   );

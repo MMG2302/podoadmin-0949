@@ -67,7 +67,7 @@ if (asJson) {
 }
 
 console.log('');
-console.log('=== PodoAdmin — Alertas y métricas ===');
+console.log('=== Podoraa — Alertas y métricas ===');
 console.log(`Fuente D1: ${remote ? 'REMOTO' : 'LOCAL'}  |  ${summary.generatedAt}`);
 console.log('');
 

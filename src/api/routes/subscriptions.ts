@@ -341,7 +341,7 @@ subscriptionsRoutes.post('/stripe/checkout', async (c) => {
 
         error: 'clinic_over_included_limit',
 
-        message: `Tu clínica tiene ${podiatristCount} podólogos activos y el plan incluye ${includedForTier}. No hay precio Stripe configurado para podólogos adicionales (STRIPE_PRICE_EXTRA_PODIATRIST_MONTHLY). Contacta a PodoAdmin.`,
+        message: `Tu clínica tiene ${podiatristCount} podólogos activos y el plan incluye ${includedForTier}. No hay precio Stripe configurado para podólogos adicionales (STRIPE_PRICE_EXTRA_PODIATRIST_MONTHLY). Contacta a Podoraa.`,
 
         podiatristCount,
 

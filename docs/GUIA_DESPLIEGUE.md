@@ -1,4 +1,4 @@
-# GuÃ­a de Despliegue â€“ PodoAdmin
+# GuÃ­a de Despliegue â€“ Podoraa
 
 GuÃ­a paso a paso para personas no tÃ©cnicas. Incluye despliegue sin dominio, documentos que se pueden borrar y explicaciÃ³n del ciclo de cancelaciÃ³n de usuarios.
 

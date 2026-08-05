@@ -173,7 +173,7 @@ export async function buildAppointmentsIcsForUser(
   const podiatristLabel =
     podiatristId && items[0]?.podiatristName
       ? items[0].podiatristName
-      : calendarLabel ?? 'PodoAdmin';
+      : calendarLabel ?? 'Podoraa';
   const calendarName =
     calendarLabel ?? `Agenda ${date} — ${podiatristLabel}`;
 

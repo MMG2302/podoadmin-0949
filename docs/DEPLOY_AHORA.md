@@ -1,4 +1,4 @@
-# Desplegar PodoAdmin hoy (guÃ­a corta)
+# Desplegar Podoraa hoy (guÃ­a corta)
 
 Para la lista completa con casillas: **`LISTA_DESPLIEGUE.md`**.  
 GuÃ­a paso a paso larga: **`docs/DEPLOY_PASO_A_PASO.md`**.  

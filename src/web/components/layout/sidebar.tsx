@@ -69,7 +69,7 @@ export const Sidebar = ({
                 href="/landing"
                 onClick={onClose}
                 className="flex items-center gap-3 text-white text-xl md:text-2xl font-light tracking-tight m-0 hover:opacity-90 transition-opacity"
-                aria-label="PodoAdmin — ir a la página de inicio"
+                aria-label="Podoraa — ir a la página de inicio"
               >
                 <img
                   src="/favicon.svg"

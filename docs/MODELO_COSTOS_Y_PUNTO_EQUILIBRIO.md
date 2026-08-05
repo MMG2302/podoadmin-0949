@@ -1,6 +1,6 @@
 # Modelo integral de costos, punto de equilibrio y ROI a 7 años
 
-> Modelo económico de PodoAdmin: **plataforma + operación + vida del fundador**.
+> Modelo económico de Podoraa: **plataforma + operación + vida del fundador**.
 > Ingresos en USD (Stripe), gastos personales y operativos en MXN.
 > Reproducible: `node scripts/modelo-costos.mjs` — todos los parámetros están arriba del archivo.
 >

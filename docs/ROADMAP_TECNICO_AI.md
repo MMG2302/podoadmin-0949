@@ -1,8 +1,8 @@
-# PodoAdmin — Pendientes Críticos y Roadmap Técnico AI-Friendly
+# Podoraa — Pendientes Críticos y Roadmap Técnico AI-Friendly
 
 ## Objetivo
 
-Este documento resume TODO lo que falta para endurecer, escalar y profesionalizar PodoAdmin como SaaS clínico multi-tenant sobre Cloudflare Workers + D1.
+Este documento resume TODO lo que falta para endurecer, escalar y profesionalizar Podoraa como SaaS clínico multi-tenant sobre Cloudflare Workers + D1.
 
 La intención es que una IA Fullstack pueda:
 
@@ -620,7 +620,7 @@ Separar bounded contexts:
 
 # OBJETIVO FINAL
 
-Convertir PodoAdmin de:
+Convertir Podoraa de:
 
 **"proyecto avanzado"**
 

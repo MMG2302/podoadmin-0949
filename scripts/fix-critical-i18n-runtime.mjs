@@ -903,10 +903,10 @@ const checkoutViews = {
 };
 
 const billingTitle = {
-  es: { old: `      billing: {\n        subscriptionTitle: "Suscripción PodoAdmin",`, neu: `      billing: {\n        title: "Facturación",\n        subscriptionTitle: "Suscripción PodoAdmin",` },
-  en: { old: `      billing: {\n        subscriptionTitle: "PodoAdmin subscription",`, neu: `      billing: {\n        title: "Billing",\n        subscriptionTitle: "PodoAdmin subscription",` },
-  pt: { old: `      billing: {\n        subscriptionTitle: "Assinatura PodoAdmin",`, neu: `      billing: {\n        title: "Faturação",\n        subscriptionTitle: "Assinatura PodoAdmin",` },
-  fr: { old: `      billing: {\n        subscriptionTitle: "Abonnement PodoAdmin",`, neu: `      billing: {\n        title: "Facturation",\n        subscriptionTitle: "Abonnement PodoAdmin",` },
+  es: { old: `      billing: {\n        subscriptionTitle: "Suscripción Podoraa",`, neu: `      billing: {\n        title: "Facturación",\n        subscriptionTitle: "Suscripción Podoraa",` },
+  en: { old: `      billing: {\n        subscriptionTitle: "Podoraa subscription",`, neu: `      billing: {\n        title: "Billing",\n        subscriptionTitle: "Podoraa subscription",` },
+  pt: { old: `      billing: {\n        subscriptionTitle: "Assinatura Podoraa",`, neu: `      billing: {\n        title: "Faturação",\n        subscriptionTitle: "Assinatura Podoraa",` },
+  fr: { old: `      billing: {\n        subscriptionTitle: "Abonnement Podoraa",`, neu: `      billing: {\n        title: "Facturation",\n        subscriptionTitle: "Abonnement Podoraa",` },
 };
 
 // Load clinic blocks from patch-pages style (with title)
@@ -949,7 +949,7 @@ const clinicEsBody = `      tabOverview: "Resumen",
       loadingAgendaMetrics: "Cargando métricas de agenda…",
       activityByPodiatrist: "Actividad por podólogo",
       sessionsCount: "{n} sesiones",
-      podiatristsLimit: "Podólogos: {current} de {limit} (límite definido por PodoAdmin)",
+      podiatristsLimit: "Podólogos: {current} de {limit} (límite definido por Podoraa)",
       podiatristsNoLimit: "Podólogos de la clínica. Sin límite definido.",
       createPodiatrist: "Crear podólogo",
       colPodiatrist: "Podólogo",
@@ -1027,7 +1027,7 @@ const clinicEnBody = `      tabOverview: "Overview",
       loadingAgendaMetrics: "Loading agenda metrics…",
       activityByPodiatrist: "Activity by podiatrist",
       sessionsCount: "{n} sessions",
-      podiatristsLimit: "Podiatrists: {current} of {limit} (limit set by PodoAdmin)",
+      podiatristsLimit: "Podiatrists: {current} of {limit} (limit set by Podoraa)",
       podiatristsNoLimit: "Clinic podiatrists. No limit defined.",
       createPodiatrist: "Create podiatrist",
       colPodiatrist: "Podiatrist",
@@ -1100,7 +1100,7 @@ const clinicPtBody = clinicEsBody
   .replace(/Cargando métricas de agenda…/, "A carregar métricas da agenda…")
   .replace(/"Actividad por podólogo"/, '"Atividade por podólogo"')
   .replace(/sesiones"/g, 'sessões"')
-  .replace(/de \{limit\} \(límite definido por PodoAdmin\)/, "de {limit} (limite definido pela PodoAdmin)")
+  .replace(/de \{limit\} \(límite definido por Podoraa\)/, "de {limit} (limite definido pela Podoraa)")
   .replace(/Sin límite definido\./, "Sem limite definido.")
   .replace(/"Crear podólogo"/g, '"Criar podólogo"')
   .replace(/"Licencia"/, '"Licença"')
@@ -1171,7 +1171,7 @@ const clinicFrBody = `      tabOverview: "Aperçu",
       loadingAgendaMetrics: "Chargement des métriques d'agenda…",
       activityByPodiatrist: "Activité par podologue",
       sessionsCount: "{n} séances",
-      podiatristsLimit: "Podologues : {current} sur {limit} (limite définie par PodoAdmin)",
+      podiatristsLimit: "Podologues : {current} sur {limit} (limite définie par Podoraa)",
       podiatristsNoLimit: "Podologues de la clinique. Aucune limite définie.",
       createPodiatrist: "Créer un podologue",
       colPodiatrist: "Podologue",

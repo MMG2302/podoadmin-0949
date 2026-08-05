@@ -243,7 +243,7 @@ if (runDryRun) {
 
 // --- Resumen ---
 
-console.log('\n=== PodoAdmin — prepare-deploy ===\n');
+console.log('\n=== Podoraa — prepare-deploy ===\n');
 console.log(`Carpeta: ${projectPath}\n`);
 
 if (ok.length) {

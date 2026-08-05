@@ -282,7 +282,7 @@ const SupportPage = () => {
     <MainLayout title={t.support.title}>
       <div className="space-y-6">
         <div>
-          <h2 className="text-xl font-semibold text-brand-ink">{t.support.contactPodoAdmin}</h2>
+          <h2 className="text-xl font-semibold text-brand-ink">{t.support.contactPodoraa}</h2>
           <p className="text-sm text-brand-muted mt-1">
             {t.supportPage.adminSubtitle}
           </p>

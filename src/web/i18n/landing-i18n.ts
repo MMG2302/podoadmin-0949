@@ -17,11 +17,18 @@ export type LandingSolution = {
   solution: string;
 };
 
+/** Un paso de la sección "cómo se pone en marcha" (numerada 01/04). */
+export type LandingStep = {
+  title: string;
+  description: string;
+};
+
 export type LandingI18n = {
   navSolutions: string;
   navFeatures: string;
   navPricing: string;
   navAudience: string;
+  navSteps: string;
   navLogin: string;
   navRegister: string;
   heroTitle: string;
@@ -59,6 +66,9 @@ export type LandingI18n = {
   featureSettingsTitle: string;
   featureSettingsDesc: string;
   featureSettingsDetails: string[];
+  stepsTitle: string;
+  stepsBadge: string;
+  steps: LandingStep[];
   audienceTitle: string;
   audienceSubtitle: string;
   audiencePodiatristTitle: string;
@@ -72,6 +82,8 @@ export type LandingI18n = {
   /** Cuatro planes: Independiente/Clínica × Base/Premium. */
   pricingPlans: LandingPlan[];
   pricingNote: string;
+  /** Aclaración del asterisco de pricingNote: el tope real lo fija Meta, no el plan. */
+  pricingNoteDisclaimer: string;
   rolesCardTitle: string;
   rolesCardSubtitle: string;
   rolesCardRows: { role: string; cost: string; note: string }[];
@@ -89,37 +101,38 @@ const es: LandingI18n = {
   navFeatures: "Funcionalidades",
   navPricing: "Precios",
   navAudience: "Para quién",
+  navSteps: "Cómo empezar",
   navLogin: "Iniciar sesión",
   navRegister: "Crear cuenta",
-  heroTitle: "Enfócate en lo que importa",
-  heroTitleBold: "y atiende más pacientes",
+  heroTitle: "Organiza tu consulta",
+  heroTitleBold: "sin cambiar tu forma de trabajar",
   heroSubtitle:
-    "Agenda organizada, citas confirmadas y pacientes que vuelven. PodoAdmin reúne tu consulta en un solo lugar y te da los datos para crecer con confianza.",
+    "Podoraa reúne tu agenda, la historia clínica y los pagos en un solo lugar. Tú sigues atendiendo como siempre: la plataforma se encarga de lo repetitivo.",
   heroCtaPrimary: "Empezar gratis",
   heroCtaSecondary: "Ya tengo cuenta",
   heroStatDigital: "Digital",
   heroStatAccess: "Acceso 24/7",
   heroStatSecure: "Seguro",
-  solutionsTitle: "Todo listo para que tu consulta crezca",
-  solutionsSubtitle: "PodoAdmin trabaja por ti en segundo plano: agenda llena, pacientes fieles y decisiones respaldadas por datos.",
+  solutionsTitle: "Todo lo que ya haces, en un solo lugar",
+  solutionsSubtitle: "Podoraa acompaña tu día en segundo plano: recuerda las citas, mantiene el seguimiento al día y deja cada cosa registrada. Sin que cambies tu manera de atender.",
   solutionAbsences: {
     problem: "Agenda llena y citas confirmadas",
     solution: "Recordatorios y confirmación automática por WhatsApp, sin límite de mensajes, para que cada hueco de tu agenda se aproveche.",
   },
   solutionRetention: {
     problem: "Pacientes que vuelven una y otra vez",
-    solution: "Identifica a quién hace tiempo que no ves y reconecta con campañas y seguimiento para que tu comunidad de pacientes siga creciendo.",
+    solution: "Te avisa a quién hace tiempo que no ves, para que retomes el contacto y el seguimiento del tratamiento cuando corresponde.",
   },
   solutionTime: {
     problem: "Más tiempo para atender",
-    solution: "Agenda, historia clínica y cobro en un solo flujo, con recepcionistas ilimitadas que absorben el papeleo, para que tu energía vaya a los pacientes.",
+    solution: "Agenda, historia clínica y registro de pagos en un solo flujo, con recepcionistas ilimitadas que absorben el papeleo, para que tu energía vaya a los pacientes.",
   },
   solutionDecisions: {
     problem: "Decisiones con datos, crecimiento con rumbo",
     solution: "Analíticas de ventas, rentabilidad y ocupación para invertir con confianza donde más rinde.",
   },
   featuresTitle: "Todo lo que necesitas en consulta",
-  featuresSubtitle: "Y detrás de cada función, un objetivo: que atiendas más pacientes, disfrutes de más tiempo y tengas el control de tu negocio.",
+  featuresSubtitle: "Y detrás de cada función, un objetivo: menos tareas administrativas, más tiempo con tus pacientes y el control de tu consulta siempre en tus manos.",
   featureHoverHint: "Toca o pasa el cursor para ver el detalle",
   featureCalendarTitle: "Agenda inteligente",
   featureCalendarDesc: "Calendario por profesional, citas, ocupación y métricas de agenda en tiempo real.",
@@ -142,19 +155,19 @@ const es: LandingI18n = {
     "Exploración podológica y diagramas del pie",
     "Consentimientos e informes listos para imprimir",
   ],
-  featureCheckoutTitle: "Cobros y analíticas",
-  featureCheckoutDesc: "Checkout, handoffs, ventas por servicio y cierres diarios para controlar la facturación.",
+  featureCheckoutTitle: "Pagos y control financiero",
+  featureCheckoutDesc: "Registro automático de tratamientos y pagos, estado de cuenta del paciente y cierres diarios de la consulta.",
   featureCheckoutDetails: [
-    "Cobro y traspaso a recepción (handoff)",
+    "Registro de pago y traspaso a recepción",
     "Ventas por servicio y por profesional",
-    "Cierres diarios y cuentas por cobrar",
+    "Cierres diarios y estado de cuenta por paciente",
   ],
   featureWhatsappTitle: "WhatsApp integrado",
-  featureWhatsappDesc: "Mensajes y campañas desde la misma plataforma, con recordatorios ilimitados para tus pacientes.",
+  featureWhatsappDesc: "Recordatorios y seguimiento de pacientes desde la misma plataforma, sin límite de mensajes.",
   featureWhatsappDetails: [
     "Recordatorios de cita sin límites",
     "Mensajes directos desde la ficha del paciente",
-    "Campañas segmentadas de recordatorio",
+    "Seguimiento por grupos de pacientes",
     "WhatsApp Web y API de Meta",
   ],
   featureSettingsTitle: "Tu marca, tu consulta",
@@ -164,12 +177,36 @@ const es: LandingI18n = {
     "Paleta de colores personalizable",
     "Impresión y layout clínico a medida",
   ],
-  audienceTitle: "Diseñado para tu rol",
+  stepsTitle: "Cuatro pasos para tener todo en orden",
+  stepsBadge: "Sin instalar nada y sin migrar de golpe: empiezas con lo que ya tienes, a tu ritmo.",
+  steps: [
+    {
+      title: "Carga tu consulta como ya la tienes",
+      description:
+        "Tu logo, tus colores y los horarios que ya manejas. Sumas a tu recepcionista sin costo adicional y la agenda queda igual a como la llevas hoy.",
+    },
+    {
+      title: "Las citas se confirman solas",
+      description:
+        "Recordatorios automáticos por WhatsApp, sin límite de mensajes. Compartes tu enlace de reservas y tus pacientes agendan viendo la marca de tu clínica, no la nuestra.",
+    },
+    {
+      title: "Atiendes como siempre",
+      description:
+        "Registras la sesión con tus plantillas, la exploración podológica y los informes listos para imprimir. El pago queda anotado en el mismo flujo, sin cambiar de pantalla.",
+    },
+    {
+      title: "Miras cómo va tu consulta",
+      description:
+        "Ventas, rentabilidad, ocupación de agenda y a qué pacientes hace tiempo que no ves. Los datos ya están ahí el día que los necesites.",
+    },
+  ],
+  audienceTitle: "Diseñado para adaptarse a tu consulta",
   audienceSubtitle: "Cada perfil ve lo que necesita: desde el podólogo en consulta hasta la recepción y la dirección de clínica.",
   audiencePodiatristTitle: "Podólogos",
   audiencePodiatristDesc: "Agenda, sesiones clínicas, herramientas podológicas e informes listos para imprimir. Suma a tu recepcionista sin costo adicional.",
   audienceClinicTitle: "Clínicas",
-  audienceClinicDesc: "Suma podólogos (5 incluidos, 8 en Premium) y recepcionistas ilimitadas, gestiona suscripciones, checkout compartido, WhatsApp y la visión global del negocio.",
+  audienceClinicDesc: "Suma podólogos (5 incluidos, 8 en Premium) y recepcionistas ilimitadas, gestiona suscripciones, registro de pagos compartido, WhatsApp y la visión global del negocio.",
   audienceReceptionTitle: "Recepción",
   audienceReceptionDesc: "Calendario, pacientes y mensajes sin acceder a datos clínicos sensibles.",
   pricingTitle: "Precios simples y transparentes",
@@ -185,7 +222,7 @@ const es: LandingI18n = {
         "Agenda y calendario operativo",
         "Pacientes e historia clínica",
         "Sesiones y plantillas clínicas",
-        "Checkout operativo (cobros)",
+        "Registro de pagos y cierres diarios",
         "WhatsApp Web con recordatorios ilimitados",
         "Recepcionista sin costo adicional",
         "Personalización de marca",
@@ -200,10 +237,10 @@ const es: LandingI18n = {
       cta: "Elegir",
       features: [
         "Todo lo de ESSENTIAL",
-        "Analíticas: Ventas, Cobros y Rentabilidad",
+        "Analíticas: ventas, pagos y rentabilidad",
         "Métricas avanzadas de agenda y cierres",
         "Herramientas clínicas avanzadas",
-        "Campañas de WhatsApp",
+        "Seguimiento de pacientes por WhatsApp",
         "Pasa a plan Clínica cuando sumes equipo",
       ],
     },
@@ -218,7 +255,7 @@ const es: LandingI18n = {
         "5 podólogos incluidos",
         "Podólogo adicional: $10/mes",
         "Recepcionistas ilimitadas",
-        "Recepción y checkout compartido",
+        "Recepción y registro de pagos compartido",
         "Soporte prioritario",
       ],
     },
@@ -234,14 +271,16 @@ const es: LandingI18n = {
         "Todo lo de CLINIC",
         "8 podólogos incluidos",
         "Podólogo adicional: $10/mes",
-        "Analíticas: Ventas, Cobros y Rentabilidad",
+        "Analíticas: ventas, pagos y rentabilidad",
         "Métricas avanzadas de agenda y cierres",
         "Herramientas clínicas avanzadas",
-        "Campañas de WhatsApp",
+        "Seguimiento de pacientes por WhatsApp",
       ],
     },
   ],
-  pricingNote: "Recordatorios de WhatsApp sin límites en todos los planes. Precios en USD.",
+  pricingNote: "Recordatorios de WhatsApp sin límites* en todos los planes. Precios en USD.",
+  pricingNoteDisclaimer:
+    "* Podoraa no cobra por mensaje ni te impone un tope propio. El volumen que puedes enviar depende del nivel que Meta asigne a tu cuenta de WhatsApp Business y de sus políticas vigentes.",
   rolesCardTitle: "¿Cuánto cuesta agregar usuarios?",
   rolesCardSubtitle: "Aplica a los planes de Clínica (Base y Premium)",
   rolesCardRows: [
@@ -250,8 +289,8 @@ const es: LandingI18n = {
     { role: "Recepcionista", cost: "Gratis", note: "Sin límite de recepcionistas" },
     { role: "Admin de clínica", cost: "Incluido", note: "1 por clínica (el titular)" },
   ],
-  ctaTitle: "Empieza hoy y enfócate en tus pacientes",
-  ctaSubtitle: "Regístrate en minutos y descubre lo fácil que es llevar tu consulta.",
+  ctaTitle: "Trabaja como siempre, con menos esfuerzo",
+  ctaSubtitle: "Regístrate en minutos. Tu consulta sigue siendo tuya: Podoraa solo se encarga de lo repetitivo.",
   ctaButton: "Crear mi cuenta",
   ctaLogin: "Iniciar sesión",
   footerTerms: "Términos",
@@ -264,19 +303,20 @@ const en: LandingI18n = {
   navFeatures: "Features",
   navPricing: "Pricing",
   navAudience: "Who it's for",
+  navSteps: "How to start",
   navLogin: "Log in",
   navRegister: "Sign up",
-  heroTitle: "Focus on what matters",
-  heroTitleBold: "and care for more patients",
+  heroTitle: "Organize your practice",
+  heroTitleBold: "without changing how you work",
   heroSubtitle:
-    "An organized schedule, confirmed appointments and patients who come back. PodoAdmin brings your whole practice into one place and gives you the data to grow with confidence.",
+    "Podoraa brings your schedule, clinical records and payments into one place. You keep working the way you always have — the platform takes care of the repetitive part.",
   heroCtaPrimary: "Start free",
   heroCtaSecondary: "I already have an account",
   heroStatDigital: "Digital",
   heroStatAccess: "24/7 access",
   heroStatSecure: "Secure",
-  solutionsTitle: "Everything ready for your practice to grow",
-  solutionsSubtitle: "PodoAdmin works for you in the background: a full calendar, loyal patients and decisions backed by data.",
+  solutionsTitle: "Everything you already do, in one place",
+  solutionsSubtitle: "Podoraa supports your day in the background: it remembers appointments, keeps follow-up on track and records every step. Without changing how you care for patients.",
   solutionAbsences: {
     problem: "A full calendar with confirmed appointments",
     solution: "Automatic WhatsApp reminders and confirmations, with no message limits, so every slot in your schedule counts.",
@@ -317,7 +357,7 @@ const en: LandingI18n = {
     "Podiatric exam and foot diagrams",
     "Consents and print-ready reports",
   ],
-  featureCheckoutTitle: "Billing & analytics",
+  featureCheckoutTitle: "Payments & financial overview",
   featureCheckoutDesc: "Checkout, handoffs, sales by service and daily closes to control revenue.",
   featureCheckoutDetails: [
     "Checkout and handoff to reception",
@@ -325,7 +365,7 @@ const en: LandingI18n = {
     "Daily closes and accounts receivable",
   ],
   featureWhatsappTitle: "Integrated WhatsApp",
-  featureWhatsappDesc: "Messages and campaigns from the same platform, with unlimited reminders for your patients.",
+  featureWhatsappDesc: "Reminders and patient follow-up from the same platform, with no message limits.",
   featureWhatsappDetails: [
     "Unlimited appointment reminders",
     "Direct messages from the patient chart",
@@ -339,7 +379,31 @@ const en: LandingI18n = {
     "Customizable color palette",
     "Tailored printing and clinical layout",
   ],
-  audienceTitle: "Built for your role",
+  stepsTitle: "Four steps to have everything in order",
+  stepsBadge: "Nothing to install, no forced migration: you start with what you already have, at your own pace.",
+  steps: [
+    {
+      title: "Set up your practice as it already is",
+      description:
+        "Your logo, your colours and the hours you already work. Add your receptionist at no extra cost and keep the same schedule you run today.",
+    },
+    {
+      title: "Appointments confirm themselves",
+      description:
+        "Automatic WhatsApp reminders with no message limits. Share your booking link and patients book seeing your clinic's brand, not ours.",
+    },
+    {
+      title: "You treat patients as always",
+      description:
+        "Record the session with your own templates, the podiatric assessment and print-ready reports. Payment is logged in the same flow, without switching screens.",
+    },
+    {
+      title: "You see how your practice is doing",
+      description:
+        "Revenue, profitability, schedule occupancy and which patients you haven't seen in a while. The data is already there the day you need it.",
+    },
+  ],
+  audienceTitle: "Built to fit your practice",
   audienceSubtitle: "Each profile sees what they need—from the consulting podiatrist to reception and clinic management.",
   audiencePodiatristTitle: "Podiatrists",
   audiencePodiatristDesc: "Schedule, clinical sessions, podiatry tools and print-ready reports. Add your receptionist at no extra cost.",
@@ -416,7 +480,9 @@ const en: LandingI18n = {
       ],
     },
   ],
-  pricingNote: "Unlimited WhatsApp reminders on every plan. Prices in USD.",
+  pricingNote: "Unlimited* WhatsApp reminders on every plan. Prices in USD.",
+  pricingNoteDisclaimer:
+    "* Podoraa charges nothing per message and sets no cap of its own. How much you can send depends on the tier Meta assigns to your WhatsApp Business account and on its current policies.",
   rolesCardTitle: "How much does it cost to add users?",
   rolesCardSubtitle: "Applies to Clinic plans (Base and Premium)",
   rolesCardRows: [
@@ -425,7 +491,7 @@ const en: LandingI18n = {
     { role: "Receptionist", cost: "Free", note: "Unlimited receptionists" },
     { role: "Clinic admin", cost: "Included", note: "1 per clinic (the owner)" },
   ],
-  ctaTitle: "Start today and focus on your patients",
+  ctaTitle: "Work as you always have, with less effort",
   ctaSubtitle: "Sign up in minutes and see how easy running your practice can be.",
   ctaButton: "Create my account",
   ctaLogin: "Log in",
@@ -439,19 +505,20 @@ const pt: LandingI18n = {
   navFeatures: "Funcionalidades",
   navPricing: "Preços",
   navAudience: "Para quem",
+  navSteps: "Como começar",
   navLogin: "Entrar",
   navRegister: "Criar conta",
-  heroTitle: "Concentre-se no que importa",
-  heroTitleBold: "e atenda mais pacientes",
+  heroTitle: "Organize a sua consulta",
+  heroTitleBold: "sem mudar a sua forma de trabalhar",
   heroSubtitle:
-    "Agenda organizada, consultas confirmadas e pacientes que voltam. O PodoAdmin reúne a sua consulta num só lugar e dá-lhe os dados para crescer com confiança.",
+    "Podoraa reúne a sua agenda, o historial clínico e os pagamentos num só lugar. Continua a atender como sempre: a plataforma trata do que é repetitivo.",
   heroCtaPrimary: "Começar grátis",
   heroCtaSecondary: "Já tenho conta",
   heroStatDigital: "Digital",
   heroStatAccess: "Acesso 24/7",
   heroStatSecure: "Seguro",
-  solutionsTitle: "Tudo pronto para a sua consulta crescer",
-  solutionsSubtitle: "O PodoAdmin trabalha por si em segundo plano: agenda cheia, pacientes fiéis e decisões apoiadas em dados.",
+  solutionsTitle: "Tudo o que já faz, num só lugar",
+  solutionsSubtitle: "Podoraa acompanha o seu dia em segundo plano: lembra as consultas, mantém o seguimento em dia e regista cada passo. Sem mudar a sua forma de atender.",
   solutionAbsences: {
     problem: "Agenda cheia e consultas confirmadas",
     solution: "Lembretes e confirmação automática por WhatsApp, sem limite de mensagens, para aproveitar cada espaço da sua agenda.",
@@ -492,7 +559,7 @@ const pt: LandingI18n = {
     "Exame podológico e diagramas do pé",
     "Consentimentos e relatórios para imprimir",
   ],
-  featureCheckoutTitle: "Cobranças e analíticas",
+  featureCheckoutTitle: "Pagamentos e controlo financeiro",
   featureCheckoutDesc: "Checkout, handoffs, vendas por serviço e fechos diários para controlar a faturação.",
   featureCheckoutDetails: [
     "Cobrança e passagem para a receção",
@@ -500,7 +567,7 @@ const pt: LandingI18n = {
     "Fechos diários e contas a receber",
   ],
   featureWhatsappTitle: "WhatsApp integrado",
-  featureWhatsappDesc: "Mensagens e campanhas na mesma plataforma, com lembretes ilimitados para os seus pacientes.",
+  featureWhatsappDesc: "Lembretes e seguimento de pacientes na mesma plataforma, sem limite de mensagens.",
   featureWhatsappDetails: [
     "Lembretes de consulta sem limites",
     "Mensagens diretas a partir da ficha",
@@ -514,7 +581,31 @@ const pt: LandingI18n = {
     "Paleta de cores personalizável",
     "Impressão e layout clínico à medida",
   ],
-  audienceTitle: "Feito para o seu papel",
+  stepsTitle: "Quatro passos para ter tudo em ordem",
+  stepsBadge: "Sem instalar nada e sem migrar de repente: começa com o que já tem, ao seu ritmo.",
+  steps: [
+    {
+      title: "Configure a sua consulta tal como já é",
+      description:
+        "O seu logótipo, as suas cores e os horários que já pratica. Junta a sua rececionista sem custo adicional e a agenda fica igual à de hoje.",
+    },
+    {
+      title: "As consultas confirmam-se sozinhas",
+      description:
+        "Lembretes automáticos por WhatsApp, sem limite de mensagens. Partilha o seu link de marcações e os pacientes agendam vendo a marca da sua clínica, não a nossa.",
+    },
+    {
+      title: "Atende como sempre",
+      description:
+        "Regista a sessão com os seus modelos, a exploração podológica e os relatórios prontos a imprimir. O pagamento fica anotado no mesmo fluxo, sem mudar de ecrã.",
+    },
+    {
+      title: "Vê como vai a sua consulta",
+      description:
+        "Vendas, rentabilidade, ocupação da agenda e que pacientes há muito não vê. Os dados já lá estão no dia em que precisar deles.",
+    },
+  ],
+  audienceTitle: "Feito para se adaptar à sua consulta",
   audienceSubtitle: "Cada perfil vê o que precisa: do podólogo em consulta à receção e direção da clínica.",
   audiencePodiatristTitle: "Podólogos",
   audiencePodiatristDesc: "Agenda, sessões clínicas, ferramentas podológicas e relatórios prontos para imprimir. Adicione a sua rececionista sem custo adicional.",
@@ -591,7 +682,9 @@ const pt: LandingI18n = {
       ],
     },
   ],
-  pricingNote: "Lembretes de WhatsApp sem limites em todos os planos. Preços em USD.",
+  pricingNote: "Lembretes de WhatsApp sem limites* em todos os planos. Preços em USD.",
+  pricingNoteDisclaimer:
+    "* Podoraa não cobra por mensagem nem impõe um limite próprio. O volume que pode enviar depende do nível que a Meta atribui à sua conta de WhatsApp Business e das suas políticas em vigor.",
   rolesCardTitle: "Quanto custa adicionar utilizadores?",
   rolesCardSubtitle: "Aplica-se aos planos de Clínica (Base e Premium)",
   rolesCardRows: [
@@ -600,7 +693,7 @@ const pt: LandingI18n = {
     { role: "Recepcionista", cost: "Grátis", note: "Recepcionistas ilimitadas" },
     { role: "Admin de clínica", cost: "Incluído", note: "1 por clínica (o titular)" },
   ],
-  ctaTitle: "Comece hoje e concentre-se nos seus pacientes",
+  ctaTitle: "Trabalhe como sempre, com menos esforço",
   ctaSubtitle: "Registe-se em minutos e veja como é fácil gerir a sua consulta.",
   ctaButton: "Criar a minha conta",
   ctaLogin: "Entrar",
@@ -614,19 +707,20 @@ const fr: LandingI18n = {
   navFeatures: "Fonctionnalités",
   navPricing: "Tarifs",
   navAudience: "Pour qui",
+  navSteps: "Comment démarrer",
   navLogin: "Connexion",
   navRegister: "Créer un compte",
-  heroTitle: "Concentrez-vous sur l'essentiel",
-  heroTitleBold: "et soignez plus de patients",
+  heroTitle: "Organisez votre cabinet",
+  heroTitleBold: "sans changer votre façon de travailler",
   heroSubtitle:
-    "Un agenda organisé, des rendez-vous confirmés et des patients qui reviennent. PodoAdmin réunit votre cabinet en un seul endroit et vous donne les données pour grandir en confiance.",
+    "Podoraa réunit votre agenda, le dossier clinique et les paiements en un seul endroit. Vous continuez à travailler comme toujours : la plateforme s'occupe du répétitif.",
   heroCtaPrimary: "Commencer gratuitement",
   heroCtaSecondary: "J'ai déjà un compte",
   heroStatDigital: "Numérique",
   heroStatAccess: "Accès 24/7",
   heroStatSecure: "Sécurisé",
-  solutionsTitle: "Tout est prêt pour faire grandir votre cabinet",
-  solutionsSubtitle: "PodoAdmin travaille pour vous en arrière-plan : agenda rempli, patients fidèles et décisions appuyées sur des données.",
+  solutionsTitle: "Tout ce que vous faites déjà, en un seul endroit",
+  solutionsSubtitle: "Podoraa accompagne votre journée en arrière-plan : il rappelle les rendez-vous, garde le suivi à jour et enregistre chaque étape. Sans changer votre façon de soigner.",
   solutionAbsences: {
     problem: "Un agenda rempli et des rendez-vous confirmés",
     solution: "Rappels et confirmation automatique par WhatsApp, sans limite de messages, pour valoriser chaque créneau de votre agenda.",
@@ -667,7 +761,7 @@ const fr: LandingI18n = {
     "Examen podologique et schémas du pied",
     "Consentements et rapports prêts à imprimer",
   ],
-  featureCheckoutTitle: "Encaissements et analytiques",
+  featureCheckoutTitle: "Paiements et suivi financier",
   featureCheckoutDesc: "Checkout, handoffs, ventes par service et clôtures quotidiennes.",
   featureCheckoutDetails: [
     "Encaissement et transfert à l'accueil",
@@ -675,7 +769,7 @@ const fr: LandingI18n = {
     "Clôtures quotidiennes et créances",
   ],
   featureWhatsappTitle: "WhatsApp intégré",
-  featureWhatsappDesc: "Messages et campagnes depuis la même plateforme, avec des rappels illimités pour vos patients.",
+  featureWhatsappDesc: "Rappels et suivi des patients depuis la même plateforme, sans limite de messages.",
   featureWhatsappDetails: [
     "Rappels de rendez-vous illimités",
     "Messages directs depuis le dossier patient",
@@ -689,7 +783,31 @@ const fr: LandingI18n = {
     "Palette de couleurs personnalisable",
     "Impression et layout clinique sur mesure",
   ],
-  audienceTitle: "Conçu pour votre rôle",
+  stepsTitle: "Quatre étapes pour que tout soit en ordre",
+  stepsBadge: "Rien à installer et pas de migration brutale : vous commencez avec ce que vous avez déjà, à votre rythme.",
+  steps: [
+    {
+      title: "Configurez votre cabinet tel qu'il est déjà",
+      description:
+        "Votre logo, vos couleurs et les horaires que vous pratiquez déjà. Vous ajoutez votre secrétaire sans coût supplémentaire et l'agenda reste comme aujourd'hui.",
+    },
+    {
+      title: "Les rendez-vous se confirment tout seuls",
+      description:
+        "Rappels automatiques par WhatsApp, sans limite de messages. Vous partagez votre lien de réservation et vos patients réservent en voyant la marque de votre cabinet, pas la nôtre.",
+    },
+    {
+      title: "Vous soignez comme toujours",
+      description:
+        "Vous enregistrez la séance avec vos modèles, l'examen podologique et les rapports prêts à imprimer. Le paiement est noté dans le même flux, sans changer d'écran.",
+    },
+    {
+      title: "Vous voyez où en est votre cabinet",
+      description:
+        "Ventes, rentabilité, taux de remplissage et patients que vous n'avez pas vus depuis longtemps. Les données sont déjà là le jour où vous en avez besoin.",
+    },
+  ],
+  audienceTitle: "Conçu pour s'adapter à votre cabinet",
   audienceSubtitle: "Chaque profil voit ce dont il a besoin : du podologue en consultation à l'accueil et la direction.",
   audiencePodiatristTitle: "Podologues",
   audiencePodiatristDesc: "Agenda, séances cliniques, outils podologiques et rapports prêts à imprimer. Ajoutez votre réceptionniste sans coût supplémentaire.",
@@ -766,7 +884,9 @@ const fr: LandingI18n = {
       ],
     },
   ],
-  pricingNote: "Rappels WhatsApp illimités sur tous les plans. Prix en USD.",
+  pricingNote: "Rappels WhatsApp illimités* sur tous les plans. Prix en USD.",
+  pricingNoteDisclaimer:
+    "* Podoraa ne facture pas au message et n'impose aucun plafond propre. Le volume que vous pouvez envoyer dépend du niveau attribué par Meta à votre compte WhatsApp Business et de ses politiques en vigueur.",
   rolesCardTitle: "Combien coûte l'ajout d'utilisateurs ?",
   rolesCardSubtitle: "S'applique aux plans Clinique (Base et Premium)",
   rolesCardRows: [
@@ -775,7 +895,7 @@ const fr: LandingI18n = {
     { role: "Réceptionniste", cost: "Gratuit", note: "Réceptionnistes illimitées" },
     { role: "Admin de clinique", cost: "Inclus", note: "1 par clinique (le titulaire)" },
   ],
-  ctaTitle: "Commencez aujourd'hui et concentrez-vous sur vos patients",
+  ctaTitle: "Travaillez comme toujours, avec moins d'effort",
   ctaSubtitle: "Inscrivez-vous en quelques minutes et découvrez à quel point gérer votre cabinet peut être simple.",
   ctaButton: "Créer mon compte",
   ctaLogin: "Connexion",

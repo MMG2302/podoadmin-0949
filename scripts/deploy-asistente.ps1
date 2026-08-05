@@ -1,4 +1,4 @@
-﻿# Asistente de despliegue PodoAdmin (Windows PowerShell)
+﻿# Asistente de despliegue Podoraa (Windows PowerShell)
 # No sustituye tu login en Cloudflare; guÃ­a y ejecuta pasos locales seguros.
 
 $ErrorActionPreference = "Stop"
@@ -14,7 +14,7 @@ function Test-Command($name) {
     $null -ne (Get-Command $name -ErrorAction SilentlyContinue)
 }
 
-Write-Host "PodoAdmin - Asistente de despliegue" -ForegroundColor Green
+Write-Host "Podoraa - Asistente de despliegue" -ForegroundColor Green
 Write-Host "Carpeta: $ProjectRoot"
 
 if ($ProjectRoot -match "OneDrive") {

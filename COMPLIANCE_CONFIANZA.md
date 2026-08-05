@@ -1,6 +1,6 @@
 # Compliance y confianza (esto vende)
 
-Para vender a empresas y clínicas que exigen cumplimiento normativo, debes poder responder **sí** a varios de estos puntos. Este documento mapea cada uno al estado actual de PodoAdmin y a lo que falta.
+Para vender a empresas y clínicas que exigen cumplimiento normativo, debes poder responder **sí** a varios de estos puntos. Este documento mapea cada uno al estado actual de Podoraa y a lo que falta.
 
 ---
 
@@ -56,7 +56,7 @@ Resumen: **auditoría de decisiones** ya se puede afirmar; **GDPR/LFPDPPP** y **
 - **Retención limitada** (no conservar más de lo necesario, documentado).
 - **Seguridad y registro** (medidas técnicas, registro de accesos/decisiones).
 
-### Estado en PodoAdmin
+### Estado en Podoraa
 
 | Requisito | Estado | Dónde |
 |-----------|--------|-------|
@@ -79,7 +79,7 @@ Resumen: **auditoría de decisiones** ya se puede afirmar; **GDPR/LFPDPPP** y **
 - **Configurable por organización** (por clínica) o global.
 - **Ejecución automática** (job/cron) que borre o archive según esa política.
 
-### Estado en PodoAdmin
+### Estado en Podoraa
 
 - **No** hay retención configurable en la app.
 - **No** hay job que borre `audit_log`, `rate_limit_attempts`, etc. por antigüedad.
@@ -96,7 +96,7 @@ Resumen: **auditoría de decisiones** ya se puede afirmar; **GDPR/LFPDPPP** y **
 - Poder **exportar** logs de auditoría (y si aplica, decisiones de seguridad) para investigaciones, auditorías externas o autoridades.
 - Formato **usable** (CSV, JSON, “paquete de evidencias” con metadatos).
 
-### Estado en PodoAdmin
+### Estado en Podoraa
 
 - **Sí** hay registro de decisiones: `audit_log` con userId, action, resourceType, resourceId, details, ipAddress, userAgent, createdAt, clinicId.
 - **Sí** hay API de lectura: GET `/api/audit-logs/user/:userId`, `/api/audit-logs/action/:action`, `/api/audit-logs/all` (super_admin); devuelven JSON.
@@ -114,7 +114,7 @@ Resumen: **auditoría de decisiones** ya se puede afirmar; **GDPR/LFPDPPP** y **
 - Que las **decisiones sensibles** (login, bloqueos, cambios de permisos, envío de mensajes, etc.) queden **registradas** con quién, cuándo y qué.
 - Que los **bloqueos de seguridad** (phishing, rate limit, etc.) tengan **motivo explicable** (“URL ofuscada”, “demasiados intentos”, “URL en lista de bloqueo”).
 
-### Estado en PodoAdmin
+### Estado en Podoraa
 
 - **Sí**: `logAuditEvent` en auth, logout, registro, 2FA, OAuth, usuarios, pacientes, citas, créditos, clínicas, profesionales, recepcionistas, mensajes, etc.
 - **Sí**: Cada bloqueo (mensajes con URL ofuscada o Safe Browsing, login fallido, registro bloqueado) devuelve un **mensaje claro** al cliente; las respuestas 400/429 incluyen razón.
@@ -131,7 +131,7 @@ Resumen: **auditoría de decisiones** ya se puede afirmar; **GDPR/LFPDPPP** y **
 - **Contrato o documento** que defina disponibilidad (ej. 99,5 % mensual), ventanas de mantenimiento y consecuencias si no se cumple.
 - **Monitoreo** (uptime, latencia) y **comunicación** ante incidentes.
 
-### Estado en PodoAdmin
+### Estado en Podoraa
 
 - **No** está en la aplicación: es **operativo y contractual**.
 - Depende de **Cloudflare Workers/D1** (y de tu configuración): ver SLA de Cloudflare y definir el tuyo hacia el cliente.

@@ -711,7 +711,7 @@ export function buildPodiatryHistoryDocumentInner(input: PodiatryHistoryPrintInp
               ${evolutionRows || `<tr><td colspan="6">Sin sesiones registradas.</td></tr>`}
             </table>
             <p class="footer-note">
-              ${prefs.showGeneratedByFooter ? `PodoAdmin · ${esc(new Date().toLocaleString("es-ES"))} · ` : ""}
+              ${prefs.showGeneratedByFooter ? `Podoraa · ${esc(new Date().toLocaleString("es-ES"))} · ` : ""}
               ${esc(String(sessions.length))} sesión(es) · Última: ${esc(fmtDateLong(latestSession?.sessionDate || null))}
             </p>
             ${prefs.footerText.trim() ? `<p class="footer-note" style="white-space:pre-wrap">${esc(prefs.footerText.trim())}</p>` : ""}
@@ -809,7 +809,7 @@ export function buildCombinedPodiatryHistoriesPrintHtml(
     : new Date().toLocaleString("es-ES");
   const cover =
     inputs.length > 0
-      ? `<div class="export-cover"><strong>Exportación PodoAdmin</strong> · ${esc(exportedLabel)} · <strong>${inputs.length}</strong> paciente(s). Abra este archivo en el navegador y use <em>Imprimir → Guardar como PDF</em>.</div>`
+      ? `<div class="export-cover"><strong>Exportación Podoraa</strong> · ${esc(exportedLabel)} · <strong>${inputs.length}</strong> paciente(s). Abra este archivo en el navegador y use <em>Imprimir → Guardar como PDF</em>.</div>`
       : "";
   const docs = inputs.map((item) => buildPodiatryHistoryDocumentInner(item)).join("");
   const override = buildPrintStyleOverride(inputs[0]?.preferences ?? DEFAULT_PRINT_PREFERENCES);

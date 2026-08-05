@@ -131,7 +131,7 @@ export const whatsappSetupGuideContent: Record<"es" | "en" | "pt" | "fr", WhatsA
         title: "Fase 3 — Usuario del sistema y token permanente",
         steps: [
           {
-            text: "Ve a Configuración → Usuarios → Usuarios del sistema → Añadir. Nombre sugerido: «PodoAdmin API». Rol: Administrador.",
+            text: "Ve a Configuración → Usuarios → Usuarios del sistema → Añadir. Nombre sugerido: «Podoraa API». Rol: Administrador.",
             links: [{ label: "Usuarios del sistema", href: "https://business.facebook.com/settings/system-users" }],
           },
           {
@@ -149,7 +149,7 @@ export const whatsappSetupGuideContent: Record<"es" | "en" | "pt" | "fr", WhatsA
         ],
         callout: {
           variant: "warning",
-          text: "No uses el token temporal del Graph API Explorer (caduca en horas). El token del usuario del sistema es el permanente que necesita PodoAdmin.",
+          text: "No uses el token temporal del Graph API Explorer (caduca en horas). El token del usuario del sistema es el permanente que necesita Podoraa.",
         },
       },
       {
@@ -160,7 +160,7 @@ export const whatsappSetupGuideContent: Record<"es" | "en" | "pt" | "fr", WhatsA
             text: "En developers.facebook.com → tu app → WhatsApp → Configuración de API (API Setup): copia «Identificador del número de teléfono» → es el Phone Number ID.",
           },
           {
-            text: "En el mismo panel copia «Identificador de la cuenta de WhatsApp Business» → WABA ID (opcional en PodoAdmin pero recomendado).",
+            text: "En el mismo panel copia «Identificador de la cuenta de WhatsApp Business» → WABA ID (opcional en Podoraa pero recomendado).",
           },
           {
             text: "Opcional: anota el número en formato E.164 (+34…) que muestra Meta como teléfono del negocio.",
@@ -188,7 +188,7 @@ export const whatsappSetupGuideContent: Record<"es" | "en" | "pt" | "fr", WhatsA
       },
       {
         id: "podoadmin",
-        title: "Fase 6 — Conectar en PodoAdmin",
+        title: "Fase 6 — Conectar en Podoraa",
         steps: [
           { text: "Pega Phone Number ID, WABA ID (opcional) y el token permanente en el formulario de abajo." },
           { text: "Indica el nombre e idioma de la plantilla aprobada y activa recordatorios si los necesitas." },
@@ -286,7 +286,7 @@ export const whatsappSetupGuideContent: Record<"es" | "en" | "pt" | "fr", WhatsA
         title: "Phase 3 — System user and permanent token",
         steps: [
           {
-            text: "Settings → Users → System users → Add. Suggested name: PodoAdmin API. Role: Administrator.",
+            text: "Settings → Users → System users → Add. Suggested name: Podoraa API. Role: Administrator.",
             links: [{ label: "System users", href: "https://business.facebook.com/settings/system-users" }],
           },
           { text: "Select the user → Add assets → Apps → your app → Full control." },
@@ -296,7 +296,7 @@ export const whatsappSetupGuideContent: Record<"es" | "en" | "pt" | "fr", WhatsA
         ],
         callout: {
           variant: "warning",
-          text: "Do not use the temporary Graph API Explorer token (expires in hours). The system user token is the permanent one PodoAdmin needs.",
+          text: "Do not use the temporary Graph API Explorer token (expires in hours). The system user token is the permanent one Podoraa needs.",
         },
       },
       {
@@ -323,7 +323,7 @@ export const whatsappSetupGuideContent: Record<"es" | "en" | "pt" | "fr", WhatsA
       },
       {
         id: "podoadmin",
-        title: "Phase 6 — Connect in PodoAdmin",
+        title: "Phase 6 — Connect in Podoraa",
         steps: [
           { text: "Paste Phone Number ID, WABA ID (optional), and permanent token in the form below." },
           { text: "Enter approved template name and language; enable reminders if needed." },
@@ -419,7 +419,7 @@ export const whatsappSetupGuideContent: Record<"es" | "en" | "pt" | "fr", WhatsA
         title: "Fase 3 — Usuário do sistema e token permanente",
         steps: [
           {
-            text: "Configurações → Usuários → Usuários do sistema → Adicionar. Nome: PodoAdmin API. Papel: Administrador.",
+            text: "Configurações → Usuários → Usuários do sistema → Adicionar. Nome: Podoraa API. Papel: Administrador.",
             links: [{ label: "Usuários do sistema", href: "https://business.facebook.com/settings/system-users" }],
           },
           { text: "Adicionar ativos → Apps → sua app → Controle total." },
@@ -455,7 +455,7 @@ export const whatsappSetupGuideContent: Record<"es" | "en" | "pt" | "fr", WhatsA
       },
       {
         id: "podoadmin",
-        title: "Fase 6 — Conectar no PodoAdmin",
+        title: "Fase 6 — Conectar em Podoraa",
         steps: [
           { text: "Cole Phone Number ID, WABA ID e token no formulário abaixo." },
           { text: "Informe modelo aprovado e teste a conexão." },
@@ -549,7 +549,7 @@ export const whatsappSetupGuideContent: Record<"es" | "en" | "pt" | "fr", WhatsA
         title: "Phase 3 — Utilisateur système et jeton permanent",
         steps: [
           {
-            text: "Paramètres → Utilisateurs → Utilisateurs système → Ajouter. Nom : PodoAdmin API. Rôle : Administrateur.",
+            text: "Paramètres → Utilisateurs → Utilisateurs système → Ajouter. Nom : Podoraa API. Rôle : Administrateur.",
             links: [{ label: "Utilisateurs système", href: "https://business.facebook.com/settings/system-users" }],
           },
           { text: "Ajouter des actifs → Applications → votre app → Contrôle total." },
@@ -585,7 +585,7 @@ export const whatsappSetupGuideContent: Record<"es" | "en" | "pt" | "fr", WhatsA
       },
       {
         id: "podoadmin",
-        title: "Phase 6 — Connecter dans PodoAdmin",
+        title: "Phase 6 — Connecter dans Podoraa",
         steps: [
           { text: "Collez Phone Number ID, WABA ID et le jeton dans le formulaire ci-dessous." },
           { text: "Indiquez le modèle approuvé et testez la connexion." },

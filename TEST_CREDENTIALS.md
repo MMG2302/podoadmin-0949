@@ -1,4 +1,4 @@
-# 🔐 PodoAdmin - Credenciales de Prueba
+# 🔐 Podoraa - Credenciales de Prueba
 
 ## 📋 Resumen del Seed Data
 

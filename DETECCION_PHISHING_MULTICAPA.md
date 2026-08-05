@@ -1,8 +1,8 @@
 # Motor de detección anti-phishing (multi-capa)
 
-Nunca depender de una sola técnica. Este documento mapea las capas **ideales** a lo que **ya tenemos** en PodoAdmin y lo que **tiene sentido** añadir o planificar.
+Nunca depender de una sola técnica. Este documento mapea las capas **ideales** a lo que **ya tenemos** en Podoraa y lo que **tiene sentido** añadir o planificar.
 
-**Contexto PodoAdmin:** riesgo principal = phishing de credenciales (login falso) y enlaces maliciosos en mensajes internos (super_admin → usuarios). No procesamos buzón de correo entrante.
+**Contexto Podoraa:** riesgo principal = phishing de credenciales (login falso) y enlaces maliciosos en mensajes internos (super_admin → usuarios). No procesamos buzón de correo entrante.
 
 ---
 
@@ -24,7 +24,7 @@ Así el usuario o el soporte pueden entender y escalar sin "caja negra".
 
 ### Ya implementado
 
-| Técnica | Uso en PodoAdmin |
+| Técnica | Uso en Podoraa |
 |--------|-------------------|
 | **Dominio visible vs esperado** | Aviso en login: "Solo inicia sesión en [officialDomain]". El usuario puede comparar la barra de direcciones con el aviso. |
 | **URLs ofuscadas** | Detección de hxxp, [.], base64, etc. en asunto/cuerpo de mensajes → 400 con mensaje claro. |
@@ -50,14 +50,14 @@ Así el usuario o el soporte pueden entender y escalar sin "caja negra".
 
 ## B. ML / IA
 
-| Técnica | Viabilidad en PodoAdmin |
+| Técnica | Viabilidad en Podoraa |
 |---------|--------------------------|
 | **Clasificación de texto (NLP)** | Posible con modelo propio o API (ej. clasificar cuerpo del mensaje como "phishing" / "urgente falso"). Coste y mantenimiento altos; más propio de producto de seguridad de correo. |
 | **Detección visual (landing)** | Requiere captura de páginas y modelo de visión. Muy costoso; no realista a corto plazo. |
 | **Similitud de marca (logos, colores)** | Mismo comentario; encaja en productos tipo "brand protection". |
 | **Análisis de intención (urgencia, amenaza, recompensa)** | Se puede hacer algo sencillo con reglas (palabras clave, puntuación excesiva) sin ML; si se quiere ML, de nuevo coste y explicabilidad. |
 
-**Conclusión:** ML/IA es **ideal** para un producto dedicado a detección de phishing; para PodoAdmin, **no es prioritario**. Si en el futuro se quiere una capa extra, empezar por algo simple (reglas heurísticas de "tono urgente" en mensajes) y documentar el motivo de bloqueo.
+**Conclusión:** ML/IA es **ideal** para un producto dedicado a detección de phishing; para Podoraa, **no es prioritario**. Si en el futuro se quiere una capa extra, empezar por algo simple (reglas heurísticas de "tono urgente" en mensajes) y documentar el motivo de bloqueo.
 
 ---
 
@@ -74,14 +74,14 @@ Estas técnicas tienen sentido cuando **tienes una imagen o captura** de la pág
 | **Similitud perceptual (pHash, CLIP, etc.)** | Comparar la imagen con capturas de páginas legítimas. Si es muy parecida a la página de login real pero la URL es otra → phishing clonado. | Comparación contra un conjunto de “páginas oficiales” de referencia. |
 | **Detección de formularios de credenciales** | Detectar en la captura la presencia de campos usuario/contraseña y botón de envío. Página desconocida con formulario de login → candidata a phishing. | Reglas sobre DOM o sobre imagen (detección de campos/botones). |
 
-**¿Es aplicable hoy en PodoAdmin?**
+**¿Es aplicable hoy en Podoraa?**
 
-- **No**, con el diseño actual. PodoAdmin **no** hace capturas de páginas externas ni analiza imágenes en el contenido de mensajes. Los mensajes son **texto** (asunto + cuerpo); las comprobaciones son sobre URLs en ese texto (ofuscación, Safe Browsing), no sobre cómo se ve una landing.
+- **No**, con el diseño actual. Podoraa **no** hace capturas de páginas externas ni analiza imágenes en el contenido de mensajes. Los mensajes son **texto** (asunto + cuerpo); las comprobaciones son sobre URLs en ese texto (ofuscación, Safe Browsing), no sobre cómo se ve una landing.
 - **Sí** sería aplicable si añadieras, por ejemplo:
   - **Vista previa de enlaces:** el backend (o un worker) abre la URL, hace screenshot y, antes de devolver la vista previa, ejecuta OCR + detección de logos/formularios o similitud con páginas conocidas; si hay alerta, no muestras la preview o la marcas como “no verificada”.
   - **Análisis de imágenes adjuntas** en mensajes (si en el futuro el cuerpo admite imágenes): pasar cada imagen por OCR/detección de formularios y rechazar o marcar si parece phishing.
 
-**Resumen:** OCR, logos, similitud perceptual y detección de formularios son **la capa que responde a “se parece a una página real clonada”**. Hoy en PodoAdmin no tenemos el flujo que alimenta esa capa (no hay screenshot ni análisis de imágenes). Si en el futuro implementas vista previa de enlaces o análisis de imágenes, entonces tiene sentido planificar esta capa y mantener el **motivo de bloqueo explicable** (ej. “La vista previa contiene un formulario de credenciales en un dominio no reconocido”).
+**Resumen:** OCR, logos, similitud perceptual y detección de formularios son **la capa que responde a “se parece a una página real clonada”**. Hoy en Podoraa no tenemos el flujo que alimenta esa capa (no hay screenshot ni análisis de imágenes). Si en el futuro implementas vista previa de enlaces o análisis de imágenes, entonces tiene sentido planificar esta capa y mantener el **motivo de bloqueo explicable** (ej. “La vista previa contiene un formulario de credenciales en un dominio no reconocido”).
 
 ---
 
@@ -106,9 +106,9 @@ Implementar **una** capa de reputación (p. ej. Safe Browsing) ya da una **segun
 
 ## Vectores habituales: QR, OAuth, MFA fatigue, calendar, HTML attachments, Drive links
 
-> Si no tienes al menos **detección básica** de estos vectores, estás atrasado. Aquí se mapea cada uno al contexto de PodoAdmin.
+> Si no tienes al menos **detección básica** de estos vectores, estás atrasado. Aquí se mapea cada uno al contexto de Podoraa.
 
-| Vector | ¿Aplica a PodoAdmin? | Detección básica | Estado |
+| Vector | ¿Aplica a Podoraa? | Detección básica | Estado |
 |--------|----------------------|-------------------|--------|
 | **QR phishing** | No hoy | Si hubiera QR: solo generar/aceptar URLs del dominio oficial; no redirigir a URLs arbitrarias. | No hay flujo de QR (login, mensajes, etc.); si se añade, limitar a dominio oficial. |
 | **OAuth phishing** | Sí | Usar solo URLs oficiales de Google/Apple; validar `state` en el callback; intercambiar el código en el servidor (no confiar en redirect_uri del cliente). | **Hecho**: `state` se guarda en cookie y se verifica en callback (Google y Apple); el código se intercambia en backend. |
@@ -143,4 +143,4 @@ Implementar **una** capa de reputación (p. ej. Safe Browsing) ya da una **segun
 2. **Backend – mensajes:** Añadir una capa de **reputación de URL** (ej. Google Safe Browsing API o similar) para las URLs extraídas del asunto/cuerpo; si alguna está en la lista, rechazar el mensaje con código 400 y mensaje tipo: *"El contenido contiene un enlace que está en la lista de enlaces no seguros. Por política anti-phishing no se puede enviar."*
 3. **Documentación:** Incluir en PRODUCCION_CONFIG (o en doc de email) la recomendación de configurar **SPF, DKIM y DMARC** en el dominio desde el que se envían correos.
 
-Así se mantiene un enfoque **multi-capa** (heurísticas + reputación), **explicable** (motivo en cada bloqueo) y **realista** para el tamaño y contexto de PodoAdmin.
+Así se mantiene un enfoque **multi-capa** (heurísticas + reputación), **explicable** (motivo en cada bloqueo) y **realista** para el tamaño y contexto de Podoraa.

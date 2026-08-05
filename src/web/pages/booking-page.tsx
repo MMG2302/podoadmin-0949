@@ -27,7 +27,7 @@ function addDaysIso(iso: string, days: number): string {
 
 /**
  * Reserva en línea white-label: /reserva/agendar?t=<token>
- * Todo con la marca de la clínica; el paciente no ve PodoAdmin. Elige día → horario →
+ * Todo con la marca de la clínica; el paciente no ve Podoraa. Elige día → horario →
  * deja nombre y teléfono → queda agendado (el staff recibe la notificación).
  */
 export default function BookingPage() {
@@ -67,7 +67,7 @@ export default function BookingPage() {
         }
         setInfo(data.booking);
         setSelectedDate(data.booking.today);
-        // White-label: el paciente nunca ve "PodoAdmin", ni en la pestaña.
+        // White-label: el paciente nunca ve "Podoraa", ni en la pestaña.
         if (data.booking.clinicName) document.title = data.booking.clinicName;
       } catch {
         setInvalid(true);

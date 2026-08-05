@@ -448,7 +448,7 @@ const Login = () => {
               </p>
               <p className={`${ap.muted} text-center`}>
                 <a
-                  href={`mailto:${supportEmail || "soporte@podoadmin.com"}?subject=${encodeURIComponent("Solicitud de cuenta - PodoAdmin")}`}
+                  href={`mailto:${supportEmail || "soporte@podoadmin.com"}?subject=${encodeURIComponent("Solicitud de cuenta - Podoraa")}`}
                   className={ap.link}
                 >
                   {t.auth.contactAdminForAccount}

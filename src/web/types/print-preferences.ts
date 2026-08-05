@@ -13,7 +13,7 @@ export type PrintPreferencesConfig = {
   monochrome: boolean;
   /** Texto de pie de página personalizado (ambos documentos) */
   footerText: string;
-  /** Mostrar "Generado por PodoAdmin" en el pie */
+  /** Mostrar "Generado por Podoraa" en el pie */
   showGeneratedByFooter: boolean;
   history: {
     showLogo: boolean;

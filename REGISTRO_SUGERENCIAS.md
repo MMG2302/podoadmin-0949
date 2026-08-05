@@ -172,7 +172,7 @@ Ver `src/api/routes/auth.ts` para referencia del login actual. El registro segui
 
 ## Conclusión
 
-Para un sistema médico como PodoAdmin, **recomiendo mantener el registro solo para super_admin** por ahora, ya que:
+Para un sistema médico como Podoraa, **recomiendo mantener el registro solo para super_admin** por ahora, ya que:
 
 1. Mayor control sobre quién accede al sistema
 2. Mejor seguridad (no exposición pública)

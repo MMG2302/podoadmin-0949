@@ -1,4 +1,4 @@
-// Modelo de costos fijos + break-even + ROI 7 años — PodoAdmin
+// Modelo de costos fijos + break-even + ROI 7 años — Podoraa
 // Ingresos en USD (Stripe), gastos personales/operativos en MXN.
 
 const FX = 17.5;              // MXN por USD (jul 2026)

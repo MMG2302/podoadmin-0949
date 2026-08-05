@@ -80,7 +80,7 @@ export async function sendTrialSmsOtp(userId: string, phoneRaw: string): Promise
 
   const sent = await sendSms(
     e164,
-    `PodoAdmin: tu código de verificación es ${code}. Válido 10 minutos.`
+    `Podoraa: tu código de verificación es ${code}. Válido 10 minutos.`
   );
   if (!sent) {
     return { ok: false, message: 'No se pudo enviar el SMS. Intenta más tarde.' };

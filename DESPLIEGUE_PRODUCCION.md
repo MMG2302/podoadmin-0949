@@ -1,4 +1,4 @@
-# Despliegue a producción — PodoAdmin
+# Despliegue a producción — Podoraa
 
 Guía única de referencia para publicar la aplicación (Cloudflare Workers + D1 + assets). Complementa el checklist accionable en `CHECKLIST_DEPLOY_PRODUCCION.md` y el detalle de variables en `ENV_VARIABLES.md` y `PRODUCCION_CONFIG.md`.
 

@@ -72,7 +72,7 @@ Respuesta:
 {
   "success": true,
   "secret": "JBSWY3DPEHPK3PXP",
-  "qrCodeUrl": "otpauth://totp/PodoAdmin:user@example.com?secret=JBSWY3DPEHPK3PXP&issuer=PodoAdmin",
+  "qrCodeUrl": "otpauth://totp/Podoraa:user@example.com?secret=JBSWY3DPEHPK3PXP&issuer=Podoraa",
   "message": "Escanea el cÃ³digo QR con tu aplicaciÃ³n de autenticaciÃ³n"
 }
 ```

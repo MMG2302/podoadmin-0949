@@ -1,4 +1,4 @@
-# Plan de despliegue masivo — PodoAdmin
+# Plan de despliegue masivo — Podoraa
 
 Guía para abrir la plataforma a **muchas clínicas y usuarios concurrentes** (objetivo de referencia: **100 clínicas × ~25 usuarios** ≈ 2 500 cuentas, ~500 activos en hora punta).
 

@@ -26,7 +26,7 @@ function freePort(port) {
   }
 }
 
-console.log(`\n=== PodoAdmin: reinicio dev (puertos ${PORTS.join(', ')}) ===\n`);
+console.log(`\n=== Podoraa: reinicio dev (puertos ${PORTS.join(', ')}) ===\n`);
 for (const port of PORTS) freePort(port);
 
 try {

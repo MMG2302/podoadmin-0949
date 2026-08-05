@@ -9,7 +9,7 @@ import base32Encode from 'base32-encode';
  * Usa el estándar RFC 6238 (TOTP - Time-based One-Time Password)
  */
 
-const ISSUER_NAME = 'PodoAdmin';
+const ISSUER_NAME = 'Podoraa';
 
 /**
  * Genera un secreto TOTP para un usuario

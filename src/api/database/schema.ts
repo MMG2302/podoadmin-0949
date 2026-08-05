@@ -392,7 +392,7 @@ export const passwordResetRequests = sqliteTable('password_reset_requests', {
   rejectionReason: text('rejection_reason'),
 });
 
-// Conversaciones de soporte (usuario -> PodoAdmin)
+// Conversaciones de soporte (usuario -> Podoraa)
 export const supportConversations = sqliteTable('support_conversations', {
   id: text('id').primaryKey(),
   userId: text('user_id').notNull().references(() => createdUsers.id),

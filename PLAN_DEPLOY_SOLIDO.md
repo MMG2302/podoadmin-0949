@@ -1,6 +1,6 @@
-# Plan de deploy sólido — PodoAdmin
+# Plan de deploy sólido — Podoraa
 
-**Documento de referencia constante** para llevar PodoAdmin a producción (Cloudflare Workers + D1 + R2).
+**Documento de referencia constante** para llevar Podoraa a producción (Cloudflare Workers + D1 + R2).
 
 Última revisión: junio 2026.
 

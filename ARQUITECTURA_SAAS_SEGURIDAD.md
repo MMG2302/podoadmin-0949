@@ -1,6 +1,6 @@
 # Arquitectura SaaS – Revisión de seguridad y escalabilidad
 
-Revisión dura de **seguridad interna**, **multi-tenant** y **escalabilidad** aplicada al contexto de PodoAdmin (Cloudflare Workers + D1, clínicas como “tenant”).
+Revisión dura de **seguridad interna**, **multi-tenant** y **escalabilidad** aplicada al contexto de Podoraa (Cloudflare Workers + D1, clínicas como “tenant”).
 
 ---
 
@@ -8,7 +8,7 @@ Revisión dura de **seguridad interna**, **multi-tenant** y **escalabilidad** ap
 
 ### Zero Trust interno
 
-| Aspecto | Qué implica | Estado en PodoAdmin |
+| Aspecto | Qué implica | Estado en Podoraa |
 |--------|-------------|----------------------|
 | **No confiar en la red** | Cada petición se autentica y autoriza; no asumir que “interno” es seguro. | **Parcial**: Auth con JWT + cookies; middleware `requireAuth` y `requireRole`/`requirePermission` en rutas; no hay segmentación de red “interna” (todo pasa por la API). |
 | **Verificar identidad y permisos por request** | Validar token y `clinicId`/rol en cada operación. | **Hecho**: Rutas usan `c.get('user')` y comprueban `clinicId` y permisos; datos filtrados por `clinicId` donde aplica. |
@@ -20,7 +20,7 @@ Revisión dura de **seguridad interna**, **multi-tenant** y **escalabilidad** ap
 
 ### Secrets en vault (no env vars planas)
 
-| Aspecto | Qué implica | Estado en PodoAdmin |
+| Aspecto | Qué implica | Estado en Podoraa |
 |--------|-------------|----------------------|
 | **Secrets en vault** | Claves en un sistema dedicado (HashiCorp Vault, AWS Secrets Manager, Cloudflare Workers Secrets) con acceso auditado y rotación. | **Parcial**: Uso de **Wrangler Secrets** (Cloudflare); no son “env vars planas” en el repo; no hay vault externo tipo Vault/Secrets Manager. |
 | **No env vars planas en código** | No poner JWT_SECRET, etc. en `wrangler.toml` ni en el repo. | **Hecho**: Secretos sensibles se definen con `wrangler secret put`; en doc se recomienda no ponerlos en `[vars]`. |
@@ -31,7 +31,7 @@ Revisión dura de **seguridad interna**, **multi-tenant** y **escalabilidad** ap
 
 ### Rotación de keys
 
-| Aspecto | Qué implica | Estado en PodoAdmin |
+| Aspecto | Qué implica | Estado en Podoraa |
 |--------|-------------|----------------------|
 | **Rotación de JWT / refresh / CSRF** | Cambiar periódicamente las claves y tener estrategia para no invalidar todas las sesiones a la vez. | **No implementado**: No hay rotación automática ni proceso documentado. Las claves se cambian manualmente (nuevo secret) y las sesiones se invalidan. |
 | **Rotación de API keys (email, Safe Browsing, etc.)** | Renovar claves de terceros y actualizar secrets. | **Manual**: Depende de procedimiento operativo; no hay rotación desde la app. |
@@ -42,7 +42,7 @@ Revisión dura de **seguridad interna**, **multi-tenant** y **escalabilidad** ap
 
 ### Logs inmutables
 
-| Aspecto | Qué implica | Estado en PodoAdmin |
+| Aspecto | Qué implica | Estado en Podoraa |
 |--------|-------------|----------------------|
 | **Logs que no se puedan alterar ni borrar** | WORM, append-only o almacenamiento con retención y sin delete por app. | **No**: Los audit logs se insertan en D1 (`auditLog`); no hay política de inmutabilidad ni retención fija; un admin con acceso a la DB podría modificar/borrar. |
 | **Integridad (hash/cadena)** | Opcional: firma o encadenado para detectar manipulación. | **No**. |
@@ -55,7 +55,7 @@ Revisión dura de **seguridad interna**, **multi-tenant** y **escalabilidad** ap
 
 ### Aislamiento de datos por tenant
 
-| Aspecto | Qué implica | Estado en PodoAdmin |
+| Aspecto | Qué implica | Estado en Podoraa |
 |--------|-------------|----------------------|
 | **Datos separados por organización (clínica)** | Cada fila sensible con `clinicId`; las consultas siempre filtran por el tenant del usuario. | **Hecho**: Tablas con `clinicId`; rutas usan `user.clinicId` y filtros `eq(table.clinicId, clinicId)`; super_admin sin `clinicId` puede ver todas las clínicas. |
 | **Evitar fuga entre tenants** | No devolver datos de otra clínica por error (IDs, listados, exports). | **Hecho**: Autorización por rol y `requirePermission`; listados y detalles acotados a la clínica del usuario (o a todas solo para super_admin). |
@@ -67,7 +67,7 @@ Revisión dura de **seguridad interna**, **multi-tenant** y **escalabilidad** ap
 
 ### Rate limiting por cliente
 
-| Aspecto | Qué implica | Estado en PodoAdmin |
+| Aspecto | Qué implica | Estado en Podoraa |
 |--------|-------------|----------------------|
 | **Límites por organización (clínica)** | Evitar que un solo tenant consuma todos los recursos; cuotas por `clinicId` o por API key por org. | **No**: Rate limiting actual es por **identificador de login** (email+IP) y por **IP en registro**; no por `clinicId` ni por organización. |
 | **Límites globales por IP** | Evitar abuso desde una IP. | **Parcial**: Login y registro tienen rate limit (D1); no hay límite global por IP en el resto de la API. |
@@ -78,7 +78,7 @@ Revisión dura de **seguridad interna**, **multi-tenant** y **escalabilidad** ap
 
 ### Configuración por organización
 
-| Aspecto | Qué implica | Estado en PodoAdmin |
+| Aspecto | Qué implica | Estado en Podoraa |
 |--------|-------------|----------------------|
 | **Config por clínica (features, límites, branding)** | Cada tenant con su configuración (módulos, cuotas, logo, dominio). | **Parcial**: Hay configuración por clínica (ej. logo, datos de la clínica); no hay “planes” ni features flags por organización ni configuración de dominio por tenant. |
 | **Config central vs por tenant** | Variables globales vs por org. | **Actual**: Config global (env); por clínica solo lo que está en tablas (clinics, etc.). |
@@ -91,7 +91,7 @@ Revisión dura de **seguridad interna**, **multi-tenant** y **escalabilidad** ap
 
 ### Procesamiento async
 
-| Aspecto | Qué implica | Estado en PodoAdmin |
+| Aspecto | Qué implica | Estado en Podoraa |
 |--------|-------------|----------------------|
 | **Operaciones largas fuera del request** | No bloquear la respuesta HTTP; encolar tareas (emails, informes, Safe Browsing, etc.). | **No**: Todo es síncrono en el Worker (login, mensajes, Safe Browsing, email de notificación). Si una llamada externa tarda, el usuario espera. |
 | **Workers y tiempo de CPU** | En Workers, el tiempo de ejecución por request es limitado. | **Relevante**: En Workers hay límite de tiempo; si se añaden más llamadas externas o lógica pesada, conviene moverlas a cola. |
@@ -102,7 +102,7 @@ Revisión dura de **seguridad interna**, **multi-tenant** y **escalabilidad** ap
 
 ### Colas (SQS, PubSub, Rabbit)
 
-| Aspecto | Qué implica | Estado en PodoAdmin |
+| Aspecto | Qué implica | Estado en Podoraa |
 |--------|-------------|----------------------|
 | **Colas para tareas async** | Mensajería entre API y workers que procesan emails, informes, etc. | **No**: No hay colas; todo en línea. |
 | **En Cloudflare** | Alternativa: **Cloudflare Queues** + consumer Worker. | **No usado**. |
@@ -113,7 +113,7 @@ Revisión dura de **seguridad interna**, **multi-tenant** y **escalabilidad** ap
 
 ### Timeouts claros (phishing no espera)
 
-| Aspecto | Qué implica | Estado en PodoAdmin |
+| Aspecto | Qué implica | Estado en Podoraa |
 |--------|-------------|----------------------|
 | **Timeouts en llamadas externas** | No esperar indefinidamente a Safe Browsing, email, etc.; fallar de forma controlada. | **Parcial**: La llamada a Safe Browsing en mensajes usa `fetch` sin timeout explícito (depende del runtime). Si la API externa tarda, el envío del mensaje se bloquea hasta que falle o responda. |
 | **Degradación controlada** | Si Safe Browsing no responde en X segundos, decidir: rechazar el mensaje (seguro) o permitir sin esa comprobación (documentado). | **No definido**: Si `checkUrlsWithSafeBrowsing` falla por red, se devuelve `{ unsafe: [] }` y el mensaje se permite (evitar bloqueo por caída de API); no hay timeout corto explícito. |
@@ -137,4 +137,4 @@ Revisión dura de **seguridad interna**, **multi-tenant** y **escalabilidad** ap
 | **4.3** | Colas | No | Valorar con async (Queues, etc.). |
 | **4.3** | Timeouts claros | Parcial | Añadir timeout a Safe Browsing (y otras llamadas externas); documentar política. |
 
-Con esto se cubre una **revisión dura** de arquitectura SaaS aplicada a PodoAdmin: seguridad interna, multi-tenant real y escalabilidad, con estado actual y pasos concretos.
+Con esto se cubre una **revisión dura** de arquitectura SaaS aplicada a Podoraa: seguridad interna, multi-tenant real y escalabilidad, con estado actual y pasos concretos.

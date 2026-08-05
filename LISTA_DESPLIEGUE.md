@@ -1,4 +1,4 @@
-# Lista de despliegue â€” PodoAdmin
+# Lista de despliegue â€” Podoraa
 
 **Documento principal** para ir marcando pasos y continuar en otras sesiones.  
 **Empezar hoy (resumen):** `docs/DEPLOY_AHORA.md` Â· GuÃ­a detallada: `docs/DEPLOY_PASO_A_PASO.md` Â· Script Windows: `scripts/deploy-asistente.ps1`

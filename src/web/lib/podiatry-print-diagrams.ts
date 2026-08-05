@@ -1,5 +1,5 @@
 /**
- * Diagramas clínicos — logo PodoAdmin con alteraciones por tipo.
+ * Diagramas clínicos — logo Podoraa con alteraciones por tipo.
  */
 import {
   ARCH_TYPE_LABELS,

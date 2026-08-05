@@ -35,7 +35,7 @@ function readParams(): { token: string; rating: Rating | null } {
  * Página pública de opinión post-visita (sin sesión): /reserva/opinion?token=…&v=good|regular|bad
  * Abrir el enlace registra la calificación. Si es "mal" (o "regular") no se cierra: queda
  * abierto un espacio para queja/sugerencia que el paciente puede enviar, anónimo o no.
- * Si es "bien", se ofrece dejar reseña en Google. Todo con la marca de la clínica, nunca PodoAdmin.
+ * Si es "bien", se ofrece dejar reseña en Google. Todo con la marca de la clínica, nunca Podoraa.
  */
 export default function SatisfactionPage() {
   const { t, language } = useLanguage();

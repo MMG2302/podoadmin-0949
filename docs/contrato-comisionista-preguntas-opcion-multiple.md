@@ -57,8 +57,8 @@ Marca la opción que corresponda (o escribe "Otro" si aplica).
 ## 6. Producto / nombre comercial
 
 **¿Qué nombre(s) debe llevar el contrato?**
-- [x] A) Solo PodoAdmin.
-- [ ] B) PodoAdmin + otro nombre: _________________
+- [x] A) Solo Podoraa.
+- [ ] B) Podoraa + otro nombre: _________________
 - [ ] C) Otro: _________________
 
 ---

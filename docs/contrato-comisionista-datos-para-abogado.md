@@ -1,4 +1,4 @@
-# Datos para contrato – Reseller / Comisionista PodoAdmin
+# Datos para contrato – Reseller / Comisionista Podoraa
 
 Documento consolidado a partir de las respuestas del cuestionario. Uso: entregar a abogado para redacción del contrato.
 
@@ -6,7 +6,7 @@ Documento consolidado a partir de las respuestas del cuestionario. Uso: entregar
 
 ## Parte que otorga (titular del SaaS) Mario Mauries García
 
-- **Por definir:** nombre o razón social con la que firmará el titular del SaaS (PodoAdmin).
+- **Por definir:** nombre o razón social con la que firmará el titular del SaaS (Podoraa).
 
 ---
 
@@ -25,7 +25,7 @@ Documento consolidado a partir de las respuestas del cuestionario. Uso: entregar
 
 ## Producto
 
-- **Nombre comercial:** PodoAdmin.
+- **Nombre comercial:** Podoraa.
 - **Qué incluye la licencia que vende el reseller:** Creación de usuario en el sistema, uso del SaaS y almacenamiento de datos (sin incluir soporte técnico ni implementación como obligación del titular, salvo lo que se pacte aparte).
 
 ---

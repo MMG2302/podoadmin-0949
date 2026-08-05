@@ -1,4 +1,4 @@
-# Estimación de costos y utilidad bruta – PodoAdmin SaaS
+# Estimación de costos y utilidad bruta – Podoraa SaaS
 
 Documento único para estimar costos directos, operativos y utilidad bruta. Usar para fijar precios, comisiones (reseller 45%) y tu pago. **Actualiza aquí las cifras** cuando cambien.
 
@@ -17,7 +17,7 @@ Documento único para estimar costos directos, operativos y utilidad bruta. Usar
 
 ## Estimación mensual con Cloudflare (propuesta de infraestructura)
 
-Stack actual de PodoAdmin: **Workers** (app + API), **D1** (base de datos), **R2** (archivos/imágenes). Tipo de cambio de referencia: **~18 MXN/USD**.
+Stack actual de Podoraa: **Workers** (app + API), **D1** (base de datos), **R2** (archivos/imágenes). Tipo de cambio de referencia: **~18 MXN/USD**.
 
 ### Costos Cloudflare estimados (USD y MXN)
 

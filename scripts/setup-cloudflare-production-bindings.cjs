@@ -11,7 +11,7 @@ function run(cmd) {
   execSync(cmd, { stdio: 'inherit' });
 }
 
-console.log('Configuración de bindings Cloudflare (KV + Queues) para PodoAdmin\n');
+console.log('Configuración de bindings Cloudflare (KV + Queues) para Podoraa\n');
 
 try {
   run('bunx wrangler kv namespace create RATE_LIMIT_KV');

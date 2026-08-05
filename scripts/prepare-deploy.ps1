@@ -1,4 +1,4 @@
-# Verificación previa al deploy de PodoAdmin (Windows)
+# Verificación previa al deploy de Podoraa (Windows)
 # Ejecuta la misma lógica que scripts/prepare-deploy.cjs
 
 param(
@@ -11,7 +11,7 @@ $ErrorActionPreference = "Stop"
 $ProjectRoot = Split-Path -Parent $PSScriptRoot
 Set-Location $ProjectRoot
 
-Write-Host "PodoAdmin — prepare-deploy" -ForegroundColor Green
+Write-Host "Podoraa — prepare-deploy" -ForegroundColor Green
 Write-Host "Carpeta: $ProjectRoot`n"
 
 $nodeArgs = @("scripts/prepare-deploy.cjs")

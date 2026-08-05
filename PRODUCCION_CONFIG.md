@@ -1,6 +1,6 @@
 # ConfiguraciÃ³n en producciÃ³n
 
-GuÃ­a de variables, secretos y pasos para desplegar PodoAdmin en producciÃ³n (Cloudflare Workers + D1).
+GuÃ­a de variables, secretos y pasos para desplegar Podoraa en producciÃ³n (Cloudflare Workers + D1).
 
 Para detalle de cada variable, ver **ENV_VARIABLES.md**.
 

@@ -19,7 +19,7 @@ function run(cmd, label) {
   execSync(cmd, { cwd: root, stdio: 'inherit', shell: true });
 }
 
-console.log('=== PodoAdmin: reinicio BD local + mocks ===\n');
+console.log('=== Podoraa: reinicio BD local + mocks ===\n');
 
 if (fs.existsSync(d1State)) {
   fs.rmSync(d1State, { recursive: true, force: true });

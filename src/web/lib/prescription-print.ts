@@ -290,7 +290,7 @@ export function buildPrescriptionPrintHtml(input: PrescriptionPrintInput): strin
     </div>
 
     <footer class="footer">
-      ${prefs.showGeneratedByFooter ? `<span><strong>PodoAdmin</strong></span> · ` : ""}
+      ${prefs.showGeneratedByFooter ? `<span><strong>Podoraa</strong></span> · ` : ""}
       <span>Impreso: ${esc(new Date().toLocaleString("es-ES"))}</span>
       ${prefs.footerText.trim() ? `<br /><span style="white-space:pre-wrap;">${esc(prefs.footerText.trim())}</span>` : ""}
     </footer>

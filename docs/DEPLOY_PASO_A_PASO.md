@@ -1,4 +1,4 @@
-# Desplegar PodoAdmin â€” guÃ­a para quien no programa
+# Desplegar Podoraa â€” guÃ­a para quien no programa
 
 **Marca tu progreso en:** [`LISTA_DESPLIEGUE.md`](../LISTA_DESPLIEGUE.md) (documento principal para continuar en otras sesiones).
 

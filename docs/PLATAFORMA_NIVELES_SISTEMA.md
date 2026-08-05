@@ -1,4 +1,4 @@
-# Plataforma PodoAdmin — visión por niveles del sistema
+# Plataforma Podoraa — visión por niveles del sistema
 
 Documento maestro que responde, capa por capa, cómo escalar, modularizar, reducir costos y operar sin caídas.
 

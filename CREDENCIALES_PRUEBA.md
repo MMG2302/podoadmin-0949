@@ -1,4 +1,4 @@
-# 🔐 Credenciales de Prueba - PodoAdmin
+# 🔐 Credenciales de Prueba - Podoraa
 
 ## ⚠️ IMPORTANTE: Para Probar Rate Limiting
 

@@ -196,7 +196,7 @@ export function buildQuote(opts: {
   const baseDescription =
     opts.subjectType === 'clinic'
       ? `${getClinicIncludedPodiatrists(tier)} podólogos incluidos (${opts.podiatristCount} activo(s)). Podólogo adicional: $${BILLING_PRICE_EXTRA_PODIATRIST_USD} USD/mes.`
-      : 'Acceso individual a PodoAdmin.';
+      : 'Acceso individual a Podoraa.';
   const description =
     tier === 'premium'
       ? `${baseDescription} Incluye analíticas de cobros y agenda, herramientas clínicas y campañas de WhatsApp.`

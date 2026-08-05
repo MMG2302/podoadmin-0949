@@ -70,7 +70,7 @@
         {
           "binding": "DB",
           "database_name": "podoraa-prod",
-          "database_id": "PENDIENTE-DATABASE-ID",
+          "database_id": "33f324fd-8695-453e-b739-e33f1ddc2c97",
           "migrations_dir": "src/api/migrations"
         }
       ],
@@ -83,7 +83,7 @@
       "kv_namespaces": [
         {
           "binding": "RATE_LIMIT_KV",
-          "id": "PENDIENTE-KV-NAMESPACE-ID"
+          "id": "d7d5d1c4907f4eeba27d83179127f795"
         }
       ],
       "queues": {

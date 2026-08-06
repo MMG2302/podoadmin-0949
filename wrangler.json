@@ -55,9 +55,9 @@
       "name": "podoraa",
       "vars": {
         "NODE_ENV": "production",
-        "APP_BASE_URL": "https://podoraa.workers.dev",
-        "ALLOWED_ORIGINS": "https://podoraa.workers.dev",
-        "OFFICIAL_APP_DOMAIN": "https://podoraa.workers.dev",
+        "APP_BASE_URL": "https://podoraa.podoraa.workers.dev",
+        "ALLOWED_ORIGINS": "https://podoraa.podoraa.workers.dev",
+        "OFFICIAL_APP_DOMAIN": "https://podoraa.podoraa.workers.dev",
         "STRIPE_PUBLISHABLE_KEY": "pk_test_51QKiLGDQ5jzhgiLFG9XD5X96JdVVCzdvqZXS9Hfgy65ZrvDfnXkLbAYJbUwEwkwKhmwyUSypttThMMcIVOSUn42800WRynaW0g",
         "STRIPE_PRICE_INDEPENDENT_MONTHLY": "price_1U1FNqDQ5jzhgiLFYfOkFXGS",
         "STRIPE_PRICE_INDEPENDENT_PREMIUM_MONTHLY": "price_1U1FHGDQ5jzhgiLF1CWFdEjJ",

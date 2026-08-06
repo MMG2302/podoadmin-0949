@@ -2,12 +2,13 @@
  * Genera SQL para crear UN super_admin (útil en producción cuando aún no hay ninguno).
  *
  * Uso:
- *   node scripts/create-super-admin.cjs
  *   node scripts/create-super-admin.cjs "tu@email.com" "TuPasswordSegura" "Tu Nombre"
  *
  * IMPORTANTE: Pon la contraseña entre comillas si tiene caracteres especiales (*, $, !, etc.).
  *
- * Por defecto: admin@podoadmin.com / admin123 (solo para desarrollo).
+ * La contraseña es obligatoria (mín. 12 caracteres): no hay valor por defecto, para que
+ * la cuenta más privilegiada no pueda quedar creada con una clave que está en el repo.
+ * El email por defecto es admin@podoraa.com si no se indica otro.
  *
  * DESPUÉS de generar, DEBES aplicar el SQL a la base de datos:
  *   Local:  bunx wrangler d1 execute DB --local --file=scripts/super-admin.sql
@@ -21,8 +22,8 @@ const bcrypt = require('bcryptjs');
 const fs = require('fs');
 const path = require('path');
 
-const defaultEmail = 'admin@podoadmin.com';
-const defaultPassword = 'admin123';
+const defaultEmail = 'admin@podoraa.com';
+const MIN_PASSWORD_LEN = 12;
 
 function esc(s) {
   if (s == null) return 'NULL';
@@ -31,8 +32,19 @@ function esc(s) {
 
 async function main() {
   const email = process.argv[2] || process.env.SUPER_ADMIN_EMAIL || defaultEmail;
-  const password = process.argv[3] || process.env.SUPER_ADMIN_PASSWORD || defaultPassword;
+  // Sin contraseña por defecto: la cuenta con más privilegios del sistema no puede
+  // quedar creada con una clave conocida por estar en el repositorio.
+  const password = process.argv[3] || process.env.SUPER_ADMIN_PASSWORD;
   const name = process.argv[4] || process.env.SUPER_ADMIN_NAME || 'Super Admin';
+
+  if (!password || password.length < MIN_PASSWORD_LEN) {
+    console.error(
+      `\nERROR: hay que indicar una contraseña de al menos ${MIN_PASSWORD_LEN} caracteres.\n\n` +
+        '  node scripts/create-super-admin.cjs "tu@email.com" "TuContraseñaLarga" "Tu Nombre"\n\n' +
+        'o vía SUPER_ADMIN_PASSWORD. No hay valor por defecto a propósito.\n'
+    );
+    process.exit(1);
+  }
 
   const emailLower = email.toLowerCase().trim();
   const id = 'user_super_admin';

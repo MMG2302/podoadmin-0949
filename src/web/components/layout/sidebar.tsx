@@ -78,7 +78,7 @@ export const Sidebar = ({
                   className="w-12 h-12 md:w-14 md:h-14 shrink-0 rounded-md"
                 />
                 <span className="flex h-12 md:h-14 items-center leading-none">
-                  Podo<span className="font-bold">Admin</span>
+                  Pod<span className="font-bold">oraa</span>
                 </span>
               </Link>
               <div className="flex items-center gap-1">

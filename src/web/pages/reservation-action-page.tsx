@@ -177,7 +177,7 @@ export default function ReservationActionPage({ mode }: { mode: ReservationActio
             <span className="text-xl tracking-tight text-brand-ink">
               {brandInfo?.clinicName || (
                 <>
-                  Podo<span className="font-bold">Admin</span>
+                  Pod<span className="font-bold">oraa</span>
                 </>
               )}
             </span>
@@ -186,7 +186,7 @@ export default function ReservationActionPage({ mode }: { mode: ReservationActio
           <>
             <img src="/favicon.svg" alt="" className="h-9 w-9" />
             <span className="text-xl tracking-tight text-brand-ink">
-              Podo<span className="font-bold">Admin</span>
+              Pod<span className="font-bold">oraa</span>
             </span>
           </>
         )}

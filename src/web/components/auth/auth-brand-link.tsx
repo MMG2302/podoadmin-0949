@@ -32,7 +32,7 @@ export function AuthBrandMobile({ className }: { className?: string }) {
       aria-label={ARIA}
       className={cn(ap.mobileLogo, "inline-block hover:opacity-90 transition-opacity", className)}
     >
-      Podo<span className="font-bold">Admin</span>
+      Pod<span className="font-bold">oraa</span>
     </Link>
   );
 }

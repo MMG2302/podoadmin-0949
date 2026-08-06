@@ -55,11 +55,16 @@
     "production": {
       "name": "podoraa",
       "preview_urls": false,
+      "workers_dev": true,
+      "routes": [
+        { "pattern": "podoraa.com", "custom_domain": true },
+        { "pattern": "www.podoraa.com", "custom_domain": true }
+      ],
       "vars": {
         "NODE_ENV": "production",
-        "APP_BASE_URL": "https://podoraa.podoraa.workers.dev",
-        "ALLOWED_ORIGINS": "https://podoraa.podoraa.workers.dev",
-        "OFFICIAL_APP_DOMAIN": "https://podoraa.podoraa.workers.dev",
+        "APP_BASE_URL": "https://podoraa.com",
+        "ALLOWED_ORIGINS": "https://podoraa.com,https://www.podoraa.com,https://podoraa.podoraa.workers.dev",
+        "OFFICIAL_APP_DOMAIN": "https://podoraa.com",
         "RESEND_FROM_EMAIL": "onboarding@resend.dev",
         "SUPPORT_EMAIL": "soporte@podoraa.com",
         "CAPTCHA_PROVIDER": "turnstile",

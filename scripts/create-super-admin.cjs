@@ -40,6 +40,20 @@ async function main() {
   const password = process.argv[3] || process.env.SUPER_ADMIN_PASSWORD;
   const name = process.argv[4] || process.env.SUPER_ADMIN_NAME || 'Super Admin';
 
+  // Los ejemplos de la documentación pasan la validación de longitud y generarían un
+  // super_admin con una clave publicada. Se rechazan explícitamente.
+  const PLACEHOLDERS = ['tucontraseñalarga', 'tupasswordsegura', 'tu@email.com', 'tu nombre', 'admin123'];
+  const suministrados = [email, password, name].filter(Boolean).map((v) => String(v).toLowerCase());
+  const usaEjemplo = suministrados.find((v) => PLACEHOLDERS.includes(v));
+  if (usaEjemplo) {
+    console.error(
+      `\nERROR: "${usaEjemplo}" es un valor de ejemplo de la documentación.\n\n` +
+        'Sustituilo por tus datos reales: esa clave es pública y crearía un super_admin\n' +
+        'al que podría entrar cualquiera que lea el repositorio.\n'
+    );
+    process.exit(1);
+  }
+
   if (!password || password.length < MIN_PASSWORD_LEN) {
     console.error(
       `\nERROR: hay que indicar una contraseña de al menos ${MIN_PASSWORD_LEN} caracteres.\n\n` +
@@ -70,8 +84,9 @@ async function main() {
   console.log('Usuario:', emailLower, '| Rol: super_admin');
   console.log('');
   console.log('>>> DEBES APLICAR EL SQL A LA BASE DE DATOS (sin esto no tendrás acceso):');
-  console.log('    Local:  bunx wrangler d1 execute DB --local --file=scripts/super-admin.sql');
-  console.log('    Remoto: bunx wrangler d1 execute DB --remote --file=scripts/super-admin.sql');
+  console.log('    Local:      wrangler d1 execute DB --local --file=scripts/super-admin.sql');
+  console.log('    Producción: wrangler d1 execute DB --remote --env production --file=scripts/super-admin.sql');
+  console.log('    (sin --env production, --remote apunta a la base de desarrollo)');
 }
 
 main().catch((err) => {

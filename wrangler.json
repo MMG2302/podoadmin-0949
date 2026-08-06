@@ -65,7 +65,7 @@
         "APP_BASE_URL": "https://podoraa.com",
         "ALLOWED_ORIGINS": "https://podoraa.com,https://www.podoraa.com,https://podoraa.podoraa.workers.dev",
         "OFFICIAL_APP_DOMAIN": "https://podoraa.com",
-        "RESEND_FROM_EMAIL": "onboarding@resend.dev",
+        "RESEND_FROM_EMAIL": "noreply@podoraa.com",
         "SUPPORT_EMAIL": "soporte@podoraa.com",
         "CAPTCHA_PROVIDER": "turnstile",
         "CAPTCHA_SITE_KEY": "0x4AAAAAAEHn5H2j_5bDioYI",

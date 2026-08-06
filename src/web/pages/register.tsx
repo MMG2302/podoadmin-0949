@@ -79,6 +79,18 @@ const Register = () => {
   const captchaConfig = config?.captcha ?? null;
   const captchaRequired = !!captchaConfig;
 
+  const officialDomain = config?.officialDomain ?? null;
+  // Mismo control anti-phishing que en login: aquí se crean las credenciales,
+  // así que una copia del sitio en otro dominio es igual de peligrosa.
+  const originMismatch = useMemo(() => {
+    if (!officialDomain) return false;
+    try {
+      return window.location.origin !== new URL(officialDomain).origin;
+    } catch {
+      return false;
+    }
+  }, [officialDomain]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
@@ -239,6 +251,19 @@ const Register = () => {
               </div>
             ) : (
               <form onSubmit={handleSubmit} className="space-y-5">
+                {/* Alerta crítica: el usuario no está en el dominio oficial (posible phishing) */}
+                {originMismatch && (
+                  <div className={`${ap.error} border-2 font-medium`}>
+                    {officialDomain ? (
+                      (() => {
+                        const [before, after] = t.auth.notOnOfficialDomain.split("{domain}");
+                        return <>{before}<strong className="break-all">{officialDomain}</strong>{after}</>;
+                      })()
+                    ) : (
+                      t.auth.notOnOfficialDomainNoDomain
+                    )}
+                  </div>
+                )}
                 {error && (
                   <div className={ap.error}>
                     {error}

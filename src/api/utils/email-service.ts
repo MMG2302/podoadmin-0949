@@ -299,7 +299,7 @@ export async function sendFailedLoginNotificationEmail(
         </div>
         <div class="footer">
           <p>Este es un email automático, por favor no respondas.</p>
-          <p>&copy; ${new Date().getFullYear()} PodoAdmin. Todos los derechos reservados.</p>
+          <p>&copy; ${new Date().getFullYear()} Podoraa. Todos los derechos reservados.</p>
         </div>
       </div>
     </body>
@@ -321,7 +321,7 @@ export async function sendPasswordResetEmail(
   name: string,
   resetUrl: string
 ): Promise<boolean> {
-  const subject = 'Restablece tu contraseña de PodoAdmin';
+  const subject = 'Restablece tu contraseña de Podoraa';
 
   const html = `
     <!DOCTYPE html>
@@ -345,9 +345,9 @@ export async function sendPasswordResetEmail(
         </div>
         <div class="content">
           <p>Hola ${escapeHtml(name)},</p>
-          <p>Has solicitado restablecer la contraseña de tu cuenta en PodoAdmin. Haz clic en el siguiente botón para elegir una nueva contraseña:</p>
+          <p>Has solicitado restablecer la contraseña de tu cuenta en Podoraa. Haz clic en el siguiente botón para elegir una nueva contraseña:</p>
           <p style="text-align: center;">
-            <a href="${resetUrl}" class="button">Restablecer contraseña</a>
+            <a href="${resetUrl}" class="button" style="display:inline-block;padding:12px 24px;background-color:#1a1a1a;color:#ffffff;text-decoration:none;border-radius:6px;font-weight:600;">Restablecer contraseña</a>
           </p>
           <p>O copia y pega este enlace en tu navegador:</p>
           <p style="word-break: break-all; color: #6b7280;">${resetUrl}</p>
@@ -355,7 +355,7 @@ export async function sendPasswordResetEmail(
         </div>
         <div class="footer">
           <p>Este es un email automático, por favor no respondas.</p>
-          <p>&copy; ${new Date().getFullYear()} PodoAdmin. Todos los derechos reservados.</p>
+          <p>&copy; ${new Date().getFullYear()} Podoraa. Todos los derechos reservados.</p>
         </div>
       </div>
     </body>
@@ -377,7 +377,7 @@ export async function sendVerificationEmail(
   name: string,
   verificationUrl: string
 ): Promise<boolean> {
-  const subject = 'Verifica tu cuenta en PodoAdmin';
+  const subject = 'Verifica tu cuenta en Podoraa';
   const safeName = escapeHtml(name);
 
   const html = `
@@ -401,9 +401,9 @@ export async function sendVerificationEmail(
         </div>
         <div class="content">
           <p>Hola ${safeName},</p>
-          <p>Gracias por registrarte en PodoAdmin. Haz clic en el botón para activar tu cuenta:</p>
+          <p>Gracias por registrarte en Podoraa. Haz clic en el botón para activar tu cuenta:</p>
           <p style="text-align: center;">
-            <a href="${verificationUrl}" class="button">Verificar mi cuenta</a>
+            <a href="${verificationUrl}" class="button" style="display:inline-block;padding:12px 24px;background-color:#1a1a1a;color:#ffffff;text-decoration:none;border-radius:6px;font-weight:600;">Verificar mi cuenta</a>
           </p>
           <p>O copia este enlace en tu navegador:</p>
           <p style="word-break: break-all; color: #6b7280;">${verificationUrl}</p>

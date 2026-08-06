@@ -105,10 +105,10 @@ const ForgotPassword = () => {
                   <p>
                     {t.auth.contactToVerifyRecovery}{" "}
                     <a
-                      href={`mailto:${supportEmail || "soporte@podoadmin.com"}?subject=${encodeURIComponent(t.auth.recoveryVerifySubject)}`}
+                      href={`mailto:${supportEmail || "soporte@podoraa.com"}?subject=${encodeURIComponent(t.auth.recoveryVerifySubject)}`}
                       className="font-medium text-brand-ink hover:underline"
                     >
-                      {supportEmail || "soporte@podoadmin.com"}
+                      {supportEmail || "soporte@podoraa.com"}
                     </a>
                   </p>
                 </div>

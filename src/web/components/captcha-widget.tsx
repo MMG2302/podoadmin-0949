@@ -145,11 +145,10 @@ export function CaptchaWidget({ provider, siteKey, onToken, className }: Captcha
       try {
         await ensureCaptchaScript(provider);
         if (cancelled) return;
-        if (provider === "turnstile" && window.turnstile?.ready) {
-          window.turnstile.ready(renderWidget);
-        } else {
-          renderWidget();
-        }
+        // El script se inyecta dinámicamente y ya se esperó su onload, así que la API
+        // está disponible. No se usa turnstile.ready(): falla con código 3857 cuando el
+        // tag lleva async/defer, que es siempre en una inyección dinámica.
+        renderWidget();
       } catch (err) {
         console.error("CAPTCHA load error:", err);
         onTokenRef.current(null);

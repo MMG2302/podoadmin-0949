@@ -61,7 +61,7 @@
         "ALLOWED_ORIGINS": "https://podoraa.podoraa.workers.dev",
         "OFFICIAL_APP_DOMAIN": "https://podoraa.podoraa.workers.dev",
         "RESEND_FROM_EMAIL": "onboarding@resend.dev",
-        "SUPPORT_EMAIL": "",
+        "SUPPORT_EMAIL": "soporte@podoraa.com",
         "CAPTCHA_PROVIDER": "turnstile",
         "CAPTCHA_SITE_KEY": "0x4AAAAAAEHn5H2j_5bDioYI",
         "STRIPE_PUBLISHABLE_KEY": "pk_test_51QKiLGDQ5jzhgiLFG9XD5X96JdVVCzdvqZXS9Hfgy65ZrvDfnXkLbAYJbUwEwkwKhmwyUSypttThMMcIVOSUn42800WRynaW0g",

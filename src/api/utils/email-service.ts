@@ -34,7 +34,7 @@ class ResendEmailService implements EmailService {
 
   constructor() {
     this.apiKey = process.env.RESEND_API_KEY || '';
-    this.fromEmail = process.env.RESEND_FROM_EMAIL || 'noreply@podoadmin.com';
+    this.fromEmail = process.env.RESEND_FROM_EMAIL || 'noreply@podoraa.com';
   }
 
   async sendEmail(options: EmailOptions): Promise<boolean> {
@@ -83,7 +83,7 @@ class SendGridEmailService implements EmailService {
 
   constructor() {
     this.apiKey = process.env.SENDGRID_API_KEY || '';
-    this.fromEmail = process.env.SENDGRID_FROM_EMAIL || 'noreply@podoadmin.com';
+    this.fromEmail = process.env.SENDGRID_FROM_EMAIL || 'noreply@podoraa.com';
   }
 
   async sendEmail(options: EmailOptions): Promise<boolean> {
@@ -146,7 +146,7 @@ class AWSEmailService implements EmailService {
     this.accessKeyId = process.env.AWS_ACCESS_KEY_ID || '';
     this.secretAccessKey = process.env.AWS_SECRET_ACCESS_KEY || '';
     this.region = process.env.AWS_REGION || 'us-east-1';
-    this.fromEmail = process.env.AWS_SES_FROM_EMAIL || 'noreply@podoadmin.com';
+    this.fromEmail = process.env.AWS_SES_FROM_EMAIL || 'noreply@podoraa.com';
   }
 
   async sendEmail(options: EmailOptions): Promise<boolean> {

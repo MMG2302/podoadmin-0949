@@ -6,6 +6,7 @@
   "main": "./src/worker.ts",
   "observability": { "enabled": true },
   "upload_source_maps": true,
+  "preview_urls": false,
   "assets": {
     "directory": "./dist/client",
     "not_found_handling": "single-page-application",
@@ -53,6 +54,7 @@
   "env": {
     "production": {
       "name": "podoraa",
+      "preview_urls": false,
       "vars": {
         "NODE_ENV": "production",
         "APP_BASE_URL": "https://podoraa.podoraa.workers.dev",

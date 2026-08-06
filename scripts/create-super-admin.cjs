@@ -11,8 +11,11 @@
  * El email por defecto es admin@podoraa.com si no se indica otro.
  *
  * DESPUÉS de generar, DEBES aplicar el SQL a la base de datos:
- *   Local:  bunx wrangler d1 execute DB --local --file=scripts/super-admin.sql
- *   Remoto: bunx wrangler d1 execute DB --remote --file=scripts/super-admin.sql
+ *   Local:      wrangler d1 execute DB --local --file=scripts/super-admin.sql
+ *   Producción: wrangler d1 execute DB --remote --env production --file=scripts/super-admin.sql
+ *
+ * OJO: sin --env production, --remote apunta a la base del entorno por defecto
+ * (la de desarrollo), no a la de producción.
  * Sin este paso no tendrás acceso (el script solo crea el archivo).
  *
  * El archivo generado está en .gitignore (no commitear: contiene hash de contraseña).

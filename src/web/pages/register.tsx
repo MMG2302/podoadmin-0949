@@ -7,6 +7,7 @@ import { CaptchaWidget, type CaptchaProvider } from "../components/captcha-widge
 import { api } from "../lib/api-client";
 import { authPage as ap } from "../lib/auth-page-styles";
 import { semanticRuleOkTextClass } from "../lib/form-field-classes";
+import { isOriginMismatch } from "../lib/official-origin";
 
 type PublicConfig = {
   officialDomain?: string | null;
@@ -82,14 +83,7 @@ const Register = () => {
   const officialDomain = config?.officialDomain ?? null;
   // Mismo control anti-phishing que en login: aquí se crean las credenciales,
   // así que una copia del sitio en otro dominio es igual de peligrosa.
-  const originMismatch = useMemo(() => {
-    if (!officialDomain) return false;
-    try {
-      return window.location.origin !== new URL(officialDomain).origin;
-    } catch {
-      return false;
-    }
-  }, [officialDomain]);
+  const originMismatch = useMemo(() => isOriginMismatch(officialDomain), [officialDomain]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

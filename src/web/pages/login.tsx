@@ -7,6 +7,7 @@ import { CaptchaWidget, type CaptchaProvider } from "../components/captcha-widge
 import { useLocation } from "wouter";
 import { authPage as ap } from "../lib/auth-page-styles";
 import { formErrorClass } from "../lib/form-field-classes";
+import { isOriginMismatch } from "../lib/official-origin";
 
 type PublicConfig = {
   officialDomain?: string | null;
@@ -61,12 +62,7 @@ const Login = () => {
         const domain = data?.officialDomain;
         if (domain) {
           setOfficialDomain(domain);
-          try {
-            const officialOrigin = new URL(domain).origin;
-            setOriginMismatch(window.location.origin !== officialOrigin);
-          } catch {
-            setOriginMismatch(false);
-          }
+          setOriginMismatch(isOriginMismatch(domain));
         }
         if (data?.supportEmail) setSupportEmail(data.supportEmail);
         if (data?.googleOAuthEnabled) setGoogleOAuthEnabled(true);

@@ -153,7 +153,10 @@ async function checkMiddlewareRateLimit(
   const kv = getRateLimitKv();
   if (kv) {
     const key = buildKvRateLimitKey(action, identifier);
-    return checkKvWindowRateLimit(kv, key, limit, windowMs);
+    const result = await checkKvWindowRateLimit(kv, key, limit, windowMs);
+    // KV sin respuesta (cuota agotada, incidencia del proveedor): se cuenta en D1 en
+    // lugar de bloquear. Se conserva la protección sin dejar la API inaccesible.
+    if (!result.degraded) return result;
   }
   return checkAndRecordActionRateLimit(action, identifier, limit, windowMs);
 }

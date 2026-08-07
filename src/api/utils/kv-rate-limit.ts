@@ -1,6 +1,11 @@
 export interface ActionRateLimitResult {
   allowed: boolean;
   retryAfterSeconds?: number;
+  /**
+   * El almacén de contadores no estuvo disponible y no se pudo decidir. Quien llama
+   * debe recurrir a otro mecanismo; nunca se traduce en un bloqueo por sí solo.
+   */
+  degraded?: boolean;
 }
 
 export interface KvRateLimitWindow {
@@ -54,10 +59,12 @@ export async function checkKvWindowRateLimit(
     );
     return { allowed: true };
   } catch (err) {
-    console.error('Error en KV rate limit:', err);
-    if (process.env.NODE_ENV === 'production') {
-      return { allowed: false, retryAfterSeconds: 60 };
-    }
-    return { allowed: true };
+    // Fallar cerrado aquí tumba TODA la API: en plan gratuito KV admite ~1000
+    // escrituras diarias y cada petición escribe un contador, así que al agotarse la
+    // cuota `put` lanza y se rechazaría hasta un GET. Se señala como degradado para
+    // que quien llama recurra al contador en D1; un limitador caído nunca debe
+    // convertirse en una caída del servicio.
+    console.error('Error en KV rate limit (se degrada a D1):', err);
+    return { allowed: true, degraded: true };
   }
 }

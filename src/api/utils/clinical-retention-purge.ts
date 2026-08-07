@@ -13,6 +13,7 @@ import {
   calculateOperationalRetainUntil,
   RETENTION_POLICY,
 } from './retention-policy';
+import { getDeclaredCountryForRetention } from './tenant-country';
 import { hasActiveLegalHold } from './legal-hold';
 import { logAuditEvent } from './audit-log';
 import { purgePatientMediaR2 } from './r2-purge';
@@ -37,7 +38,19 @@ export async function backfillClinicalRetentionMetadata(): Promise<number> {
     .from(patients)
     .where(or(isNull(patients.retainUntil), isNull(patients.lastClinicalActAt)));
 
+  // El país determina el plazo legal de conservación. Se cachea por clínica para no
+  // repetir la consulta en cada paciente del mismo tenant.
+  const countryCache = new Map<string, string | null>();
+  const countryFor = async (clinicId: string | null, createdBy: string | null) => {
+    const key = clinicId || `user:${createdBy || ''}`;
+    if (!countryCache.has(key)) {
+      countryCache.set(key, await getDeclaredCountryForRetention({ clinicId, createdByUserId: createdBy }));
+    }
+    return countryCache.get(key) ?? null;
+  };
+
   for (const p of patientRows) {
+    const country = await countryFor(p.clinicId ?? null, p.createdBy ?? null);
     const sessions = await database
       .select()
       .from(clinicalSessions)
@@ -49,7 +62,7 @@ export async function backfillClinicalRetentionMetadata(): Promise<number> {
       if (Number.isFinite(sessionMs) && sessionMs > lastAct) lastAct = sessionMs;
     }
 
-    const retainUntil = calculateClinicalRetainUntil(lastAct);
+    const retainUntil = calculateClinicalRetainUntil(lastAct, country);
     await database
       .update(patients)
       .set({
@@ -65,7 +78,7 @@ export async function backfillClinicalRetentionMetadata(): Promise<number> {
         .update(clinicalSessions)
         .set({
           lastClinicalActAt: actMs,
-          retainUntil: calculateClinicalRetainUntil(actMs),
+          retainUntil: calculateClinicalRetainUntil(actMs, country),
           updatedAt: nowIso,
         })
         .where(eq(clinicalSessions.id, s.id));

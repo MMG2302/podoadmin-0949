@@ -136,6 +136,17 @@ async function ensureCsrfToken(): Promise<string | null> {
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 /** Worker de Miniflare reiniciando: devuelve HTML de error de Vite en lugar de JSON. */
+/**
+ * Mensaje cuando la API responde HTML en vez de JSON. En desarrollo casi siempre es
+ * Miniflare recargando; en producción no lo es, y pedirle a un usuario que ejecute
+ * `npm run dev` no tiene sentido.
+ */
+function workerUnavailableMessage(): string {
+  return import.meta.env.PROD
+    ? 'No se pudo contactar con el servidor. Espera unos segundos y vuelve a intentarlo.'
+    : 'El servidor local está reiniciando. Espera unos segundos y pulsa Reintentar, o reinicia con npm run dev.';
+}
+
 function isWorkerUnavailable(status: number, rawText: string, contentType: string | null): boolean {
   const trimmed = rawText.trimStart();
   if (trimmed.startsWith("<!DOCTYPE") || trimmed.startsWith("<html") || trimmed.startsWith("<")) {
@@ -324,9 +335,7 @@ export async function apiRequest<T = any>(
         error: data.error || fallbackError,
         message:
           data.message ||
-          (isHtmlBody
-            ? 'El servidor local está reiniciando. Espera unos segundos y pulsa Reintentar, o reinicia con npm run dev.'
-            : undefined),
+          (isHtmlBody ? workerUnavailableMessage() : undefined),
         httpStatus: response.status,
         data, // Incluir body completo para que el frontend pueda leer data.message
         // Pasar campos de rate limiting para login

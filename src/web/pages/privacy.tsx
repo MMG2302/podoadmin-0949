@@ -50,12 +50,14 @@ const Privacy = () => {
             </p>
 
             <div className={`space-y-8 ${ap.bodyText}`}>
-              {[p.section1, p.section2, p.section3, p.section4, p.section6, p.section7, p.section8].map((s) => (
+              {[p.section1, p.section2, p.section3, p.section4].map((s) => (
                 <section key={s.title}>
                   <h2 className="text-lg font-semibold text-brand-ink mb-2">{s.title}</h2>
                   <p className="leading-relaxed">{s.content}</p>
                 </section>
               ))}
+              {/* La sección 5 lleva lista de derechos, por eso va aparte; antes se
+                  renderizaba al final y quedaba fuera de su orden numerado. */}
               <section>
                 <h2 className="text-lg font-semibold text-brand-ink mb-2">{p.section5.title}</h2>
                 <p className="mb-2">{p.section5.intro}</p>
@@ -66,6 +68,12 @@ const Privacy = () => {
                   <li>{p.section5.item4}</li>
                 </ul>
               </section>
+              {[p.section6, p.section7, p.sectionCookies, p.section8].map((s) => (
+                <section key={s.title}>
+                  <h2 className="text-lg font-semibold text-brand-ink mb-2">{s.title}</h2>
+                  <p className="leading-relaxed">{s.content}</p>
+                </section>
+              ))}
             </div>
 
             <p className={`mt-10 text-sm ${ap.muted}`}>

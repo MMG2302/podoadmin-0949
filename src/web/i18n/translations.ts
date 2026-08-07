@@ -266,6 +266,8 @@ export interface Translations {
     section5: { title: string; intro: string; item1: string; item2: string; item3: string; item4: string };
     section6: { title: string; content: string };
     section7: { title: string; content: string };
+    /** Cookies y almacenamiento local: obligación de informar, no de pedir consentimiento. */
+    sectionCookies: { title: string; content: string };
     section8: { title: string; content: string };
   };
 
@@ -4709,8 +4711,13 @@ views: {
         content:
           "Los datos pueden procesarse en infraestructura cloud (p. ej. Cloudflare). El responsable del tratamiento debe informar a sus pacientes si aplica transferencia internacional conforme a su país.",
       },
+      sectionCookies: {
+        title: "8. Cookies y almacenamiento local",
+        content:
+          "Solo usamos cookies estrictamente necesarias para el funcionamiento del servicio: una cookie de sesión que mantiene su acceso iniciado y una cookie de protección contra falsificación de peticiones (CSRF). Además guardamos en su navegador preferencias de interfaz que usted mismo elige, como el idioma, el tema claro u oscuro, la paleta de colores y la disposición del menú. No utilizamos cookies de publicidad, analítica, medición de audiencia ni seguimiento entre sitios, ni empleamos servicios de terceros con esa finalidad. Por tratarse de cookies imprescindibles para prestar el servicio solicitado, no se requiere su consentimiento previo; puede borrarlas desde la configuración de su navegador, si bien en ese caso no será posible mantener la sesión iniciada.",
+      },
       section8: {
-        title: "8. Contacto",
+        title: "9. Contacto",
         content: "Para ejercer derechos o consultas de privacidad, use el canal de soporte de la plataforma o la sección Privacidad y datos en Configuración.",
       },
     },
@@ -7176,8 +7183,13 @@ views: {
         title: "7. Transfers",
         content: "Data may be processed on cloud infrastructure. The controller must inform patients about international transfers when required.",
       },
+      sectionCookies: {
+        title: "8. Cookies and local storage",
+        content:
+          "We only use cookies that are strictly necessary to run the service: a session cookie that keeps you signed in, and a cookie that protects against cross-site request forgery (CSRF). We also store interface preferences you choose yourself, such as language, light or dark theme, colour palette and menu layout. We do not use advertising, analytics, audience measurement or cross-site tracking cookies, and we do not embed third-party services for those purposes. Because these cookies are essential to provide the service you requested, your prior consent is not required; you can delete them from your browser settings, although you will then not be able to stay signed in.",
+      },
       section8: {
-        title: "8. Contact",
+        title: "9. Contact",
         content: "Use platform support or Settings → Privacy and data.",
       },
     },
@@ -9620,7 +9632,12 @@ views: {
       },
       section6: { title: "6. Segurança", content: "HTTPS, controle de acesso, auditoria e autenticação segura." },
       section7: { title: "7. Transferências", content: "Dados podem ser processados em nuvem; informe pacientes se necessário." },
-      section8: { title: "8. Contato", content: "Suporte da plataforma ou Configurações → Privacidade e dados." },
+      sectionCookies: {
+        title: "8. Cookies e armazenamento local",
+        content:
+          "Utilizamos apenas cookies estritamente necessários ao funcionamento do serviço: um cookie de sessão que mantém o seu acesso e um cookie de proteção contra falsificação de pedidos (CSRF). Guardamos também no seu navegador preferências de interface que o próprio utilizador escolhe, como idioma, tema claro ou escuro, paleta de cores e disposição do menu. Não usamos cookies de publicidade, analítica, medição de audiência nem rastreio entre sites, e não incorporamos serviços de terceiros com essa finalidade. Por serem cookies imprescindíveis para prestar o serviço solicitado, não é necessário o seu consentimento prévio; pode apagá-los nas definições do navegador, embora nesse caso não seja possível manter a sessão iniciada.",
+      },
+      section8: { title: "9. Contato", content: "Suporte da plataforma ou Configurações → Privacidade e dados." },
     },
     compliance: {
       title: "Privacidade e dados",
@@ -12061,7 +12078,12 @@ views: {
       },
       section6: { title: "6. Sécurité", content: "HTTPS, contrôle d'accès, audit et authentification." },
       section7: { title: "7. Transferts", content: "Données pouvant être traitées dans le cloud." },
-      section8: { title: "8. Contact", content: "Support ou Paramètres → Confidentialité et données." },
+      sectionCookies: {
+        title: "8. Cookies et stockage local",
+        content:
+          "Nous n'utilisons que des cookies strictement nécessaires au fonctionnement du service : un cookie de session qui vous maintient connecté et un cookie de protection contre la falsification de requête (CSRF). Nous conservons également dans votre navigateur des préférences d'interface que vous choisissez vous-même, comme la langue, le thème clair ou sombre, la palette de couleurs et la disposition du menu. Nous n'utilisons aucun cookie de publicité, de mesure d'audience ou de suivi entre sites, et n'intégrons aucun service tiers à cette fin. S'agissant de cookies indispensables à la fourniture du service demandé, votre consentement préalable n'est pas requis ; vous pouvez les supprimer depuis les paramètres de votre navigateur, mais vous ne pourrez alors plus rester connecté.",
+      },
+      section8: { title: "9. Contact", content: "Support ou Paramètres → Confidentialité et données." },
     },
     compliance: {
       title: "Confidentialité et données",

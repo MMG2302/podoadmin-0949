@@ -295,25 +295,28 @@ export function ColorPaletteSettingsSection() {
         />
       </div>
 
-      <div className="flex flex-wrap items-center gap-3 pt-4 border-t border-brand-border">
+      {/* En móvil la sección es muy larga y estos botones quedaban fuera de pantalla:
+          se fijan al pie del viewport para que Guardar siempre esté al alcance. En
+          pantallas medianas vuelven al flujo normal del documento. */}
+      <div className="sticky bottom-0 z-10 -mx-6 -mb-6 flex flex-wrap items-center gap-3 border-t border-brand-border bg-brand-surface px-6 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:static sm:mx-0 sm:mb-0 sm:bg-transparent sm:px-0 sm:pb-0 sm:pt-4">
         <button
           type="button"
           onClick={handleSave}
-          className="px-4 py-2 text-sm font-medium bg-brand-ink text-brand-ink-fg rounded-lg hover:bg-brand-ink-hover"
+          className="min-h-[44px] px-4 py-2 text-sm font-medium bg-brand-ink text-brand-ink-fg rounded-lg hover:bg-brand-ink-hover"
         >
           {t.settings.saveSettings}
         </button>
         <button
           type="button"
           onClick={handleResetMode}
-          className="px-4 py-2 text-sm border border-brand-border rounded-lg hover:bg-brand-canvas text-brand-ink"
+          className="min-h-[44px] px-4 py-2 text-sm border border-brand-border rounded-lg hover:bg-brand-canvas text-brand-ink"
         >
           {t.settings.resetPaletteMode}
         </button>
         <button
           type="button"
           onClick={handleResetAll}
-          className="px-4 py-2 text-sm border border-brand-border rounded-lg hover:bg-brand-canvas text-brand-muted"
+          className="min-h-[44px] px-4 py-2 text-sm border border-brand-border rounded-lg hover:bg-brand-canvas text-brand-muted"
         >
           {t.settings.resetPaletteAll}
         </button>

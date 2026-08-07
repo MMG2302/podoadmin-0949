@@ -11,6 +11,7 @@ import { isOriginMismatch } from "../lib/official-origin";
 
 type PublicConfig = {
   officialDomain?: string | null;
+  officialOrigins?: string[] | null;
   supportEmail?: string | null;
   googleOAuthEnabled?: boolean;
   captcha?: { provider: CaptchaProvider; siteKey: string } | null;
@@ -62,7 +63,7 @@ const Login = () => {
         const domain = data?.officialDomain;
         if (domain) {
           setOfficialDomain(domain);
-          setOriginMismatch(isOriginMismatch(domain));
+          setOriginMismatch(isOriginMismatch(domain, data?.officialOrigins));
         }
         if (data?.supportEmail) setSupportEmail(data.supportEmail);
         if (data?.googleOAuthEnabled) setGoogleOAuthEnabled(true);

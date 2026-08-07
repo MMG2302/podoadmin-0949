@@ -159,9 +159,17 @@ app.get('/public/config', (c) => {
   const supportEmail = process.env.SUPPORT_EMAIL || process.env.ADMIN_EMAIL || '';
   const captchaConfig = getCaptchaConfig();
   const sentryDsn = process.env.SENTRY_DSN?.trim() || null;
+  // Orígenes propios declarados en ALLOWED_ORIGINS (sin los de desarrollo). El aviso
+  // anti-phishing los acepta todos: el dominio de respaldo *.workers.dev tambien es
+  // nuestro, y bloquear el login ahi inutiliza justo la via alternativa.
+  const officialOrigins = (process.env.ALLOWED_ORIGINS || '')
+    .split(',')
+    .map((o) => o.trim())
+    .filter((o) => o && !/^https?:\/\/(localhost|127\.0\.0\.1)(:|$)/.test(o));
   c.header('Cache-Control', 'public, max-age=300, stale-while-revalidate=60');
   return c.json({
     officialDomain: officialDomain || null,
+    officialOrigins,
     supportEmail: supportEmail || null,
     captcha: captchaConfig
       ? {

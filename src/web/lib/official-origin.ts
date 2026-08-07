@@ -17,21 +17,40 @@ function equivalentHosts(officialHost: string): string[] {
   return [bare, `www.${bare}`];
 }
 
+/** `true` si `origin` coincide con `reference` admitiendo la variante con/sin `www.`. */
+function matches(reference: string, current: URL): boolean {
+  try {
+    const ref = new URL(reference);
+    if (current.protocol !== ref.protocol) return false;
+    return equivalentHosts(ref.host).includes(current.host);
+  } catch {
+    return false;
+  }
+}
+
 /**
- * `true` si `currentOrigin` NO corresponde al dominio oficial.
- * Si no hay dominio oficial configurado o alguno es inválido, no se alerta:
- * más vale no avisar que avisar en falso.
+ * `true` si `currentOrigin` NO corresponde a ninguno de nuestros orígenes.
+ *
+ * Se aceptan tanto el dominio oficial como el resto de orígenes declarados por el
+ * servidor en `officialOrigins` (viene de ALLOWED_ORIGINS). Eso incluye la URL de
+ * respaldo *.workers.dev: bloquear el inicio de sesión ahí dejaría sin salida al
+ * usuario justo cuando el dominio principal falla.
+ *
+ * Si no hay nada configurado o los valores son inválidos, no se alerta: más vale no
+ * avisar que avisar en falso.
  */
 export function isOriginMismatch(
   officialDomain: string | null | undefined,
+  officialOrigins: string[] | null | undefined = null,
   currentOrigin: string = window.location.origin
 ): boolean {
-  if (!officialDomain) return false;
+  const candidates = [officialDomain, ...(officialOrigins ?? [])].filter(
+    (v): v is string => typeof v === "string" && v.length > 0
+  );
+  if (candidates.length === 0) return false;
   try {
-    const official = new URL(officialDomain);
     const current = new URL(currentOrigin);
-    if (current.protocol !== official.protocol) return true;
-    return !equivalentHosts(official.host).includes(current.host);
+    return !candidates.some((ref) => matches(ref, current));
   } catch {
     return false;
   }

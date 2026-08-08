@@ -1,5 +1,4 @@
 import { Route, Switch, Redirect, useLocation } from "wouter";
-import { Provider } from "./components/provider";
 import { ErrorBoundary } from "./components/error-boundary";
 import { AuthProvider, useAuth, getPostLoginPath, hasActiveSystemAccess, isAllowedWithoutSystemAccess } from "./contexts/auth-context";
 import { NotificationsProvider } from "./contexts/notifications-context";
@@ -161,21 +160,19 @@ function AppRoutes() {
 
 function App() {
   return (
-    <Provider>
-      <AuthProvider>
-        <NotificationsProvider>
-          <ClinicalLayoutProvider>
-            <WorkspaceWatermarkProvider>
-              <DashboardLogoProvider>
+    <AuthProvider>
+      <NotificationsProvider>
+        <ClinicalLayoutProvider>
+          <WorkspaceWatermarkProvider>
+            <DashboardLogoProvider>
               <ErrorBoundary>
                 <AppRoutes />
               </ErrorBoundary>
-              </DashboardLogoProvider>
-            </WorkspaceWatermarkProvider>
-          </ClinicalLayoutProvider>
-        </NotificationsProvider>
-      </AuthProvider>
-    </Provider>
+            </DashboardLogoProvider>
+          </WorkspaceWatermarkProvider>
+        </ClinicalLayoutProvider>
+      </NotificationsProvider>
+    </AuthProvider>
   );
 }
 

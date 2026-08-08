@@ -4632,7 +4632,7 @@ views: {
     terms: {
       title: "Términos y Condiciones",
       lastUpdated: "Última actualización",
-      lastUpdatedDate: "24 de enero de 2026",
+      lastUpdatedDate: "8 de agosto de 2026",
       backToRegister: "Volver al registro",
       acceptAndContinue: "Aceptar y Continuar",
       back: "Volver",
@@ -4693,7 +4693,7 @@ views: {
       },
       section12: {
         title: "12. Ley Aplicable",
-        content: "Estos términos se rigen por las leyes de [JURISDICCIÓN], con exclusión de sus normas sobre conflicto de leyes. El arbitraje previsto en la sección 18 será administrado por [INSTITUCIÓN ARBITRAL] conforme a su reglamento vigente, con sede en [CIUDAD, PAÍS] y en idioma español. Cuando la ley aplicable no permita someter una controversia a arbitraje, esta se resolverá ante los tribunales competentes de [CIUDAD, PAÍS].",
+        content: "Estos términos se rigen por las leyes de los Estados Unidos Mexicanos, con exclusión de sus normas sobre conflicto de leyes. El arbitraje previsto en la sección 18 será administrado por el Centro de Arbitraje de México (CAM) conforme a su reglamento vigente, con sede en la Ciudad de México y en idioma español. Cuando la ley aplicable no permita someter una controversia a arbitraje, esta se resolverá ante los tribunales competentes de la Ciudad de México.",
       },
       section13: {
         title: "13. Responsabilidad sobre la Información de los Pacientes",
@@ -7135,7 +7135,7 @@ views: {
     terms: {
       title: "Terms and Conditions",
       lastUpdated: "Last updated",
-      lastUpdatedDate: "January 24, 2026",
+      lastUpdatedDate: "August 8, 2026",
       backToRegister: "Back to registration",
       acceptAndContinue: "Accept and Continue",
       back: "Back",
@@ -7196,7 +7196,7 @@ views: {
       },
       section12: {
         title: "12. Applicable Law",
-        content: "These terms are governed by the laws of [JURISDICTION], excluding its conflict-of-laws rules. The arbitration provided for in section 18 shall be administered by [ARBITRAL INSTITUTION] under its rules in force, seated in [CITY, COUNTRY] and conducted in Spanish. Where applicable law does not permit a dispute to be submitted to arbitration, it shall be resolved before the competent courts of [CITY, COUNTRY].",
+        content: "These terms are governed by the laws of the United Mexican States, excluding its conflict-of-laws rules. The arbitration provided for in section 18 shall be administered by the Centro de Arbitraje de México (CAM) under its rules in force, seated in Mexico City and conducted in Spanish. Where applicable law does not permit a dispute to be submitted to arbitration, it shall be resolved before the competent courts of Mexico City.",
       },
       section13: {
         title: "13. Responsibility for Patient Information",
@@ -9635,7 +9635,7 @@ views: {
     terms: {
       title: "Termos e Condições",
       lastUpdated: "Última atualização",
-      lastUpdatedDate: "24 de janeiro de 2026",
+      lastUpdatedDate: "8 de agosto de 2026",
       backToRegister: "Voltar ao registro",
       acceptAndContinue: "Aceitar e Continuar",
       back: "Voltar",
@@ -9696,7 +9696,7 @@ views: {
       },
       section12: {
         title: "12. Lei Aplicável",
-        content: "Estes termos são regidos pelas leis de [JURISDIÇÃO], com exclusão das suas normas de conflito de leis. A arbitragem prevista na secção 18 será administrada por [INSTITUIÇÃO ARBITRAL] de acordo com o seu regulamento em vigor, com sede em [CIDADE, PAÍS] e em língua espanhola. Quando a lei aplicável não permitir submeter uma controvérsia a arbitragem, esta será resolvida perante os tribunais competentes de [CIDADE, PAÍS].",
+        content: "Estes termos são regidos pelas leis dos Estados Unidos Mexicanos, com exclusão das suas normas de conflito de leis. A arbitragem prevista na secção 18 será administrada pelo Centro de Arbitraje de México (CAM) de acordo com o seu regulamento em vigor, com sede na Cidade do México e em língua espanhola. Quando a lei aplicável não permitir submeter uma controvérsia a arbitragem, esta será resolvida perante os tribunais competentes da Cidade do México.",
       },
       section13: {
         title: "13. Responsabilidade sobre a Informação dos Pacientes",
@@ -12110,7 +12110,7 @@ views: {
     terms: {
       title: "Termes et Conditions",
       lastUpdated: "Dernière mise à jour",
-      lastUpdatedDate: "24 janvier 2026",
+      lastUpdatedDate: "8 août 2026",
       backToRegister: "Retour à l'inscription",
       acceptAndContinue: "Accepter et Continuer",
       back: "Retour",
@@ -12171,7 +12171,7 @@ views: {
       },
       section12: {
         title: "12. Loi Applicable",
-        content: "Ces conditions sont régies par les lois de [JURIDICTION], à l'exclusion de ses règles de conflit de lois. L'arbitrage prévu à la section 18 sera administré par [INSTITUTION ARBITRALE] conformément à son règlement en vigueur, avec siège à [VILLE, PAYS] et en langue espagnole. Lorsque la loi applicable ne permet pas de soumettre un litige à l'arbitrage, celui-ci sera tranché par les tribunaux compétents de [VILLE, PAYS].",
+        content: "Ces conditions sont régies par les lois des États-Unis mexicains, à l'exclusion de ses règles de conflit de lois. L'arbitrage prévu à la section 18 sera administré par le Centro de Arbitraje de México (CAM) conformément à son règlement en vigueur, avec siège à Mexico et en langue espagnole. Lorsque la loi applicable ne permet pas de soumettre un litige à l'arbitrage, celui-ci sera tranché par les tribunaux compétents de Mexico.",
       },
       section13: {
         title: "13. Responsabilité sur les Informations des Patients",

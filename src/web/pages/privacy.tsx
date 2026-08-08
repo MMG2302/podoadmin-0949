@@ -2,11 +2,12 @@ import { useLanguage } from "../contexts/language-context";
 import { AuthPublicToolbar } from "../components/auth/auth-public-toolbar";
 import { AuthBrandPanel } from "../components/auth/auth-brand-link";
 import { authPage as ap } from "../lib/auth-page-styles";
-import { useLocation, Link } from "wouter";
+import { Link } from "wouter";
+import { useLegalExit } from "../hooks/use-legal-exit";
 
 const Privacy = () => {
   const { t, language } = useLanguage();
-  const [, setLocation] = useLocation();
+  const { hasSession, exit } = useLegalExit("/register");
 
   const getFormattedDate = () => {
     const localeMap: Record<string, string> = {
@@ -39,10 +40,10 @@ const Privacy = () => {
           <div className="max-w-2xl mx-auto">
             <button
               type="button"
-              onClick={() => setLocation("/register")}
+              onClick={exit}
               className={`${ap.link} mb-4 inline-flex items-center text-sm`}
             >
-              ← {p.backToRegister}
+              ← {hasSession ? t.terms.back : p.backToRegister}
             </button>
             <h1 className={ap.heading}>{p.title}</h1>
             <p className={`${ap.muted} text-sm mb-8`}>

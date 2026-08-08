@@ -1,12 +1,12 @@
 import { useLanguage } from "../contexts/language-context";
 import { AuthPublicToolbar } from "../components/auth/auth-public-toolbar";
 import { AuthBrandPanel } from "../components/auth/auth-brand-link";
-import { useLocation } from "wouter";
 import { authPage as ap } from "../lib/auth-page-styles";
+import { useLegalExit } from "../hooks/use-legal-exit";
 
 const Terms = () => {
   const { t } = useLanguage();
-  const [, setLocation] = useLocation();
+  const { hasSession, exit } = useLegalExit("/login");
 
   return (
     <div className={ap.shell}>
@@ -42,13 +42,13 @@ const Terms = () => {
             {/* Header */}
             <div className="mb-8">
               <button
-                onClick={() => setLocation("/login")}
+                onClick={exit}
                 className={`${ap.link} mb-4 inline-flex items-center text-sm`}
               >
                 <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
                 </svg>
-                {t.auth.backToLogin}
+                {hasSession ? t.terms.back : t.auth.backToLogin}
               </button>
               <h1 className={ap.heading}>
                 {t.terms.title}
@@ -225,15 +225,15 @@ const Terms = () => {
 
             {/* Footer Actions */}
             <div className="mt-12 pt-8 border-t border-brand-border">
+              {/* Con sesión no hay nada que aceptar: ya se aceptó al registrarse. */}
               <div className="flex gap-4">
+                {!hasSession && (
+                  <button onClick={exit} className={`flex-1 py-3 ${ap.primaryBtn}`}>
+                    {t.terms.acceptAndContinue}
+                  </button>
+                )}
                 <button
-                  onClick={() => setLocation("/login")}
-                  className={`flex-1 py-3 ${ap.primaryBtn}`}
-                >
-                  {t.terms.acceptAndContinue}
-                </button>
-                <button
-                  onClick={() => setLocation("/login")}
+                  onClick={exit}
                   className="flex-1 py-3 bg-brand-canvas text-brand-ink font-medium rounded-lg hover:bg-brand-border/40 transition-colors"
                 >
                   {t.terms.back}

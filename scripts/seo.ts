@@ -198,6 +198,16 @@ export function buildJsonLd(lang: Language = DEFAULT_LANG): string {
       offers,
       publisher: { '@id': `${SITE_URL}/#organization` },
     },
+    {
+      '@type': 'FAQPage',
+      '@id': `${SITE_URL}/#faq`,
+      inLanguage: lang,
+      mainEntity: l.faqItems.map((item) => ({
+        '@type': 'Question',
+        name: item.question,
+        acceptedAnswer: { '@type': 'Answer', text: item.answer },
+      })),
+    },
   ];
 
   const jsonLd = { '@context': 'https://schema.org', '@graph': graph };
@@ -264,6 +274,22 @@ export function buildPrerenderedLanding(lang: Language = DEFAULT_LANG): string {
     block(l.audienceReceptionTitle, l.audienceReceptionDesc),
   ].join('');
 
+  const guide = `<ol>${l.guideItems
+    .map((g) => `<li><h3>${esc(g.title)}</h3><p>${esc(g.description)}</p></li>`)
+    .join('')}</ol>`;
+
+  const comparison = l.comparisonRows
+    .map(
+      (r) =>
+        `<article><h3>${esc(r.alternative)}</h3><p>${esc(r.problem)}</p>` +
+        `<p>${esc(r.podoraa)}</p></article>`
+    )
+    .join('');
+
+  const faq = l.faqItems
+    .map((f) => `<article><h3>${esc(f.question)}</h3><p>${esc(f.answer)}</p></article>`)
+    .join('');
+
   const pricing =
     l.pricingPlans
       .map(
@@ -292,6 +318,9 @@ export function buildPrerenderedLanding(lang: Language = DEFAULT_LANG): string {
     section('steps', l.stepsTitle, l.stepsBadge, steps),
     section('audience', l.audienceTitle, l.audienceSubtitle, audience),
     section('pricing', l.pricingTitle, l.pricingSubtitle, pricing),
+    section('guide', l.guideTitle, l.guideSubtitle, guide),
+    section('comparison', l.comparisonTitle, l.comparisonSubtitle, comparison),
+    section('faq', l.faqTitle, l.faqSubtitle, faq),
     `<section><h2>${esc(l.ctaTitle)}</h2><p>${esc(l.ctaSubtitle)}</p></section>`,
     '</main>',
     `<footer><p>© ${year} Podoraa. ${esc(l.footerRights)}</p>`,
@@ -406,6 +435,24 @@ ${plans}
 
 ${l.pricingNote}
 ${l.pricingNoteDisclaimer}
+
+## ${l.guideTitle}
+
+${l.guideSubtitle}
+
+${l.guideItems.map((g) => `### ${g.title}\n\n${g.description}`).join('\n\n')}
+
+## ${l.comparisonTitle}
+
+${l.comparisonSubtitle}
+
+${l.comparisonRows
+  .map((r) => `### ${r.alternative}\n\n${r.problem}\n\nCon Podoraa: ${r.podoraa}`)
+  .join('\n\n')}
+
+## ${l.faqTitle}
+
+${l.faqItems.map((f) => `### ${f.question}\n\n${f.answer}`).join('\n\n')}
 
 ## Enlaces
 

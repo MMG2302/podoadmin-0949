@@ -91,6 +91,17 @@ export type LandingI18n = {
   ctaSubtitle: string;
   ctaButton: string;
   ctaLogin: string;
+  /** Guía "qué mirar al elegir un software". Contenido de fondo, sobre todo para búsqueda. */
+  guideTitle: string;
+  guideSubtitle: string;
+  guideItems: LandingStep[];
+  comparisonTitle: string;
+  comparisonSubtitle: string;
+  comparisonRows: { alternative: string; problem: string; podoraa: string }[];
+  faqTitle: string;
+  faqSubtitle: string;
+  /** Se publica también como JSON-LD FAQPage (ver `buildJsonLd` en scripts/seo.ts). */
+  faqItems: { question: string; answer: string }[];
   footerTerms: string;
   footerPrivacy: string;
   footerRights: string;
@@ -293,6 +304,121 @@ const es: LandingI18n = {
   ctaSubtitle: "Regístrate en minutos. Tu consulta sigue siendo tuya: Podoraa solo se encarga de lo repetitivo.",
   ctaButton: "Crear mi cuenta",
   ctaLogin: "Iniciar sesión",
+  guideTitle: "Qué mirar al elegir un software para podología",
+  guideSubtitle:
+    "Diez puntos que conviene revisar antes de decidirte, trabajes solo en tu consulta o lleves una clínica podológica con varios profesionales.",
+  guideItems: [
+    {
+      title: "Agenda",
+      description:
+        "Una agenda para podólogos no es un calendario genérico: necesita duración por tipo de tratamiento, varios profesionales en paralelo y ver de un vistazo los huecos libres de la semana. Si tienes que cuadrar a mano quién atiende a quién, la agenda no está haciendo su trabajo.",
+    },
+    {
+      title: "Historia clínica",
+      description:
+        "La historia clínica podológica tiene su propia estructura: exploración del pie, lesiones, tratamientos aplicados, imágenes de cada sesión y evolución en el tiempo. Un campo de notas libre no sirve para consultar el histórico de un paciente tres años después.",
+    },
+    {
+      title: "Seguimiento",
+      description:
+        "Buena parte del trabajo en podología es recurrente: revisiones, curas, controles cada pocas semanas. El sistema debería avisarte de a qué pacientes hace tiempo que no ves, en lugar de que dependas de acordarte.",
+    },
+    {
+      title: "Pagos",
+      description:
+        "Control financiero podológico: qué se cobró, qué queda pendiente, cuánto entró hoy y qué tratamientos son los que sostienen la consulta. Si los cobros viven en un cuaderno aparte, cerrar el mes se convierte en un trabajo de reconstrucción.",
+    },
+    {
+      title: "WhatsApp",
+      description:
+        "WhatsApp es por donde se comunican tus pacientes. Que los recordatorios de citas salgan desde el mismo sistema — y que la confirmación vuelva a la agenda sola — es la diferencia entre reducir las ausencias y escribir uno por uno cada tarde.",
+    },
+    {
+      title: "Reservas",
+      description:
+        "Reservas online con tu enlace y tu marca, para que el paciente agende cuando le va bien sin llamar. Debe respetar tus horarios reales y la disponibilidad de cada profesional, no ofrecer huecos que después tienes que cancelar.",
+    },
+    {
+      title: "Recepción",
+      description:
+        "Si tienes recepcionista, necesita ver el calendario, los pacientes y los mensajes sin acceder a los datos clínicos. Un software que solo tiene un tipo de usuario te obliga a elegir entre darle todo o no darle nada.",
+    },
+    {
+      title: "Métricas",
+      description:
+        "Ventas, rentabilidad por tratamiento, ocupación de agenda y pacientes que dejaron de venir. Sin esto sabes cómo fue el mes por sensación; con esto sabes qué cambiar.",
+    },
+    {
+      title: "Seguridad",
+      description:
+        "Son datos de salud. Pregunta por cifrado, control de acceso por rol, registro de auditoría, política de retención y qué pasa con la información si un día te vas. Guardar historias clínicas en una hoja de cálculo compartida no cumple con nada de esto.",
+    },
+    {
+      title: "Personalización",
+      description:
+        "Tu logo en los informes que imprimes y en la página donde reservan tus pacientes. La marca que ve el paciente debe ser la tuya, no la del proveedor del software.",
+    },
+  ],
+  comparisonTitle: "Por qué no alcanza con Excel, Word o la agenda del móvil",
+  comparisonSubtitle:
+    "No es que esas herramientas estén mal hechas: es que no fueron pensadas para una consulta de podología, y el trabajo de sostenerlas lo terminas haciendo tú.",
+  comparisonRows: [
+    {
+      alternative: "Excel o Word",
+      problem:
+        "La ficha del paciente vive en archivos sueltos que se duplican, se pisan entre versiones y solo abre quien tiene el archivo. Buscar la evolución de una lesión implica abrir documentos uno por uno.",
+      podoraa:
+        "Historia clínica podológica estructurada, con imágenes por sesión y el histórico completo de cada paciente en una sola ficha.",
+    },
+    {
+      alternative: "Agenda de Google o agenda de papel",
+      problem:
+        "Guarda la hora, pero no sabe qué tratamiento es, cuánto cuesta, si se pagó ni a quién hay que recordarle que venga. La agenda y la clínica quedan en dos mundos separados.",
+      podoraa:
+        "Agenda, tratamiento, cobro y recordatorio por WhatsApp son la misma cosa: registras la sesión y todo lo demás queda anotado.",
+    },
+    {
+      alternative: "Software médico general",
+      problem:
+        "Está construido para medicina general: campos que no usas, y ninguno para la exploración podológica, el mapa del pie o el seguimiento de una onicocriptosis.",
+      podoraa:
+        "Pensado para podología, podiatría y pedicuría: plantillas clínicas del área, informes listos para imprimir y las métricas de una consulta podológica.",
+    },
+  ],
+  faqTitle: "Preguntas frecuentes",
+  faqSubtitle: "Lo que más nos preguntan antes de empezar.",
+  faqItems: [
+    {
+      question: "¿Qué es un software de gestión podológica?",
+      answer:
+        "Es el sistema donde una consulta de podología lleva su operación diaria: agenda de citas, historia clínica podológica de cada paciente, reservas online, recordatorios de citas, registro de cobros y las métricas del negocio. Sustituye la combinación de agenda, hoja de cálculo y cuaderno de cobros que suele usarse al principio.",
+    },
+    {
+      question: "¿Sirve para podiatras y pedicuristas, o solo para podólogos?",
+      answer:
+        "Sirve para las tres. La estructura de la ficha clínica, los tratamientos y los informes son los del cuidado del pie, así que se adapta igual a un podólogo, a un podiatra o a un profesional de pedicuría clínica, trabaje solo o dentro de una clínica podológica.",
+    },
+    {
+      question: "¿Puedo llevar la historia clínica y las imágenes de cada sesión?",
+      answer:
+        "Sí. Cada paciente tiene su historia clínica podológica con antecedentes, exploración, tratamientos aplicados e imágenes asociadas a la sesión en que se tomaron, de modo que la evolución se lee en orden cronológico. Los informes salen listos para imprimir con tu marca.",
+    },
+    {
+      question: "¿Mis pacientes pueden reservar online?",
+      answer:
+        "Sí. Compartes tu enlace de reservas y el paciente elige entre los huecos reales de tu agenda, viendo la marca de tu clínica. La cita entra directamente en el calendario del profesional que corresponda.",
+    },
+    {
+      question: "¿Cómo funcionan los recordatorios de citas por WhatsApp?",
+      answer:
+        "Podoraa envía el recordatorio antes de la cita y el paciente confirma, cancela o pide reagendar desde el mismo mensaje; la respuesta actualiza la agenda sin que tengas que tocar nada. No cobramos por mensaje: el volumen que puedes enviar depende del nivel que Meta asigne a tu cuenta de WhatsApp Business.",
+    },
+    {
+      question: "¿Es seguro guardar datos clínicos de mis pacientes?",
+      answer:
+        "Los datos viajan cifrados, cada usuario ve solo lo que le corresponde por su rol — una recepcionista no accede a la información clínica — y las acciones sensibles quedan registradas en un log de auditoría. Hay política de retención y los datos de tu consulta son tuyos y exportables.",
+    },
+  ],
   footerTerms: "Términos",
   footerPrivacy: "Privacidad",
   footerRights: "Todos los derechos reservados.",
@@ -495,6 +621,121 @@ const en: LandingI18n = {
   ctaSubtitle: "Sign up in minutes and see how easy running your practice can be.",
   ctaButton: "Create my account",
   ctaLogin: "Log in",
+  guideTitle: "What to look for when choosing podiatry software",
+  guideSubtitle:
+    "Ten things worth checking before you decide, whether you work solo or run a podiatry clinic with several practitioners.",
+  guideItems: [
+    {
+      title: "Scheduling",
+      description:
+        "A podiatry scheduler is not a generic calendar: it needs duration per treatment type, several practitioners side by side, and a clear view of the week's open slots. If you are matching practitioners to patients by hand, the calendar is not doing its job.",
+    },
+    {
+      title: "Clinical records",
+      description:
+        "Podiatric clinical records have their own structure: foot assessment, lesions, treatments applied, images from each session and progress over time. A free-text notes field will not help you read a patient's history three years later.",
+    },
+    {
+      title: "Follow-up",
+      description:
+        "Much of podiatry work is recurring: reviews, dressings, checks every few weeks. The system should tell you which patients you haven't seen in a while, instead of leaving it to memory.",
+    },
+    {
+      title: "Payments",
+      description:
+        "Financial control for a podiatry practice: what was charged, what is outstanding, what came in today and which treatments actually sustain the practice. If payments live in a separate notebook, closing the month becomes detective work.",
+    },
+    {
+      title: "WhatsApp",
+      description:
+        "WhatsApp is where your patients already are. Having appointment reminders go out from the same system — and confirmations come back into the calendar on their own — is the difference between cutting no-shows and messaging everyone by hand each evening.",
+    },
+    {
+      title: "Online booking",
+      description:
+        "Online booking with your own link and branding, so patients book when it suits them without calling. It has to respect your real opening hours and each practitioner's availability, not offer slots you then have to cancel.",
+    },
+    {
+      title: "Front desk",
+      description:
+        "If you have a receptionist, they need the calendar, patients and messages without access to clinical data. Software with a single user type forces you to choose between giving them everything or nothing.",
+    },
+    {
+      title: "Metrics",
+      description:
+        "Revenue, profitability per treatment, schedule occupancy and patients who stopped coming. Without this you know how the month went by feel; with it you know what to change.",
+    },
+    {
+      title: "Security",
+      description:
+        "This is health data. Ask about encryption, role-based access, audit logging, retention policy and what happens to the information if you ever leave. Keeping clinical records in a shared spreadsheet meets none of it.",
+    },
+    {
+      title: "Branding",
+      description:
+        "Your logo on the reports you print and on the page where patients book. The brand the patient sees should be yours, not your software vendor's.",
+    },
+  ],
+  comparisonTitle: "Why spreadsheets and a phone calendar aren't enough",
+  comparisonSubtitle:
+    "It isn't that those tools are badly built — they were never meant for a podiatry practice, and you end up doing the work of holding them together.",
+  comparisonRows: [
+    {
+      alternative: "Excel or Word",
+      problem:
+        "Patient records live in loose files that get duplicated, overwritten between versions and opened only by whoever has the file. Tracking how a lesion evolved means opening documents one by one.",
+      podoraa:
+        "Structured podiatric clinical records, with per-session images and each patient's full history in a single record.",
+    },
+    {
+      alternative: "Google Calendar or a paper diary",
+      problem:
+        "It stores the time, but not which treatment it is, what it costs, whether it was paid, or who needs reminding. Your calendar and your practice end up in two separate worlds.",
+      podoraa:
+        "Appointment, treatment, payment and WhatsApp reminder are one and the same: you record the session and everything else is logged.",
+    },
+    {
+      alternative: "General medical software",
+      problem:
+        "Built for general medicine: fields you never use, and none for foot assessment, foot mapping or following an ingrown toenail.",
+      podoraa:
+        "Built for podiatry and chiropody: clinical templates for the field, print-ready reports and the metrics a foot-care practice actually needs.",
+    },
+  ],
+  faqTitle: "Frequently asked questions",
+  faqSubtitle: "What people ask us most before getting started.",
+  faqItems: [
+    {
+      question: "What is podiatry practice management software?",
+      answer:
+        "It is the system where a podiatry practice runs its day: appointment scheduling, each patient's podiatric clinical record, online booking, appointment reminders, payment tracking and business metrics. It replaces the mix of diary, spreadsheet and payment notebook most practices start with.",
+    },
+    {
+      question: "Is it for chiropodists and foot-care professionals too, or only podiatrists?",
+      answer:
+        "All of them. The clinical record structure, treatments and reports are built around foot care, so it fits a podiatrist, a chiropodist or a clinical foot-care professional equally, working solo or inside a clinic.",
+    },
+    {
+      question: "Can I keep clinical records and images from each session?",
+      answer:
+        "Yes. Each patient has a podiatric clinical record with history, assessment, treatments applied and images attached to the session they were taken in, so progress reads in chronological order. Reports print with your own branding.",
+    },
+    {
+      question: "Can my patients book online?",
+      answer:
+        "Yes. You share your booking link and the patient picks from the real openings in your schedule, seeing your clinic's branding. The appointment lands directly in the right practitioner's calendar.",
+    },
+    {
+      question: "How do WhatsApp appointment reminders work?",
+      answer:
+        "Podoraa sends the reminder before the appointment and the patient confirms, cancels or asks to reschedule from that same message; the reply updates your calendar without you touching anything. We don't charge per message: your sending volume depends on the tier Meta assigns to your WhatsApp Business account.",
+    },
+    {
+      question: "Is it safe to store my patients' clinical data?",
+      answer:
+        "Data travels encrypted, each user sees only what their role allows — a receptionist has no access to clinical information — and sensitive actions are written to an audit log. There is a retention policy, and your practice's data is yours and exportable.",
+    },
+  ],
   footerTerms: "Terms",
   footerPrivacy: "Privacy",
   footerRights: "All rights reserved.",
@@ -697,6 +938,121 @@ const pt: LandingI18n = {
   ctaSubtitle: "Registe-se em minutos e veja como é fácil gerir a sua consulta.",
   ctaButton: "Criar a minha conta",
   ctaLogin: "Entrar",
+  guideTitle: "O que ver ao escolher um software de podologia",
+  guideSubtitle:
+    "Dez pontos que vale a pena rever antes de decidir, trabalhe sozinho na sua consulta ou dirija uma clínica de podologia com vários profissionais.",
+  guideItems: [
+    {
+      title: "Agenda",
+      description:
+        "Uma agenda para podologistas não é um calendário genérico: precisa de duração por tipo de tratamento, vários profissionais em paralelo e uma visão clara dos espaços livres da semana. Se tem de cruzar à mão quem atende quem, a agenda não está a fazer o seu trabalho.",
+    },
+    {
+      title: "Histórico clínico",
+      description:
+        "O histórico clínico podológico tem estrutura própria: exame do pé, lesões, tratamentos aplicados, imagens de cada sessão e evolução ao longo do tempo. Um campo de notas livre não serve para consultar o histórico de um paciente três anos depois.",
+    },
+    {
+      title: "Seguimento",
+      description:
+        "Boa parte do trabalho em podologia é recorrente: revisões, pensos, controlos a cada poucas semanas. O sistema deve avisá-lo de que pacientes há muito não vê, em vez de depender da sua memória.",
+    },
+    {
+      title: "Pagamentos",
+      description:
+        "Controlo financeiro da consulta de podologia: o que foi cobrado, o que está pendente, quanto entrou hoje e que tratamentos sustentam realmente a consulta. Se os pagamentos vivem num caderno à parte, fechar o mês torna-se um trabalho de reconstrução.",
+    },
+    {
+      title: "WhatsApp",
+      description:
+        "É por WhatsApp que os seus pacientes comunicam. Que os lembretes de consulta saiam do mesmo sistema — e que a confirmação volte sozinha para a agenda — é a diferença entre reduzir as faltas e escrever a cada um todas as tardes.",
+    },
+    {
+      title: "Marcações online",
+      description:
+        "Marcações online com o seu link e a sua marca, para o paciente marcar quando lhe der jeito sem telefonar. Tem de respeitar os seus horários reais e a disponibilidade de cada profissional, não oferecer espaços que depois tem de cancelar.",
+    },
+    {
+      title: "Receção",
+      description:
+        "Se tem rececionista, precisa do calendário, dos pacientes e das mensagens sem aceder aos dados clínicos. Um software com um só tipo de utilizador obriga-o a escolher entre dar tudo ou não dar nada.",
+    },
+    {
+      title: "Métricas",
+      description:
+        "Vendas, rentabilidade por tratamento, ocupação da agenda e pacientes que deixaram de vir. Sem isto sabe como correu o mês por intuição; com isto sabe o que mudar.",
+    },
+    {
+      title: "Segurança",
+      description:
+        "São dados de saúde. Pergunte por cifragem, controlo de acesso por perfil, registo de auditoria, política de retenção e o que acontece à informação se um dia sair. Guardar históricos clínicos numa folha de cálculo partilhada não cumpre nada disto.",
+    },
+    {
+      title: "Personalização",
+      description:
+        "O seu logótipo nos relatórios que imprime e na página onde os pacientes marcam. A marca que o paciente vê deve ser a sua, não a do fornecedor do software.",
+    },
+  ],
+  comparisonTitle: "Porque não chega o Excel, o Word ou a agenda do telemóvel",
+  comparisonSubtitle:
+    "Não é que essas ferramentas sejam más: é que não foram pensadas para uma consulta de podologia, e o trabalho de as manter de pé acaba por ser seu.",
+  comparisonRows: [
+    {
+      alternative: "Excel ou Word",
+      problem:
+        "A ficha do paciente vive em ficheiros soltos que se duplicam, se sobrepõem entre versões e só abre quem tem o ficheiro. Ver a evolução de uma lesão implica abrir documentos um a um.",
+      podoraa:
+        "Histórico clínico podológico estruturado, com imagens por sessão e o histórico completo de cada paciente numa só ficha.",
+    },
+    {
+      alternative: "Agenda do Google ou agenda de papel",
+      problem:
+        "Guarda a hora, mas não sabe que tratamento é, quanto custa, se foi pago nem a quem é preciso lembrar. A agenda e a clínica ficam em dois mundos separados.",
+      podoraa:
+        "Marcação, tratamento, cobrança e lembrete por WhatsApp são a mesma coisa: regista a sessão e o resto fica anotado.",
+    },
+    {
+      alternative: "Software médico genérico",
+      problem:
+        "Foi construído para medicina geral: campos que não usa, e nenhum para o exame podológico, o mapa do pé ou o seguimento de uma unha encravada.",
+      podoraa:
+        "Pensado para podologia e pedicura clínica: modelos clínicos da área, relatórios prontos a imprimir e as métricas de uma consulta de podologia.",
+    },
+  ],
+  faqTitle: "Perguntas frequentes",
+  faqSubtitle: "O que mais nos perguntam antes de começar.",
+  faqItems: [
+    {
+      question: "O que é um software de gestão podológica?",
+      answer:
+        "É o sistema onde uma consulta de podologia gere o seu dia a dia: agenda de consultas, histórico clínico podológico de cada paciente, marcações online, lembretes de consulta, registo de pagamentos e as métricas do negócio. Substitui a combinação de agenda, folha de cálculo e caderno de pagamentos com que quase todas começam.",
+    },
+    {
+      question: "Serve para pedicuristas clínicos ou só para podologistas?",
+      answer:
+        "Serve para ambos. A estrutura da ficha clínica, os tratamentos e os relatórios são os do cuidado do pé, por isso adapta-se tanto a um podologista como a um profissional de pedicura clínica, sozinho ou dentro de uma clínica.",
+    },
+    {
+      question: "Posso manter o histórico clínico e as imagens de cada sessão?",
+      answer:
+        "Sim. Cada paciente tem o seu histórico clínico podológico com antecedentes, exame, tratamentos aplicados e imagens associadas à sessão em que foram tiradas, de modo que a evolução se lê por ordem cronológica. Os relatórios saem prontos a imprimir com a sua marca.",
+    },
+    {
+      question: "Os meus pacientes podem marcar online?",
+      answer:
+        "Sim. Partilha o seu link de marcações e o paciente escolhe entre os espaços reais da sua agenda, vendo a marca da sua clínica. A consulta entra diretamente no calendário do profissional certo.",
+    },
+    {
+      question: "Como funcionam os lembretes de consulta por WhatsApp?",
+      answer:
+        "A Podoraa envia o lembrete antes da consulta e o paciente confirma, cancela ou pede para remarcar a partir da mesma mensagem; a resposta atualiza a agenda sem que tenha de fazer nada. Não cobramos por mensagem: o volume que pode enviar depende do nível que a Meta atribuir à sua conta de WhatsApp Business.",
+    },
+    {
+      question: "É seguro guardar dados clínicos dos meus pacientes?",
+      answer:
+        "Os dados viajam cifrados, cada utilizador vê apenas o que lhe compete pelo seu perfil — uma rececionista não acede à informação clínica — e as ações sensíveis ficam registadas num log de auditoria. Há política de retenção e os dados da sua consulta são seus e exportáveis.",
+    },
+  ],
   footerTerms: "Termos",
   footerPrivacy: "Privacidade",
   footerRights: "Todos os direitos reservados.",
@@ -899,6 +1255,121 @@ const fr: LandingI18n = {
   ctaSubtitle: "Inscrivez-vous en quelques minutes et découvrez à quel point gérer votre cabinet peut être simple.",
   ctaButton: "Créer mon compte",
   ctaLogin: "Connexion",
+  guideTitle: "Que regarder pour choisir un logiciel de podologie",
+  guideSubtitle:
+    "Dix points à vérifier avant de vous décider, que vous exerciez seul ou que vous dirigiez un cabinet de podologie avec plusieurs praticiens.",
+  guideItems: [
+    {
+      title: "Agenda",
+      description:
+        "Un agenda pour podologues n'est pas un calendrier générique : il lui faut une durée par type de soin, plusieurs praticiens en parallèle et une vue claire des créneaux libres de la semaine. Si vous devez croiser à la main qui reçoit qui, l'agenda ne fait pas son travail.",
+    },
+    {
+      title: "Dossier clinique",
+      description:
+        "Le dossier clinique podologique a sa propre structure : examen du pied, lésions, soins réalisés, images de chaque séance et évolution dans le temps. Un champ de notes libre ne permet pas de relire l'historique d'un patient trois ans plus tard.",
+    },
+    {
+      title: "Suivi",
+      description:
+        "Une grande partie du travail en podologie est récurrente : contrôles, pansements, revues toutes les quelques semaines. Le système devrait vous signaler les patients que vous n'avez pas vus depuis longtemps, plutôt que de compter sur votre mémoire.",
+    },
+    {
+      title: "Encaissements",
+      description:
+        "Le suivi financier du cabinet : ce qui a été encaissé, ce qui reste dû, ce qui est rentré aujourd'hui et quels soins font vraiment vivre le cabinet. Si les paiements vivent dans un carnet à part, clôturer le mois devient un travail de reconstitution.",
+    },
+    {
+      title: "WhatsApp",
+      description:
+        "C'est par WhatsApp que vos patients communiquent. Que les rappels de rendez-vous partent du même système — et que la confirmation revienne seule dans l'agenda — fait la différence entre réduire les absences et écrire à chacun tous les soirs.",
+    },
+    {
+      title: "Prise de rendez-vous en ligne",
+      description:
+        "Une prise de rendez-vous en ligne à votre lien et à votre marque, pour que le patient réserve quand cela l'arrange sans appeler. Elle doit respecter vos horaires réels et la disponibilité de chaque praticien, pas proposer des créneaux qu'il faudra annuler.",
+    },
+    {
+      title: "Accueil",
+      description:
+        "Si vous avez une secrétaire, elle a besoin de l'agenda, des patients et des messages sans accéder aux données cliniques. Un logiciel à un seul type d'utilisateur vous oblige à choisir entre tout donner ou ne rien donner.",
+    },
+    {
+      title: "Indicateurs",
+      description:
+        "Chiffre d'affaires, rentabilité par soin, taux de remplissage et patients qui ne reviennent plus. Sans cela vous jugez le mois au ressenti ; avec cela vous savez quoi changer.",
+    },
+    {
+      title: "Sécurité",
+      description:
+        "Ce sont des données de santé. Renseignez-vous sur le chiffrement, les accès par rôle, la journalisation, la politique de conservation et ce qu'il advient des données si vous partez un jour. Conserver des dossiers cliniques dans un tableur partagé ne répond à aucun de ces points.",
+    },
+    {
+      title: "Personnalisation",
+      description:
+        "Votre logo sur les comptes rendus que vous imprimez et sur la page où vos patients réservent. La marque que voit le patient doit être la vôtre, pas celle de l'éditeur du logiciel.",
+    },
+  ],
+  comparisonTitle: "Pourquoi Excel, Word ou l'agenda du téléphone ne suffisent pas",
+  comparisonSubtitle:
+    "Ce n'est pas que ces outils soient mauvais : ils n'ont pas été pensés pour un cabinet de podologie, et c'est vous qui finissez par faire le travail de les tenir ensemble.",
+  comparisonRows: [
+    {
+      alternative: "Excel ou Word",
+      problem:
+        "Le dossier patient vit dans des fichiers épars qui se dupliquent, s'écrasent entre versions et ne s'ouvrent que chez celui qui les détient. Suivre l'évolution d'une lésion oblige à ouvrir les documents un par un.",
+      podoraa:
+        "Un dossier clinique podologique structuré, avec les images par séance et l'historique complet de chaque patient au même endroit.",
+    },
+    {
+      alternative: "Agenda Google ou agenda papier",
+      problem:
+        "Il retient l'heure, mais ignore de quel soin il s'agit, ce qu'il coûte, s'il a été réglé et qui il faut relancer. L'agenda et le cabinet vivent dans deux mondes séparés.",
+      podoraa:
+        "Rendez-vous, soin, encaissement et rappel WhatsApp ne font qu'un : vous enregistrez la séance et le reste est consigné.",
+    },
+    {
+      alternative: "Logiciel médical généraliste",
+      problem:
+        "Conçu pour la médecine générale : des champs que vous n'utilisez pas, et aucun pour l'examen podologique, la cartographie du pied ou le suivi d'un ongle incarné.",
+      podoraa:
+        "Pensé pour la podologie et les soins du pied : modèles cliniques du métier, comptes rendus prêts à imprimer et les indicateurs d'un cabinet de podologie.",
+    },
+  ],
+  faqTitle: "Questions fréquentes",
+  faqSubtitle: "Ce qu'on nous demande le plus avant de commencer.",
+  faqItems: [
+    {
+      question: "Qu'est-ce qu'un logiciel de gestion pour la podologie ?",
+      answer:
+        "C'est le système où un cabinet de podologie gère son quotidien : agenda des rendez-vous, dossier clinique podologique de chaque patient, prise de rendez-vous en ligne, rappels, suivi des encaissements et indicateurs de l'activité. Il remplace la combinaison agenda, tableur et carnet de recettes avec laquelle on démarre souvent.",
+    },
+    {
+      question: "Est-ce que cela convient aussi aux pédicures-podologues ?",
+      answer:
+        "Oui. La structure du dossier clinique, les soins et les comptes rendus sont ceux du soin du pied : cela convient aussi bien à un podologue qu'à un pédicure-podologue, seul ou au sein d'un cabinet.",
+    },
+    {
+      question: "Puis-je tenir le dossier clinique et les images de chaque séance ?",
+      answer:
+        "Oui. Chaque patient a son dossier clinique podologique avec antécédents, examen, soins réalisés et images rattachées à la séance où elles ont été prises, de sorte que l'évolution se lit dans l'ordre chronologique. Les comptes rendus s'impriment à votre marque.",
+    },
+    {
+      question: "Mes patients peuvent-ils réserver en ligne ?",
+      answer:
+        "Oui. Vous partagez votre lien de réservation et le patient choisit parmi les créneaux réellement libres de votre agenda, en voyant la marque de votre cabinet. Le rendez-vous arrive directement dans l'agenda du bon praticien.",
+    },
+    {
+      question: "Comment fonctionnent les rappels de rendez-vous par WhatsApp ?",
+      answer:
+        "Podoraa envoie le rappel avant le rendez-vous et le patient confirme, annule ou demande à décaler depuis ce même message ; la réponse met l'agenda à jour sans que vous interveniez. Nous ne facturons pas au message : le volume dépend du palier que Meta attribue à votre compte WhatsApp Business.",
+    },
+    {
+      question: "Est-ce sûr de conserver les données cliniques de mes patients ?",
+      answer:
+        "Les données circulent chiffrées, chaque utilisateur ne voit que ce que son rôle autorise — une secrétaire n'accède pas aux informations cliniques — et les actions sensibles sont inscrites dans un journal d'audit. Il existe une politique de conservation, et les données de votre cabinet vous appartiennent et sont exportables.",
+    },
+  ],
   footerTerms: "Conditions",
   footerPrivacy: "Confidentialité",
   footerRights: "Tous droits réservés.",

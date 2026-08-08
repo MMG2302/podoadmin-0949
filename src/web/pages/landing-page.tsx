@@ -483,6 +483,77 @@ const LandingPage = () => {
         </div>
       </section>
 
+      {/* Guía de compra — contenido de fondo, pensado sobre todo para búsqueda */}
+      <section id="guide" className="py-16 sm:py-24 px-4 sm:px-6 bg-brand-surface border-y border-brand-border">
+        <div className="mx-auto max-w-6xl">
+          <div className="max-w-2xl mb-12">
+            <h2 className="text-2xl sm:text-3xl font-semibold text-brand-ink">{l.guideTitle}</h2>
+            <p className="mt-3 text-brand-muted leading-relaxed">{l.guideSubtitle}</p>
+          </div>
+          <ol className="grid gap-x-10 gap-y-8 sm:grid-cols-2">
+            {l.guideItems.map((item, i) => (
+              <li key={item.title} className="border-t border-brand-border pt-5">
+                <div className="font-mono text-xs tracking-widest text-brand-muted/70">
+                  {String(i + 1).padStart(2, "0")}
+                </div>
+                <h3 className="mt-3 text-lg font-semibold text-brand-ink">{item.title}</h3>
+                <p className="mt-2 text-sm leading-relaxed text-brand-muted">{item.description}</p>
+              </li>
+            ))}
+          </ol>
+        </div>
+      </section>
+
+      {/* Comparativa con lo que se usa antes de tener un software */}
+      <section id="comparison" className="py-16 sm:py-24 px-4 sm:px-6">
+        <div className="mx-auto max-w-6xl">
+          <div className="max-w-2xl mb-12">
+            <h2 className="text-2xl sm:text-3xl font-semibold text-brand-ink">
+              {l.comparisonTitle}
+            </h2>
+            <p className="mt-3 text-brand-muted leading-relaxed">{l.comparisonSubtitle}</p>
+          </div>
+          <div className="grid gap-4 md:grid-cols-3">
+            {l.comparisonRows.map((row) => (
+              <article
+                key={row.alternative}
+                className="rounded-xl border border-brand-border bg-brand-surface p-6"
+              >
+                <h3 className="text-base font-semibold text-brand-ink">{row.alternative}</h3>
+                <p className="mt-3 text-sm leading-relaxed text-brand-muted">{row.problem}</p>
+                <p className="mt-4 border-t border-brand-border pt-4 text-sm leading-relaxed text-brand-ink">
+                  {row.podoraa}
+                </p>
+              </article>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* FAQ — <details> nativo: la respuesta queda en el DOM aunque esté plegada */}
+      <section id="faq" className="py-16 sm:py-24 px-4 sm:px-6 bg-brand-surface border-y border-brand-border">
+        <div className="mx-auto max-w-3xl">
+          <div className="mb-10">
+            <h2 className="text-2xl sm:text-3xl font-semibold text-brand-ink">{l.faqTitle}</h2>
+            <p className="mt-3 text-brand-muted leading-relaxed">{l.faqSubtitle}</p>
+          </div>
+          <div className="divide-y divide-brand-border border-y border-brand-border">
+            {l.faqItems.map((item) => (
+              <details key={item.question} className="group py-5">
+                <summary className="flex cursor-pointer list-none items-start justify-between gap-4 text-left">
+                  <h3 className="text-base font-medium text-brand-ink">{item.question}</h3>
+                  <ChevronDown
+                    className="mt-0.5 h-4 w-4 shrink-0 text-brand-muted transition-transform group-open:rotate-180"
+                    strokeWidth={1.5}
+                  />
+                </summary>
+                <p className="mt-3 pr-8 text-sm leading-relaxed text-brand-muted">{item.answer}</p>
+              </details>
+            ))}
+          </div>
+        </div>
+      </section>
+
       {/* CTA */}
       <section className="py-16 sm:py-24 px-4 sm:px-6">
         <div className="mx-auto max-w-6xl">

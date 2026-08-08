@@ -313,13 +313,15 @@ export function buildPrerenderedLanding(lang: Language = DEFAULT_LANG): string {
     '<main>',
     `<h1>${esc(l.heroTitle)} ${esc(l.heroTitleBold)}</h1>`,
     `<p>${esc(l.heroSubtitle)}</p>`,
+    // Mismo orden que la landing: promesa, qué hace, cuánto cuesta, para quién, qué
+    // esfuerzo, objeción frente a Excel, guía larga y dudas finales.
     section('solutions', l.solutionsTitle, l.solutionsSubtitle, solutions),
     section('features', l.featuresTitle, l.featuresSubtitle, features),
-    section('steps', l.stepsTitle, l.stepsBadge, steps),
-    section('audience', l.audienceTitle, l.audienceSubtitle, audience),
     section('pricing', l.pricingTitle, l.pricingSubtitle, pricing),
-    section('guide', l.guideTitle, l.guideSubtitle, guide),
+    section('audience', l.audienceTitle, l.audienceSubtitle, audience),
+    section('steps', l.stepsTitle, l.stepsBadge, steps),
     section('comparison', l.comparisonTitle, l.comparisonSubtitle, comparison),
+    section('guide', l.guideTitle, l.guideSubtitle, guide),
     section('faq', l.faqTitle, l.faqSubtitle, faq),
     `<section><h2>${esc(l.ctaTitle)}</h2><p>${esc(l.ctaSubtitle)}</p></section>`,
     '</main>',
@@ -436,12 +438,6 @@ ${plans}
 ${l.pricingNote}
 ${l.pricingNoteDisclaimer}
 
-## ${l.guideTitle}
-
-${l.guideSubtitle}
-
-${l.guideItems.map((g) => `### ${g.title}\n\n${g.description}`).join('\n\n')}
-
 ## ${l.comparisonTitle}
 
 ${l.comparisonSubtitle}
@@ -449,6 +445,12 @@ ${l.comparisonSubtitle}
 ${l.comparisonRows
   .map((r) => `### ${r.alternative}\n\n${r.problem}\n\nCon Podoraa: ${r.podoraa}`)
   .join('\n\n')}
+
+## ${l.guideTitle}
+
+${l.guideSubtitle}
+
+${l.guideItems.map((g) => `### ${g.title}\n\n${g.description}`).join('\n\n')}
 
 ## ${l.faqTitle}
 

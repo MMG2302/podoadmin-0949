@@ -266,11 +266,11 @@ const LandingPage = () => {
             <a href="#pricing" className="hover:text-brand-ink transition-colors">
               {l.navPricing}
             </a>
-            <a href="#steps" className="hover:text-brand-ink transition-colors">
-              {l.navSteps}
-            </a>
             <a href="#audience" className="hover:text-brand-ink transition-colors">
               {l.navAudience}
+            </a>
+            <a href="#steps" className="hover:text-brand-ink transition-colors">
+              {l.navSteps}
             </a>
           </nav>
 
@@ -393,59 +393,8 @@ const LandingPage = () => {
         </div>
       </section>
 
-      {/* Cómo empezar — cuatro pasos numerados */}
-      <section id="steps" className="py-16 sm:py-24 px-4 sm:px-6 bg-brand-surface border-y border-brand-border">
-        <div className="mx-auto max-w-6xl">
-          <h2 className="max-w-3xl text-3xl sm:text-4xl font-semibold tracking-tight text-brand-ink">
-            {l.stepsTitle}
-          </h2>
-          <p className="mt-6 inline-flex items-start gap-2.5 rounded-full border border-brand-border bg-brand-canvas px-5 py-2.5 text-sm text-brand-muted">
-            <span aria-hidden className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-brand-ink" />
-            <span>{l.stepsBadge}</span>
-          </p>
-
-          <ol className="mt-12 grid gap-y-10 border-t border-brand-border pt-10 sm:grid-cols-2 lg:grid-cols-4 lg:gap-y-0">
-            {l.steps.map((step, i) => (
-              <li
-                key={step.title}
-                className={cn(
-                  "px-0 sm:px-6",
-                  i === 0 && "sm:pl-0",
-                  i > 0 && "sm:border-l sm:border-brand-border"
-                )}
-              >
-                <div className="font-mono text-xs tracking-widest text-brand-muted/70">
-                  {String(i + 1).padStart(2, "0")}
-                  <span className="mx-1.5">/</span>
-                  {String(l.steps.length).padStart(2, "0")}
-                </div>
-                <h3 className="mt-4 text-lg font-semibold leading-snug text-brand-ink">
-                  {step.title}
-                </h3>
-                <p className="mt-3 text-sm leading-relaxed text-brand-muted">{step.description}</p>
-              </li>
-            ))}
-          </ol>
-        </div>
-      </section>
-
-      {/* Audience */}
-      <section id="audience" className="py-16 sm:py-24 px-4 sm:px-6 bg-brand-surface border-y border-brand-border">
-        <div className="mx-auto max-w-6xl">
-          <div className="max-w-2xl mb-12">
-            <h2 className="text-2xl sm:text-3xl font-semibold text-brand-ink">{l.audienceTitle}</h2>
-            <p className="mt-3 text-brand-muted leading-relaxed">{l.audienceSubtitle}</p>
-          </div>
-          <div className="grid gap-4 md:grid-cols-3">
-            {audiences.map((a) => (
-              <AudienceCard key={a.title} icon={a.icon} title={a.title} description={a.description} />
-            ))}
-          </div>
-        </div>
-      </section>
-
       {/* Pricing */}
-      <section id="pricing" className="py-16 sm:py-24 px-4 sm:px-6">
+      <section id="pricing" className="py-16 sm:py-24 px-4 sm:px-6 bg-brand-surface border-y border-brand-border">
         <div className="mx-auto max-w-7xl">
           <div className="max-w-2xl mb-12">
             <h2 className="text-2xl sm:text-3xl font-semibold text-brand-ink">{l.pricingTitle}</h2>
@@ -483,21 +432,51 @@ const LandingPage = () => {
         </div>
       </section>
 
-      {/* Guía de compra — contenido de fondo, pensado sobre todo para búsqueda */}
-      <section id="guide" className="py-16 sm:py-24 px-4 sm:px-6 bg-brand-surface border-y border-brand-border">
+      {/* Audience */}
+      <section id="audience" className="py-16 sm:py-24 px-4 sm:px-6">
         <div className="mx-auto max-w-6xl">
           <div className="max-w-2xl mb-12">
-            <h2 className="text-2xl sm:text-3xl font-semibold text-brand-ink">{l.guideTitle}</h2>
-            <p className="mt-3 text-brand-muted leading-relaxed">{l.guideSubtitle}</p>
+            <h2 className="text-2xl sm:text-3xl font-semibold text-brand-ink">{l.audienceTitle}</h2>
+            <p className="mt-3 text-brand-muted leading-relaxed">{l.audienceSubtitle}</p>
           </div>
-          <ol className="grid gap-x-10 gap-y-8 sm:grid-cols-2">
-            {l.guideItems.map((item, i) => (
-              <li key={item.title} className="border-t border-brand-border pt-5">
+          <div className="grid gap-4 md:grid-cols-3">
+            {audiences.map((a) => (
+              <AudienceCard key={a.title} icon={a.icon} title={a.title} description={a.description} />
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Cómo empezar — cuatro pasos numerados */}
+      <section id="steps" className="py-16 sm:py-24 px-4 sm:px-6 bg-brand-surface border-y border-brand-border">
+        <div className="mx-auto max-w-6xl">
+          <h2 className="max-w-3xl text-3xl sm:text-4xl font-semibold tracking-tight text-brand-ink">
+            {l.stepsTitle}
+          </h2>
+          <p className="mt-6 inline-flex items-start gap-2.5 rounded-full border border-brand-border bg-brand-canvas px-5 py-2.5 text-sm text-brand-muted">
+            <span aria-hidden className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-brand-ink" />
+            <span>{l.stepsBadge}</span>
+          </p>
+
+          <ol className="mt-12 grid gap-y-10 border-t border-brand-border pt-10 sm:grid-cols-2 lg:grid-cols-4 lg:gap-y-0">
+            {l.steps.map((step, i) => (
+              <li
+                key={step.title}
+                className={cn(
+                  "px-0 sm:px-6",
+                  i === 0 && "sm:pl-0",
+                  i > 0 && "sm:border-l sm:border-brand-border"
+                )}
+              >
                 <div className="font-mono text-xs tracking-widest text-brand-muted/70">
                   {String(i + 1).padStart(2, "0")}
+                  <span className="mx-1.5">/</span>
+                  {String(l.steps.length).padStart(2, "0")}
                 </div>
-                <h3 className="mt-3 text-lg font-semibold text-brand-ink">{item.title}</h3>
-                <p className="mt-2 text-sm leading-relaxed text-brand-muted">{item.description}</p>
+                <h3 className="mt-4 text-lg font-semibold leading-snug text-brand-ink">
+                  {step.title}
+                </h3>
+                <p className="mt-3 text-sm leading-relaxed text-brand-muted">{step.description}</p>
               </li>
             ))}
           </ol>
@@ -530,8 +509,29 @@ const LandingPage = () => {
         </div>
       </section>
 
+      {/* Guía de compra — contenido de fondo, pensado sobre todo para búsqueda */}
+      <section id="guide" className="py-16 sm:py-24 px-4 sm:px-6 bg-brand-surface border-y border-brand-border">
+        <div className="mx-auto max-w-6xl">
+          <div className="max-w-2xl mb-12">
+            <h2 className="text-2xl sm:text-3xl font-semibold text-brand-ink">{l.guideTitle}</h2>
+            <p className="mt-3 text-brand-muted leading-relaxed">{l.guideSubtitle}</p>
+          </div>
+          <ol className="grid gap-x-10 gap-y-8 sm:grid-cols-2">
+            {l.guideItems.map((item, i) => (
+              <li key={item.title} className="border-t border-brand-border pt-5">
+                <div className="font-mono text-xs tracking-widest text-brand-muted/70">
+                  {String(i + 1).padStart(2, "0")}
+                </div>
+                <h3 className="mt-3 text-lg font-semibold text-brand-ink">{item.title}</h3>
+                <p className="mt-2 text-sm leading-relaxed text-brand-muted">{item.description}</p>
+              </li>
+            ))}
+          </ol>
+        </div>
+      </section>
+
       {/* FAQ — <details> nativo: la respuesta queda en el DOM aunque esté plegada */}
-      <section id="faq" className="py-16 sm:py-24 px-4 sm:px-6 bg-brand-surface border-y border-brand-border">
+      <section id="faq" className="py-16 sm:py-24 px-4 sm:px-6">
         <div className="mx-auto max-w-3xl">
           <div className="mb-10">
             <h2 className="text-2xl sm:text-3xl font-semibold text-brand-ink">{l.faqTitle}</h2>

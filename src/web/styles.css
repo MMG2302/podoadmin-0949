@@ -441,8 +441,11 @@ button, a, [role="button"], input, select, textarea {
   @apply text-brand-ink text-right;
 }
 
+/* flex-wrap: en usuarios el bloque de acciones de estado va como un hijo más de
+   esta fila; sin envolver quedaba como columna alta junto a Ver/Editar, que se
+   veían aplastados por items-center. Con wrap baja a su propia línea. */
 .mobile-card-actions {
-  @apply flex items-center justify-end gap-2 mt-3 pt-3 border-t border-brand-border;
+  @apply flex flex-wrap items-center justify-end gap-2 mt-3 pt-3 border-t border-brand-border;
 }
 
 /* Active state for touch devices */

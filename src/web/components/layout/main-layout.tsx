@@ -149,7 +149,7 @@ export const MainLayout = ({ children, title }: MainLayoutProps) => {
               className="h-12 bg-white/80 dark:bg-gray-800/80 border border-gray-100 dark:border-gray-700 shadow-sm"
             >
               <DockIcon className="!bg-transparent hover:!bg-gray-100 dark:hover:!bg-gray-700">
-                <AnimatedThemeToggler className="!h-9 !w-9 !min-w-0 !min-h-0 !p-0 !bg-transparent !hover:bg-transparent" />
+                <AnimatedThemeToggler className="!h-11 !w-11 sm:!h-9 sm:!w-9 !min-w-0 !min-h-0 !p-0 !bg-transparent !hover:bg-transparent" />
               </DockIcon>
               <DockIcon className="!bg-transparent hover:!bg-gray-100 dark:hover:!bg-gray-700">
                 <NotificationsBell />

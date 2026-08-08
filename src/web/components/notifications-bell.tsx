@@ -106,7 +106,7 @@ export const NotificationsBell = () => {
           // La lista completa se pide al abrir (el poll de fondo solo trae el contador).
           if (next) void refresh({ force: true });
         }}
-        className="relative p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+        className="relative flex h-11 w-11 sm:h-9 sm:w-9 items-center justify-center rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
         aria-label={t.notifications.title}
       >
         <svg className="w-5 h-5 text-brand-ink" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>

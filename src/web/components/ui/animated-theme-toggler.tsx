@@ -78,7 +78,7 @@ export const AnimatedThemeToggler = ({
       type="button"
       onClick={toggleTheme}
       className={cn(
-        "flex h-9 w-9 items-center justify-center rounded-lg transition-colors",
+        "flex h-11 w-11 sm:h-9 sm:w-9 items-center justify-center rounded-lg transition-colors",
         "bg-brand-canvas hover:bg-brand-border/40",
         "text-brand-ink",
         className

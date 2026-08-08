@@ -63,20 +63,98 @@ export function verifyTOTPCode(secret: string, code: string): boolean {
 }
 
 /**
- * Genera códigos de respaldo (backup codes)
+ * Alfabeto Crockford base32: 32 símbolos, sin I, L, O ni U, para que un código
+ * transcrito a mano no se confunda. 32 divide a 256, así que `byte % 32` es uniforme
+ * y no hace falta rechazo de muestras.
+ */
+const BACKUP_ALPHABET = '0123456789ABCDEFGHJKMNPQRSTVWXYZ';
+const BACKUP_SYMBOLS = 12; // 12 × 5 bits = 60 bits de entropía por código
+
+/**
+ * Normaliza un código tal como lo teclea el usuario: mayúsculas, sin guiones ni
+ * espacios, y con las confusiones habituales de Crockford resueltas (O→0, I/L→1).
+ */
+function normalizeBackupCode(code: string): string {
+  return code
+    .trim()
+    .toUpperCase()
+    .replace(/[\s-]/g, '')
+    .replace(/O/g, '0')
+    .replace(/[IL]/g, '1');
+}
+
+/** SHA-256 en hexadecimal del código normalizado. */
+async function hashBackupCode(code: string): Promise<string> {
+  const digest = await crypto.subtle.digest(
+    'SHA-256',
+    new TextEncoder().encode(normalizeBackupCode(code))
+  );
+  return Array.from(new Uint8Array(digest))
+    .map((b) => b.toString(16).padStart(2, '0'))
+    .join('');
+}
+
+/** Comparación en tiempo constante: no revela en qué carácter difieren. */
+function timingSafeEqual(a: string, b: string): boolean {
+  if (a.length !== b.length) return false;
+  let diff = 0;
+  for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  return diff === 0;
+}
+
+/**
+ * Genera códigos de respaldo en claro, para mostrarlos una única vez al usuario.
+ *
+ * Con `crypto.getRandomValues`, no `Math.random()`: los diez códigos salían antes de
+ * tiradas consecutivas del mismo PRNG, así que conocer uno permitía derivar el resto.
+ *
+ * Se devuelven agrupados (XXXX-XXXX-XXXX) solo para que sean legibles; la verificación
+ * normaliza la entrada, de modo que el usuario puede teclearlos con o sin guiones.
  */
 export function generateBackupCodes(count: number = 10): string[] {
   const codes: string[] = [];
   for (let i = 0; i < count; i++) {
-    // Generar código de 8 dígitos
-    const code = Math.floor(10000000 + Math.random() * 90000000).toString();
-    codes.push(code);
+    const bytes = crypto.getRandomValues(new Uint8Array(BACKUP_SYMBOLS));
+    const symbols = Array.from(bytes, (b) => BACKUP_ALPHABET[b % BACKUP_ALPHABET.length]).join('');
+    codes.push(symbols.replace(/(.{4})(.{4})(.{4})/, '$1-$2-$3'));
   }
   return codes;
 }
 
+/** Hashea los códigos para guardarlos. Nunca se almacena el código en claro. */
+export async function hashBackupCodes(codes: string[]): Promise<string[]> {
+  return Promise.all(codes.map(hashBackupCode));
+}
+
+const SHA256_HEX = /^[0-9a-f]{64}$/;
+
 /**
- * Habilita 2FA para un usuario
+ * Busca un código entre los almacenados y devuelve su índice, o -1.
+ *
+ * Acepta también entradas heredadas en claro (los códigos de 8 dígitos que se guardaban
+ * sin hashear antes de este cambio) para no dejar fuera a una cuenta que hubiera activado
+ * 2FA por API. Esa rama puede eliminarse cuando no queden códigos con ese formato.
+ */
+export async function findBackupCodeIndex(stored: string[], input: string): Promise<number> {
+  const hashed = await hashBackupCode(input);
+  const normalized = normalizeBackupCode(input);
+
+  for (let i = 0; i < stored.length; i++) {
+    const entry = stored[i];
+    const match = SHA256_HEX.test(entry)
+      ? timingSafeEqual(entry, hashed)
+      : timingSafeEqual(normalizeBackupCode(entry), normalized);
+    if (match) return i;
+  }
+  return -1;
+}
+
+/**
+ * Habilita 2FA para un usuario.
+ *
+ * `backupCodes` son los códigos en claro que se muestran una vez al usuario; aquí se
+ * guardan hasheados. Son credenciales equivalentes a una contraseña: si la tabla se
+ * leyera indebidamente, en claro serían utilizables tal cual.
  */
 export async function enable2FA(
   userId: string,
@@ -84,13 +162,14 @@ export async function enable2FA(
   backupCodes: string[]
 ): Promise<void> {
   const now = new Date().toISOString();
+  const hashed = JSON.stringify(await hashBackupCodes(backupCodes));
 
   try {
     await database.insert(twoFactorAuth).values({
       userId,
       secret,
       enabled: true,
-      backupCodes: JSON.stringify(backupCodes),
+      backupCodes: hashed,
       createdAt: now,
       updatedAt: now,
     });
@@ -101,7 +180,7 @@ export async function enable2FA(
       .set({
         secret,
         enabled: true,
-        backupCodes: JSON.stringify(backupCodes),
+        backupCodes: hashed,
         updatedAt: now,
       })
       .where(eq(twoFactorAuth.userId, userId));
@@ -186,21 +265,24 @@ export async function verify2FACode(
     return { valid: true };
   }
 
-  // Si no es TOTP, verificar como backup code
-  if (config.backupCodes && config.backupCodes.includes(code)) {
-    // Remover el backup code usado
-    const updatedBackupCodes = config.backupCodes.filter((c) => c !== code);
-    const now = new Date().toISOString();
+  // Si no es TOTP, verificar como código de respaldo
+  if (config.backupCodes?.length) {
+    const index = await findBackupCodeIndex(config.backupCodes, code);
+    if (index >= 0) {
+      // Un código de respaldo es de un solo uso: se consume por índice, no por valor,
+      // para que dos entradas con el mismo hash no se borren juntas.
+      const remaining = config.backupCodes.filter((_, i) => i !== index);
 
-    await database
-      .update(twoFactorAuth)
-      .set({
-        backupCodes: JSON.stringify(updatedBackupCodes),
-        updatedAt: now,
-      })
-      .where(eq(twoFactorAuth.userId, userId));
+      await database
+        .update(twoFactorAuth)
+        .set({
+          backupCodes: JSON.stringify(remaining),
+          updatedAt: new Date().toISOString(),
+        })
+        .where(eq(twoFactorAuth.userId, userId));
 
-    return { valid: true, usedBackupCode: true };
+      return { valid: true, usedBackupCode: true };
+    }
   }
 
   return { valid: false };

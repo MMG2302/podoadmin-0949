@@ -149,7 +149,11 @@ Podoraa aplica las siguientes medidas, descritas tal como están implementadas:
   Token de acceso de 15 minutos y token de refresco de 7 días.
 - El cierre de sesión invalida el token de inmediato mediante lista de revocación, no solo
   borrando la cookie del navegador.
-- Verificación en dos pasos (TOTP) disponible para las cuentas.
+- Verificación en dos pasos (TOTP, RFC 6238) en el inicio de sesión, con códigos de
+  respaldo de un solo uso generados con un generador criptográfico y almacenados
+  hasheados. Un código incorrecto cuenta para el bloqueo progresivo igual que una
+  contraseña incorrecta. *(Disponible por API; ver [Anexo D](#anexo-d--puntos-abiertos)
+  sobre su exposición en la interfaz.)*
 - **Permisos por rol**: el personal de recepción accede a calendario, pacientes y mensajes
   **sin acceso a la información clínica**.
 - **Aislamiento entre clientes**: cada lectura o escritura de un dato ligado a un paciente
@@ -352,11 +356,18 @@ Deben resolverse antes de publicar el contrato:
 4. **Preaviso de sub-encargados.** Fijado en 30 días con derecho de oposición y reembolso
    proporcional. Confirmar que se acepta ese compromiso.
 
-5. **Verificación en dos pasos.** El apartado 5.2 la menciona como disponible. Según
-   `CLAUDE.md`, los códigos de respaldo y el secreto TOTP se generan con `Math.random()` en
-   lugar de `crypto.getRandomValues()`, y el parche está pendiente. **Corregirlo antes de
-   publicar**: describir el 2FA como medida de seguridad mientras su generación de secretos
-   es predecible es una afirmación que no se sostiene.
+5. **Verificación en dos pasos.** Resuelto lo que bloqueaba: los códigos de respaldo se
+   generan con `crypto.getRandomValues()` y se guardan hasheados, y un código incorrecto
+   ya cuenta para el bloqueo progresivo. *(El secreto TOTP siempre se generó con
+   `crypto.getRandomValues()`; la nota anterior de `CLAUDE.md` que decía lo contrario era
+   incorrecta y quedó corregida.)*
+
+   Queda por decidir para el contrato: **no hay interfaz de 2FA en el frontend**, así que
+   hoy solo puede activarse llamando al API. Mientras siga así, el apartado 5.2 debe decir
+   que está disponible por API, no dar a entender que el Cliente puede activarla desde el
+   producto. Pendientes menores, no bloqueantes: cifrar el secreto TOTP en reposo con
+   `field-encryption.ts`, y que `/2fa/enable` guarde el secreto en servidor entre `setup` y
+   `enable` en vez de aceptarlo del cliente.
 
 6. **Encargado frente a corresponsable.** Este contrato sitúa a Podoraa como encargado en
    todo momento. Confirmar con asesoría que ninguna funcionalidad (por ejemplo, las

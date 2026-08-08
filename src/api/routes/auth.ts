@@ -399,13 +399,23 @@ authRoutes.post('/login', async (c) => {
 
       const twoFactorResult = await verify2FACode(matchedUser.user.id, twoFactorCode);
       if (!twoFactorResult.valid) {
+        // Un 2FA fallido cuenta igual que una contraseña fallida. Si no, quien ya tiene
+        // la contraseña puede probar códigos sin que salte el bloqueo progresivo, y un
+        // TOTP de 6 dígitos con ventana ±1 se agota por fuerza bruta.
+        let attemptCount = 0;
+        if (!isWhitelisted) {
+          const failedAttempt = await recordFailedAttemptD1(identifier);
+          await recordLoginIPFailedAttemptD1(clientIP);
+          attemptCount = failedAttempt.count;
+        }
+
         // Registrar métrica
         const { recordSecurityMetric } = await import('../utils/security-metrics');
         await recordSecurityMetric({
           metricType: '2fa_failed',
           userId: matchedUser.user.id,
           ipAddress: clientIP,
-          details: { email: emailLower },
+          details: { email: emailLower, attemptCount },
         });
 
         return c.json(

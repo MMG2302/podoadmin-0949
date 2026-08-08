@@ -281,6 +281,10 @@ export interface Translations {
       title: string;
       content: string;
     };
+    section21: {
+      title: string;
+      content: string;
+    };
   };
 
   privacy: {
@@ -4656,7 +4660,7 @@ views: {
       section4: {
         title: "4. Uso Aceptable",
         intro: "Usted se compromete a:",
-        item1: "Utilizar el servicio únicamente para fines legales y profesionales",
+        item1: "Utilizar el servicio de forma lícita y en el ejercicio de su actividad profesional",
         item2: "No intentar acceder a áreas restringidas del sistema",
         item3: "No interferir con el funcionamiento del servicio",
         item4: "No transmitir virus, malware o código malicioso",
@@ -4668,8 +4672,8 @@ views: {
         content: "El manejo de datos personales y de pacientes se rige por nuestra Política de Privacidad. Usted es responsable de cumplir con las leyes aplicables en su país, incluyendo la LFPDPPP (México), LGPD (Brasil), leyes de Habeas Data (Colombia), Ley 25.326 (Argentina), RGPD/GDPR (Unión Europea) y la NOM-004-SSA3-2012 para expediente clínico en México.",
       },
       section6: {
-        title: "6. Créditos y Facturación",
-        content: "El uso de ciertas funcionalidades puede requerir créditos. Los créditos pueden tener períodos de validez y están sujetos a las políticas de facturación establecidas. No se realizarán reembolsos por créditos no utilizados, salvo en casos excepcionales determinados a nuestra discreción.",
+        title: "6. Suscripciones y Facturación",
+        content: "El acceso a Podoraa se contrata mediante una suscripción periódica de pago, según el plan elegido y los precios vigentes en el momento de la contratación. La suscripción se renueva automáticamente al final de cada periodo salvo que usted la cancele desde su cuenta; la cancelación surte efecto al final del periodo ya abonado y no da derecho a reembolso proporcional, salvo que la ley aplicable disponga otra cosa. Podoraa no comercializa créditos ni cobra por mensaje enviado. Los límites de volumen que pueda encontrar al enviar mensajes de WhatsApp no los fija Podoraa, sino Meta Platforms, en función del nivel que asigne a su cuenta de WhatsApp Business y de sus políticas vigentes, que pueden cambiar sin previo aviso y quedan fuera de nuestro control.",
       },
       section7: {
         title: "7. Propiedad Intelectual",
@@ -4724,7 +4728,11 @@ views: {
         content: "En la medida permitida por la ley aplicable, cualquier reclamación relacionada con el servicio deberá presentarse dentro del plazo de un (1) año contado desde el momento en que usted tuvo conocimiento, o razonablemente debió tenerlo, del hecho que la origina. Transcurrido ese plazo, la reclamación quedará definitivamente excluida.",
       },
       section20: {
-        title: "20. Contacto",
+        title: "20. Ausencia de Certificaciones y Verificación Independiente",
+        content: "Podoraa es un producto de reciente lanzamiento. No contamos con certificaciones ni acreditaciones formales de seguridad o cumplimiento —entre otras, ISO/IEC 27001, SOC 1, SOC 2, HIPAA, HITRUST o Esquema Nacional de Seguridad—, no hemos sido sometidos a auditorías de cumplimiento por terceros independientes, y no declaramos disponer de ellas ni debe presumirse que las tengamos. Las medidas de seguridad y las funcionalidades descritas en la plataforma, en nuestro sitio web o en cualquier material comercial son descripciones de lo que el servicio hace en cada momento, no certificaciones, garantías ni declaraciones de conformidad normativa. Contratar Podoraa no acredita, no sustituye y no garantiza el cumplimiento normativo de su consulta o clínica. Antes de utilizar el servicio para tratar datos de salud, usted debe evaluar por su cuenta —y, si corresponde, con asesoramiento profesional propio— si Podoraa resulta adecuado para el marco normativo, sectorial y contractual que le sea aplicable, incluidos los requisitos que le exijan sus pacientes, aseguradoras, colegios profesionales o autoridades. Si su actividad exige un proveedor certificado o un acuerdo específico de tratamiento de datos que no le hayamos otorgado por escrito, no debe utilizar el servicio para esa finalidad.",
+      },
+      section21: {
+        title: "21. Contacto",
         content: "Si tiene preguntas sobre estos Términos y Condiciones, puede contactarnos a través de los canales de soporte proporcionados en la plataforma.",
       },
     },
@@ -7159,7 +7167,7 @@ views: {
       section4: {
         title: "4. Acceptable Use",
         intro: "You agree to:",
-        item1: "Use the service only for legal and professional purposes",
+        item1: "Use the service lawfully and in the course of your professional activity",
         item2: "Not attempt to access restricted areas of the system",
         item3: "Not interfere with the service operation",
         item4: "Not transmit viruses, malware, or malicious code",
@@ -7171,8 +7179,8 @@ views: {
         content: "The handling of personal and patient data is governed by our Privacy Policy. You are responsible for complying with applicable laws in your country, including LFPDPPP (Mexico), LGPD (Brazil), Habeas Data (Colombia), Law 25.326 (Argentina), GDPR, and NOM-004-SSA3-2012 for clinical records in Mexico.",
       },
       section6: {
-        title: "6. Credits and Billing",
-        content: "The use of certain features may require credits. Credits may have validity periods and are subject to established billing policies. No refunds will be made for unused credits, except in exceptional cases determined at our discretion.",
+        title: "6. Subscriptions and Billing",
+        content: "Access to Podoraa is contracted through a recurring paid subscription, according to the plan chosen and the prices in force at the time of purchase. The subscription renews automatically at the end of each period unless you cancel it from your account; cancellation takes effect at the end of the period already paid for and does not entitle you to a pro-rata refund, unless applicable law provides otherwise. Podoraa does not sell credits and does not charge per message sent. Any volume limits you may encounter when sending WhatsApp messages are set not by Podoraa but by Meta Platforms, based on the tier it assigns to your WhatsApp Business account and its policies in force, which may change without notice and are outside our control.",
       },
       section7: {
         title: "7. Intellectual Property",
@@ -7227,7 +7235,11 @@ views: {
         content: "To the extent permitted by applicable law, any claim relating to the service must be brought within one (1) year from the moment you became aware, or should reasonably have become aware, of the event giving rise to it. After that period, the claim shall be permanently barred.",
       },
       section20: {
-        title: "20. Contact",
+        title: "20. No Certifications and Independent Verification",
+        content: "Podoraa is a recently launched product. We hold no formal security or compliance certifications or accreditations —including, among others, ISO/IEC 27001, SOC 1, SOC 2, HIPAA, HITRUST or the Spanish Esquema Nacional de Seguridad—, we have not undergone independent third-party compliance audits, and we do not represent that we hold any, nor should this be assumed. The security measures and features described on the platform, on our website or in any commercial material are descriptions of what the service does at any given time, not certifications, warranties or statements of regulatory conformity. Subscribing to Podoraa does not evidence, replace or guarantee your practice's or clinic's regulatory compliance. Before using the service to process health data, you must assess for yourself —and, where appropriate, with your own professional advice— whether Podoraa is suitable for the regulatory, sector and contractual framework applicable to you, including any requirements imposed on you by your patients, insurers, professional bodies or authorities. If your activity requires a certified provider or a specific data processing agreement that we have not granted you in writing, you must not use the service for that purpose.",
+      },
+      section21: {
+        title: "21. Contact",
         content: "If you have questions about these Terms and Conditions, you can contact us through the support channels provided on the platform.",
       },
     },
@@ -9659,7 +9671,7 @@ views: {
       section4: {
         title: "4. Uso Aceitável",
         intro: "Você concorda em:",
-        item1: "Usar o serviço apenas para fins legais e profissionais",
+        item1: "Usar o serviço de forma lícita e no exercício da sua atividade profissional",
         item2: "Não tentar acessar áreas restritas do sistema",
         item3: "Não interferir no funcionamento do serviço",
         item4: "Não transmitir vírus, malware ou código malicioso",
@@ -9671,8 +9683,8 @@ views: {
         content: "O tratamento de dados pessoais e de pacientes é regido por nossa Política de Privacidade. Você é responsável por cumprir todas as leis de proteção de dados aplicáveis, incluindo, mas não limitado ao RGPD (Regulamento Geral de Proteção de Dados) e outras regulamentações locais de privacidade.",
       },
       section6: {
-        title: "6. Créditos e Cobrança",
-        content: "O uso de certas funcionalidades pode exigir créditos. Os créditos podem ter períodos de validade e estão sujeitos às políticas de cobrança estabelecidas. Não serão feitos reembolsos por créditos não utilizados, exceto em casos excepcionais determinados a nosso critério.",
+        title: "6. Subscrições e Faturação",
+        content: "O acesso à Podoraa é contratado através de uma subscrição periódica paga, de acordo com o plano escolhido e os preços em vigor no momento da contratação. A subscrição renova-se automaticamente no final de cada período salvo se a cancelar a partir da sua conta; o cancelamento produz efeitos no final do período já pago e não confere direito a reembolso proporcional, salvo se a lei aplicável dispuser de outro modo. A Podoraa não comercializa créditos nem cobra por mensagem enviada. Os limites de volume que possa encontrar ao enviar mensagens de WhatsApp não são fixados pela Podoraa, mas pela Meta Platforms, em função do nível que atribuir à sua conta de WhatsApp Business e das suas políticas em vigor, que podem mudar sem aviso prévio e estão fora do nosso controlo.",
       },
       section7: {
         title: "7. Propriedade Intelectual",
@@ -9727,7 +9739,11 @@ views: {
         content: "Na medida permitida pela lei aplicável, qualquer reclamação relacionada com o serviço deverá ser apresentada no prazo de um (1) ano contado a partir do momento em que teve conhecimento, ou razoavelmente deveria tê-lo tido, do facto que a origina. Decorrido esse prazo, a reclamação ficará definitivamente excluída.",
       },
       section20: {
-        title: "20. Contato",
+        title: "20. Ausência de Certificações e Verificação Independente",
+        content: "A Podoraa é um produto de lançamento recente. Não dispomos de certificações nem acreditações formais de segurança ou conformidade —entre outras, ISO/IEC 27001, SOC 1, SOC 2, HIPAA, HITRUST ou Esquema Nacional de Segurança—, não fomos submetidos a auditorias de conformidade por terceiros independentes, e não declaramos dispor delas nem deve presumir-se que as tenhamos. As medidas de segurança e as funcionalidades descritas na plataforma, no nosso sítio web ou em qualquer material comercial são descrições do que o serviço faz em cada momento, não certificações, garantias ou declarações de conformidade normativa. Contratar a Podoraa não comprova, não substitui e não garante o cumprimento normativo da sua consulta ou clínica. Antes de utilizar o serviço para tratar dados de saúde, deve avaliar por si próprio —e, se for caso disso, com aconselhamento profissional próprio— se a Podoraa é adequada ao quadro normativo, setorial e contratual que lhe seja aplicável, incluindo os requisitos que lhe sejam exigidos pelos seus pacientes, seguradoras, ordens profissionais ou autoridades. Se a sua atividade exigir um fornecedor certificado ou um acordo específico de tratamento de dados que não lhe tenhamos concedido por escrito, não deve utilizar o serviço para essa finalidade.",
+      },
+      section21: {
+        title: "21. Contato",
         content: "Se você tiver perguntas sobre estes Termos e Condições, pode entrar em contato conosco através dos canais de suporte fornecidos na plataforma.",
       },
     },
@@ -12134,7 +12150,7 @@ views: {
       section4: {
         title: "4. Utilisation Acceptable",
         intro: "Vous acceptez de:",
-        item1: "Utiliser le service uniquement à des fins légales et professionnelles",
+        item1: "Utiliser le service de manière licite et dans le cadre de votre activité professionnelle",
         item2: "Ne pas tenter d'accéder aux zones restreintes du système",
         item3: "Ne pas interférer avec le fonctionnement du service",
         item4: "Ne pas transmettre de virus, logiciels malveillants ou code malveillant",
@@ -12146,8 +12162,8 @@ views: {
         content: "La gestion des données personnelles et des patients est régie par notre Politique de Confidentialité. Vous êtes responsable de respecter toutes les lois de protection des données applicables, y compris mais sans s'y limiter le RGPD (Règlement Général sur la Protection des Données) et d'autres réglementations locales sur la confidentialité.",
       },
       section6: {
-        title: "6. Crédits et Facturation",
-        content: "L'utilisation de certaines fonctionnalités peut nécessiter des crédits. Les crédits peuvent avoir des périodes de validité et sont soumis aux politiques de facturation établies. Aucun remboursement ne sera effectué pour les crédits non utilisés, sauf dans des cas exceptionnels déterminés à notre discrétion.",
+        title: "6. Abonnements et Facturation",
+        content: "L'accès à Podoraa s'obtient par un abonnement payant périodique, selon la formule choisie et les tarifs en vigueur au moment de la souscription. L'abonnement se renouvelle automatiquement à la fin de chaque période sauf résiliation de votre part depuis votre compte ; la résiliation prend effet à la fin de la période déjà réglée et n'ouvre pas droit à un remboursement au prorata, sauf disposition contraire de la loi applicable. Podoraa ne commercialise pas de crédits et ne facture pas au message envoyé. Les limites de volume que vous pourriez rencontrer lors de l'envoi de messages WhatsApp ne sont pas fixées par Podoraa mais par Meta Platforms, en fonction du palier attribué à votre compte WhatsApp Business et de ses politiques en vigueur, susceptibles d'évoluer sans préavis et échappant à notre contrôle.",
       },
       section7: {
         title: "7. Propriété Intellectuelle",
@@ -12202,7 +12218,11 @@ views: {
         content: "Dans la mesure permise par la loi applicable, toute réclamation liée au service doit être présentée dans un délai d'un (1) an à compter du moment où vous avez eu connaissance, ou auriez raisonnablement dû avoir connaissance, du fait qui lui donne naissance. Passé ce délai, la réclamation sera définitivement forclose.",
       },
       section20: {
-        title: "20. Contact",
+        title: "20. Absence de Certifications et Vérification Indépendante",
+        content: "Podoraa est un produit de lancement récent. Nous ne disposons d'aucune certification ni accréditation formelle de sécurité ou de conformité —notamment ISO/IEC 27001, SOC 1, SOC 2, HIPAA, HITRUST ou HDS—, nous n'avons pas fait l'objet d'audits de conformité par des tiers indépendants, et nous ne déclarons pas en disposer, ce qui ne doit pas non plus être présumé. Les mesures de sécurité et les fonctionnalités décrites sur la plateforme, sur notre site web ou dans tout support commercial sont des descriptions de ce que le service fait à un moment donné, et non des certifications, garanties ou déclarations de conformité réglementaire. Souscrire à Podoraa n'atteste pas, ne remplace pas et ne garantit pas la conformité réglementaire de votre cabinet. Avant d'utiliser le service pour traiter des données de santé, il vous appartient d'évaluer par vous-même —et, le cas échéant, avec votre propre conseil professionnel— si Podoraa convient au cadre réglementaire, sectoriel et contractuel qui vous est applicable, y compris les exigences imposées par vos patients, assureurs, ordres professionnels ou autorités. Si votre activité exige un prestataire certifié ou un accord spécifique de traitement des données que nous ne vous avons pas accordé par écrit, vous ne devez pas utiliser le service à cette fin.",
+      },
+      section21: {
+        title: "21. Contact",
         content: "Si vous avez des questions concernant ces Termes et Conditions, vous pouvez nous contacter via les canaux de support fournis sur la plateforme.",
       },
     },

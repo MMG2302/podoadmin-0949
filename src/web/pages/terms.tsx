@@ -214,6 +214,13 @@ const Terms = () => {
                   {t.terms.section20.content}
                 </p>
               </section>
+
+              <section>
+                <h2 className="text-xl font-semibold text-brand-ink mb-3">{t.terms.section21.title}</h2>
+                <p className="leading-relaxed">
+                  {t.terms.section21.content}
+                </p>
+              </section>
             </div>
 
             {/* Footer Actions */}

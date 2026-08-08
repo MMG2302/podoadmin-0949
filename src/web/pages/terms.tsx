@@ -5,24 +5,8 @@ import { useLocation } from "wouter";
 import { authPage as ap } from "../lib/auth-page-styles";
 
 const Terms = () => {
-  const { t, language } = useLanguage();
+  const { t } = useLanguage();
   const [, setLocation] = useLocation();
-
-  // Formatear fecha dinámica según el idioma
-  const getFormattedDate = () => {
-    const now = new Date();
-    const localeMap: Record<string, string> = {
-      es: 'es-ES',
-      en: 'en-US',
-      pt: 'pt-BR',
-      fr: 'fr-FR',
-    };
-    return now.toLocaleDateString(localeMap[language] || 'es-ES', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-    });
-  };
 
   return (
     <div className={ap.shell}>
@@ -70,7 +54,7 @@ const Terms = () => {
                 {t.terms.title}
               </h1>
               <p className={`${ap.subheading} text-sm`}>
-                {t.terms.lastUpdated}: {getFormattedDate()}
+                {t.terms.lastUpdated}: {t.terms.lastUpdatedDate}
               </p>
             </div>
 
@@ -179,6 +163,55 @@ const Terms = () => {
                 <h2 className="text-xl font-semibold text-brand-ink mb-3">{t.terms.section13.title}</h2>
                 <p className="leading-relaxed">
                   {t.terms.section13.content}
+                </p>
+              </section>
+
+              <section>
+                <h2 className="text-xl font-semibold text-brand-ink mb-3">{t.terms.section14.title}</h2>
+                <p className="leading-relaxed">
+                  {t.terms.section14.content}
+                </p>
+              </section>
+
+              <section>
+                <h2 className="text-xl font-semibold text-brand-ink mb-3">{t.terms.section15.title}</h2>
+                <p className="leading-relaxed">
+                  {t.terms.section15.content}
+                </p>
+              </section>
+
+              <section>
+                <h2 className="text-xl font-semibold text-brand-ink mb-3">{t.terms.section16.title}</h2>
+                <p className="leading-relaxed">
+                  {t.terms.section16.content}
+                </p>
+              </section>
+
+              <section>
+                <h2 className="text-xl font-semibold text-brand-ink mb-3">{t.terms.section17.title}</h2>
+                <p className="leading-relaxed">
+                  {t.terms.section17.content}
+                </p>
+              </section>
+
+              <section>
+                <h2 className="text-xl font-semibold text-brand-ink mb-3">{t.terms.section18.title}</h2>
+                <p className="leading-relaxed">
+                  {t.terms.section18.content}
+                </p>
+              </section>
+
+              <section>
+                <h2 className="text-xl font-semibold text-brand-ink mb-3">{t.terms.section19.title}</h2>
+                <p className="leading-relaxed">
+                  {t.terms.section19.content}
+                </p>
+              </section>
+
+              <section>
+                <h2 className="text-xl font-semibold text-brand-ink mb-3">{t.terms.section20.title}</h2>
+                <p className="leading-relaxed">
+                  {t.terms.section20.content}
                 </p>
               </section>
             </div>

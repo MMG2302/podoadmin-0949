@@ -118,12 +118,10 @@ function AppRoutes() {
       <Route path="/reset-password">
         <PublicRoute component={ResetPassword} />
       </Route>
-      <Route path="/terms">
-        <PublicRoute component={Terms} />
-      </Route>
-      <Route path="/privacy">
-        <PublicRoute component={Privacy} />
-      </Route>
+      {/* Legales: accesibles con o sin sesión. Si PublicRoute redirige al usuario que ya
+          entró, no puede leer los términos que la sección 11 le da por aceptados. */}
+      <Route path="/terms" component={Terms} />
+      <Route path="/privacy" component={Privacy} />
       <Route path="/auth/google/callback">
         <PublicRoute component={GoogleCallbackPage} />
       </Route>

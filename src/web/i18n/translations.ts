@@ -253,6 +253,34 @@ export interface Translations {
       title: string;
       content: string;
     };
+    section14: {
+      title: string;
+      content: string;
+    };
+    section15: {
+      title: string;
+      content: string;
+    };
+    section16: {
+      title: string;
+      content: string;
+    };
+    section17: {
+      title: string;
+      content: string;
+    };
+    section18: {
+      title: string;
+      content: string;
+    };
+    section19: {
+      title: string;
+      content: string;
+    };
+    section20: {
+      title: string;
+      content: string;
+    };
   };
 
   privacy: {
@@ -4648,8 +4676,8 @@ views: {
         content: "Todo el contenido, diseño, código y funcionalidades de Podoraa son propiedad de sus respectivos dueños y están protegidos por leyes de propiedad intelectual. No se permite la reproducción, distribución o uso comercial sin autorización previa.",
       },
       section8: {
-        title: "8. Limitación de Responsabilidad",
-        content: "Podoraa se proporciona \"tal cual\" sin garantías de ningún tipo. No garantizamos que el servicio esté libre de errores, interrupciones o defectos. No seremos responsables de ningún daño directo, indirecto, incidental o consecuente derivado del uso o imposibilidad de uso del servicio.",
+        title: "8. Ausencia de Garantías",
+        content: "Podoraa se proporciona \"tal cual\" y \"según disponibilidad\", sin garantías de ningún tipo, expresas o implícitas. Aunque el servicio está diseñado y mantenido con cuidado profesional, no garantizamos que funcione de forma ininterrumpida, puntual o libre de errores, ni que esté disponible en todo momento. Tampoco garantizamos que la plataforma o los archivos que se suban, descarguen o compartan a través de ella estén libres de virus, malware u otros componentes perjudiciales: aplicamos medidas para prevenirlo, pero no podemos asegurar que un archivo infectado cargado por un usuario no llegue a afectar a otros archivos, equipos o usuarios. No respondemos por aplicaciones, integraciones o servicios de terceros que no estén bajo nuestro control —incluidos WhatsApp, proveedores de pago, correo electrónico o almacenamiento—, ni por su disponibilidad, funcionamiento, cambios o políticas.",
       },
       section9: {
         title: "9. Modificaciones del Servicio",
@@ -4665,10 +4693,38 @@ views: {
       },
       section12: {
         title: "12. Ley Aplicable",
-        content: "Estos términos se rigen por las leyes del país donde opera Podoraa. Cualquier disputa será resuelta en los tribunales competentes de dicha jurisdicción.",
+        content: "Estos términos se rigen por las leyes de [JURISDICCIÓN], con exclusión de sus normas sobre conflicto de leyes. El arbitraje previsto en la sección 18 será administrado por [INSTITUCIÓN ARBITRAL] conforme a su reglamento vigente, con sede en [CIUDAD, PAÍS] y en idioma español. Cuando la ley aplicable no permita someter una controversia a arbitraje, esta se resolverá ante los tribunales competentes de [CIUDAD, PAÍS].",
       },
       section13: {
-        title: "13. Contacto",
+        title: "13. Responsabilidad sobre la Información de los Pacientes",
+        content: "Usted es el responsable del tratamiento de los datos de sus pacientes; Podoraa actúa como encargado del tratamiento y procesa esa información siguiendo sus instrucciones. En consecuencia, usted responde de la información que registra, almacena, comparte o exporta a través de la plataforma y de su exactitud y licitud; de obtener el consentimiento y de facilitar la información que exija la normativa aplicable; de las interacciones y comunicaciones que mantenga con sus pacientes desde el sistema, incluidos los mensajes de WhatsApp, los recordatorios de citas y los enlaces de reserva; y de los accesos que conceda a otros usuarios de su cuenta, así como del uso que estos hagan de la información. Lo anterior no exime a Podoraa de las obligaciones que le corresponden como encargado del tratamiento conforme a la normativa aplicable.",
+      },
+      section14: {
+        title: "14. Riesgos de Seguridad, Incidentes y Pérdida de Datos",
+        content: "Podoraa es un sistema accesible a través de internet y, como cualquier sistema expuesto, puede ser objeto de intentos de ataque por parte de terceros con conocimientos especializados. Nos comprometemos a mantener medidas de seguridad razonables y actualizadas —cifrado, control de acceso por rol, registro de auditoría, copias de seguridad y políticas de retención—, pero ninguna medida de seguridad es infalible. Usted reconoce y acepta que existe la posibilidad de accesos no autorizados, brechas de seguridad, corrupción o pérdida de datos, interrupciones del servicio y suplantación de identidad, y que tales hechos podrían afectar tanto a su consulta como a terceros, incluidos sus pacientes. Le recomendamos mantener copias propias de la información crítica mediante las funciones de exportación disponibles. Ante un incidente de seguridad que afecte a datos personales, se lo notificaremos en los plazos y términos que exija la normativa aplicable.",
+      },
+      section15: {
+        title: "15. Ausencia de Asesoramiento Profesional",
+        content: "Podoraa es una herramienta de gestión y registro. No constituye ni sustituye asesoramiento médico, sanitario, jurídico, fiscal, contable ni ningún otro servicio profesional, y no debe utilizarse como respaldo o fundamento de una decisión clínica, legal o de negocio. El material que la plataforma genera —informes, plantillas, métricas, alertas o resúmenes— es apoyo administrativo: la valoración clínica, el diagnóstico, el tratamiento y el cumplimiento normativo son responsabilidad exclusiva del profesional y de la clínica. Ante cualquier cuestión clínica o legal, consulte a un profesional cualificado.",
+      },
+      section16: {
+        title: "16. Límite de Responsabilidad Económica",
+        content: "En la máxima medida permitida por la ley aplicable, la responsabilidad total y acumulada de Podoraa frente a usted por cualquier reclamación relacionada con el servicio, cualquiera que sea su fundamento —contractual, extracontractual o de otra naturaleza—, no excederá del mayor de los siguientes importes: (a) el total de las cantidades que usted haya pagado por el servicio durante los doce (12) meses anteriores al hecho que origine la reclamación, o (b) cuatrocientos dólares estadounidenses (400 USD). Este límite se aplica de forma conjunta al total de las reclamaciones y no de forma independiente a cada una. Nada en estos términos excluye ni limita la responsabilidad que no pueda excluirse o limitarse legalmente, incluida la derivada de dolo o culpa grave.",
+      },
+      section17: {
+        title: "17. Solución Única y Exclusiva",
+        content: "Si no está conforme con el servicio, con estos términos o con cualquier modificación de los mismos, su única y exclusiva solución es dejar de utilizar Podoraa y cancelar su suscripción. Según el caso, esto significa interrumpir el uso de la plataforma, no renovar el pago o cancelar la suscripción desde su cuenta. La cancelación surte efecto al final del periodo ya abonado y no genera derecho a reembolso de los importes ya pagados, salvo que la ley aplicable disponga otra cosa.",
+      },
+      section18: {
+        title: "18. Arbitraje Individual y Renuncia a Acciones Colectivas",
+        content: "En la medida permitida por la ley aplicable, cualquier controversia derivada de estos términos o del uso del servicio que no se resuelva de forma amistosa se someterá a arbitraje vinculante individual, conforme a la institución, reglamento y sede indicados en la sección 12, con renuncia expresa a la vía judicial y a juicio con jurado. Usted y Podoraa renuncian a promover o participar en acciones colectivas, de grupo o de representación: las reclamaciones se tramitarán únicamente a título individual, y el árbitro no podrá acumular las de varios usuarios ni dictar un laudo de alcance colectivo. Si esta renuncia resultara inválida o inejecutable respecto de una reclamación concreta, esa reclamación quedará excluida del arbitraje y se resolverá ante los tribunales competentes, manteniéndose el arbitraje para las demás.",
+      },
+      section19: {
+        title: "19. Plazo para Presentar Reclamaciones",
+        content: "En la medida permitida por la ley aplicable, cualquier reclamación relacionada con el servicio deberá presentarse dentro del plazo de un (1) año contado desde el momento en que usted tuvo conocimiento, o razonablemente debió tenerlo, del hecho que la origina. Transcurrido ese plazo, la reclamación quedará definitivamente excluida.",
+      },
+      section20: {
+        title: "20. Contacto",
         content: "Si tiene preguntas sobre estos Términos y Condiciones, puede contactarnos a través de los canales de soporte proporcionados en la plataforma.",
       },
     },
@@ -7123,8 +7179,8 @@ views: {
         content: "All content, design, code, and functionalities of Podoraa are the property of their respective owners and are protected by intellectual property laws. Reproduction, distribution, or commercial use is not permitted without prior authorization.",
       },
       section8: {
-        title: "8. Limitation of Liability",
-        content: "Podoraa is provided \"as is\" without warranties of any kind. We do not guarantee that the service is free from errors, interruptions, or defects. We will not be liable for any direct, indirect, incidental, or consequential damages arising from the use or inability to use the service.",
+        title: "8. Disclaimer of Warranties",
+        content: "Podoraa is provided \"as is\" and \"as available\", without warranties of any kind, express or implied. Although the service is designed and maintained with professional care, we do not warrant that it will operate uninterrupted, timely or error-free, nor that it will be available at all times. Neither do we warrant that the platform or the files uploaded, downloaded or shared through it are free from viruses, malware or other harmful components: we apply measures to prevent this, but we cannot ensure that an infected file uploaded by a user will not reach other files, devices or users. We are not responsible for third-party applications, integrations or services outside our control —including WhatsApp, payment providers, email or storage— nor for their availability, operation, changes or policies.",
       },
       section9: {
         title: "9. Service Modifications",
@@ -7140,10 +7196,38 @@ views: {
       },
       section12: {
         title: "12. Applicable Law",
-        content: "These terms are governed by the laws of the country where Podoraa operates. Any dispute will be resolved in the competent courts of that jurisdiction.",
+        content: "These terms are governed by the laws of [JURISDICTION], excluding its conflict-of-laws rules. The arbitration provided for in section 18 shall be administered by [ARBITRAL INSTITUTION] under its rules in force, seated in [CITY, COUNTRY] and conducted in Spanish. Where applicable law does not permit a dispute to be submitted to arbitration, it shall be resolved before the competent courts of [CITY, COUNTRY].",
       },
       section13: {
-        title: "13. Contact",
+        title: "13. Responsibility for Patient Information",
+        content: "You are the controller of your patients' data; Podoraa acts as processor and handles that information on your instructions. Accordingly, you are responsible for the information you record, store, share or export through the platform and for its accuracy and lawfulness; for obtaining consent and providing the information required by applicable law; for the interactions and communications you hold with your patients from the system, including WhatsApp messages, appointment reminders and booking links; and for the access you grant to other users of your account, as well as for the use they make of that information. The foregoing does not release Podoraa from its own obligations as a processor under applicable law.",
+      },
+      section14: {
+        title: "14. Security Risks, Incidents and Data Loss",
+        content: "Podoraa is a system reachable over the internet and, like any exposed system, may be the target of attack attempts by third parties with specialised knowledge. We commit to maintaining reasonable, up-to-date security measures —encryption, role-based access control, audit logging, backups and retention policies— but no security measure is infallible. You acknowledge and accept that unauthorised access, security breaches, data corruption or loss, service interruptions and identity impersonation are possible, and that such events could affect both your practice and third parties, including your patients. We recommend keeping your own copies of critical information using the export features available. In the event of a security incident affecting personal data, we will notify you within the time limits and on the terms required by applicable law.",
+      },
+      section15: {
+        title: "15. No Professional Advice",
+        content: "Podoraa is a management and record-keeping tool. It does not constitute or replace medical, healthcare, legal, tax, accounting or any other professional advice, and must not be used as the basis or support for a clinical, legal or business decision. The material the platform generates —reports, templates, metrics, alerts or summaries— is administrative support: clinical assessment, diagnosis, treatment and regulatory compliance are the sole responsibility of the professional and the clinic. For any clinical or legal matter, consult a qualified professional.",
+      },
+      section16: {
+        title: "16. Limitation of Monetary Liability",
+        content: "To the maximum extent permitted by applicable law, Podoraa's total aggregate liability to you for any claim relating to the service, on whatever basis —contractual, non-contractual or otherwise—, shall not exceed the greater of: (a) the total amounts you have paid for the service during the twelve (12) months preceding the event giving rise to the claim, or (b) four hundred United States dollars (USD 400). This cap applies in aggregate to all claims and not separately to each of them. Nothing in these terms excludes or limits liability that cannot lawfully be excluded or limited, including liability arising from wilful misconduct or gross negligence.",
+      },
+      section17: {
+        title: "17. Sole and Exclusive Remedy",
+        content: "If you are dissatisfied with the service, with these terms or with any modification to them, your sole and exclusive remedy is to stop using Podoraa and cancel your subscription. Depending on the case, this means discontinuing use of the platform, not renewing payment, or cancelling the subscription from your account. Cancellation takes effect at the end of the period already paid for and does not entitle you to a refund of amounts already paid, unless applicable law provides otherwise.",
+      },
+      section18: {
+        title: "18. Individual Arbitration and Class Action Waiver",
+        content: "To the extent permitted by applicable law, any dispute arising from these terms or from use of the service that is not resolved amicably shall be submitted to individual binding arbitration, under the institution, rules and seat set out in section 12, with express waiver of recourse to the courts and of trial by jury. You and Podoraa waive the right to bring or take part in class, collective or representative actions: claims shall be brought solely on an individual basis, and the arbitrator may not consolidate the claims of several users or issue an award of collective scope. If this waiver is held invalid or unenforceable as to a particular claim, that claim shall be excluded from arbitration and resolved before the competent courts, with arbitration remaining in force for the rest.",
+      },
+      section19: {
+        title: "19. Time Limit for Claims",
+        content: "To the extent permitted by applicable law, any claim relating to the service must be brought within one (1) year from the moment you became aware, or should reasonably have become aware, of the event giving rise to it. After that period, the claim shall be permanently barred.",
+      },
+      section20: {
+        title: "20. Contact",
         content: "If you have questions about these Terms and Conditions, you can contact us through the support channels provided on the platform.",
       },
     },
@@ -9595,8 +9679,8 @@ views: {
         content: "Todo o conteúdo, design, código e funcionalidades de Podoraa são propriedade de seus respectivos proprietários e estão protegidos por leis de propriedade intelectual. Não é permitida a reprodução, distribuição ou uso comercial sem autorização prévia.",
       },
       section8: {
-        title: "8. Limitação de Responsabilidade",
-        content: "O serviço Podoraa é fornecido \"como está\" sem garantias de qualquer tipo. Não garantimos que o serviço esteja livre de erros, interrupções ou defeitos. Não seremos responsáveis por quaisquer danos diretos, indiretos, incidentais ou consequenciais decorrentes do uso ou impossibilidade de uso do serviço.",
+        title: "8. Ausência de Garantias",
+        content: "O serviço Podoraa é fornecido \"como está\" e \"conforme disponibilidade\", sem garantias de qualquer tipo, expressas ou implícitas. Embora o serviço seja concebido e mantido com cuidado profissional, não garantimos que funcione de forma ininterrupta, pontual ou livre de erros, nem que esteja disponível a todo o momento. Também não garantimos que a plataforma ou os ficheiros carregados, descarregados ou partilhados através dela estejam livres de vírus, malware ou outros componentes prejudiciais: aplicamos medidas para o prevenir, mas não podemos assegurar que um ficheiro infetado carregado por um utilizador não chegue a afetar outros ficheiros, equipamentos ou utilizadores. Não respondemos por aplicações, integrações ou serviços de terceiros fora do nosso controlo —incluindo WhatsApp, prestadores de pagamento, correio eletrónico ou armazenamento— nem pela sua disponibilidade, funcionamento, alterações ou políticas.",
       },
       section9: {
         title: "9. Modificações do Serviço",
@@ -9612,10 +9696,38 @@ views: {
       },
       section12: {
         title: "12. Lei Aplicável",
-        content: "Estes termos são regidos pelas leis do país onde Podoraa opera. Qualquer disputa será resolvida nos tribunais competentes dessa jurisdição.",
+        content: "Estes termos são regidos pelas leis de [JURISDIÇÃO], com exclusão das suas normas de conflito de leis. A arbitragem prevista na secção 18 será administrada por [INSTITUIÇÃO ARBITRAL] de acordo com o seu regulamento em vigor, com sede em [CIDADE, PAÍS] e em língua espanhola. Quando a lei aplicável não permitir submeter uma controvérsia a arbitragem, esta será resolvida perante os tribunais competentes de [CIDADE, PAÍS].",
       },
       section13: {
-        title: "13. Contato",
+        title: "13. Responsabilidade sobre a Informação dos Pacientes",
+        content: "Você é o responsável pelo tratamento dos dados dos seus pacientes; a Podoraa atua como subcontratante e trata essa informação seguindo as suas instruções. Em consequência, você responde pela informação que regista, armazena, partilha ou exporta através da plataforma e pela sua exatidão e licitude; por obter o consentimento e prestar a informação exigida pela normativa aplicável; pelas interações e comunicações que mantenha com os seus pacientes a partir do sistema, incluindo mensagens de WhatsApp, lembretes de consulta e links de marcação; e pelos acessos que conceda a outros utilizadores da sua conta, bem como pelo uso que estes façam da informação. O acima exposto não isenta a Podoraa das obrigações que lhe cabem como subcontratante nos termos da normativa aplicável.",
+      },
+      section14: {
+        title: "14. Riscos de Segurança, Incidentes e Perda de Dados",
+        content: "A Podoraa é um sistema acessível através da internet e, como qualquer sistema exposto, pode ser alvo de tentativas de ataque por terceiros com conhecimentos especializados. Comprometemo-nos a manter medidas de segurança razoáveis e atualizadas —cifragem, controlo de acesso por perfil, registo de auditoria, cópias de segurança e políticas de retenção—, mas nenhuma medida de segurança é infalível. Você reconhece e aceita que existe a possibilidade de acessos não autorizados, violações de segurança, corrupção ou perda de dados, interrupções do serviço e usurpação de identidade, e que tais factos poderão afetar tanto a sua consulta como terceiros, incluindo os seus pacientes. Recomendamos que mantenha cópias próprias da informação crítica através das funções de exportação disponíveis. Perante um incidente de segurança que afete dados pessoais, notificá-lo-emos nos prazos e termos exigidos pela normativa aplicável.",
+      },
+      section15: {
+        title: "15. Ausência de Aconselhamento Profissional",
+        content: "A Podoraa é uma ferramenta de gestão e registo. Não constitui nem substitui aconselhamento médico, de saúde, jurídico, fiscal, contabilístico ou qualquer outro serviço profissional, e não deve ser utilizada como suporte ou fundamento de uma decisão clínica, legal ou de negócio. O material que a plataforma gera —relatórios, modelos, métricas, alertas ou resumos— é apoio administrativo: a avaliação clínica, o diagnóstico, o tratamento e o cumprimento normativo são responsabilidade exclusiva do profissional e da clínica. Perante qualquer questão clínica ou legal, consulte um profissional qualificado.",
+      },
+      section16: {
+        title: "16. Limite de Responsabilidade Económica",
+        content: "Na máxima medida permitida pela lei aplicável, a responsabilidade total e acumulada da Podoraa perante si por qualquer reclamação relacionada com o serviço, seja qual for o seu fundamento —contratual, extracontratual ou de outra natureza—, não excederá o maior dos seguintes montantes: (a) o total das quantias que tenha pago pelo serviço durante os doze (12) meses anteriores ao facto que origine a reclamação, ou (b) quatrocentos dólares dos Estados Unidos (400 USD). Este limite aplica-se de forma conjunta ao total das reclamações e não de forma independente a cada uma delas. Nada nestes termos exclui ou limita a responsabilidade que não possa ser legalmente excluída ou limitada, incluindo a decorrente de dolo ou culpa grave.",
+      },
+      section17: {
+        title: "17. Solução Única e Exclusiva",
+        content: "Se não estiver satisfeito com o serviço, com estes termos ou com qualquer alteração dos mesmos, a sua única e exclusiva solução é deixar de utilizar a Podoraa e cancelar a sua subscrição. Consoante o caso, isto significa interromper o uso da plataforma, não renovar o pagamento ou cancelar a subscrição a partir da sua conta. O cancelamento produz efeitos no final do período já pago e não confere direito ao reembolso das quantias já pagas, salvo se a lei aplicável dispuser de outro modo.",
+      },
+      section18: {
+        title: "18. Arbitragem Individual e Renúncia a Ações Coletivas",
+        content: "Na medida permitida pela lei aplicável, qualquer controvérsia decorrente destes termos ou do uso do serviço que não seja resolvida amigavelmente será submetida a arbitragem vinculativa individual, nos termos da instituição, regulamento e sede indicados na secção 12, com renúncia expressa à via judicial e a julgamento por júri. Você e a Podoraa renunciam a promover ou participar em ações coletivas, de grupo ou de representação: as reclamações serão tramitadas apenas a título individual, e o árbitro não poderá acumular as de vários utilizadores nem proferir uma decisão de alcance coletivo. Se esta renúncia for considerada inválida ou inexequível quanto a uma reclamação concreta, essa reclamação ficará excluída da arbitragem e será resolvida perante os tribunais competentes, mantendo-se a arbitragem para as restantes.",
+      },
+      section19: {
+        title: "19. Prazo para Apresentar Reclamações",
+        content: "Na medida permitida pela lei aplicável, qualquer reclamação relacionada com o serviço deverá ser apresentada no prazo de um (1) ano contado a partir do momento em que teve conhecimento, ou razoavelmente deveria tê-lo tido, do facto que a origina. Decorrido esse prazo, a reclamação ficará definitivamente excluída.",
+      },
+      section20: {
+        title: "20. Contato",
         content: "Se você tiver perguntas sobre estes Termos e Condições, pode entrar em contato conosco através dos canais de suporte fornecidos na plataforma.",
       },
     },
@@ -12042,8 +12154,8 @@ views: {
         content: "Tout le contenu, la conception, le code et les fonctionnalités de Podoraa sont la propriété de leurs propriétaires respectifs et sont protégés par les lois sur la propriété intellectuelle. La reproduction, la distribution ou l'utilisation commerciale n'est pas autorisée sans autorisation préalable.",
       },
       section8: {
-        title: "8. Limitation de Responsabilité",
-        content: "Podoraa est fourni \"tel quel\" sans garanties d'aucune sorte. Nous ne garantissons pas que le service soit exempt d'erreurs, d'interruptions ou de défauts. Nous ne serons pas responsables de tout dommage direct, indirect, accessoire ou consécutif résultant de l'utilisation ou de l'impossibilité d'utiliser le service.",
+        title: "8. Absence de Garanties",
+        content: "Podoraa est fourni \"tel quel\" et \"selon disponibilité\", sans garanties d'aucune sorte, expresses ou implicites. Bien que le service soit conçu et maintenu avec un soin professionnel, nous ne garantissons pas qu'il fonctionne de manière ininterrompue, ponctuelle ou exempte d'erreurs, ni qu'il soit disponible à tout moment. Nous ne garantissons pas non plus que la plateforme ou les fichiers téléversés, téléchargés ou partagés par son intermédiaire soient exempts de virus, de logiciels malveillants ou d'autres composants nuisibles : nous appliquons des mesures pour l'éviter, mais nous ne pouvons pas garantir qu'un fichier infecté téléversé par un utilisateur n'atteigne pas d'autres fichiers, équipements ou utilisateurs. Nous ne répondons pas des applications, intégrations ou services tiers échappant à notre contrôle —y compris WhatsApp, les prestataires de paiement, la messagerie ou le stockage— ni de leur disponibilité, fonctionnement, évolutions ou politiques.",
       },
       section9: {
         title: "9. Modifications du Service",
@@ -12059,10 +12171,38 @@ views: {
       },
       section12: {
         title: "12. Loi Applicable",
-        content: "Ces termes sont régis par les lois du pays où Podoraa opère. Tout litige sera résolu dans les tribunaux compétents de cette juridiction.",
+        content: "Ces conditions sont régies par les lois de [JURIDICTION], à l'exclusion de ses règles de conflit de lois. L'arbitrage prévu à la section 18 sera administré par [INSTITUTION ARBITRALE] conformément à son règlement en vigueur, avec siège à [VILLE, PAYS] et en langue espagnole. Lorsque la loi applicable ne permet pas de soumettre un litige à l'arbitrage, celui-ci sera tranché par les tribunaux compétents de [VILLE, PAYS].",
       },
       section13: {
-        title: "13. Contact",
+        title: "13. Responsabilité sur les Informations des Patients",
+        content: "Vous êtes le responsable du traitement des données de vos patients ; Podoraa agit en qualité de sous-traitant et traite ces informations conformément à vos instructions. Par conséquent, vous répondez des informations que vous enregistrez, conservez, partagez ou exportez via la plateforme ainsi que de leur exactitude et de leur licéité ; de l'obtention du consentement et de la communication des informations exigées par la réglementation applicable ; des interactions et communications que vous entretenez avec vos patients depuis le système, y compris les messages WhatsApp, les rappels de rendez-vous et les liens de réservation ; et des accès que vous accordez à d'autres utilisateurs de votre compte, ainsi que de l'usage qu'ils en font. Ce qui précède ne dispense pas Podoraa des obligations qui lui incombent en tant que sous-traitant au titre de la réglementation applicable.",
+      },
+      section14: {
+        title: "14. Risques de Sécurité, Incidents et Perte de Données",
+        content: "Podoraa est un système accessible via internet et, comme tout système exposé, peut faire l'objet de tentatives d'attaque par des tiers dotés de connaissances spécialisées. Nous nous engageons à maintenir des mesures de sécurité raisonnables et à jour —chiffrement, contrôle d'accès par rôle, journalisation d'audit, sauvegardes et politiques de conservation—, mais aucune mesure de sécurité n'est infaillible. Vous reconnaissez et acceptez que des accès non autorisés, des violations de sécurité, une corruption ou une perte de données, des interruptions de service et des usurpations d'identité sont possibles, et que de tels faits pourraient affecter tant votre cabinet que des tiers, y compris vos patients. Nous vous recommandons de conserver vos propres copies des informations critiques au moyen des fonctions d'export disponibles. En cas d'incident de sécurité affectant des données personnelles, nous vous en informerons dans les délais et selon les modalités exigés par la réglementation applicable.",
+      },
+      section15: {
+        title: "15. Absence de Conseil Professionnel",
+        content: "Podoraa est un outil de gestion et d'enregistrement. Il ne constitue ni ne remplace un conseil médical, sanitaire, juridique, fiscal, comptable ou tout autre service professionnel, et ne doit pas servir de fondement ou d'appui à une décision clinique, juridique ou commerciale. Le matériel généré par la plateforme —comptes rendus, modèles, indicateurs, alertes ou synthèses— constitue un support administratif : l'évaluation clinique, le diagnostic, le traitement et la conformité réglementaire relèvent de la seule responsabilité du praticien et du cabinet. Pour toute question clinique ou juridique, consultez un professionnel qualifié.",
+      },
+      section16: {
+        title: "16. Plafond de Responsabilité Financière",
+        content: "Dans la mesure maximale permise par la loi applicable, la responsabilité totale et cumulée de Podoraa envers vous au titre de toute réclamation liée au service, quel qu'en soit le fondement —contractuel, délictuel ou autre—, n'excédera pas le plus élevé des montants suivants : (a) le total des sommes que vous avez versées pour le service au cours des douze (12) mois précédant le fait à l'origine de la réclamation, ou (b) quatre cents dollars des États-Unis (400 USD). Ce plafond s'applique globalement à l'ensemble des réclamations et non séparément à chacune d'elles. Rien dans les présentes conditions n'exclut ni ne limite la responsabilité qui ne peut légalement être exclue ou limitée, y compris celle résultant d'une faute intentionnelle ou d'une faute lourde.",
+      },
+      section17: {
+        title: "17. Recours Unique et Exclusif",
+        content: "Si vous n'êtes pas satisfait du service, des présentes conditions ou de toute modification de celles-ci, votre recours unique et exclusif consiste à cesser d'utiliser Podoraa et à résilier votre abonnement. Selon le cas, cela signifie interrompre l'usage de la plateforme, ne pas renouveler le paiement ou résilier l'abonnement depuis votre compte. La résiliation prend effet à la fin de la période déjà réglée et n'ouvre pas droit au remboursement des sommes déjà versées, sauf disposition contraire de la loi applicable.",
+      },
+      section18: {
+        title: "18. Arbitrage Individuel et Renonciation aux Actions Collectives",
+        content: "Dans la mesure permise par la loi applicable, tout litige né des présentes conditions ou de l'utilisation du service qui ne serait pas résolu à l'amiable sera soumis à un arbitrage individuel contraignant, selon l'institution, le règlement et le siège indiqués à la section 12, avec renonciation expresse à la voie judiciaire et au procès devant jury. Vous et Podoraa renoncez à engager une action collective, de groupe ou de représentation ou à y participer : les réclamations seront traitées uniquement à titre individuel, et l'arbitre ne pourra ni joindre celles de plusieurs utilisateurs ni rendre une sentence de portée collective. Si cette renonciation était jugée invalide ou inexécutable pour une réclamation déterminée, celle-ci serait exclue de l'arbitrage et tranchée par les tribunaux compétents, l'arbitrage demeurant applicable aux autres.",
+      },
+      section19: {
+        title: "19. Délai pour Présenter une Réclamation",
+        content: "Dans la mesure permise par la loi applicable, toute réclamation liée au service doit être présentée dans un délai d'un (1) an à compter du moment où vous avez eu connaissance, ou auriez raisonnablement dû avoir connaissance, du fait qui lui donne naissance. Passé ce délai, la réclamation sera définitivement forclose.",
+      },
+      section20: {
+        title: "20. Contact",
         content: "Si vous avez des questions concernant ces Termes et Conditions, vous pouvez nous contacter via les canaux de support fournis sur la plateforme.",
       },
     },

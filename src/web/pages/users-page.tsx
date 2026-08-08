@@ -2253,6 +2253,24 @@ const UsersPage = () => {
                       <span className="mobile-card-label">{t.usersPage.table.clinic}</span>
                       <span className="mobile-card-value">{clinicMap.get(u.clinicId)?.clinicName ?? u.clinicId}</span>
                     </div>
+                    {/* El plan solo existía en la tabla de escritorio; en móvil la
+                        tarjeta no lo mostraba. */}
+                    {clinicMap.get(u.clinicId)?.effectivePlanTier && (
+                      <div className="mobile-card-row">
+                        <span className="mobile-card-label">{t.premium.menuManagePlan}</span>
+                        <span
+                          className={`text-[10px] font-medium px-1.5 py-0.5 rounded-full whitespace-nowrap ${
+                            clinicMap.get(u.clinicId)!.effectivePlanTier === "premium"
+                              ? "bg-brand-ink text-brand-ink-fg"
+                              : "border border-gray-300 text-gray-500"
+                          }`}
+                        >
+                          {clinicMap.get(u.clinicId)!.effectivePlanTier === "premium"
+                            ? t.premium.badge
+                            : t.premium.baseBadge}
+                        </span>
+                      </div>
+                    )}
                     {clinicMap.get(u.clinicId) && (
                       <div className="mobile-card-row">
                         <span className="mobile-card-label">{t.usersPage.table.podiatristLimit}</span>

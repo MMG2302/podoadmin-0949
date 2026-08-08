@@ -113,8 +113,8 @@ const es: LandingI18n = {
   heroStatDigital: "Digital",
   heroStatAccess: "Acceso 24/7",
   heroStatSecure: "Seguro",
-  solutionsTitle: "Todo lo que ya haces, en un solo lugar",
-  solutionsSubtitle: "Podoraa acompaña tu día en segundo plano: recuerda las citas, mantiene el seguimiento al día y deja cada cosa registrada. Sin que cambies tu manera de atender.",
+  solutionsTitle: "Menos tiempo organizando. Más tiempo con tus pacientes.",
+  solutionsSubtitle: "Podoraa convierte la administración de tu consulta en algo simple y ordenado: recuerda las citas, mantiene el seguimiento al día y deja cada cosa registrada. Sin que cambies tu manera de atender.",
   solutionAbsences: {
     problem: "Agenda llena y citas confirmadas",
     solution: "Recordatorios y confirmación automática por WhatsApp, sin límite de mensajes, para que cada hueco de tu agenda se aproveche.",
@@ -196,7 +196,7 @@ const es: LandingI18n = {
         "Registras la sesión con tus plantillas, la exploración podológica y los informes listos para imprimir. El pago queda anotado en el mismo flujo, sin cambiar de pantalla.",
     },
     {
-      title: "Miras cómo va tu consulta",
+      title: "Visualizas tu crecimiento",
       description:
         "Ventas, rentabilidad, ocupación de agenda y a qué pacientes hace tiempo que no ves. Los datos ya están ahí el día que los necesites.",
     },
@@ -315,8 +315,8 @@ const en: LandingI18n = {
   heroStatDigital: "Digital",
   heroStatAccess: "24/7 access",
   heroStatSecure: "Secure",
-  solutionsTitle: "Everything you already do, in one place",
-  solutionsSubtitle: "Podoraa supports your day in the background: it remembers appointments, keeps follow-up on track and records every step. Without changing how you care for patients.",
+  solutionsTitle: "Less time on admin. More time with your patients.",
+  solutionsSubtitle: "Podoraa turns running your practice into something simple and organised: it remembers appointments, keeps follow-up on track and records every step. Without changing how you care for patients.",
   solutionAbsences: {
     problem: "A full calendar with confirmed appointments",
     solution: "Automatic WhatsApp reminders and confirmations, with no message limits, so every slot in your schedule counts.",
@@ -398,7 +398,7 @@ const en: LandingI18n = {
         "Record the session with your own templates, the podiatric assessment and print-ready reports. Payment is logged in the same flow, without switching screens.",
     },
     {
-      title: "You see how your practice is doing",
+      title: "You watch your practice grow",
       description:
         "Revenue, profitability, schedule occupancy and which patients you haven't seen in a while. The data is already there the day you need it.",
     },
@@ -517,8 +517,8 @@ const pt: LandingI18n = {
   heroStatDigital: "Digital",
   heroStatAccess: "Acesso 24/7",
   heroStatSecure: "Seguro",
-  solutionsTitle: "Tudo o que já faz, num só lugar",
-  solutionsSubtitle: "Podoraa acompanha o seu dia em segundo plano: lembra as consultas, mantém o seguimento em dia e regista cada passo. Sem mudar a sua forma de atender.",
+  solutionsTitle: "Menos tempo a organizar. Mais tempo com os seus pacientes.",
+  solutionsSubtitle: "A Podoraa transforma a gestão da sua consulta em algo simples e organizado: lembra as consultas, mantém o seguimento em dia e regista cada passo. Sem mudar a sua forma de atender.",
   solutionAbsences: {
     problem: "Agenda cheia e consultas confirmadas",
     solution: "Lembretes e confirmação automática por WhatsApp, sem limite de mensagens, para aproveitar cada espaço da sua agenda.",
@@ -600,7 +600,7 @@ const pt: LandingI18n = {
         "Regista a sessão com os seus modelos, a exploração podológica e os relatórios prontos a imprimir. O pagamento fica anotado no mesmo fluxo, sem mudar de ecrã.",
     },
     {
-      title: "Vê como vai a sua consulta",
+      title: "Vê a sua consulta a crescer",
       description:
         "Vendas, rentabilidade, ocupação da agenda e que pacientes há muito não vê. Os dados já lá estão no dia em que precisar deles.",
     },
@@ -719,8 +719,8 @@ const fr: LandingI18n = {
   heroStatDigital: "Numérique",
   heroStatAccess: "Accès 24/7",
   heroStatSecure: "Sécurisé",
-  solutionsTitle: "Tout ce que vous faites déjà, en un seul endroit",
-  solutionsSubtitle: "Podoraa accompagne votre journée en arrière-plan : il rappelle les rendez-vous, garde le suivi à jour et enregistre chaque étape. Sans changer votre façon de soigner.",
+  solutionsTitle: "Moins de temps à organiser. Plus de temps avec vos patients.",
+  solutionsSubtitle: "Podoraa transforme la gestion de votre cabinet en quelque chose de simple et d'organisé : il rappelle les rendez-vous, garde le suivi à jour et enregistre chaque étape. Sans changer votre façon de soigner.",
   solutionAbsences: {
     problem: "Un agenda rempli et des rendez-vous confirmés",
     solution: "Rappels et confirmation automatique par WhatsApp, sans limite de messages, pour valoriser chaque créneau de votre agenda.",
@@ -802,7 +802,7 @@ const fr: LandingI18n = {
         "Vous enregistrez la séance avec vos modèles, l'examen podologique et les rapports prêts à imprimer. Le paiement est noté dans le même flux, sans changer d'écran.",
     },
     {
-      title: "Vous voyez où en est votre cabinet",
+      title: "Vous voyez votre cabinet grandir",
       description:
         "Ventes, rentabilité, taux de remplissage et patients que vous n'avez pas vus depuis longtemps. Les données sont déjà là le jour où vous en avez besoin.",
     },

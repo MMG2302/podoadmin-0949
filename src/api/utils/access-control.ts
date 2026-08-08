@@ -40,6 +40,18 @@ export function allowDevTrialAccess(): boolean {
   return process.env.ACCESS_ALLOW_TRIAL === '1';
 }
 
+/**
+ * Nivel de un acceso concedido a mano (isEnabled).
+ *
+ * Por defecto premium, que es como funcionaba: habilitar a alguien equivalía a
+ * darle todo. Pero si un super_admin fijó un override explícito —por ejemplo para
+ * bajar a base a petición del cliente— ese valor manda, porque de lo contrario la
+ * habilitación manual anularía en silencio la decisión.
+ */
+function manuallyEnabledTier(sub: SubscriptionPublic | null | undefined): PlanTier {
+  return sub?.planTierOverride ?? 'premium';
+}
+
 export function isStripeSubscriptionGranted(sub: SubscriptionPublic | null): boolean {
   if (!sub?.stripeSubscriptionId) return false;
   return sub.isActive;
@@ -138,10 +150,12 @@ export async function resolveSystemAccess(
   }
 
   if (role === 'receptionist') {
-    if (userRowResolved.isEnabled === true) {
-      return withTier({ granted: true, reason: 'admin_enabled' }, 'premium');
-    }
+    // La suscripción se resuelve antes del atajo por isEnabled: la recepcionista
+    // hereda el nivel de quien paga, incluido un override a base.
     const payerSub = prefetchedSub ?? (await getReceptionistPayerSubscription(userRowResolved));
+    if (userRowResolved.isEnabled === true) {
+      return withTier({ granted: true, reason: 'admin_enabled' }, manuallyEnabledTier(payerSub));
+    }
     if (isStripeSubscriptionGranted(payerSub)) {
       return withTier({ granted: true, reason: 'stripe_paid' }, effectiveTier(payerSub!));
     }
@@ -175,7 +189,7 @@ export async function resolveSystemAccess(
       return withTier({ granted: true, reason }, effectiveTier(sub));
     }
     if (userRowResolved.isEnabled === true) {
-      return withTier({ granted: true, reason: 'admin_enabled' }, 'premium');
+      return withTier({ granted: true, reason: 'admin_enabled' }, manuallyEnabledTier(sub));
     }
     return withTier({
       granted: false,

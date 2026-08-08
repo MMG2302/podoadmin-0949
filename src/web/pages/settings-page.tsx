@@ -818,6 +818,7 @@ const SettingsPage = () => {
           onChange={handleTabChange}
           tabs={[
             { id: "general", label: t.settings.tabs.profile },
+            { id: "security", label: t.settings.tabs.security },
             { id: "clinical", label: t.settings.tabs.clinicalHistory, visible: showClinicalTab },
             { id: "integrations", label: t.settings.tabs.integrations, visible: canConfigureWhatsApp },
             { id: "clinic", label: t.settings.tabs.clinic, visible: showClinicTab },
@@ -836,11 +837,10 @@ const SettingsPage = () => {
 
         {activeTab === "integrations" && canConfigureWhatsApp && <WhatsAppSettingsSection />}
 
+        {activeTab === "security" && <TwoFactorSettingsSection />}
+
         {activeTab === "general" && (
         <>
-        {/* Seguridad de la cuenta - todos los usuarios */}
-        <TwoFactorSettingsSection />
-
         {/* Theme - todos los usuarios */}
         <div className="bg-brand-surface rounded-xl border border-brand-border p-6">
           <h3 className="text-lg font-semibold text-brand-ink mb-4">{t.settings.theme}</h3>

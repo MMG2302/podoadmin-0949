@@ -1001,6 +1001,7 @@ export interface Translations {
     >;
     tabs: {
       profile: string;
+      security: string;
       clinicalHistory: string;
       integrations: string;
       clinic: string;
@@ -3372,6 +3373,7 @@ views: {
       },
       tabs: {
         profile: "Perfil",
+        security: "Seguridad",
         clinicalHistory: "Historia clínica",
         integrations: "Integraciones",
         clinic: "Clínica",
@@ -5908,6 +5910,7 @@ views: {
       },
       tabs: {
         profile: "Profile",
+        security: "Security",
         clinicalHistory: "Clinical history",
         integrations: "Integrations",
         clinic: "Clinic",
@@ -8439,6 +8442,7 @@ views: {
       },
       tabs: {
         profile: "Perfil",
+        security: "Segurança",
         clinicalHistory: "História clínica",
         integrations: "Integrações",
         clinic: "Clínica",
@@ -10945,6 +10949,7 @@ views: {
       },
       tabs: {
         profile: "Profil",
+        security: "Sécurité",
         clinicalHistory: "Dossier clinique",
         integrations: "Intégrations",
         clinic: "Clinique",

@@ -1,4 +1,11 @@
-export type SettingsTabId = "general" | "clinical" | "integrations" | "clinic" | "billing" | "other";
+export type SettingsTabId =
+  | "general"
+  | "security"
+  | "clinical"
+  | "integrations"
+  | "clinic"
+  | "billing"
+  | "other";
 
 type Tab = { id: SettingsTabId; label: string; visible?: boolean };
 

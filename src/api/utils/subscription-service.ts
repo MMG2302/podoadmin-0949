@@ -602,16 +602,55 @@ export async function setPlanTier(
 }
 
 /** Override manual de super_admin (null = volver al tier facturado). */
+/** planId de las filas creadas solo para sostener un override de cortesía. */
+export const COURTESY_PLAN_ID = 'courtesy_override';
+
+/**
+ * Fija (o retira, con null) el nivel de plan de un sujeto.
+ *
+ * Si el sujeto no tiene suscripción todavía, se crea una fila que existe
+ * únicamente para sostener el override: sin stripeSubscriptionId, de modo que
+ * `isStripeSubscriptionGranted` sigue devolviendo false y esta fila **no concede
+ * acceso por sí sola**. Solo determina el nivel cuando el acceso llega por otra
+ * vía. Retirar el override (null) sobre una fila de cortesía la elimina, para no
+ * dejar suscripciones fantasma.
+ */
 export async function setPlanTierOverride(
   subjectType: 'clinic' | 'user',
   subjectId: string,
   tierOverride: PlanTier | null
 ): Promise<boolean> {
   const row = await getSubscriptionRowBySubject(subjectType, subjectId);
-  if (!row) return false;
+  const nowIso = new Date().toISOString();
+
+  if (!row) {
+    // Sin override que fijar no hay nada que crear.
+    if (tierOverride === null) return true;
+    const now = Date.now();
+    await database.insert(subscriptions).values({
+      id: crypto.randomUUID(),
+      subjectType,
+      subjectId,
+      status: 'cancelled', // no es una suscripción de pago: no debe contarse como activa
+      planId: COURTESY_PLAN_ID,
+      currentPeriodStart: now,
+      currentPeriodEnd: now,
+      planTier: 'base',
+      planTierOverride: tierOverride,
+      createdAt: nowIso,
+      updatedAt: nowIso,
+    } as typeof subscriptions.$inferInsert);
+    return true;
+  }
+
+  if (tierOverride === null && row.planId === COURTESY_PLAN_ID && !row.stripeSubscriptionId) {
+    await database.delete(subscriptions).where(eq(subscriptions.id, row.id));
+    return true;
+  }
+
   await database
     .update(subscriptions)
-    .set({ planTierOverride: tierOverride, updatedAt: new Date().toISOString() })
+    .set({ planTierOverride: tierOverride, updatedAt: nowIso })
     .where(eq(subscriptions.id, row.id));
   return true;
 }

@@ -295,10 +295,11 @@ export function ColorPaletteSettingsSection() {
         />
       </div>
 
-      {/* En móvil la sección es muy larga y estos botones quedaban fuera de pantalla:
-          se fijan al pie del viewport para que Guardar siempre esté al alcance. En
-          pantallas medianas vuelven al flujo normal del documento. */}
-      <div className="sticky bottom-0 z-10 -mx-6 -mb-6 flex flex-wrap items-center gap-3 border-t border-brand-border bg-brand-surface px-6 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:static sm:mx-0 sm:mb-0 sm:bg-transparent sm:px-0 sm:pb-0 sm:pt-4">
+      {/* En móvil los botones se apilan a ancho completo para que el objetivo táctil
+          sea cómodo; en pantallas medianas vuelven a una fila. No se usa sticky: los
+          márgenes negativos que requeriría rompen el borde redondeado de la tarjeta y
+          el propio anclaje dentro del contenedor con scroll. */}
+      <div className="flex flex-col gap-2 pt-4 border-t border-brand-border sm:flex-row sm:flex-wrap sm:items-center sm:gap-3">
         <button
           type="button"
           onClick={handleSave}

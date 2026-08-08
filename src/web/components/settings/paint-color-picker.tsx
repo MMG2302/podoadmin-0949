@@ -294,7 +294,9 @@ export function PaintColorPicker({ value, onAccept, onCancel }: PaintColorPicker
           )}
         </div>
 
-        <div className="flex items-center gap-2 mt-4 pt-3 border-t border-brand-border">
+        {/* flex-wrap + min-w-0 en el input: sin ellos la fila no cabe en pantallas
+            estrechas y los botones Cancelar/Aceptar quedaban cortados fuera del borde. */}
+        <div className="flex flex-wrap items-center gap-2 mt-4 pt-3 border-t border-brand-border">
           <div
             className="w-8 h-8 rounded border border-brand-border shrink-0"
             style={{ backgroundColor: hex }}
@@ -303,23 +305,25 @@ export function PaintColorPicker({ value, onAccept, onCancel }: PaintColorPicker
             type="text"
             value={hex}
             onChange={(e) => syncFromHex(e.target.value)}
-            className="flex-1 px-2 py-1 border border-brand-border rounded text-xs font-mono bg-brand-surface text-brand-ink"
+            className="min-w-0 flex-1 basis-24 px-2 py-1 border border-brand-border rounded text-xs font-mono bg-brand-surface text-brand-ink"
             maxLength={7}
           />
-          <button
-            type="button"
-            className="px-3 py-1.5 text-xs border border-brand-border rounded hover:bg-brand-canvas"
-            onClick={onCancel}
-          >
-            {t.common.cancel}
-          </button>
-          <button
-            type="button"
-            className="px-3 py-1.5 text-xs bg-brand-ink text-brand-ink-fg rounded hover:bg-brand-ink-hover"
-            onClick={() => onAccept(hex)}
-          >
-            {p.accept}
-          </button>
+          <div className="flex gap-2 ml-auto shrink-0">
+            <button
+              type="button"
+              className="min-h-[44px] sm:min-h-0 px-3 py-1.5 text-xs border border-brand-border rounded hover:bg-brand-canvas"
+              onClick={onCancel}
+            >
+              {t.common.cancel}
+            </button>
+            <button
+              type="button"
+              className="min-h-[44px] sm:min-h-0 px-3 py-1.5 text-xs bg-brand-ink text-brand-ink-fg rounded hover:bg-brand-ink-hover"
+              onClick={() => onAccept(hex)}
+            >
+              {p.accept}
+            </button>
+          </div>
         </div>
       </div>
     </div>

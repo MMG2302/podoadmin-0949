@@ -20,7 +20,7 @@ import LandingPage from "./pages/landing-page";
 import ReservationActionPage from "./pages/reservation-action-page";
 import SatisfactionPage from "./pages/satisfaction-page";
 import BookingPage from "./pages/booking-page";
-import { useRobotsMeta } from "./hooks/use-robots-meta";
+import { useSeoMeta } from "./hooks/use-seo-meta";
 
 const ProtectedRoute = ({ component: Component, path }: { component: React.ComponentType; path?: string }) => {
   const { user, isLoading } = useAuth();
@@ -100,7 +100,7 @@ const HomeRoute = () => {
 };
 
 function AppRoutes() {
-  useRobotsMeta();
+  useSeoMeta();
 
   return (
     <Switch>

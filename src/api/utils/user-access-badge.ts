@@ -130,10 +130,17 @@ export async function buildUserAccessBadge(
   return { label: 'Activo', tone: 'green' };
 }
 
+/**
+ * Añade la insignia de acceso y el override de plan del sujeto de facturación.
+ *
+ * El override viaja aquí porque la lista de clínicas solo cubre sujetos de tipo
+ * clinic: un podólogo independiente se factura contra sí mismo y quedaba sin
+ * ninguna fuente desde la que mostrar su nivel fijado.
+ */
 export async function mapUsersWithAccessBadge<T extends { id: string }>(
   users: T[],
   rows: typeof createdUsers.$inferSelect[]
-): Promise<Array<T & { accessBadge: UserAccessBadge }>> {
+): Promise<Array<T & { accessBadge: UserAccessBadge; planTierOverride: 'base' | 'premium' | null }>> {
   const rowByUserId = new Map(rows.map((r) => [r.userId, r]));
   const clinicIds = rows.map((r) => r.clinicId).filter((id): id is string => Boolean(id));
   const independentPodiatristIds = rows
@@ -148,7 +155,8 @@ export async function mapUsersWithAccessBadge<T extends { id: string }>(
       const accessBadge = row
         ? await buildUserAccessBadge(row, prefetchedSub)
         : { label: '—', tone: 'gray' as const };
-      return { ...u, accessBadge };
+      const planTierOverride = prefetchedSub?.planTierOverride ?? null;
+      return { ...u, accessBadge, planTierOverride };
     })
   );
 }

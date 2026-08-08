@@ -24,6 +24,8 @@ export interface User {
     label: string;
     tone: 'green' | 'amber' | 'red' | 'orange' | 'blue' | 'gray' | 'yellow';
   };
+  /** Nivel fijado a mano por un super_admin sobre el sujeto de facturación. */
+  planTierOverride?: 'base' | 'premium' | null;
   /** URL o data URI de la foto de perfil */
   avatarUrl?: string | null;
 }

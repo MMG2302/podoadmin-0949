@@ -1142,7 +1142,11 @@ const UsersPage = () => {
     clinicId: string; clinicName: string; clinicCode: string; podiatristLimit: number | null; podiatristCount: number;
     effectivePodiatristLimit: number;
     effectivePlanTier: "base" | "premium" | null;
+    planTierOverride: "base" | "premium" | null;
   }>>([]);
+  /** Override aplicado en esta sesión, por usuario. Cubre al podólogo independiente,
+   *  que no aparece en clinicMap, y da respuesta inmediata tras el cambio. */
+  const [planTierLocal, setPlanTierLocal] = useState<Record<string, "auto" | "base" | "premium">>({});
   const [clinicLimitEdits, setClinicLimitEdits] = useState<Record<string, string>>({});
   const [clinicLimitSaving, setClinicLimitSaving] = useState<string | null>(null);
   const [clinicalStats, setClinicalStats] = useState<ClinicalStatsMap>({});
@@ -1184,6 +1188,7 @@ const UsersPage = () => {
           effectivePodiatristLimit?: number;
           podiatristCount?: number;
           effectivePlanTier?: "base" | "premium" | null;
+          planTierOverride?: "base" | "premium" | null;
         }>;
       }>("/clinics");
       if (r.success && Array.isArray(r.data?.clinics)) {
@@ -1195,6 +1200,7 @@ const UsersPage = () => {
           effectivePodiatristLimit: c.effectivePodiatristLimit ?? c.podiatristLimit ?? 0,
           podiatristCount: c.podiatristCount ?? 0,
           effectivePlanTier: c.effectivePlanTier ?? null,
+          planTierOverride: c.planTierOverride ?? null,
         }));
         setClinics(
           mapped.map((c) => ({
@@ -1325,9 +1331,9 @@ const UsersPage = () => {
 
   // Mapa clínica -> info (para mostrar nombre y límite en cada fila)
   const clinicMap = useMemo(() => {
-    const m = new Map<string, { clinicName: string; clinicCode: string; podiatristLimit: number | null; effectivePodiatristLimit: number; podiatristCount: number; effectivePlanTier: "base" | "premium" | null }>();
+    const m = new Map<string, { clinicName: string; clinicCode: string; podiatristLimit: number | null; effectivePodiatristLimit: number; podiatristCount: number; effectivePlanTier: "base" | "premium" | null; planTierOverride: "base" | "premium" | null }>();
     for (const c of clinicsForLimits) {
-      m.set(c.clinicId, { clinicName: c.clinicName, clinicCode: c.clinicCode, podiatristLimit: c.podiatristLimit, effectivePodiatristLimit: c.effectivePodiatristLimit, podiatristCount: c.podiatristCount, effectivePlanTier: c.effectivePlanTier });
+      m.set(c.clinicId, { clinicName: c.clinicName, clinicCode: c.clinicCode, podiatristLimit: c.podiatristLimit, effectivePodiatristLimit: c.effectivePodiatristLimit, podiatristCount: c.podiatristCount, effectivePlanTier: c.effectivePlanTier, planTierOverride: c.planTierOverride });
     }
     return m;
   }, [clinicsForLimits]);
@@ -1946,11 +1952,21 @@ const UsersPage = () => {
   };
 
   /** Override de plan (Base/Premium) por super_admin sobre clínica o podólogo independiente. */
-  /** Valor mostrado en el selector: el override si existe, si no "auto". */
+  /**
+   * Valor del selector: el override fijado, no el nivel efectivo. Un cliente que paga
+   * premium sin override debe mostrar "automático", no "premium".
+   *
+   * clinicMap solo cubre clínicas, así que para el podólogo independiente —cuyo sujeto
+   * de facturación es él mismo— se usa lo aplicado en esta sesión; de lo contrario el
+   * selector volvería siempre a "automático" tras cada cambio.
+   */
   const planTierSelection = (user: User): "auto" | "base" | "premium" => {
-    const info = user.clinicId ? clinicMap.get(user.clinicId) : null;
-    const tier = info?.effectivePlanTier;
-    return tier === "premium" || tier === "base" ? tier : "auto";
+    const local = planTierLocal[user.id];
+    if (local) return local;
+    const override = user.clinicId
+      ? clinicMap.get(user.clinicId)?.planTierOverride
+      : user.planTierOverride;
+    return override === "premium" || override === "base" ? override : "auto";
   };
 
   /**
@@ -1965,6 +1981,7 @@ const UsersPage = () => {
       { subjectType, subjectId, tierOverride: value === "auto" ? null : value }
     );
     if (res.success) {
+      setPlanTierLocal((prev) => ({ ...prev, [user.id]: value }));
       alert(t.premium.planUpdated.replace("{tier}", res.data?.effectiveTier ?? value));
       void loadClinics();
     } else {

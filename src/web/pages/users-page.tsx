@@ -1946,6 +1946,32 @@ const UsersPage = () => {
   };
 
   /** Override de plan (Base/Premium) por super_admin sobre clínica o podólogo independiente. */
+  /** Valor mostrado en el selector: el override si existe, si no "auto". */
+  const planTierSelection = (user: User): "auto" | "base" | "premium" => {
+    const info = user.clinicId ? clinicMap.get(user.clinicId) : null;
+    const tier = info?.effectivePlanTier;
+    return tier === "premium" || tier === "base" ? tier : "auto";
+  };
+
+  /**
+   * Aplica un nivel de plan sin pasar por window.prompt, que varios navegadores
+   * móviles bloquean y que además obliga a escribir el valor a mano.
+   */
+  const applyPlanTier = async (user: User, value: "auto" | "base" | "premium") => {
+    const subjectType = user.clinicId ? "clinic" : "user";
+    const subjectId = user.clinicId ?? user.id;
+    const res = await api.post<{ success?: boolean; effectiveTier?: string; message?: string }>(
+      "/subscriptions/set-tier",
+      { subjectType, subjectId, tierOverride: value === "auto" ? null : value }
+    );
+    if (res.success) {
+      alert(t.premium.planUpdated.replace("{tier}", res.data?.effectiveTier ?? value));
+      void loadClinics();
+    } else {
+      alert(res.message || res.error || t.premium.planInvalid);
+    }
+  };
+
   const handleManagePlanTier = (user: User) => {
     const subjectType = user.clinicId ? "clinic" : "user";
     const subjectId = user.clinicId ?? user.id;
@@ -2315,6 +2341,23 @@ const UsersPage = () => {
                   <span className="mobile-card-label">{t.usersPage.table.data}</span>
                   <span className="mobile-card-value">{t.usersPage.table.dataSummary.replace("{patients}", String(u.patientCount)).replace("{sessions}", String(u.sessionCount))}</span>
                 </div>
+                {/* Cambio de plan: en móvil no existía. El menú de acciones que lo
+                    ofrece en escritorio vive dentro de un <td> y aquí no se renderiza. */}
+                {isSuperAdmin &&
+                  ((u.role === "clinic_admin" && u.clinicId) || (u.role === "podiatrist" && !u.clinicId)) && (
+                    <div className="mobile-card-row">
+                      <span className="mobile-card-label">{t.premium.menuManagePlan}</span>
+                      <select
+                        value={planTierSelection(u)}
+                        onChange={(e) => void applyPlanTier(u, e.target.value as "auto" | "base" | "premium")}
+                        className="px-3 py-2 text-sm rounded-lg border border-gray-200 bg-brand-surface text-brand-ink min-h-[44px] touch-manipulation"
+                      >
+                        <option value="auto">{t.premium.planAuto}</option>
+                        <option value="base">{t.premium.planBase}</option>
+                        <option value="premium">{t.premium.planPremium}</option>
+                      </select>
+                    </div>
+                  )}
               </div>
               
               <div className="mobile-card-actions">

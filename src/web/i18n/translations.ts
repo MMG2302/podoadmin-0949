@@ -1425,6 +1425,8 @@ export interface Translations {
     planPremium: string;
     menuManagePlan: string;
     planPrompt: string;
+    /** Etiqueta de "sin forzar": el nivel lo decide lo pagado en Stripe. */
+    planAuto: string;
     planInvalid: string;
     planUpdated: string;
   };
@@ -3764,6 +3766,7 @@ views: {
       planBase: "Plan Base",
       planPremium: "Plan Premium",
       menuManagePlan: "Plan (Base/Premium)",
+      planAuto: "Automático (según Stripe)",
       planPrompt: "Plan actual: {current}. Escribe \"base\", \"premium\" o \"auto\" (auto = según lo pagado en Stripe):",
       planInvalid: "Valor inválido. Usa \"base\", \"premium\" o \"auto\".",
       planUpdated: "Plan actualizado: {tier}.",
@@ -6240,6 +6243,7 @@ views: {
       planBase: "Base plan",
       planPremium: "Premium plan",
       menuManagePlan: "Plan (Base/Premium)",
+      planAuto: "Automatic (as paid in Stripe)",
       planPrompt: "Current plan: {current}. Type \"base\", \"premium\" or \"auto\" (auto = as paid in Stripe):",
       planInvalid: "Invalid value. Use \"base\", \"premium\" or \"auto\".",
       planUpdated: "Plan updated: {tier}.",
@@ -8711,6 +8715,7 @@ views: {
       planBase: "Plano Base",
       planPremium: "Plano Premium",
       menuManagePlan: "Plano (Base/Premium)",
+      planAuto: "Automático (conforme Stripe)",
       planPrompt: "Plano atual: {current}. Digite \"base\", \"premium\" ou \"auto\" (auto = conforme pago no Stripe):",
       planInvalid: "Valor inválido. Use \"base\", \"premium\" ou \"auto\".",
       planUpdated: "Plano atualizado: {tier}.",
@@ -11157,6 +11162,7 @@ views: {
       planBase: "Plan Base",
       planPremium: "Plan Premium",
       menuManagePlan: "Plan (Base/Premium)",
+      planAuto: "Automatique (selon Stripe)",
       planPrompt: "Plan actuel : {current}. Tapez \"base\", \"premium\" ou \"auto\" (auto = selon le paiement Stripe) :",
       planInvalid: "Valeur invalide. Utilisez \"base\", \"premium\" ou \"auto\".",
       planUpdated: "Plan mis à jour : {tier}.",

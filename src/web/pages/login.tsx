@@ -44,6 +44,8 @@ const Login = () => {
   const [configLoading, setConfigLoading] = useState(true);
   const [captchaToken, setCaptchaToken] = useState<string | null>(null);
   const [captchaKey, setCaptchaKey] = useState(0);
+  const [needs2FA, setNeeds2FA] = useState(false);
+  const [twoFactorCode, setTwoFactorCode] = useState("");
 
   const handleCaptchaToken = useCallback((token: string | null) => {
     setCaptchaToken(token);
@@ -132,13 +134,25 @@ const Login = () => {
 
     setIsLoading(true);
 
-    const result = await login(email, password, captchaToken);
+    const result = await login(email, password, captchaToken, twoFactorCode || undefined);
 
     if (result.success) {
       const dest = result.redirectPath ?? "/";
       requestAnimationFrame(() => {
         requestAnimationFrame(() => setLocation(dest));
       });
+    } else if (result.requires2FA) {
+      // La contraseña era correcta: se pide el código sin volver a mostrar el error de
+      // credenciales, que aquí confundiría.
+      setNeeds2FA(true);
+      setTwoFactorCode("");
+      setError(twoFactorCode ? t.auth.twoFactorInvalid : "");
+      // El captcha se valida antes que el 2FA y su token es de un solo uso, así que el
+      // reenvío con el código necesita uno nuevo.
+      setCaptchaToken(null);
+      setCaptchaKey((k) => k + 1);
+      setIsLoading(false);
+      return;
     } else {
       const needsCaptcha = result.requiresCaptcha === true || captchaRequired;
       setError(getLoginErrorDisplay(result.error) || t.auth.invalidCredentials);
@@ -298,6 +312,42 @@ const Login = () => {
                 </div>
               )}
 
+              {needs2FA && (
+                <div className="space-y-4">
+                  <div className="rounded-lg border border-brand-border bg-brand-canvas px-4 py-3">
+                    <p className="text-sm font-medium text-brand-ink">{t.auth.twoFactorTitle}</p>
+                    <p className="mt-1 text-sm text-brand-muted">{t.auth.twoFactorHint}</p>
+                  </div>
+                  <div>
+                    <label className={ap.label}>{t.auth.twoFactorLabel}</label>
+                    <input
+                      type="text"
+                      value={twoFactorCode}
+                      onChange={(e) => setTwoFactorCode(e.target.value)}
+                      className={`${ap.input} text-center tracking-[0.3em] font-mono`}
+                      placeholder="000000"
+                      inputMode="text"
+                      autoComplete="one-time-code"
+                      autoFocus
+                      required
+                    />
+                    <p className="mt-2 text-xs text-brand-muted">{t.auth.twoFactorBackupHint}</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setNeeds2FA(false);
+                      setTwoFactorCode("");
+                      setError("");
+                    }}
+                    className={`text-sm ${ap.link}`}
+                  >
+                    {t.auth.twoFactorUseAnotherAccount}
+                  </button>
+                </div>
+              )}
+
+              {!needs2FA && (<>
               <div>
                 <label className={ap.label}>
                   {t.auth.emailLabel}
@@ -365,6 +415,7 @@ const Login = () => {
                   </button>
                 </div>
               </div>
+              </>)}
 
               {import.meta.env.DEV && !configLoading && !captchaRequired && (
                 <div className={`${ap.amber} mb-4`}>

@@ -49,8 +49,13 @@ interface AuthContextType {
   users: User[];
   usersLoading: boolean;
   isLoading: boolean;
-  login: (email: string, password: string, captchaToken?: string | null) => Promise<{ 
-    success: boolean; 
+  login: (
+    email: string,
+    password: string,
+    captchaToken?: string | null,
+    twoFactorCode?: string
+  ) => Promise<{
+    success: boolean;
     error?: string;
     redirectPath?: string;
     retryAfter?: number;
@@ -59,6 +64,8 @@ interface AuthContextType {
     isBlocked?: boolean;
     blockDurationMinutes?: number;
     requiresCaptcha?: boolean;
+    /** La contraseña era correcta pero falta el código de verificación en dos pasos. */
+    requires2FA?: boolean;
   }>;
   logout: () => void;
   /** Lista de usuarios (desde API). Solo disponible para super_admin, admin, clinic_admin. */
@@ -215,7 +222,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     };
   }, []);
 
-  const login = async (email: string, password: string, captchaToken?: string | null) => {
+  const login = async (
+    email: string,
+    password: string,
+    captchaToken?: string | null,
+    twoFactorCode?: string
+  ) => {
     try {
       try {
         await api.get("/csrf/token");
@@ -223,8 +235,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         /* */
       }
 
-      const body: { email: string; password: string; captchaToken?: string } = { email, password };
+      const body: {
+        email: string;
+        password: string;
+        captchaToken?: string;
+        twoFactorCode?: string;
+      } = { email, password };
       if (captchaToken) body.captchaToken = captchaToken;
+      if (twoFactorCode) body.twoFactorCode = twoFactorCode;
 
       const response = await api.post<{ user: User }>("/auth/login", body);
 
@@ -264,6 +282,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         isBlocked,
         blockDurationMinutes,
         requiresCaptcha,
+        requires2FA: response.requires2FA,
       };
     } catch (error) {
       console.error("Error en login:", error);

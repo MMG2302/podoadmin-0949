@@ -69,6 +69,12 @@ export interface Translations {
     loginButton: string;
     loggingIn: string;
     invalidCredentials: string;
+    twoFactorTitle: string;
+    twoFactorHint: string;
+    twoFactorLabel: string;
+    twoFactorBackupHint: string;
+    twoFactorUseAnotherAccount: string;
+    twoFactorInvalid: string;
     loginError: string;
     tooManyAttempts: string;
     accountTemporarilyBlocked: string;
@@ -887,6 +893,27 @@ export interface Translations {
   // Settings
   settings: {
     title: string;
+    twoFactor: {
+      title: string;
+      description: string;
+      loading: string;
+      statusDisabled: string;
+      statusEnabled: string;
+      enableCta: string;
+      scanInstructions: string;
+      qrAlt: string;
+      manualKey: string;
+      codeLabel: string;
+      verifyCta: string;
+      cancel: string;
+      backupTitle: string;
+      backupWarning: string;
+      backupSavedCta: string;
+      disableInstructions: string;
+      disableCta: string;
+      errorGeneric: string;
+      errorInvalidCode: string;
+    };
     theme: string;
     language: string;
     lightMode: string;
@@ -2589,6 +2616,12 @@ export const translations: Record<Language, Translations> = {
       loginButton: "Iniciar sesión",
       loggingIn: "Iniciando sesión...",
       invalidCredentials: "Credenciales inválidas",
+      twoFactorTitle: "Verificación en dos pasos",
+      twoFactorHint: "Tu contraseña es correcta. Abre tu app de autenticación e introduce el código de 6 dígitos.",
+      twoFactorLabel: "Código de verificación",
+      twoFactorBackupHint: "¿Sin acceso a la app? Escribe uno de tus códigos de respaldo.",
+      twoFactorUseAnotherAccount: "Entrar con otra cuenta",
+      twoFactorInvalid: "El código no es correcto. Inténtalo de nuevo.",
       loginError: "Error al iniciar sesión",
       tooManyAttempts: "Demasiados intentos",
       accountTemporarilyBlocked: "Cuenta temporalmente bloqueada",
@@ -3232,6 +3265,27 @@ views: {
     },
     settings: {
       title: "Configuración",
+      twoFactor: {
+        title: "Verificación en dos pasos",
+        description: "Añade un segundo factor al inicio de sesión: además de la contraseña, un código que solo está en tu teléfono.",
+        loading: "Comprobando…",
+        statusDisabled: "Desactivada",
+        statusEnabled: "Activada",
+        enableCta: "Activar",
+        scanInstructions: "Escanea este código con Google Authenticator, Authy o la app que prefieras.",
+        qrAlt: "Código QR para la app de autenticación",
+        manualKey: "¿No puedes escanear? Introduce esta clave a mano:",
+        codeLabel: "Código de 6 dígitos",
+        verifyCta: "Verificar y activar",
+        cancel: "Cancelar",
+        backupTitle: "Guarda tus códigos de respaldo",
+        backupWarning: "Es la única vez que se muestran. Sirven para entrar si pierdes el teléfono, y cada uno funciona una sola vez.",
+        backupSavedCta: "Ya los guardé",
+        disableInstructions: "Para desactivarla, introduce un código de tu app o uno de respaldo.",
+        disableCta: "Desactivar",
+        errorGeneric: "No se pudo completar la operación.",
+        errorInvalidCode: "El código no es correcto.",
+      },
       theme: "Tema",
       language: "Idioma",
       lightMode: "Modo claro",
@@ -5098,6 +5152,12 @@ views: {
       loginButton: "Log in",
       loggingIn: "Logging in...",
       invalidCredentials: "Invalid credentials",
+      twoFactorTitle: "Two-step verification",
+      twoFactorHint: "Your password is correct. Open your authenticator app and enter the 6-digit code.",
+      twoFactorLabel: "Verification code",
+      twoFactorBackupHint: "No access to the app? Enter one of your backup codes.",
+      twoFactorUseAnotherAccount: "Sign in with another account",
+      twoFactorInvalid: "That code is not correct. Please try again.",
       loginError: "Login error",
       tooManyAttempts: "Too many attempts",
       accountTemporarilyBlocked: "Account temporarily blocked",
@@ -5741,6 +5801,27 @@ views: {
     },
     settings: {
       title: "Settings",
+      twoFactor: {
+        title: "Two-step verification",
+        description: "Add a second factor to sign-in: on top of your password, a code that only lives on your phone.",
+        loading: "Checking…",
+        statusDisabled: "Disabled",
+        statusEnabled: "Enabled",
+        enableCta: "Enable",
+        scanInstructions: "Scan this code with Google Authenticator, Authy or the app you prefer.",
+        qrAlt: "QR code for your authenticator app",
+        manualKey: "Cannot scan? Enter this key manually:",
+        codeLabel: "6-digit code",
+        verifyCta: "Verify and enable",
+        cancel: "Cancel",
+        backupTitle: "Save your backup codes",
+        backupWarning: "This is the only time they are shown. They let you in if you lose your phone, and each one works once.",
+        backupSavedCta: "I saved them",
+        disableInstructions: "To turn it off, enter a code from your app or one of your backup codes.",
+        disableCta: "Disable",
+        errorGeneric: "The operation could not be completed.",
+        errorInvalidCode: "That code is not correct.",
+      },
       theme: "Theme",
       language: "Language",
       lightMode: "Light Mode",
@@ -7602,6 +7683,12 @@ views: {
       loginButton: "Entrar",
       loggingIn: "Entrando...",
       invalidCredentials: "Credenciais inválidas",
+      twoFactorTitle: "Verificação em duas etapas",
+      twoFactorHint: "A sua palavra-passe está correta. Abra a sua app de autenticação e introduza o código de 6 dígitos.",
+      twoFactorLabel: "Código de verificação",
+      twoFactorBackupHint: "Sem acesso à app? Escreva um dos seus códigos de recuperação.",
+      twoFactorUseAnotherAccount: "Entrar com outra conta",
+      twoFactorInvalid: "O código não está correto. Tente novamente.",
       loginError: "Erro ao entrar",
       tooManyAttempts: "Muitas tentativas",
       accountTemporarilyBlocked: "Conta temporariamente bloqueada",
@@ -8245,6 +8332,27 @@ views: {
     },
     settings: {
       title: "Configurações",
+      twoFactor: {
+        title: "Verificação em duas etapas",
+        description: "Adiciona um segundo fator ao início de sessão: além da palavra-passe, um código que só existe no seu telemóvel.",
+        loading: "A verificar…",
+        statusDisabled: "Desativada",
+        statusEnabled: "Ativada",
+        enableCta: "Ativar",
+        scanInstructions: "Leia este código com o Google Authenticator, o Authy ou a app que preferir.",
+        qrAlt: "Código QR para a app de autenticação",
+        manualKey: "Não consegue ler o código? Introduza esta chave à mão:",
+        codeLabel: "Código de 6 dígitos",
+        verifyCta: "Verificar e ativar",
+        cancel: "Cancelar",
+        backupTitle: "Guarde os seus códigos de recuperação",
+        backupWarning: "É a única vez que são mostrados. Servem para entrar se perder o telemóvel, e cada um funciona uma só vez.",
+        backupSavedCta: "Já os guardei",
+        disableInstructions: "Para desativar, introduza um código da sua app ou um de recuperação.",
+        disableCta: "Desativar",
+        errorGeneric: "Não foi possível concluir a operação.",
+        errorInvalidCode: "O código não está correto.",
+      },
       theme: "Tema",
       language: "Idioma",
       lightMode: "Modo Claro",
@@ -10081,6 +10189,12 @@ views: {
       loginButton: "Se connecter",
       loggingIn: "Connexion en cours...",
       invalidCredentials: "Identifiants invalides",
+      twoFactorTitle: "Vérification en deux étapes",
+      twoFactorHint: "Votre mot de passe est correct. Ouvrez votre application d'authentification et saisissez le code à 6 chiffres.",
+      twoFactorLabel: "Code de vérification",
+      twoFactorBackupHint: "Pas accès à l'application ? Saisissez l'un de vos codes de secours.",
+      twoFactorUseAnotherAccount: "Se connecter avec un autre compte",
+      twoFactorInvalid: "Ce code n'est pas correct. Réessayez.",
       loginError: "Erreur de connexion",
       tooManyAttempts: "Trop de tentatives",
       accountTemporarilyBlocked: "Compte temporairement bloqué",
@@ -10724,6 +10838,27 @@ views: {
     },
     settings: {
       title: "Paramètres",
+      twoFactor: {
+        title: "Vérification en deux étapes",
+        description: "Ajoutez un second facteur à la connexion : en plus du mot de passe, un code qui n'existe que sur votre téléphone.",
+        loading: "Vérification…",
+        statusDisabled: "Désactivée",
+        statusEnabled: "Activée",
+        enableCta: "Activer",
+        scanInstructions: "Scannez ce code avec Google Authenticator, Authy ou l'application de votre choix.",
+        qrAlt: "Code QR pour l'application d'authentification",
+        manualKey: "Impossible de scanner ? Saisissez cette clé à la main :",
+        codeLabel: "Code à 6 chiffres",
+        verifyCta: "Vérifier et activer",
+        cancel: "Annuler",
+        backupTitle: "Enregistrez vos codes de secours",
+        backupWarning: "C'est la seule fois qu'ils s'affichent. Ils permettent d'entrer si vous perdez votre téléphone, et chacun ne sert qu'une fois.",
+        backupSavedCta: "Je les ai enregistrés",
+        disableInstructions: "Pour la désactiver, saisissez un code de votre application ou un code de secours.",
+        disableCta: "Désactiver",
+        errorGeneric: "L'opération n'a pas pu être effectuée.",
+        errorInvalidCode: "Ce code n'est pas correct.",
+      },
       theme: "Thème",
       language: "Langue",
       lightMode: "Mode Clair",

@@ -8,6 +8,7 @@ import { ProfessionalInfo } from "../types/professional";
 import type { Clinic } from "../types/clinic";
 import { api } from "../lib/api-client";
 import { WhatsAppSettingsSection } from "../components/settings/whatsapp-settings-section";
+import { TwoFactorSettingsSection } from "../components/settings/two-factor-settings-section";
 import { ComplianceSettingsSection } from "../components/settings/compliance-settings-section";
 import { ClinicalHistoriesDownloadSection } from "../components/settings/clinical-histories-download-section";
 import { SettingsTabBar, type SettingsTabId } from "../components/settings/settings-tab-bar";
@@ -837,6 +838,9 @@ const SettingsPage = () => {
 
         {activeTab === "general" && (
         <>
+        {/* Seguridad de la cuenta - todos los usuarios */}
+        <TwoFactorSettingsSection />
+
         {/* Theme - todos los usuarios */}
         <div className="bg-brand-surface rounded-xl border border-brand-border p-6">
           <h3 className="text-lg font-semibold text-brand-ink mb-4">{t.settings.theme}</h3>

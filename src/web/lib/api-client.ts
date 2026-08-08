@@ -21,6 +21,8 @@ export interface ApiResponse<T = any> {
   isBlocked?: boolean;
   blockDurationMinutes?: number;
   requiresCaptcha?: boolean;
+  /** El login pide el código de verificación en dos pasos. */
+  requires2FA?: boolean;
 }
 
 // Variable para evitar múltiples renovaciones simultáneas
@@ -302,6 +304,7 @@ export async function apiRequest<T = any>(
             blockedUntil: retryData.blockedUntil,
             attemptCount: retryData.attemptCount,
             requiresCaptcha: retryData.requiresCaptcha,
+            requires2FA: retryData.requires2FA,
             data: retryData,
           };
         }
@@ -345,6 +348,7 @@ export async function apiRequest<T = any>(
         isBlocked: data.isBlocked,
         blockDurationMinutes: data.blockDurationMinutes,
         requiresCaptcha: data.requiresCaptcha,
+        requires2FA: data.requires2FA,
       };
     }
 

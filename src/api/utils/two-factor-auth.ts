@@ -207,6 +207,28 @@ export async function disable2FA(userId: string): Promise<void> {
 }
 
 /**
+ * Borra por completo la configuración de 2FA de un usuario: secreto y códigos de respaldo.
+ *
+ * Es lo que ejecuta el reseteo administrativo. Se elimina la fila entera en vez de poner
+ * `enabled = false` por dos razones: `secret` es NOT NULL y no se puede vaciar, y dejar
+ * guardado el secreto viejo significaría que el reseteo no invalida de verdad al
+ * autenticador que el usuario ya no controla (si volviera a activarse la fila, el teléfono
+ * perdido seguiría generando códigos válidos). Sin fila, `get2FAConfig` responde
+ * `{ enabled: false }` y `/2fa/setup` vuelve a estar disponible para dar de alta un
+ * secreto nuevo.
+ *
+ * Devuelve si había 2FA activo, para distinguir un reseteo real de un no-op.
+ */
+export async function resetTwoFactorForUser(userId: string): Promise<{ wasEnabled: boolean }> {
+  const config = await get2FAConfig(userId);
+  const wasEnabled = config?.enabled === true;
+
+  await database.delete(twoFactorAuth).where(eq(twoFactorAuth.userId, userId));
+
+  return { wasEnabled };
+}
+
+/**
  * Obtiene la configuración de 2FA de un usuario
  */
 export async function get2FAConfig(userId: string): Promise<{

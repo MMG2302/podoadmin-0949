@@ -1798,6 +1798,47 @@ const UsersPage = () => {
     }
   };
 
+  /**
+   * Recuperación de una cuenta que perdió el teléfono y los códigos de respaldo: sin esto
+   * queda inaccesible, porque desactivar el 2FA desde Ajustes exige un código válido.
+   *
+   * Deja a la cuenta protegida solo por la contraseña hasta que su titular vuelva a
+   * activarlo, así que el confirm insiste en verificar antes quién está pidiendo el reseteo.
+   */
+  const handleResetTwoFactor = async (user: User) => {
+    if (!window.confirm(t.usersPage.twoFactorReset.confirm.replace("{name}", user.name))) {
+      return;
+    }
+
+    try {
+      const response = await api.post<{ success: boolean; wasEnabled?: boolean; message?: string }>(
+        `/2fa/admin/reset/${user.id}`
+      );
+
+      if (response.success && response.data?.success) {
+        const key = response.data.wasEnabled ? "done" : "notEnabled";
+        alert(t.usersPage.twoFactorReset[key].replace("{name}", user.name));
+
+        void postAuditLog({
+          action: "2FA_ADMIN_RESET",
+          resourceType: "2fa",
+          resourceId: user.id,
+          details: {
+            action: "reset_two_factor",
+            targetUserId: user.id,
+            targetUserName: user.name,
+            targetUserEmail: user.email,
+          },
+        });
+      } else {
+        alert(response.error || response.data?.message || t.usersPage.twoFactorReset.error);
+      }
+    } catch (error) {
+      console.error("Error restableciendo 2FA:", error);
+      alert(t.usersPage.twoFactorReset.error);
+    }
+  };
+
   const handleBanUser = (user: User) => {
     if (!window.confirm(t.usersPage.confirm.ban.replace("{name}", user.name))) {
       return;
@@ -2428,6 +2469,12 @@ const UsersPage = () => {
                         ⚠️ {t.usersPage.actions.disableAccount}
                       </button>
                     )}
+                    {isSuperAdmin && (
+                      <button
+                        onClick={() => void handleResetTwoFactor(u)}
+                        className="w-full min-h-[44px] py-2 px-3 bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 active:bg-blue-200 transition-colors text-xs font-medium"
+                      >{t.usersPage.twoFactorReset.menu}</button>
+                    )}
                     <button
                       onClick={() => handleDeleteUser(u)}
                       className="w-full min-h-[44px] py-2 px-3 bg-red-50 text-red-700 rounded-lg hover:bg-red-100 active:bg-red-200 transition-colors text-xs font-medium"
@@ -2624,7 +2671,7 @@ const UsersPage = () => {
                                 const btn = e.currentTarget as HTMLElement;
                                 const rect = btn.getBoundingClientRect();
                                 const spaceBelow = window.innerHeight - rect.bottom;
-                                const menuHeight = 280;
+                                const menuHeight = 320;
                                 if (spaceBelow < menuHeight) {
                                   setAccountMenuPosition({ bottom: window.innerHeight - rect.top + 4, left: rect.right - 192 });
                                 } else {
@@ -2858,6 +2905,14 @@ const UsersPage = () => {
                     {t.premium.menuManagePlan}
                   </button>
                 )}
+              {isSuperAdmin && (
+                <button
+                  onClick={() => { void handleResetTwoFactor(u); closeMenu(); }}
+                  className="w-full text-left px-4 py-2 text-sm text-blue-700 hover:bg-blue-50"
+                >
+                  {t.usersPage.twoFactorReset.menu}
+                </button>
+              )}
               <div className="border-t border-gray-100 my-1" />
               <button onClick={() => { handleDeleteUser(u); closeMenu(); }} className="w-full text-left px-4 py-2 text-sm text-semantic-error hover:bg-semantic-error-bg">{t.usersPage.menu.deleteAccount}</button>
             </div>

@@ -2240,6 +2240,13 @@ export interface Translations {
       authorizeCooldown: string;
       deleteAccount: string;
     };
+    twoFactorReset: {
+      menu: string;
+      confirm: string;
+      done: string;
+      notEnabled: string;
+      error: string;
+    };
     searchPlaceholder: string;
     allRoles: string;
     loading: string;
@@ -5080,6 +5087,14 @@ views: {
         authorizeCooldown: "Autorizar edición (cooldown)",
         deleteAccount: "Eliminar cuenta",
       },
+      twoFactorReset: {
+        menu: "Restablecer verificación en dos pasos",
+        confirm:
+          "¿Restablecer la verificación en dos pasos de {name}? Podrá entrar solo con su contraseña hasta que la vuelva a activar. Hazlo únicamente si confirmaste su identidad por otro medio.",
+        done: "Verificación en dos pasos restablecida. {name} ya puede entrar con su contraseña y volver a activarla desde Ajustes.",
+        notEnabled: "{name} no tenía la verificación en dos pasos activa.",
+        error: "No se pudo restablecer la verificación en dos pasos.",
+      },
       searchPlaceholder: "Buscar usuarios...",
       allRoles: "Todos los roles",
       loading: "Cargando usuarios...",
@@ -7612,6 +7627,14 @@ views: {
         authorizeCooldown: "Authorize edit (cooldown)",
         deleteAccount: "Delete account",
       },
+      twoFactorReset: {
+        menu: "Reset two-step verification",
+        confirm:
+          "Reset two-step verification for {name}? They will be able to sign in with just their password until they turn it on again. Only do this if you confirmed their identity by other means.",
+        done: "Two-step verification reset. {name} can now sign in with their password and turn it back on from Settings.",
+        notEnabled: "{name} did not have two-step verification enabled.",
+        error: "Could not reset two-step verification.",
+      },
       searchPlaceholder: "Search users...",
       allRoles: "All roles",
       loading: "Loading users...",
@@ -10119,6 +10142,14 @@ views: {
         authorizeCooldown: "Autorizar edição (cooldown)",
         deleteAccount: "Eliminar conta",
       },
+      twoFactorReset: {
+        menu: "Redefinir verificação em duas etapas",
+        confirm:
+          "Redefinir a verificação em duas etapas de {name}? Poderá entrar apenas com a senha até ativá-la novamente. Faça isso somente se confirmou a identidade por outro meio.",
+        done: "Verificação em duas etapas redefinida. {name} já pode entrar com a senha e ativá-la de novo em Configurações.",
+        notEnabled: "{name} não tinha a verificação em duas etapas ativa.",
+        error: "Não foi possível redefinir a verificação em duas etapas.",
+      },
       searchPlaceholder: "Buscar usuários...",
       allRoles: "Todas as funções",
       loading: "Carregando usuários...",
@@ -12625,6 +12656,14 @@ views: {
         disableAccount: "Désactiver le compte",
         authorizeCooldown: "Autoriser l'édition (cooldown)",
         deleteAccount: "Supprimer le compte",
+      },
+      twoFactorReset: {
+        menu: "Réinitialiser la validation en deux étapes",
+        confirm:
+          "Réinitialiser la validation en deux étapes de {name} ? Il pourra se connecter avec son seul mot de passe jusqu'à ce qu'il la réactive. À ne faire que si vous avez confirmé son identité par un autre moyen.",
+        done: "Validation en deux étapes réinitialisée. {name} peut se connecter avec son mot de passe et la réactiver depuis les Réglages.",
+        notEnabled: "{name} n'avait pas la validation en deux étapes activée.",
+        error: "Impossible de réinitialiser la validation en deux étapes.",
       },
       searchPlaceholder: "Rechercher des utilisateurs...",
       allRoles: "Tous les rôles",

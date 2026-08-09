@@ -13,6 +13,7 @@ import {
 
 export type IpTrialEligibilityReason =
   | 'eligible'
+  | 'trials_disabled'
   | 'ip_already_used'
   | 'ip_unknown'
   | 'ip_risky'
@@ -55,6 +56,23 @@ function enforceIpTrialInDev(): boolean {
   return process.env.IP_TRIAL_ENFORCE_IN_DEV === '1' || process.env.NODE_ENV === 'production';
 }
 
+/**
+ * Periodo de prueba retirado (decisión de producto, 2026-08-09): el acceso queda
+ * condicionado al pago efectivo.
+ *
+ * El motivo es que nunca existió la conversión automática que se prometía: al vencer
+ * el mes, nadie cobraba nada — el acceso simplemente se cortaba y el usuario tenía que
+ * abrir el checkout a mano. Se retira la prueba en vez de construir ese cobro.
+ *
+ * Queda tras un flag, y no borrado, para poder reactivarla sin revertir código.
+ * Desactivarla no expulsa a quien ya estaba en prueba: los grants vigentes se siguen
+ * honrando hasta su vencimiento natural (`isIpTrialSubscriptionActive`), que es el
+ * único punto que decide acceso para un trial ya concedido.
+ */
+export function areIpTrialsEnabled(): boolean {
+  return process.env.IP_TRIALS_ENABLED === '1';
+}
+
 /** Resuelve IP del cliente para políticas de trial (prod exige IP real salvo dev-local explícito). */
 export function resolveClientIpForTrial(clientIp: string | null | undefined): string | null {
   let ip = normalizeClientIp(clientIp);
@@ -74,6 +92,13 @@ export async function checkPublicRegistrationIpTrialPolicy(params: {
   /** Si se une a clínica existente, no aplica bloqueo (no abre trial independiente). */
   joiningExistingClinic?: boolean;
 }): Promise<{ allowed: boolean; reason?: IpTrialEligibilityReason; message?: string }> {
+  // Sin prueba gratuita no hay nada que abusar repitiendo IP: mantener el bloqueo
+  // solo dejaría fuera del registro a quien viene a pagar desde una conexión que
+  // alguna vez tuvo un trial (oficina, clínica compartida, NAT de un operador).
+  if (!areIpTrialsEnabled()) {
+    return { allowed: true };
+  }
+
   const role = params.role ?? 'podiatrist';
   if (role !== 'clinic_admin' && role !== 'podiatrist') {
     return { allowed: true };
@@ -231,6 +256,15 @@ export async function checkIpTrialEligibility(
     };
   }
 
+  // Se evalúa después del rol para no mandar a pagar a quien nunca paga (recepción).
+  if (!areIpTrialsEnabled()) {
+    return {
+      eligible: false,
+      reason: 'trials_disabled',
+      message: 'Activa el pago en Facturación para empezar a usar el servicio.',
+    };
+  }
+
   const ip = resolveClientIpForTrial(clientIp);
   if (!ip) {
     return {
@@ -286,6 +320,21 @@ export async function grantIpTrialIfEligible(params: {
   const { userId, role, clinicId, clientIp } = params;
   const subjectType: 'clinic' | 'user' = clinicId ? 'clinic' : 'user';
   const subjectId = clinicId ?? userId;
+
+  // Único punto donde nace un trial: cortando acá quedan cubiertas todas las vías
+  // (login, verificación de correo, alta con Google, /trial/activate y ensureSubscriptionForUser).
+  if (!areIpTrialsEnabled()) {
+    return {
+      granted: false,
+      subscription: (await getSubscriptionForUser(userId, clinicId)) ?? undefined,
+      eligibility: {
+        eligible: false,
+        reason: 'trials_disabled',
+        message:
+          'El periodo de prueba ya no está disponible. Activa el pago en Facturación para usar el servicio.',
+      },
+    };
+  }
 
   const existingSub = await getSubscriptionForUser(userId, clinicId);
   if (existingSub?.hasStripeBilling && existingSub.isActive) {
@@ -459,6 +508,7 @@ export async function tryGrantIpTrialForUser(
   clinicId: string | null | undefined,
   clientIp: string | null | undefined
 ): Promise<void> {
+  if (!areIpTrialsEnabled()) return;
   if (role !== 'clinic_admin' && role !== 'podiatrist') return;
   const verification = await getTrialVerificationStatus(userId);
   if (!verification.ready) return;

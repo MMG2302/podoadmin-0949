@@ -29,6 +29,9 @@ describe('checkPublicRegistrationIpTrialPolicy', () => {
   beforeEach(() => {
     vi.unstubAllEnvs();
     mockSelect.mockReset();
+    // La política por IP solo existe para proteger la prueba gratuita, hoy retirada:
+    // estos casos describen el comportamiento con la prueba reactivada por flag.
+    vi.stubEnv('IP_TRIALS_ENABLED', '1');
   });
 
   it('permite registro si la IP nunca usó trial', async () => {
@@ -65,6 +68,20 @@ describe('checkPublicRegistrationIpTrialPolicy', () => {
       clientIp: '203.0.113.10',
       role: 'podiatrist',
       joiningExistingClinic: true,
+    });
+
+    expect(result.allowed).toBe(true);
+  });
+
+  it('sin prueba gratuita no bloquea por IP repetida: quien viene a pagar debe poder registrarse', async () => {
+    mockHasIpUsedTrial(true);
+    vi.stubEnv('NODE_ENV', 'production');
+    vi.stubEnv('IP_TRIALS_ENABLED', '0');
+
+    const result = await checkPublicRegistrationIpTrialPolicy({
+      clientIp: '203.0.113.10',
+      role: 'podiatrist',
+      joiningExistingClinic: false,
     });
 
     expect(result.allowed).toBe(true);

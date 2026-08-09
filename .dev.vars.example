@@ -30,7 +30,9 @@ APP_BASE_URL=http://localhost:5173
 # RATE_LIMIT_ANON_READ_PER_MIN=120
 # RATE_LIMIT_TENANT_WRITE_PER_MIN=400
 
-# Trial gratuito: IP + SMS + tarjeta (producción exige SMS+card por defecto)
+# Trial gratuito: RETIRADO (2026-08-09). Sin este flag no se concede ninguna prueba
+# nueva y el acceso exige pago; las de abajo solo aplican si se reactiva con =1.
+# IP_TRIALS_ENABLED=1
 # TRIAL_REQUIRE_SMS=1
 # TRIAL_REQUIRE_CARD=1
 # TRIAL_REVOKE_ON_IP_REPEAT=1

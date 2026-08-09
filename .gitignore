@@ -202,6 +202,8 @@ dist
 scripts/super-admin.sql
 
 # Local debug / generated
+.auth-capture.json
+scratchpad/
 cookies.txt
 repomix-output.xml
 repomix-remote-output.xml

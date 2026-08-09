@@ -29,6 +29,23 @@ import {
 } from "../components/landing/landing-chrome";
 import { cn } from "../lib/utils";
 
+/**
+ * Clips de la app para los pasos, en el mismo orden que `l.steps`.
+ *
+ * Son capturas reales recortadas a una sola region (no recorridos de pantalla):
+ * muestran que el sistema resuelve algo, sin exponer como se opera. Se regeneran
+ * con `node scripts/capture-landing-steps.mjs`.
+ *
+ * El paso 01 cruza dos paletas reales de la vista previa de marca en vez de grabar
+ * a alguien eligiendo colores: se ve que la interfaz se adapta, no como se opera.
+ */
+const STEP_MEDIA: ({ mp4: string; poster: string } | null)[] = [
+  { mp4: "/landing/steps/step1.mp4", poster: "/landing/steps/step1.webp" },
+  { mp4: "/landing/steps/step2.mp4", poster: "/landing/steps/step2.webp" },
+  { mp4: "/landing/steps/step3.mp4", poster: "/landing/steps/step3.webp" },
+  { mp4: "/landing/steps/step4.mp4", poster: "/landing/steps/step4.webp" },
+];
+
 function FeatureCard({
   icon: Icon,
   title,
@@ -408,6 +425,31 @@ const LandingPage = () => {
                   {step.title}
                 </h3>
                 <p className="mt-3 text-sm leading-relaxed text-brand-muted">{step.description}</p>
+                {/* El clip va despues del texto para que los cuatro titulos alineen arriba:
+                    el paso 01 todavia no tiene captura y, puesto antes, descolgaba su columna. */}
+                {STEP_MEDIA[i] && (
+                  <div className="mt-5 overflow-hidden rounded-lg border border-brand-border bg-brand-canvas">
+                    {/* La UI capturada esta en ingles a proposito: un solo juego de clips
+                        para los cuatro idiomas en vez de cuatro juegos que mantener. */}
+                    <video
+                      className="block h-40 w-full object-contain object-left motion-reduce:hidden"
+                      src={STEP_MEDIA[i]!.mp4}
+                      poster={STEP_MEDIA[i]!.poster}
+                      autoPlay
+                      muted
+                      loop
+                      playsInline
+                      preload="metadata"
+                      aria-hidden
+                    />
+                    <img
+                      className="hidden h-40 w-full object-contain object-left motion-reduce:block"
+                      src={STEP_MEDIA[i]!.poster}
+                      alt=""
+                      loading="lazy"
+                    />
+                  </div>
+                )}
               </li>
             ))}
           </ol>

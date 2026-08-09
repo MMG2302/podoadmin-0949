@@ -7,6 +7,7 @@ import path from "path";
 import { buildHtmlCspMetaContent } from "./scripts/html-csp";
 import {
         DEFAULT_LANG,
+        buildFaqPageDocument,
         buildJsonLd,
         buildLlmsTxt,
         buildPrerenderedLanding,
@@ -68,8 +69,18 @@ function seoPlugin(): Plugin {
                                 "llms.txt": buildLlmsTxt(),
                         };
 
+                        // /faq necesita su propio documento: el shell de la SPA lleva la landing
+                        // pre-renderizada dentro, así que un crawler sin JS vería la landing bajo /faq.
+                        const indexPath = path.join(dir, "index.html");
+                        if (fs.existsSync(indexPath)) {
+                                const indexHtml = fs.readFileSync(indexPath, "utf8");
+                                files["faq/index.html"] = buildFaqPageDocument(indexHtml);
+                        }
+
                         for (const [name, contents] of Object.entries(files)) {
-                                fs.writeFileSync(path.join(dir, name), contents, "utf8");
+                                const target = path.join(dir, name);
+                                fs.mkdirSync(path.dirname(target), { recursive: true });
+                                fs.writeFileSync(target, contents, "utf8");
                         }
                         console.log(`SEO: ${Object.keys(files).join(", ")} escritos en ${dir}`);
                 },

@@ -19,30 +19,15 @@ import {
   ChevronDown,
 } from "lucide-react";
 import { useLanguage } from "../contexts/language-context";
-import { useAuth } from "../contexts/auth-context";
+import { useHashScroll } from "../hooks/use-hash-scroll";
 import { landingByLang, type LandingPlan, type LandingSolution } from "../i18n/landing-i18n";
-import { LanguageSwitcher } from "../components/language-switcher";
-import { AnimatedThemeToggler } from "../components/ui/animated-theme-toggler";
+import {
+  LandingFooter,
+  LandingGridPattern,
+  LandingHeader,
+  Wordmark,
+} from "../components/landing/landing-chrome";
 import { cn } from "../lib/utils";
-
-const gridPattern = (
-  <svg width="100%" height="100%" xmlns="http://www.w3.org/2000/svg" aria-hidden>
-    <defs>
-      <pattern id="landing-grid" width="60" height="60" patternUnits="userSpaceOnUse">
-        <path d="M 60 0 L 0 0 0 60" fill="none" stroke="currentColor" strokeWidth="1" />
-      </pattern>
-    </defs>
-    <rect width="100%" height="100%" fill="url(#landing-grid)" />
-  </svg>
-);
-
-function Wordmark({ className }: { className?: string }) {
-  return (
-    <span className={cn("tracking-tight", className)}>
-      Pod<span className="font-bold">oraa</span>
-    </span>
-  );
-}
 
 function FeatureCard({
   icon: Icon,
@@ -221,8 +206,8 @@ function AudienceCard({
 
 const LandingPage = () => {
   const { language } = useLanguage();
-  const { user } = useAuth();
   const l = landingByLang[language] ?? landingByLang.es;
+  useHashScroll();
 
   const features = [
     { icon: Calendar, title: l.featureCalendarTitle, description: l.featureCalendarDesc, details: l.featureCalendarDetails },
@@ -248,61 +233,7 @@ const LandingPage = () => {
 
   return (
     <div className="h-full max-h-dvh overflow-y-auto overflow-scrolling-touch overscroll-y-contain bg-brand-canvas text-brand-ink">
-      {/* Nav */}
-      <header className="sticky top-0 z-50 border-b border-brand-border bg-brand-surface/95 backdrop-blur-sm">
-        <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3 sm:px-6">
-          <Link href="/landing" className="flex items-center gap-2.5 shrink-0">
-            <img src="/favicon.svg" alt="" className="h-8 w-8" />
-            <Wordmark className="text-lg font-light hidden sm:inline" />
-          </Link>
-
-          <nav className="hidden md:flex items-center gap-6 text-sm text-brand-muted">
-            <a href="#solutions" className="hover:text-brand-ink transition-colors">
-              {l.navSolutions}
-            </a>
-            <a href="#features" className="hover:text-brand-ink transition-colors">
-              {l.navFeatures}
-            </a>
-            <a href="#pricing" className="hover:text-brand-ink transition-colors">
-              {l.navPricing}
-            </a>
-            <a href="#audience" className="hover:text-brand-ink transition-colors">
-              {l.navAudience}
-            </a>
-            <a href="#steps" className="hover:text-brand-ink transition-colors">
-              {l.navSteps}
-            </a>
-          </nav>
-
-          <div className="flex items-center gap-2">
-            <AnimatedThemeToggler />
-            <LanguageSwitcher />
-            {user ? (
-              <Link
-                href="/"
-                className="inline-flex items-center px-4 py-2 text-sm font-medium rounded-lg bg-brand-ink text-brand-ink-fg hover:bg-brand-ink-hover transition-colors min-h-[44px]"
-              >
-                Mi cuenta
-              </Link>
-            ) : (
-              <>
-                <Link
-                  href="/login"
-                  className="inline-flex px-2 sm:px-3 py-2 text-xs sm:text-sm font-medium text-brand-ink hover:underline"
-                >
-                  {l.navLogin}
-                </Link>
-                <Link
-                  href="/register"
-                  className="inline-flex items-center px-4 py-2 text-sm font-medium rounded-lg bg-brand-ink text-brand-ink-fg hover:bg-brand-ink-hover transition-colors min-h-[44px]"
-                >
-                  {l.navRegister}
-                </Link>
-              </>
-            )}
-          </div>
-        </div>
-      </header>
+      <LandingHeader onLanding />
 
       {/* Hero */}
       <section className="relative overflow-hidden">
@@ -333,7 +264,7 @@ const LandingPage = () => {
           </div>
 
           <div className="relative bg-[#1a1a1a] text-white px-4 py-16 sm:px-6 sm:py-24 lg:py-32 flex flex-col items-center justify-center">
-            <div className="absolute inset-0 opacity-[0.04] text-white">{gridPattern}</div>
+            <div className="absolute inset-0 opacity-[0.04] text-white"><LandingGridPattern /></div>
             <div className="relative z-10 flex flex-col items-center text-center">
               <img src="/favicon.svg" alt="" className="w-28 h-28 sm:w-36 sm:h-36 mb-8" />
               <Wordmark className="text-4xl sm:text-5xl font-light text-white mb-4" />
@@ -530,27 +461,16 @@ const LandingPage = () => {
         </div>
       </section>
 
-      {/* FAQ — <details> nativo: la respuesta queda en el DOM aunque esté plegada */}
-      <section id="faq" className="py-16 sm:py-24 px-4 sm:px-6">
-        <div className="mx-auto max-w-3xl">
-          <div className="mb-10">
-            <h2 className="text-2xl sm:text-3xl font-semibold text-brand-ink">{l.faqTitle}</h2>
-            <p className="mt-3 text-brand-muted leading-relaxed">{l.faqSubtitle}</p>
-          </div>
-          <div className="divide-y divide-brand-border border-y border-brand-border">
-            {l.faqItems.map((item) => (
-              <details key={item.question} className="group py-5">
-                <summary className="flex cursor-pointer list-none items-start justify-between gap-4 text-left">
-                  <h3 className="text-base font-medium text-brand-ink">{item.question}</h3>
-                  <ChevronDown
-                    className="mt-0.5 h-4 w-4 shrink-0 text-brand-muted transition-transform group-open:rotate-180"
-                    strokeWidth={1.5}
-                  />
-                </summary>
-                <p className="mt-3 pr-8 text-sm leading-relaxed text-brand-muted">{item.answer}</p>
-              </details>
-            ))}
-          </div>
+      {/* Las preguntas frecuentes viven en /faq; acá solo queda el enlace. */}
+      <section className="px-4 pb-12 pt-20 sm:px-6 sm:pb-16 sm:pt-24">
+        <div className="mx-auto max-w-3xl text-center">
+          <Link
+            href="/faq"
+            className="inline-flex items-center gap-2 text-xl sm:text-2xl font-semibold text-brand-ink hover:underline"
+          >
+            {l.faqPageTitle}
+            <ArrowRight className="h-5 w-5 sm:h-6 sm:w-6" />
+          </Link>
         </div>
       </section>
 
@@ -558,7 +478,7 @@ const LandingPage = () => {
       <section className="py-16 sm:py-24 px-4 sm:px-6">
         <div className="mx-auto max-w-6xl">
           <div className="relative overflow-hidden rounded-2xl bg-brand-ink dark:bg-gray-900 px-6 py-12 sm:px-12 sm:py-16 text-center text-white">
-            <div className="absolute inset-0 opacity-[0.04]">{gridPattern}</div>
+            <div className="absolute inset-0 opacity-[0.04]"><LandingGridPattern /></div>
             <div className="relative z-10">
               <h2 className="text-2xl sm:text-3xl font-light">{l.ctaTitle}</h2>
               <p className="mt-3 text-gray-400 max-w-lg mx-auto">{l.ctaSubtitle}</p>
@@ -582,26 +502,7 @@ const LandingPage = () => {
         </div>
       </section>
 
-      {/* Footer */}
-      <footer className="border-t border-brand-border bg-brand-surface px-4 sm:px-6 py-8">
-        <div className="mx-auto max-w-6xl flex flex-col sm:flex-row items-center justify-between gap-4 text-sm text-brand-muted">
-          <div className="flex items-center gap-2">
-            <img src="/favicon.svg" alt="" className="h-6 w-6" />
-            <Wordmark className="text-base font-light" />
-          </div>
-          <div className="flex items-center gap-4">
-            <Link href="/terms" className="hover:text-brand-ink transition-colors">
-              {l.footerTerms}
-            </Link>
-            <Link href="/privacy" className="hover:text-brand-ink transition-colors">
-              {l.footerPrivacy}
-            </Link>
-          </div>
-          <p className="text-xs sm:text-sm">
-            © {new Date().getFullYear()} Podoraa. {l.footerRights}
-          </p>
-        </div>
-      </footer>
+      <LandingFooter />
     </div>
   );
 };

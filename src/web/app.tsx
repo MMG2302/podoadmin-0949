@@ -16,6 +16,7 @@ import Privacy from "./pages/privacy";
 import GoogleCallbackPage from "./pages/google-callback";
 import Dashboard from "./pages/dashboard";
 import LandingPage from "./pages/landing-page";
+import FaqPage from "./pages/faq-page";
 import ReservationActionPage from "./pages/reservation-action-page";
 import SatisfactionPage from "./pages/satisfaction-page";
 import BookingPage from "./pages/booking-page";
@@ -122,6 +123,8 @@ function AppRoutes() {
           entró, no puede leer los términos que la sección 11 le da por aceptados. */}
       <Route path="/terms" component={Terms} />
       <Route path="/privacy" component={Privacy} />
+      {/* Preguntas frecuentes: pública, y también accesible con sesión desde el pie. */}
+      <Route path="/faq" component={FaqPage} />
       <Route path="/auth/google/callback">
         <PublicRoute component={GoogleCallbackPage} />
       </Route>

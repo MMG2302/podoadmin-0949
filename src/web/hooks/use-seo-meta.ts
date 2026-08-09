@@ -17,7 +17,7 @@ const SITE_URL = "https://podoraa.com";
  * rastreo, pero una URL bloqueada todavía puede aparecer en Google si alguien la enlaza
  * desde fuera. El meta noindex es lo que garantiza que no se indexe.
  */
-const INDEXABLE = new Set(["/", "/landing", "/terms", "/privacy"]);
+const INDEXABLE = new Set(["/", "/landing", "/faq", "/terms", "/privacy"]);
 
 /** `/landing` es la misma página que `/`; se consolida en la raíz. */
 const CANONICAL_ALIAS: Record<string, string> = { "/landing": "/" };

@@ -23,12 +23,18 @@ export type LandingStep = {
   description: string;
 };
 
+export type LandingFaqItem = {
+  question: string;
+  answer: string;
+};
+
 export type LandingI18n = {
   navSolutions: string;
   navFeatures: string;
   navPricing: string;
   navAudience: string;
   navSteps: string;
+  navFaq: string;
   navLogin: string;
   navRegister: string;
   heroTitle: string;
@@ -98,12 +104,37 @@ export type LandingI18n = {
   comparisonTitle: string;
   comparisonSubtitle: string;
   comparisonRows: { alternative: string; problem: string; podoraa: string }[];
-  faqTitle: string;
-  faqSubtitle: string;
   /** Se publica también como JSON-LD FAQPage (ver `buildJsonLd` en scripts/seo.ts). */
-  faqItems: { question: string; answer: string }[];
+  faqItems: LandingFaqItem[];
+  /**
+   * Preguntas sobre el uso del producto ya contratado (planes, roles, 2FA, exportación).
+   * Solo se muestran en /faq: la landing se queda con las de antes de contratar.
+   */
+  faqSystemItems: LandingFaqItem[];
+  faqPageTitle: string;
+  faqPageSubtitle: string;
+  faqPageGeneralHeading: string;
+  faqPageSystemHeading: string;
+  faqPageBack: string;
+  /** Bloque de contacto de /faq: abre el correo del visitante con el mensaje ya escrito. */
+  contactTitle: string;
+  contactSubtitle: string;
+  contactEmailLabel: string;
+  contactEmailPlaceholder: string;
+  contactQuestionLabel: string;
+  contactQuestionPlaceholder: string;
+  contactSubmit: string;
+  contactHint: string;
+  contactEmailInvalid: string;
+  contactQuestionMissing: string;
+  contactDirect: string;
+  /** Asunto y encabezado del cuerpo del mailto. */
+  contactMailSubject: string;
+  contactMailFrom: string;
   footerTerms: string;
   footerPrivacy: string;
+  /** Enlace del pie a la sección de contacto de /faq. */
+  footerContact: string;
   footerRights: string;
 };
 
@@ -113,6 +144,7 @@ const es: LandingI18n = {
   navPricing: "Precios",
   navAudience: "Para quién",
   navSteps: "Cómo empezar",
+  navFaq: "Preguntas",
   navLogin: "Iniciar sesión",
   navRegister: "Crear cuenta",
   heroTitle: "Organiza tu consulta",
@@ -385,8 +417,6 @@ const es: LandingI18n = {
         "Pensado para podología, podiatría y pedicuría: plantillas clínicas del área, informes listos para imprimir y las métricas de una consulta podológica.",
     },
   ],
-  faqTitle: "Preguntas frecuentes",
-  faqSubtitle: "Lo que más nos preguntan antes de empezar.",
   faqItems: [
     {
       question: "¿Qué es un software de gestión podológica?",
@@ -419,8 +449,121 @@ const es: LandingI18n = {
         "Los datos viajan cifrados, cada usuario ve solo lo que le corresponde por su rol — una recepcionista no accede a la información clínica — y las acciones sensibles quedan registradas en un log de auditoría. Hay política de retención y los datos de tu consulta son tuyos y exportables.",
     },
   ],
+  faqSystemItems: [
+    {
+      question: "¿Cuánto tardo en tenerlo funcionando?",
+      answer:
+        "Una tarde. Cargas tus horarios, tus servicios con sus precios y tu logo, y ya puedes agendar; los pacientes los das de alta a medida que atiendes, sin migrar todo de golpe. No hay instalación ni configuración técnica: si sabes usar WhatsApp y una agenda, sabes usar Podoraa.",
+    },
+    {
+      question: "¿Qué planes hay y en qué se diferencian?",
+      answer:
+        "Cuatro, todos en USD. ESSENTIAL ($25/mes por profesional) trae la operación diaria: agenda, pacientes, historia clínica, pagos y recordatorios. ESSENTIAL PRO ($40) añade analíticas de ventas y rentabilidad, métricas avanzadas y herramientas clínicas avanzadas. CLINIC ($100/mes por clínica) incluye 5 podólogos, recepción compartida y soporte prioritario. CLINIC PRO ($160) incluye 8 podólogos y todo lo de PRO. Puedes cambiar de plan cuando crezcas.",
+    },
+    {
+      question: "¿Cuánto cuesta sumar personas a mi equipo?",
+      answer:
+        "Las recepcionistas son gratis y sin límite en todos los planes. En los planes de clínica vienen 5 podólogos incluidos (8 en CLINIC PRO) y cada profesional extra cuesta $10/mes; al agregarlo o quitarlo, la suscripción se ajusta sola y lo ves reflejado en la siguiente factura.",
+    },
+    {
+      question: "¿Cuántos pacientes puedo registrar?",
+      answer:
+        "Los que necesites: no hay tope de pacientes, de citas ni de sesiones clínicas en ningún plan. Lo que cambia de un plan a otro es cuántos profesionales trabajan en la cuenta y qué analíticas ves, no el volumen de tu consulta.",
+    },
+    {
+      question: "¿Sirve si tengo más de un consultorio o sucursal?",
+      answer:
+        "Una cuenta de clínica gestiona una clínica —con su dirección, su equipo y su marca— y dentro de ella tantos profesionales como necesites, cada uno con su agenda. Si llevas varias sucursales, escríbenos antes de contratar y vemos cómo montarlo en tu caso.",
+    },
+    {
+      question: "¿Qué ve cada rol? ¿La recepcionista entra a la historia clínica?",
+      answer:
+        "No. La recepcionista trabaja con el calendario, la ficha administrativa del paciente y los mensajes, sin acceso a los datos clínicos. El podólogo ve a sus pacientes y sus sesiones; el administrador de la clínica, la visión del equipo y la facturación. Además, los datos de una clínica no se cruzan con los de otra: cada consulta solo ve lo suyo.",
+    },
+    {
+      question: "¿Qué pasa si un paciente cancela o quiere cambiar su cita?",
+      answer:
+        "El paciente responde desde el propio recordatorio. Si cancela, el horario queda libre en la agenda al instante y te llega el aviso; si pide reagendar, la solicitud te llega a ti para ofrecerle el hueco nuevo. Y si canceló por error y el horario sigue libre, puede volver a confirmar esa misma cita.",
+    },
+    {
+      question: "¿Puedo controlar los pagos y lo que queda pendiente de cobro?",
+      answer:
+        "Sí. Al cerrar la sesión, el cobro pasa a recepción con su importe y queda como pendiente hasta que se marca como pagado, así que en todo momento ves qué está cobrado y qué no. Al final del día tienes el cierre con lo que entró, y cada paciente conserva su historial de cobros.",
+    },
+    {
+      question: "¿Puedo ver cuánto vendo al mes y qué tratamientos me rinden más?",
+      answer:
+        "Sí, en los planes PRO. Tienes las ventas del período comparadas con el anterior, el desglose por servicio y por profesional, la ocupación de la agenda y la rentabilidad, donde fijas tu meta mensual y tus gastos para ver cuánto queda realmente.",
+    },
+    {
+      question: "¿Puedo imprimir o exportar mis informes?",
+      answer:
+        "Los informes clínicos y los consentimientos salen listos para imprimir con tu marca, y desde la ventana de impresión puedes guardarlos como PDF. La ficha completa de un paciente se exporta en un archivo portable, la agenda en formato .ics y el registro de auditoría en CSV. Las analíticas se consultan dentro de la plataforma; si necesitas un dato concreto en hoja de cálculo, escríbenos.",
+    },
+    {
+      question: "¿Puedo activar la verificación en dos pasos?",
+      answer:
+        "Sí, desde Ajustes → Seguridad. Se activa con una app de autenticación (Google Authenticator, Authy o similar) que genera un código de seis dígitos, y al activarla recibes códigos de respaldo de un solo uso. Guárdalos fuera del móvil: son la forma de entrar si pierdes el teléfono.",
+    },
+    {
+      question: "Perdí el móvil del segundo factor o la contraseña. ¿Cómo recupero el acceso?",
+      answer:
+        "Si es la contraseña, el enlace «¿Olvidaste tu contraseña?» del login te envía un correo para restablecerla. Si es el segundo factor, entra con uno de tus códigos de respaldo; si tampoco los tienes, escríbenos a soporte@podoraa.com desde el correo de la cuenta y el equipo de Podoraa reinicia el segundo factor tras verificar tu identidad.",
+    },
+    {
+      question: "¿Qué pasa si pierdo mi computadora o mi celular?",
+      answer:
+        "Tu información no está en el equipo: vive en tu cuenta, así que entras desde otro dispositivo y está todo ahí. La sesión del equipo perdido caduca sola, porque el acceso se renueva cada 15 minutos y la sesión completa vence a los 7 días. Aun así, cambia la contraseña desde otro dispositivo y ten activada la verificación en dos pasos; si necesitas cortar el acceso de inmediato, escríbenos a soporte@podoraa.com.",
+    },
+    {
+      question: "¿Cómo cambio de plan, actualizo la tarjeta o cancelo?",
+      answer:
+        "Todo desde Ajustes → Suscripción, que abre el portal de pagos de Stripe. Ahí cambias la tarjeta, descargas tus facturas y cancelas la suscripción cuando quieras; no hay permanencia ni hay que pedirlo por correo.",
+    },
+    {
+      question: "¿Necesito una cuenta de WhatsApp Business para los recordatorios?",
+      answer:
+        "Puedes empezar con WhatsApp Web, sin dar de alta nada, o conectar la API oficial de Meta cuando quieras que salgan solos y a mayor volumen. Podoraa no cobra por mensaje ni te pone un tope propio: el volumen que puedes enviar lo fija el nivel que Meta asigne a tu cuenta de WhatsApp Business.",
+    },
+    {
+      question: "¿Puedo enviar campañas o promociones por WhatsApp?",
+      answer:
+        "Sí: armas la campaña y la envías al grupo de pacientes que elijas, por ejemplo a quienes hace meses que no vienen. El envío automático requiere tener conectada la API oficial de Meta. Ten en cuenta que los mensajes promocionales se rigen por las políticas de WhatsApp de Meta y por el consentimiento de cada paciente, así que conviene usarlos con criterio y solo con quien aceptó recibirlos.",
+    },
+    {
+      question: "¿Puedo llevarme mis datos si dejo de usar Podoraa?",
+      answer:
+        "Sí. Cada paciente se exporta en un archivo portable con su ficha e historial, y la agenda sale en formato .ics para abrirla en otro calendario. Los datos clínicos de tu consulta son tuyos; se conservan según la política de retención y se eliminan cuando esa política lo permite.",
+    },
+    {
+      question: "¿Qué necesito instalar y en qué idiomas está?",
+      answer:
+        "Nada: funciona en el navegador, también desde el móvil o la tablet, y se actualiza sola. La interfaz está en español, inglés, portugués y francés, y se cambia desde el selector de idioma en cualquier momento.",
+    },
+  ],
+  faqPageTitle: "Preguntas frecuentes",
+  faqPageSubtitle:
+    "Lo que más nos preguntan antes de empezar y lo que resuelve Podoraa una vez que la consulta ya está funcionando. Si falta la tuya, escríbenos al final de la página.",
+  faqPageGeneralHeading: "Antes de empezar",
+  faqPageSystemHeading: "Sobre el uso de Podoraa",
+  faqPageBack: "Volver al inicio",
+  contactTitle: "¿No encontraste tu respuesta?",
+  contactSubtitle: "Déjanos tu correo y tu duda: te contestamos a ese mismo correo.",
+  contactEmailLabel: "Tu correo",
+  contactEmailPlaceholder: "nombre@tuclinica.com",
+  contactQuestionLabel: "Tu duda",
+  contactQuestionPlaceholder: "Cuéntanos qué necesitas saber…",
+  contactSubmit: "Enviar consulta",
+  contactHint:
+    "Al enviar se abre tu programa de correo con el mensaje ya escrito para soporte@podoraa.com. Nada se envía hasta que tú le des a enviar ahí.",
+  contactEmailInvalid: "Escribe un correo válido para que podamos responderte.",
+  contactQuestionMissing: "Cuéntanos tu duda antes de enviar.",
+  contactDirect: "O escríbenos directamente a",
+  contactMailSubject: "Consulta desde las preguntas frecuentes",
+  contactMailFrom: "Mi correo",
   footerTerms: "Términos",
   footerPrivacy: "Privacidad",
+  footerContact: "Contacto",
   footerRights: "Todos los derechos reservados.",
 };
 
@@ -430,6 +573,7 @@ const en: LandingI18n = {
   navPricing: "Pricing",
   navAudience: "Who it's for",
   navSteps: "How to start",
+  navFaq: "FAQ",
   navLogin: "Log in",
   navRegister: "Sign up",
   heroTitle: "Organize your practice",
@@ -702,8 +846,6 @@ const en: LandingI18n = {
         "Built for podiatry and chiropody: clinical templates for the field, print-ready reports and the metrics a foot-care practice actually needs.",
     },
   ],
-  faqTitle: "Frequently asked questions",
-  faqSubtitle: "What people ask us most before getting started.",
   faqItems: [
     {
       question: "What is podiatry practice management software?",
@@ -736,8 +878,121 @@ const en: LandingI18n = {
         "Data travels encrypted, each user sees only what their role allows — a receptionist has no access to clinical information — and sensitive actions are written to an audit log. There is a retention policy, and your practice's data is yours and exportable.",
     },
   ],
+  faqSystemItems: [
+    {
+      question: "How long does it take to have it running?",
+      answer:
+        "An afternoon. You load your opening hours, your services with their prices and your logo, and you can start booking; patients are added as you see them, with no need to migrate everything at once. There is no install and no technical setup: if you can use WhatsApp and a diary, you can use Podoraa.",
+    },
+    {
+      question: "What plans are there and how do they differ?",
+      answer:
+        "Four, all in USD. ESSENTIAL ($25/month per practitioner) covers the daily run: scheduling, patients, clinical records, payments and reminders. ESSENTIAL PRO ($40) adds sales and profitability analytics, advanced metrics and advanced clinical tools. CLINIC ($100/month per clinic) includes 5 podiatrists, shared front desk and priority support. CLINIC PRO ($160) includes 8 podiatrists plus everything in PRO. You can move up a plan as you grow.",
+    },
+    {
+      question: "What does it cost to add people to my team?",
+      answer:
+        "Receptionists are free and unlimited on every plan. Clinic plans include 5 podiatrists (8 on CLINIC PRO) and each extra practitioner costs $10/month; when you add or remove one, the subscription adjusts itself and you see it on the next invoice.",
+    },
+    {
+      question: "How many patients can I register?",
+      answer:
+        "As many as you need: there is no cap on patients, appointments or clinical sessions on any plan. What changes from one plan to another is how many practitioners work in the account and which analytics you get, not the size of your practice.",
+    },
+    {
+      question: "Does it work if I have more than one office or branch?",
+      answer:
+        "A clinic account manages one clinic — its address, its team and its branding — and inside it as many practitioners as you need, each with their own calendar. If you run several branches, write to us before subscribing and we will look at how to set it up for your case.",
+    },
+    {
+      question: "What does each role see? Can a receptionist open clinical records?",
+      answer:
+        "No. A receptionist works with the calendar, the patient's administrative details and messages, with no access to clinical data. A podiatrist sees their patients and sessions; the clinic administrator sees the team view and billing. On top of that, one clinic's data never crosses into another's: each practice only ever sees its own.",
+    },
+    {
+      question: "What happens if a patient cancels or wants to change their appointment?",
+      answer:
+        "The patient replies from the reminder itself. If they cancel, the slot is freed in the calendar straight away and you get the notice; if they ask to reschedule, the request reaches you so you can offer the new slot. And if they cancelled by mistake and the slot is still free, they can confirm that same appointment again.",
+    },
+    {
+      question: "Can I keep track of payments and what is still outstanding?",
+      answer:
+        "Yes. When you close the session, the charge passes to the front desk with its amount and stays pending until it is marked as paid, so you always see what has been collected and what has not. At the end of the day you get the close with what came in, and each patient keeps their own payment history.",
+    },
+    {
+      question: "Can I see how much I bill each month and which treatments pay off best?",
+      answer:
+        "Yes, on the PRO plans. You get the period's sales compared against the previous one, the breakdown by service and by practitioner, schedule occupancy, and profitability, where you set your monthly target and your costs to see what is actually left.",
+    },
+    {
+      question: "Can I print or export my reports?",
+      answer:
+        "Clinical reports and consent forms come out print-ready with your branding, and from the print dialog you can save them as PDF. A patient's full record exports to a portable file, the schedule to .ics and the audit log to CSV. Analytics are consulted inside the platform; if you need a specific figure in a spreadsheet, write to us.",
+    },
+    {
+      question: "Can I turn on two-step verification?",
+      answer:
+        "Yes, from Settings → Security. You set it up with an authenticator app (Google Authenticator, Authy or similar) that generates a six-digit code, and when you enable it you get single-use backup codes. Keep them somewhere other than your phone: they are how you get back in if you lose it.",
+    },
+    {
+      question: "I lost the phone with my second factor, or my password. How do I get back in?",
+      answer:
+        "For a password, the \"Forgot your password?\" link on the login screen emails you a reset link. For the second factor, sign in with one of your backup codes; if you don't have those either, email soporte@podoraa.com from the account's address and the Podoraa team will reset the second factor after verifying your identity.",
+    },
+    {
+      question: "What happens if I lose my computer or my phone?",
+      answer:
+        "Your information is not on the device: it lives in your account, so you sign in from another one and everything is there. The session on the lost device expires by itself, because access is renewed every 15 minutes and the full session expires after 7 days. Even so, change your password from another device and keep two-step verification on; if you need to cut off access immediately, write to soporte@podoraa.com.",
+    },
+    {
+      question: "How do I change plan, update my card or cancel?",
+      answer:
+        "All of it from Settings → Billing, which opens the Stripe payment portal. There you change the card, download your invoices and cancel whenever you want; there is no lock-in and no need to email us to do it.",
+    },
+    {
+      question: "Do I need a WhatsApp Business account for reminders?",
+      answer:
+        "You can start with WhatsApp Web, with nothing to register, or connect Meta's official API when you want reminders to go out on their own and at higher volume. Podoraa doesn't charge per message or impose its own cap: your sending volume is set by the tier Meta assigns to your WhatsApp Business account.",
+    },
+    {
+      question: "Can I send campaigns or promotions over WhatsApp?",
+      answer:
+        "Yes: you put the campaign together and send it to the group of patients you choose, for example those you have not seen in months. Automatic sending requires Meta's official API to be connected. Bear in mind that promotional messages are governed by Meta's WhatsApp policies and by each patient's consent, so use them with care and only with those who agreed to receive them.",
+    },
+    {
+      question: "Can I take my data with me if I stop using Podoraa?",
+      answer:
+        "Yes. Each patient exports to a portable file with their record and history, and the schedule exports as .ics to open in another calendar. Your practice's clinical data is yours; it is kept according to the retention policy and deleted when that policy allows.",
+    },
+    {
+      question: "What do I need to install, and which languages is it in?",
+      answer:
+        "Nothing: it runs in the browser, on phone or tablet too, and updates itself. The interface is in Spanish, English, Portuguese and French, and you can switch at any time from the language selector.",
+    },
+  ],
+  faqPageTitle: "Frequently asked questions",
+  faqPageSubtitle:
+    "What people ask us most before getting started, and what Podoraa answers once the practice is up and running. If yours isn't here, write to us at the bottom of the page.",
+  faqPageGeneralHeading: "Before getting started",
+  faqPageSystemHeading: "Using Podoraa",
+  faqPageBack: "Back to home",
+  contactTitle: "Didn't find your answer?",
+  contactSubtitle: "Leave us your email and your question: we reply to that same address.",
+  contactEmailLabel: "Your email",
+  contactEmailPlaceholder: "name@yourclinic.com",
+  contactQuestionLabel: "Your question",
+  contactQuestionPlaceholder: "Tell us what you need to know…",
+  contactSubmit: "Send question",
+  contactHint:
+    "Sending opens your email app with the message already written to soporte@podoraa.com. Nothing goes out until you send it there.",
+  contactEmailInvalid: "Enter a valid email so we can reply to you.",
+  contactQuestionMissing: "Tell us your question before sending.",
+  contactDirect: "Or write to us directly at",
+  contactMailSubject: "Question from the FAQ page",
+  contactMailFrom: "My email",
   footerTerms: "Terms",
   footerPrivacy: "Privacy",
+  footerContact: "Contact",
   footerRights: "All rights reserved.",
 };
 
@@ -747,6 +1002,7 @@ const pt: LandingI18n = {
   navPricing: "Preços",
   navAudience: "Para quem",
   navSteps: "Como começar",
+  navFaq: "Perguntas",
   navLogin: "Entrar",
   navRegister: "Criar conta",
   heroTitle: "Organize a sua consulta",
@@ -1019,8 +1275,6 @@ const pt: LandingI18n = {
         "Pensado para podologia e pedicura clínica: modelos clínicos da área, relatórios prontos a imprimir e as métricas de uma consulta de podologia.",
     },
   ],
-  faqTitle: "Perguntas frequentes",
-  faqSubtitle: "O que mais nos perguntam antes de começar.",
   faqItems: [
     {
       question: "O que é um software de gestão podológica?",
@@ -1053,8 +1307,121 @@ const pt: LandingI18n = {
         "Os dados viajam cifrados, cada utilizador vê apenas o que lhe compete pelo seu perfil — uma rececionista não acede à informação clínica — e as ações sensíveis ficam registadas num log de auditoria. Há política de retenção e os dados da sua consulta são seus e exportáveis.",
     },
   ],
+  faqSystemItems: [
+    {
+      question: "Quanto tempo demoro a tê-la a funcionar?",
+      answer:
+        "Uma tarde. Carrega os seus horários, os seus serviços com os preços e o seu logótipo, e já pode marcar; os pacientes vai criando à medida que atende, sem migrar tudo de uma vez. Não há instalação nem configuração técnica: se sabe usar o WhatsApp e uma agenda, sabe usar a Podoraa.",
+    },
+    {
+      question: "Que planos existem e em que se distinguem?",
+      answer:
+        "Quatro, todos em USD. ESSENTIAL (25 $/mês por profissional) cobre o dia a dia: agenda, pacientes, histórico clínico, pagamentos e lembretes. ESSENTIAL PRO (40 $) acrescenta analíticas de vendas e rentabilidade, métricas avançadas e ferramentas clínicas avançadas. CLINIC (100 $/mês por clínica) inclui 5 podologistas, receção partilhada e apoio prioritário. CLINIC PRO (160 $) inclui 8 podologistas e tudo o do PRO. Pode mudar de plano à medida que cresce.",
+    },
+    {
+      question: "Quanto custa juntar pessoas à minha equipa?",
+      answer:
+        "As rececionistas são gratuitas e sem limite em todos os planos. Os planos de clínica incluem 5 podologistas (8 no CLINIC PRO) e cada profissional extra custa 10 $/mês; ao adicionar ou retirar um, a subscrição ajusta-se sozinha e vê-o refletido na fatura seguinte.",
+    },
+    {
+      question: "Quantos pacientes posso registar?",
+      answer:
+        "Os que precisar: não há limite de pacientes, de marcações nem de sessões clínicas em nenhum plano. O que muda de um plano para outro é quantos profissionais trabalham na conta e que analíticas vê, não o volume da sua consulta.",
+    },
+    {
+      question: "Serve se tiver mais do que um consultório ou filial?",
+      answer:
+        "Uma conta de clínica gere uma clínica —com a sua morada, a sua equipa e a sua marca— e dentro dela tantos profissionais quantos precisar, cada um com a sua agenda. Se tem várias filiais, escreva-nos antes de subscrever e vemos como montar isso no seu caso.",
+    },
+    {
+      question: "O que vê cada perfil? A rececionista entra no histórico clínico?",
+      answer:
+        "Não. A rececionista trabalha com o calendário, os dados administrativos do paciente e as mensagens, sem acesso aos dados clínicos. O podologista vê os seus pacientes e sessões; o administrador da clínica vê a visão da equipa e a faturação. Além disso, os dados de uma clínica nunca se cruzam com os de outra: cada consulta vê apenas o que é seu.",
+    },
+    {
+      question: "O que acontece se um paciente cancelar ou quiser mudar a marcação?",
+      answer:
+        "O paciente responde a partir do próprio lembrete. Se cancelar, o horário fica livre na agenda de imediato e recebe o aviso; se pedir para remarcar, o pedido chega-lhe a si para oferecer o novo horário. E se cancelou por engano e o horário continua livre, pode voltar a confirmar essa mesma marcação.",
+    },
+    {
+      question: "Posso controlar os pagamentos e o que fica por cobrar?",
+      answer:
+        "Sim. Ao fechar a sessão, a cobrança passa para a receção com o respetivo valor e fica pendente até ser marcada como paga, por isso vê sempre o que está cobrado e o que não está. No fim do dia tem o fecho com o que entrou, e cada paciente mantém o seu histórico de cobranças.",
+    },
+    {
+      question: "Posso ver quanto vendo por mês e que tratamentos rendem mais?",
+      answer:
+        "Sim, nos planos PRO. Tem as vendas do período comparadas com o anterior, a distribuição por serviço e por profissional, a ocupação da agenda e a rentabilidade, onde define a sua meta mensal e as suas despesas para ver quanto sobra realmente.",
+    },
+    {
+      question: "Posso imprimir ou exportar os meus relatórios?",
+      answer:
+        "Os relatórios clínicos e os consentimentos saem prontos a imprimir com a sua marca e, na janela de impressão, pode guardá-los como PDF. A ficha completa de um paciente exporta-se num ficheiro portátil, a agenda em formato .ics e o registo de auditoria em CSV. As analíticas consultam-se dentro da plataforma; se precisar de um dado concreto em folha de cálculo, escreva-nos.",
+    },
+    {
+      question: "Posso ativar a verificação em dois passos?",
+      answer:
+        "Sim, em Definições → Segurança. Ativa-se com uma app de autenticação (Google Authenticator, Authy ou semelhante) que gera um código de seis dígitos e, ao ativá-la, recebe códigos de recuperação de utilização única. Guarde-os fora do telemóvel: são a forma de entrar se o perder.",
+    },
+    {
+      question: "Perdi o telemóvel do segundo fator, ou a palavra-passe. Como recupero o acesso?",
+      answer:
+        "Se for a palavra-passe, a ligação «Esqueceu-se da palavra-passe?» no login envia-lhe um email para a redefinir. Se for o segundo fator, entre com um dos seus códigos de recuperação; se também não os tiver, escreva para soporte@podoraa.com a partir do email da conta e a equipa da Podoraa reinicia o segundo fator depois de verificar a sua identidade.",
+    },
+    {
+      question: "O que acontece se perder o computador ou o telemóvel?",
+      answer:
+        "A sua informação não está no equipamento: vive na sua conta, por isso entra a partir de outro dispositivo e está lá tudo. A sessão do equipamento perdido caduca sozinha, porque o acesso é renovado a cada 15 minutos e a sessão completa expira ao fim de 7 dias. Ainda assim, mude a palavra-passe a partir de outro dispositivo e mantenha a verificação em dois passos ativa; se precisar de cortar o acesso de imediato, escreva para soporte@podoraa.com.",
+    },
+    {
+      question: "Como mudo de plano, atualizo o cartão ou cancelo?",
+      answer:
+        "Tudo em Definições → Faturação, que abre o portal de pagamentos da Stripe. Aí muda o cartão, descarrega as suas faturas e cancela a subscrição quando quiser; não há fidelização nem é preciso pedi-lo por email.",
+    },
+    {
+      question: "Preciso de uma conta WhatsApp Business para os lembretes?",
+      answer:
+        "Pode começar com o WhatsApp Web, sem registar nada, ou ligar a API oficial da Meta quando quiser que saiam sozinhos e com mais volume. A Podoraa não cobra por mensagem nem impõe um limite próprio: o volume que pode enviar é definido pelo nível que a Meta atribui à sua conta WhatsApp Business.",
+    },
+    {
+      question: "Posso enviar campanhas ou promoções por WhatsApp?",
+      answer:
+        "Sim: monta a campanha e envia-a ao grupo de pacientes que escolher, por exemplo a quem não aparece há meses. O envio automático exige ter ligada a API oficial da Meta. Tenha em conta que as mensagens promocionais regem-se pelas políticas de WhatsApp da Meta e pelo consentimento de cada paciente, por isso convém usá-las com critério e só com quem aceitou recebê-las.",
+    },
+    {
+      question: "Posso levar os meus dados se deixar de usar a Podoraa?",
+      answer:
+        "Sim. Cada paciente é exportado num ficheiro portátil com a ficha e o histórico, e a agenda sai em formato .ics para abrir noutro calendário. Os dados clínicos da sua consulta são seus; são conservados segundo a política de retenção e eliminados quando essa política o permite.",
+    },
+    {
+      question: "O que preciso de instalar e em que idiomas está?",
+      answer:
+        "Nada: funciona no navegador, também no telemóvel ou tablet, e atualiza-se sozinha. A interface está em espanhol, inglês, português e francês, e muda-se a qualquer momento no seletor de idioma.",
+    },
+  ],
+  faqPageTitle: "Perguntas frequentes",
+  faqPageSubtitle:
+    "O que mais nos perguntam antes de começar e o que a Podoraa resolve quando a consulta já está a funcionar. Se faltar a sua, escreva-nos no fim da página.",
+  faqPageGeneralHeading: "Antes de começar",
+  faqPageSystemHeading: "Sobre o uso da Podoraa",
+  faqPageBack: "Voltar ao início",
+  contactTitle: "Não encontrou a sua resposta?",
+  contactSubtitle: "Deixe-nos o seu email e a sua dúvida: respondemos para esse mesmo email.",
+  contactEmailLabel: "O seu email",
+  contactEmailPlaceholder: "nome@suaclinica.com",
+  contactQuestionLabel: "A sua dúvida",
+  contactQuestionPlaceholder: "Diga-nos o que precisa de saber…",
+  contactSubmit: "Enviar dúvida",
+  contactHint:
+    "Ao enviar abre-se o seu programa de email com a mensagem já escrita para soporte@podoraa.com. Nada é enviado até que carregue em enviar aí.",
+  contactEmailInvalid: "Escreva um email válido para podermos responder-lhe.",
+  contactQuestionMissing: "Diga-nos a sua dúvida antes de enviar.",
+  contactDirect: "Ou escreva-nos diretamente para",
+  contactMailSubject: "Dúvida a partir das perguntas frequentes",
+  contactMailFrom: "O meu email",
   footerTerms: "Termos",
   footerPrivacy: "Privacidade",
+  footerContact: "Contacto",
   footerRights: "Todos os direitos reservados.",
 };
 
@@ -1064,6 +1431,7 @@ const fr: LandingI18n = {
   navPricing: "Tarifs",
   navAudience: "Pour qui",
   navSteps: "Comment démarrer",
+  navFaq: "Questions",
   navLogin: "Connexion",
   navRegister: "Créer un compte",
   heroTitle: "Organisez votre cabinet",
@@ -1336,8 +1704,6 @@ const fr: LandingI18n = {
         "Pensé pour la podologie et les soins du pied : modèles cliniques du métier, comptes rendus prêts à imprimer et les indicateurs d'un cabinet de podologie.",
     },
   ],
-  faqTitle: "Questions fréquentes",
-  faqSubtitle: "Ce qu'on nous demande le plus avant de commencer.",
   faqItems: [
     {
       question: "Qu'est-ce qu'un logiciel de gestion pour la podologie ?",
@@ -1370,8 +1736,121 @@ const fr: LandingI18n = {
         "Les données circulent chiffrées, chaque utilisateur ne voit que ce que son rôle autorise — une secrétaire n'accède pas aux informations cliniques — et les actions sensibles sont inscrites dans un journal d'audit. Il existe une politique de conservation, et les données de votre cabinet vous appartiennent et sont exportables.",
     },
   ],
+  faqSystemItems: [
+    {
+      question: "Combien de temps faut-il pour que ce soit opérationnel ?",
+      answer:
+        "Une après-midi. Vous saisissez vos horaires, vos prestations avec leurs tarifs et votre logo, et vous pouvez déjà planifier ; les patients se créent au fil des consultations, sans tout migrer d'un coup. Aucune installation ni configuration technique : si vous savez utiliser WhatsApp et un agenda, vous savez utiliser Podoraa.",
+    },
+    {
+      question: "Quelles offres existent et en quoi diffèrent-elles ?",
+      answer:
+        "Quatre, toutes en USD. ESSENTIAL (25 $/mois par praticien) couvre le quotidien : agenda, patients, dossier clinique, encaissements et rappels. ESSENTIAL PRO (40 $) ajoute les analyses de ventes et de rentabilité, les métriques avancées et les outils cliniques avancés. CLINIC (100 $/mois par cabinet) comprend 5 podologues, un accueil partagé et un support prioritaire. CLINIC PRO (160 $) comprend 8 podologues et tout ce que contient PRO. Vous pouvez changer d'offre en grandissant.",
+    },
+    {
+      question: "Combien coûte l'ajout de personnes à mon équipe ?",
+      answer:
+        "Les secrétaires sont gratuites et illimitées sur toutes les offres. Les offres cabinet comprennent 5 podologues (8 sur CLINIC PRO) et chaque praticien supplémentaire coûte 10 $/mois ; quand vous en ajoutez ou en retirez un, l'abonnement s'ajuste seul et vous le voyez sur la facture suivante.",
+    },
+    {
+      question: "Combien de patients puis-je enregistrer ?",
+      answer:
+        "Autant que nécessaire : aucune limite de patients, de rendez-vous ni de séances cliniques, quelle que soit l'offre. Ce qui change d'une offre à l'autre, c'est le nombre de praticiens dans le compte et les analyses auxquelles vous avez accès, pas le volume de votre cabinet.",
+    },
+    {
+      question: "Est-ce adapté si j'ai plusieurs cabinets ou antennes ?",
+      answer:
+        "Un compte cabinet gère un cabinet —avec son adresse, son équipe et sa marque— et, à l'intérieur, autant de praticiens que nécessaire, chacun avec son agenda. Si vous gérez plusieurs antennes, écrivez-nous avant de souscrire et nous verrons comment l'organiser dans votre cas.",
+    },
+    {
+      question: "Que voit chaque rôle ? Une secrétaire accède-t-elle au dossier clinique ?",
+      answer:
+        "Non. La secrétaire travaille avec l'agenda, les informations administratives du patient et les messages, sans accès aux données cliniques. Le podologue voit ses patients et ses séances ; l'administrateur du cabinet voit la vue d'équipe et la facturation. En plus, les données d'un cabinet ne se croisent jamais avec celles d'un autre : chaque cabinet ne voit que les siennes.",
+    },
+    {
+      question: "Que se passe-t-il si un patient annule ou veut déplacer son rendez-vous ?",
+      answer:
+        "Le patient répond depuis le rappel lui-même. S'il annule, le créneau se libère aussitôt dans l'agenda et vous recevez l'avis ; s'il demande à être déplacé, la demande vous parvient pour lui proposer le nouveau créneau. Et s'il a annulé par erreur et que le créneau est toujours libre, il peut reconfirmer ce même rendez-vous.",
+    },
+    {
+      question: "Puis-je suivre les encaissements et ce qui reste à encaisser ?",
+      answer:
+        "Oui. À la clôture de la séance, l'encaissement passe à l'accueil avec son montant et reste en attente jusqu'à ce qu'il soit marqué comme payé : vous voyez donc à tout moment ce qui est encaissé et ce qui ne l'est pas. En fin de journée vous avez la clôture avec les entrées, et chaque patient conserve son historique d'encaissements.",
+    },
+    {
+      question: "Puis-je voir mon chiffre d'affaires mensuel et les soins les plus rentables ?",
+      answer:
+        "Oui, sur les offres PRO. Vous avez les ventes de la période comparées à la précédente, la répartition par prestation et par praticien, le taux d'occupation de l'agenda et la rentabilité, où vous fixez votre objectif mensuel et vos charges pour voir ce qu'il reste réellement.",
+    },
+    {
+      question: "Puis-je imprimer ou exporter mes rapports ?",
+      answer:
+        "Les comptes rendus cliniques et les consentements sortent prêts à imprimer à votre marque, et depuis la fenêtre d'impression vous pouvez les enregistrer en PDF. La fiche complète d'un patient s'exporte dans un fichier portable, l'agenda au format .ics et le journal d'audit en CSV. Les analyses se consultent dans la plateforme ; s'il vous faut une donnée précise en tableur, écrivez-nous.",
+    },
+    {
+      question: "Puis-je activer la vérification en deux étapes ?",
+      answer:
+        "Oui, depuis Paramètres → Sécurité. Elle s'active avec une application d'authentification (Google Authenticator, Authy ou équivalent) qui génère un code à six chiffres, et à l'activation vous recevez des codes de secours à usage unique. Gardez-les ailleurs que sur le téléphone : c'est ainsi que vous entrez si vous le perdez.",
+    },
+    {
+      question: "J'ai perdu le téléphone du deuxième facteur, ou mon mot de passe. Comment récupérer l'accès ?",
+      answer:
+        "Pour le mot de passe, le lien « Mot de passe oublié ? » de la page de connexion vous envoie un e-mail de réinitialisation. Pour le deuxième facteur, connectez-vous avec l'un de vos codes de secours ; si vous ne les avez pas non plus, écrivez à soporte@podoraa.com depuis l'adresse du compte et l'équipe Podoraa réinitialise le deuxième facteur après avoir vérifié votre identité.",
+    },
+    {
+      question: "Que se passe-t-il si je perds mon ordinateur ou mon téléphone ?",
+      answer:
+        "Vos informations ne sont pas sur l'appareil : elles vivent dans votre compte, vous vous connectez donc depuis un autre et tout y est. La session de l'appareil perdu expire d'elle-même, car l'accès se renouvelle toutes les 15 minutes et la session complète expire au bout de 7 jours. Malgré tout, changez le mot de passe depuis un autre appareil et gardez la vérification en deux étapes activée ; s'il faut couper l'accès immédiatement, écrivez à soporte@podoraa.com.",
+    },
+    {
+      question: "Comment changer d'offre, mettre à jour ma carte ou résilier ?",
+      answer:
+        "Tout depuis Paramètres → Facturation, qui ouvre le portail de paiement Stripe. Vous y changez la carte, téléchargez vos factures et résiliez quand vous voulez ; sans engagement et sans avoir à le demander par e-mail.",
+    },
+    {
+      question: "Ai-je besoin d'un compte WhatsApp Business pour les rappels ?",
+      answer:
+        "Vous pouvez commencer avec WhatsApp Web, sans rien déclarer, ou connecter l'API officielle de Meta quand vous voudrez que les rappels partent seuls et en plus grand volume. Podoraa ne facture pas au message et n'impose pas sa propre limite : le volume que vous pouvez envoyer est fixé par le palier que Meta attribue à votre compte WhatsApp Business.",
+    },
+    {
+      question: "Puis-je envoyer des campagnes ou des promotions par WhatsApp ?",
+      answer:
+        "Oui : vous montez la campagne et l'envoyez au groupe de patients de votre choix, par exemple ceux que vous n'avez pas vus depuis des mois. L'envoi automatique suppose que l'API officielle de Meta soit connectée. Gardez à l'esprit que les messages promotionnels relèvent des politiques WhatsApp de Meta et du consentement de chaque patient : à utiliser avec discernement, et seulement avec ceux qui ont accepté de les recevoir.",
+    },
+    {
+      question: "Puis-je récupérer mes données si j'arrête d'utiliser Podoraa ?",
+      answer:
+        "Oui. Chaque patient s'exporte dans un fichier portable avec sa fiche et son historique, et l'agenda s'exporte au format .ics pour l'ouvrir dans un autre calendrier. Les données cliniques de votre cabinet vous appartiennent ; elles sont conservées selon la politique de conservation et supprimées lorsque cette politique le permet.",
+    },
+    {
+      question: "Que dois-je installer, et dans quelles langues est-ce disponible ?",
+      answer:
+        "Rien : cela fonctionne dans le navigateur, aussi depuis le téléphone ou la tablette, et se met à jour tout seul. L'interface est en espagnol, anglais, portugais et français, et se change à tout moment depuis le sélecteur de langue.",
+    },
+  ],
+  faqPageTitle: "Questions fréquentes",
+  faqPageSubtitle:
+    "Ce qu'on nous demande le plus avant de commencer, et ce que Podoraa résout une fois le cabinet en route. Si la vôtre manque, écrivez-nous en bas de page.",
+  faqPageGeneralHeading: "Avant de commencer",
+  faqPageSystemHeading: "L'usage de Podoraa",
+  faqPageBack: "Retour à l'accueil",
+  contactTitle: "Vous n'avez pas trouvé votre réponse ?",
+  contactSubtitle: "Laissez-nous votre e-mail et votre question : nous répondons à cette même adresse.",
+  contactEmailLabel: "Votre e-mail",
+  contactEmailPlaceholder: "nom@votrecabinet.com",
+  contactQuestionLabel: "Votre question",
+  contactQuestionPlaceholder: "Dites-nous ce que vous avez besoin de savoir…",
+  contactSubmit: "Envoyer la question",
+  contactHint:
+    "L'envoi ouvre votre logiciel de messagerie avec le message déjà rédigé pour soporte@podoraa.com. Rien ne part tant que vous ne l'envoyez pas depuis là.",
+  contactEmailInvalid: "Saisissez un e-mail valide pour que nous puissions vous répondre.",
+  contactQuestionMissing: "Dites-nous votre question avant d'envoyer.",
+  contactDirect: "Ou écrivez-nous directement à",
+  contactMailSubject: "Question depuis la page des questions fréquentes",
+  contactMailFrom: "Mon e-mail",
   footerTerms: "Conditions",
   footerPrivacy: "Confidentialité",
+  footerContact: "Contact",
   footerRights: "Tous droits réservés.",
 };
 

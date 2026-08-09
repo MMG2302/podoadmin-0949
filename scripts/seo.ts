@@ -15,6 +15,9 @@ import type { Language } from '../src/web/i18n/translations';
 
 export const SITE_URL = 'https://podoraa.com';
 
+/** Mismo buzón que `SUPPORT_EMAIL` en wrangler.json y que el contacto de /faq. */
+const SUPPORT_EMAIL = 'soporte@podoraa.com';
+
 /** Idioma que se pre-renderiza y que declara `<html lang>`. El resto se cambia en cliente. */
 export const DEFAULT_LANG: Language = 'es';
 
@@ -22,7 +25,16 @@ export const DEFAULT_LANG: Language = 'es';
  * Rutas públicas indexables. Todo lo demás queda fuera por robots.txt: el usuario quiere
  * que las IAs se entrenen con la landing y con nada más.
  */
-const INDEXABLE_PATHS = ['/', '/terms', '/privacy'] as const;
+const INDEXABLE_PATHS = ['/', '/faq', '/terms', '/privacy'] as const;
+
+/**
+ * Páginas con `<head>` y contenido pre-renderizado propios. `/faq` sale como un HTML
+ * aparte (dist/client/faq/index.html) porque, si no, un crawler que no ejecuta JavaScript
+ * recibe el shell de la SPA — es decir, la landing entera bajo la URL /faq.
+ */
+export type SeoPage = 'home' | 'faq';
+
+const PAGE_PATH: Record<SeoPage, string> = { home: '/', faq: '/faq' };
 
 /**
  * Rutas que nunca deben rastrearse: app autenticada, flujos de sesión y los enlaces de
@@ -85,6 +97,38 @@ const SEO_META: Record<Language, SeoMeta> = {
   },
 };
 
+/** Copy de SEO de /faq: la intención de búsqueda es una duda concreta, no "qué es Podoraa". */
+const FAQ_SEO_META: Record<Language, SeoMeta> = {
+  es: {
+    title: 'Preguntas frecuentes sobre Podoraa | Software de podología',
+    description:
+      'Precios, planes, roles, prueba gratuita, WhatsApp, seguridad y exportación de datos: las dudas más frecuentes sobre el software de gestión podológica Podoraa.',
+    ogLocale: 'es_ES',
+  },
+  en: {
+    title: 'Frequently asked questions about Podoraa | Podiatry software',
+    description:
+      'Pricing, plans, roles, free trial, WhatsApp, security and data export: the most common questions about Podoraa, the podiatry practice management software.',
+    ogLocale: 'en_US',
+  },
+  pt: {
+    title: 'Perguntas frequentes sobre a Podoraa | Software de podologia',
+    description:
+      'Preços, planos, perfis, período de teste, WhatsApp, segurança e exportação de dados: as dúvidas mais frequentes sobre o software de gestão Podoraa.',
+    ogLocale: 'pt_PT',
+  },
+  fr: {
+    title: 'Questions fréquentes sur Podoraa | Logiciel de podologie',
+    description:
+      'Tarifs, offres, rôles, essai gratuit, WhatsApp, sécurité et export des données : les questions les plus fréquentes sur le logiciel de gestion Podoraa.',
+    ogLocale: 'fr_FR',
+  },
+};
+
+function seoMetaFor(lang: Language, page: SeoPage): SeoMeta {
+  return page === 'faq' ? FAQ_SEO_META[lang] : SEO_META[lang];
+}
+
 /** Escapa texto que va a parar a un nodo HTML o a un atributo entre comillas dobles. */
 function esc(value: string): string {
   return value
@@ -103,18 +147,19 @@ function esc(value: string): string {
  * estos valores describen la landing (la única página que queremos indexada). Las rutas
  * privadas quedan cubiertas por robots.txt y por el noindex que inyecta el cliente.
  */
-export function buildSeoHeadTags(lang: Language = DEFAULT_LANG): string {
-  const meta = SEO_META[lang];
+export function buildSeoHeadTags(lang: Language = DEFAULT_LANG, page: SeoPage = 'home'): string {
+  const meta = seoMetaFor(lang, page);
   const ogImage = `${SITE_URL}/og-image.png`;
+  const url = `${SITE_URL}${PAGE_PATH[page]}`;
 
   return [
     `<meta name="description" content="${esc(meta.description)}" />`,
-    `<link rel="canonical" href="${SITE_URL}/" />`,
+    `<link rel="canonical" href="${url}" />`,
     `<meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1" />`,
     // Open Graph
     `<meta property="og:type" content="website" />`,
     `<meta property="og:site_name" content="Podoraa" />`,
-    `<meta property="og:url" content="${SITE_URL}/" />`,
+    `<meta property="og:url" content="${url}" />`,
     `<meta property="og:title" content="${esc(meta.title)}" />`,
     `<meta property="og:description" content="${esc(meta.description)}" />`,
     `<meta property="og:locale" content="${meta.ogLocale}" />`,
@@ -129,8 +174,8 @@ export function buildSeoHeadTags(lang: Language = DEFAULT_LANG): string {
   ].join('\n\t\t');
 }
 
-export function getSeoTitle(lang: Language = DEFAULT_LANG): string {
-  return SEO_META[lang].title;
+export function getSeoTitle(lang: Language = DEFAULT_LANG, page: SeoPage = 'home'): string {
+  return seoMetaFor(lang, page).title;
 }
 
 // ---------------------------------------------------------------------------
@@ -142,9 +187,27 @@ export function getSeoTitle(lang: Language = DEFAULT_LANG): string {
  * precios salen del mismo `landingByLang` que pinta la tabla de precios, así que no se
  * desincronizan.
  */
-export function buildJsonLd(lang: Language = DEFAULT_LANG): string {
+/** Todas las preguntas viven en /faq, así que el FAQPage solo se declara ahí. */
+function faqPageNode(lang: Language) {
   const l = landingByLang[lang];
-  const meta = SEO_META[lang];
+
+  return {
+    '@type': 'FAQPage',
+    '@id': `${SITE_URL}/faq#faq`,
+    url: `${SITE_URL}/faq`,
+    name: l.faqPageTitle,
+    inLanguage: lang,
+    mainEntity: [...l.faqItems, ...l.faqSystemItems].map((item) => ({
+      '@type': 'Question',
+      name: item.question,
+      acceptedAnswer: { '@type': 'Answer', text: item.answer },
+    })),
+  };
+}
+
+export function buildJsonLd(lang: Language = DEFAULT_LANG, page: SeoPage = 'home'): string {
+  const l = landingByLang[lang];
+  const meta = seoMetaFor(lang, page);
 
   const offers = l.pricingPlans.map((plan) => ({
     '@type': 'Offer',
@@ -155,15 +218,15 @@ export function buildJsonLd(lang: Language = DEFAULT_LANG): string {
     url: `${SITE_URL}/#pricing`,
   }));
 
-  const graph = [
+  const graph: Record<string, unknown>[] = [
     {
       '@type': 'Organization',
       '@id': `${SITE_URL}/#organization`,
       name: 'Podoraa',
       url: `${SITE_URL}/`,
       logo: `${SITE_URL}/favicon.png`,
-      email: 'soporte@podoraa.com',
-      description: meta.description,
+      email: SUPPORT_EMAIL,
+      description: SEO_META[lang].description,
     },
     {
       '@type': 'WebSite',
@@ -173,7 +236,11 @@ export function buildJsonLd(lang: Language = DEFAULT_LANG): string {
       inLanguage: lang,
       publisher: { '@id': `${SITE_URL}/#organization` },
     },
-    {
+  ];
+
+  // La ficha del producto y sus precios describen la landing; en /faq solo sobrarían.
+  if (page === 'home') {
+    graph.push({
       '@type': 'SoftwareApplication',
       '@id': `${SITE_URL}/#software`,
       name: 'Podoraa',
@@ -197,18 +264,10 @@ export function buildJsonLd(lang: Language = DEFAULT_LANG): string {
       ],
       offers,
       publisher: { '@id': `${SITE_URL}/#organization` },
-    },
-    {
-      '@type': 'FAQPage',
-      '@id': `${SITE_URL}/#faq`,
-      inLanguage: lang,
-      mainEntity: l.faqItems.map((item) => ({
-        '@type': 'Question',
-        name: item.question,
-        acceptedAnswer: { '@type': 'Answer', text: item.answer },
-      })),
-    },
-  ];
+    });
+  }
+
+  if (page === 'faq') graph.push(faqPageNode(lang));
 
   const jsonLd = { '@context': 'https://schema.org', '@graph': graph };
 
@@ -286,10 +345,6 @@ export function buildPrerenderedLanding(lang: Language = DEFAULT_LANG): string {
     )
     .join('');
 
-  const faq = l.faqItems
-    .map((f) => `<article><h3>${esc(f.question)}</h3><p>${esc(f.answer)}</p></article>`)
-    .join('');
-
   const pricing =
     l.pricingPlans
       .map(
@@ -309,12 +364,14 @@ export function buildPrerenderedLanding(lang: Language = DEFAULT_LANG): string {
     `<a href="/#pricing">${esc(l.navPricing)}</a>`,
     `<a href="/#audience">${esc(l.navAudience)}</a>`,
     `<a href="/#steps">${esc(l.navSteps)}</a>`,
+    `<a href="/faq">${esc(l.navFaq)}</a>`,
     '</nav></header>',
     '<main>',
     `<h1>${esc(l.heroTitle)} ${esc(l.heroTitleBold)}</h1>`,
     `<p>${esc(l.heroSubtitle)}</p>`,
     // Mismo orden que la landing: promesa, qué hace, cuánto cuesta, para quién, qué
-    // esfuerzo, objeción frente a Excel, guía larga y dudas finales.
+    // esfuerzo, objeción frente a Excel y guía larga. Las preguntas frecuentes ya no
+    // están acá: viven en /faq, que tiene su propio documento pre-renderizado.
     section('solutions', l.solutionsTitle, l.solutionsSubtitle, solutions),
     section('features', l.featuresTitle, l.featuresSubtitle, features),
     section('pricing', l.pricingTitle, l.pricingSubtitle, pricing),
@@ -322,14 +379,87 @@ export function buildPrerenderedLanding(lang: Language = DEFAULT_LANG): string {
     section('steps', l.stepsTitle, l.stepsBadge, steps),
     section('comparison', l.comparisonTitle, l.comparisonSubtitle, comparison),
     section('guide', l.guideTitle, l.guideSubtitle, guide),
-    section('faq', l.faqTitle, l.faqSubtitle, faq),
+    `<p><a href="/faq">${esc(l.faqPageTitle)}</a></p>`,
     `<section><h2>${esc(l.ctaTitle)}</h2><p>${esc(l.ctaSubtitle)}</p></section>`,
     '</main>',
-    `<footer><p>© ${year} Podoraa. ${esc(l.footerRights)}</p>`,
-    `<a href="/terms">${esc(l.footerTerms)}</a> <a href="/privacy">${esc(l.footerPrivacy)}</a>`,
-    '</footer>',
+    prerenderedFooter(l, year),
     '</div>',
   ].join('');
+}
+
+function prerenderedFooter(l: LandingI18n, year: number): string {
+  return (
+    `<footer><p>© ${year} Podoraa. ${esc(l.footerRights)}</p>` +
+    `<a href="/faq">${esc(l.navFaq)}</a> ` +
+    `<a href="/terms">${esc(l.footerTerms)}</a> <a href="/privacy">${esc(l.footerPrivacy)}</a> ` +
+    `<a href="/faq#contacto">${esc(l.footerContact)}</a>` +
+    '</footer>'
+  );
+}
+
+/**
+ * HTML real de /faq. Mismo criterio que la landing: los crawlers de IA no ejecutan JS, y
+ * una página de preguntas frecuentes que solo existe después de hidratar no la lee nadie.
+ */
+export function buildPrerenderedFaq(lang: Language = DEFAULT_LANG): string {
+  const l: LandingI18n = landingByLang[lang];
+  const year = new Date().getFullYear();
+
+  const list = (items: { question: string; answer: string }[]) =>
+    items
+      .map((f) => `<article><h3>${esc(f.question)}</h3><p>${esc(f.answer)}</p></article>`)
+      .join('');
+
+  return [
+    '<div id="seo-prerender">',
+    '<header><p>Podoraa</p><nav>',
+    `<a href="/">${esc(l.faqPageBack)}</a>`,
+    `<a href="/#pricing">${esc(l.navPricing)}</a>`,
+    '</nav></header>',
+    '<main>',
+    `<h1>${esc(l.faqPageTitle)}</h1>`,
+    `<p>${esc(l.faqPageSubtitle)}</p>`,
+    section('faq-general', l.faqPageGeneralHeading, '', list(l.faqItems)),
+    section('faq-sistema', l.faqPageSystemHeading, '', list(l.faqSystemItems)),
+    section(
+      'contacto',
+      l.contactTitle,
+      l.contactSubtitle,
+      `<p>${esc(l.contactDirect)} <a href="mailto:${SUPPORT_EMAIL}">${SUPPORT_EMAIL}</a></p>`
+    ),
+    '</main>',
+    prerenderedFooter(l, year),
+    '</div>',
+  ].join('');
+}
+
+/**
+ * Documento completo de /faq, construido sobre el index.html ya emitido para heredar sus
+ * `<script>`/`<link>` con hash. Se escribe en dist/client/faq/index.html: el asset handler
+ * de Cloudflare sirve ese archivo en /faq y solo cae al shell de la SPA si no existe.
+ */
+export function buildFaqPageDocument(indexHtml: string, lang: Language = DEFAULT_LANG): string {
+  const head =
+    `<title>${esc(getSeoTitle(lang, 'faq'))}</title>\n\t\t` +
+    `${buildSeoHeadTags(lang, 'faq')}\n\t\t${buildJsonLd(lang, 'faq')}`;
+
+  // Reemplazos con función: los precios ("$25", "$100") pasarían por los patrones `$n` de
+  // String.replace si el reemplazo fuera un string.
+  // El ancla es `</body>`, no el <script type="module">: Vite lo mueve al <head>.
+  const HEAD_RE = /<title>[\s\S]*?<\/script>/;
+  const ROOT_RE = /<div id="root">[\s\S]*<\/div>\s*<\/body>/;
+
+  // Si el shell cambia de forma, un replace que no matchea publicaría la landing entera
+  // bajo /faq sin avisar. Mejor romper el build.
+  for (const [name, re] of [['head', HEAD_RE], ['root', ROOT_RE]] as const) {
+    if (!re.test(indexHtml)) {
+      throw new Error(`SEO /faq: no se encontró el bloque "${name}" en index.html`);
+    }
+  }
+
+  return indexHtml
+    .replace(HEAD_RE, () => head)
+    .replace(ROOT_RE, () => `<div id="root">${buildPrerenderedFaq(lang)}</div>\n\t</body>`);
 }
 
 // ---------------------------------------------------------------------------
@@ -452,13 +582,22 @@ ${l.guideSubtitle}
 
 ${l.guideItems.map((g) => `### ${g.title}\n\n${g.description}`).join('\n\n')}
 
-## ${l.faqTitle}
+## ${l.faqPageGeneralHeading}
 
 ${l.faqItems.map((f) => `### ${f.question}\n\n${f.answer}`).join('\n\n')}
+
+## ${l.faqPageSystemHeading}
+
+${l.faqSystemItems.map((f) => `### ${f.question}\n\n${f.answer}`).join('\n\n')}
+
+## Contacto
+
+Dudas y soporte: ${SUPPORT_EMAIL}
 
 ## Enlaces
 
 - [Landing](${SITE_URL}/): descripción completa del producto y precios.
+- [Preguntas frecuentes](${SITE_URL}/faq): precios, planes, roles, prueba, seguridad y contacto.
 - [Términos](${SITE_URL}/terms)
 - [Privacidad](${SITE_URL}/privacy)
 

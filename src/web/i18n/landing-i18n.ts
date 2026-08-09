@@ -151,7 +151,7 @@ const es: LandingI18n = {
   heroTitleBold: "sin cambiar tu forma de trabajar",
   heroSubtitle:
     "Podoraa reúne tu agenda, la historia clínica y los pagos en un solo lugar. Tú sigues atendiendo como siempre: la plataforma se encarga de lo repetitivo.",
-  heroCtaPrimary: "Empezar gratis",
+  heroCtaPrimary: "Crear cuenta",
   heroCtaSecondary: "Ya tengo cuenta",
   heroStatDigital: "Digital",
   heroStatAccess: "Acceso 24/7",
@@ -580,7 +580,7 @@ const en: LandingI18n = {
   heroTitleBold: "without changing how you work",
   heroSubtitle:
     "Podoraa brings your schedule, clinical records and payments into one place. You keep working the way you always have — the platform takes care of the repetitive part.",
-  heroCtaPrimary: "Start free",
+  heroCtaPrimary: "Create account",
   heroCtaSecondary: "I already have an account",
   heroStatDigital: "Digital",
   heroStatAccess: "24/7 access",
@@ -1009,7 +1009,7 @@ const pt: LandingI18n = {
   heroTitleBold: "sem mudar a sua forma de trabalhar",
   heroSubtitle:
     "Podoraa reúne a sua agenda, o historial clínico e os pagamentos num só lugar. Continua a atender como sempre: a plataforma trata do que é repetitivo.",
-  heroCtaPrimary: "Começar grátis",
+  heroCtaPrimary: "Criar conta",
   heroCtaSecondary: "Já tenho conta",
   heroStatDigital: "Digital",
   heroStatAccess: "Acesso 24/7",
@@ -1438,7 +1438,7 @@ const fr: LandingI18n = {
   heroTitleBold: "sans changer votre façon de travailler",
   heroSubtitle:
     "Podoraa réunit votre agenda, le dossier clinique et les paiements en un seul endroit. Vous continuez à travailler comme toujours : la plateforme s'occupe du répétitif.",
-  heroCtaPrimary: "Commencer gratuitement",
+  heroCtaPrimary: "Créer un compte",
   heroCtaSecondary: "J'ai déjà un compte",
   heroStatDigital: "Numérique",
   heroStatAccess: "Accès 24/7",

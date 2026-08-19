@@ -19,6 +19,7 @@ import {
   ChevronDown,
 } from "lucide-react";
 import { useLanguage } from "../contexts/language-context";
+import { STEP_MEDIA } from "../components/landing/step-media";
 import { useHashScroll } from "../hooks/use-hash-scroll";
 import { landingByLang, type LandingPlan, type LandingSolution } from "../i18n/landing-i18n";
 import {
@@ -39,13 +40,6 @@ import { cn } from "../lib/utils";
  * El paso 01 cruza dos paletas reales de la vista previa de marca en vez de grabar
  * a alguien eligiendo colores: se ve que la interfaz se adapta, no como se opera.
  */
-const STEP_MEDIA: ({ mp4: string; poster: string } | null)[] = [
-  { mp4: "/landing/steps/step1.mp4", poster: "/landing/steps/step1.webp" },
-  { mp4: "/landing/steps/step2.mp4", poster: "/landing/steps/step2.webp" },
-  { mp4: "/landing/steps/step3.mp4", poster: "/landing/steps/step3.webp" },
-  { mp4: "/landing/steps/step4.mp4", poster: "/landing/steps/step4.webp" },
-];
-
 function FeatureCard({
   icon: Icon,
   title,
@@ -146,11 +140,16 @@ function PricingCard({ plan, highlighted }: { plan: LandingPlan; highlighted?: b
           : "border-brand-border bg-brand-surface text-brand-ink"
       )}
     >
+      {/* El halo late para que el plan recomendado se note sin gritar; el color
+          va como variable porque el distintivo cambia de fondo segun la tarjeta. */}
       {plan.badge ? (
         <span
           className={cn(
-            "absolute -top-3 left-8 rounded-full px-3 py-1 text-xs font-medium",
-            highlighted ? "bg-white text-gray-900" : "bg-brand-ink text-brand-ink-fg"
+            "absolute -top-4 left-8 rounded-full px-4 py-1.5 text-sm font-semibold tracking-tight",
+            "animate-badge-ping motion-reduce:animate-none",
+            highlighted
+              ? "bg-white text-gray-900 [--badge-halo:rgb(255_255_255/0.9)]"
+              : "bg-brand-ink text-brand-ink-fg [--badge-halo:rgb(26_26_26/0.6)]"
           )}
         >
           {plan.badge}
@@ -211,7 +210,7 @@ function AudienceCard({
   description: string;
 }) {
   return (
-    <div className="rounded-xl border border-brand-border bg-brand-canvas p-6 dark:bg-gray-900/50">
+    <div className="mr-4 w-[19rem] shrink-0 rounded-xl border border-brand-border bg-brand-canvas p-6 dark:bg-gray-900/50">
       <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-lg bg-brand-ink text-white dark:bg-white dark:text-gray-900">
         <Icon className="h-5 w-5" strokeWidth={1.5} />
       </div>
@@ -263,7 +262,7 @@ const LandingPage = () => {
             <p className="mt-6 max-w-lg text-base sm:text-lg text-brand-muted leading-relaxed">
               {l.heroSubtitle}
             </p>
-            <div className="mt-10 flex flex-col sm:flex-row gap-3">
+            <div className="mt-10">
               <Link
                 href="/register"
                 className="inline-flex items-center justify-center gap-2 px-6 py-3.5 text-sm font-medium rounded-lg bg-brand-ink text-brand-ink-fg hover:bg-brand-ink-hover transition-colors min-h-[44px]"
@@ -271,35 +270,38 @@ const LandingPage = () => {
                 {l.heroCtaPrimary}
                 <ArrowRight className="h-4 w-4" />
               </Link>
-              <Link
-                href="/login"
-                className="inline-flex items-center justify-center px-6 py-3.5 text-sm font-medium rounded-lg border border-brand-border bg-brand-surface text-brand-ink hover:bg-brand-canvas transition-colors min-h-[44px]"
-              >
-                {l.heroCtaSecondary}
-              </Link>
             </div>
           </div>
 
-          <div className="relative bg-[#1a1a1a] text-white px-4 py-16 sm:px-6 sm:py-24 lg:py-32 flex flex-col items-center justify-center">
+          <div className="relative bg-[#1a1a1a] text-white px-4 py-10 sm:px-6 sm:py-24 lg:py-32 flex flex-col items-center justify-center">
             <div className="absolute inset-0 opacity-[0.04] text-white"><LandingGridPattern /></div>
             <div className="relative z-10 flex flex-col items-center text-center">
-              <img src="/favicon.svg" alt="" className="w-28 h-28 sm:w-36 sm:h-36 mb-8" />
-              <Wordmark className="text-4xl sm:text-5xl font-light text-white mb-4" />
-              <div className="mt-12 grid grid-cols-3 gap-6 sm:gap-10 w-full max-w-sm">
-                <div>
-                  <div className="text-2xl sm:text-3xl font-light">100%</div>
-                  <div className="text-gray-400 text-xs sm:text-sm mt-1">{l.heroStatDigital}</div>
-                </div>
-                <div>
-                  <div className="text-2xl sm:text-3xl font-light">24/7</div>
-                  <div className="text-gray-400 text-xs sm:text-sm mt-1">{l.heroStatAccess}</div>
-                </div>
-                <div>
-                  <div className="text-2xl sm:text-3xl font-light">SSL</div>
-                  <div className="text-gray-400 text-xs sm:text-sm mt-1">{l.heroStatSecure}</div>
-                </div>
-              </div>
+              <img src="/favicon.svg" alt="" className="w-20 h-20 sm:w-36 sm:h-36 mb-5 sm:mb-8" />
+              <Wordmark className="text-3xl sm:text-5xl font-light text-white" />
             </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Para quién es — cinta en movimiento, justo debajo del hero */}
+      <section id="audience" className="overflow-hidden py-12 sm:py-16">
+        <div className="mx-auto mb-8 max-w-6xl px-4 sm:px-6">
+          <h2 className="text-2xl sm:text-3xl font-semibold text-brand-ink">{l.audienceTitle}</h2>
+          <p className="mt-3 max-w-2xl text-brand-muted leading-relaxed">{l.audienceSubtitle}</p>
+        </div>
+        {/* El degradado de los bordes evita que las tarjetas aparezcan y
+            desaparezcan de golpe contra el borde de la pantalla. */}
+        <div className="[mask-image:linear-gradient(to_right,transparent,black_6%,black_94%,transparent)]">
+          <div className="flex w-max animate-marquee hover:[animation-play-state:paused] motion-reduce:animate-none">
+            {[0, 1, 2, 3].map((copia) => (
+              // Solo la primera vuelta se anuncia: las otras tres son la misma
+              // lista repetida para que el bucle no tenga costura.
+              <div key={copia} className="flex" aria-hidden={copia > 0}>
+                {audiences.map((a) => (
+                  <AudienceCard key={a.title} icon={a.icon} title={a.title} description={a.description} />
+                ))}
+              </div>
+            ))}
           </div>
         </div>
       </section>
@@ -319,30 +321,8 @@ const LandingPage = () => {
         </div>
       </section>
 
-      {/* Features */}
-      <section id="features" className="py-16 sm:py-24 px-4 sm:px-6">
-        <div className="mx-auto max-w-6xl">
-          <div className="max-w-2xl mb-12">
-            <h2 className="text-2xl sm:text-3xl font-semibold text-brand-ink">{l.featuresTitle}</h2>
-            <p className="mt-3 text-brand-muted leading-relaxed">{l.featuresSubtitle}</p>
-            <p className="mt-4 text-xs uppercase tracking-wide text-brand-muted/70">{l.featureHoverHint}</p>
-          </div>
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {features.map((f) => (
-              <FeatureCard
-                key={f.title}
-                icon={f.icon}
-                title={f.title}
-                description={f.description}
-                details={f.details}
-              />
-            ))}
-          </div>
-        </div>
-      </section>
-
       {/* Pricing */}
-      <section id="pricing" className="py-16 sm:py-24 px-4 sm:px-6 bg-brand-surface border-y border-brand-border">
+      <section id="pricing" className="py-16 sm:py-24 px-4 sm:px-6">
         <div className="mx-auto max-w-7xl">
           <div className="max-w-2xl mb-12">
             <h2 className="text-2xl sm:text-3xl font-semibold text-brand-ink">{l.pricingTitle}</h2>
@@ -380,23 +360,30 @@ const LandingPage = () => {
         </div>
       </section>
 
-      {/* Audience */}
-      <section id="audience" className="py-16 sm:py-24 px-4 sm:px-6">
+      {/* Features */}
+      <section id="features" className="py-16 sm:py-24 px-4 sm:px-6 bg-brand-surface border-y border-brand-border">
         <div className="mx-auto max-w-6xl">
           <div className="max-w-2xl mb-12">
-            <h2 className="text-2xl sm:text-3xl font-semibold text-brand-ink">{l.audienceTitle}</h2>
-            <p className="mt-3 text-brand-muted leading-relaxed">{l.audienceSubtitle}</p>
+            <h2 className="text-2xl sm:text-3xl font-semibold text-brand-ink">{l.featuresTitle}</h2>
+            <p className="mt-3 text-brand-muted leading-relaxed">{l.featuresSubtitle}</p>
+            <p className="mt-4 text-xs uppercase tracking-wide text-brand-muted/70">{l.featureHoverHint}</p>
           </div>
-          <div className="grid gap-4 md:grid-cols-3">
-            {audiences.map((a) => (
-              <AudienceCard key={a.title} icon={a.icon} title={a.title} description={a.description} />
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {features.map((f) => (
+              <FeatureCard
+                key={f.title}
+                icon={f.icon}
+                title={f.title}
+                description={f.description}
+                details={f.details}
+              />
             ))}
           </div>
         </div>
       </section>
 
       {/* Cómo empezar — cuatro pasos numerados */}
-      <section id="steps" className="py-16 sm:py-24 px-4 sm:px-6 bg-brand-surface border-y border-brand-border">
+      <section id="steps" className="py-16 sm:py-24 px-4 sm:px-6">
         <div className="mx-auto max-w-6xl">
           <h2 className="max-w-3xl text-3xl sm:text-4xl font-semibold tracking-tight text-brand-ink">
             {l.stepsTitle}
@@ -427,8 +414,11 @@ const LandingPage = () => {
                 <p className="mt-3 text-sm leading-relaxed text-brand-muted">{step.description}</p>
                 {/* El clip va despues del texto para que los cuatro titulos alineen arriba:
                     el paso 01 todavia no tiene captura y, puesto antes, descolgaba su columna. */}
+                {/* Fondo blanco fijo, no bg-brand-canvas: los clips son capturas de la
+                    interfaz en claro y con object-contain el sobrante quedaba como una
+                    franja oscura al lado en el tema oscuro. */}
                 {STEP_MEDIA[i] && (
-                  <div className="mt-5 overflow-hidden rounded-lg border border-brand-border bg-brand-canvas">
+                  <div className="mt-5 overflow-hidden rounded-lg border border-brand-border bg-white">
                     {/* La UI capturada esta en ingles a proposito: un solo juego de clips
                         para los cuatro idiomas en vez de cuatro juegos que mantener. */}
                     <video
@@ -445,7 +435,7 @@ const LandingPage = () => {
                     <img
                       className="hidden h-40 w-full object-contain object-left motion-reduce:block"
                       src={STEP_MEDIA[i]!.poster}
-                      alt=""
+                      alt={l.stepsMediaAlt[i] ?? ""}
                       loading="lazy"
                     />
                   </div>
@@ -457,7 +447,7 @@ const LandingPage = () => {
       </section>
 
       {/* Comparativa con lo que se usa antes de tener un software */}
-      <section id="comparison" className="py-16 sm:py-24 px-4 sm:px-6">
+      <section id="comparison" className="py-16 sm:py-24 px-4 sm:px-6 bg-brand-surface border-y border-brand-border">
         <div className="mx-auto max-w-6xl">
           <div className="max-w-2xl mb-12">
             <h2 className="text-2xl sm:text-3xl font-semibold text-brand-ink">
@@ -483,7 +473,7 @@ const LandingPage = () => {
       </section>
 
       {/* Guía de compra — contenido de fondo, pensado sobre todo para búsqueda */}
-      <section id="guide" className="py-16 sm:py-24 px-4 sm:px-6 bg-brand-surface border-y border-brand-border">
+      <section id="guide" className="py-16 sm:py-24 px-4 sm:px-6">
         <div className="mx-auto max-w-6xl">
           <div className="max-w-2xl mb-12">
             <h2 className="text-2xl sm:text-3xl font-semibold text-brand-ink">{l.guideTitle}</h2>

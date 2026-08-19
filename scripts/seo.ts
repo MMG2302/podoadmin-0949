@@ -11,6 +11,7 @@
  * sin esto ven un body con "Cargando Podoraa…" y nada más.
  */
 import { landingByLang, type LandingI18n } from '../src/web/i18n/landing-i18n';
+import { STEP_MEDIA } from '../src/web/components/landing/step-media';
 import type { Language } from '../src/web/i18n/translations';
 
 export const SITE_URL = 'https://podoraa.com';
@@ -72,27 +73,27 @@ type SeoMeta = {
  */
 const SEO_META: Record<Language, SeoMeta> = {
   es: {
-    title: 'Software para podólogos y clínicas podológicas | Podoraa',
+    title: 'Software para podólogos y podiatras en México | Podoraa',
     description:
-      'Agenda, historia clínica podológica, recordatorios por WhatsApp y cobros en un solo lugar. Software de gestión para podólogos y clínicas. Empieza gratis.',
-    ogLocale: 'es_ES',
+      'Agenda, expediente clínico podológico con notas de evolución NOM-004, recordatorios por WhatsApp y cobros. Para consultorios y clínicas de podología en México.',
+    ogLocale: 'es_MX',
   },
   en: {
     title: 'Podiatry practice management software | Podoraa',
     description:
-      'Scheduling, clinical records, WhatsApp reminders and payments in one place. Podoraa is the practice management software for podiatrists and clinics. Start free.',
+      'Scheduling, clinical records, WhatsApp reminders and payments in one place. Podoraa is the practice management software for podiatrists and clinics. Nothing to install.',
     ogLocale: 'en_US',
   },
   pt: {
     title: 'Software de gestão para podologistas e clínicas | Podoraa',
     description:
-      'Agenda, histórico clínico, lembretes por WhatsApp e pagamentos num só lugar. Software de gestão para podologistas e clínicas de podologia. Comece grátis.',
+      'Agenda, histórico clínico, lembretes por WhatsApp e pagamentos num só lugar. Software de gestão para podologistas e clínicas de podologia. Sem instalar nada.',
     ogLocale: 'pt_PT',
   },
   fr: {
     title: 'Logiciel de gestion pour podologues et cabinets | Podoraa',
     description:
-      'Agenda, dossier clinique, rappels WhatsApp et encaissements au même endroit. Le logiciel de gestion pour podologues et cabinets de podologie. Essai gratuit.',
+      'Agenda, dossier clinique, rappels WhatsApp et encaissements au même endroit. Le logiciel de gestion pour podologues et cabinets de podologie. Rien à installer.',
     ogLocale: 'fr_FR',
   },
 };
@@ -100,27 +101,27 @@ const SEO_META: Record<Language, SeoMeta> = {
 /** Copy de SEO de /faq: la intención de búsqueda es una duda concreta, no "qué es Podoraa". */
 const FAQ_SEO_META: Record<Language, SeoMeta> = {
   es: {
-    title: 'Preguntas frecuentes sobre Podoraa | Software de podología',
+    title: 'Preguntas frecuentes sobre Podoraa | Podología en México',
     description:
-      'Precios, planes, roles, prueba gratuita, WhatsApp, seguridad y exportación de datos: las dudas más frecuentes sobre el software de gestión podológica Podoraa.',
-    ogLocale: 'es_ES',
+      'Precios, planes, expediente NOM-004, WhatsApp, seguridad y exportación: las dudas frecuentes sobre el software para consultorios de podología en México.',
+    ogLocale: 'es_MX',
   },
   en: {
     title: 'Frequently asked questions about Podoraa | Podiatry software',
     description:
-      'Pricing, plans, roles, free trial, WhatsApp, security and data export: the most common questions about Podoraa, the podiatry practice management software.',
+      'Pricing, plans, roles, online booking, WhatsApp, security and data export: the most common questions about Podoraa, the podiatry practice management software.',
     ogLocale: 'en_US',
   },
   pt: {
     title: 'Perguntas frequentes sobre a Podoraa | Software de podologia',
     description:
-      'Preços, planos, perfis, período de teste, WhatsApp, segurança e exportação de dados: as dúvidas mais frequentes sobre o software de gestão Podoraa.',
+      'Preços, planos, perfis, marcações online, WhatsApp, segurança e exportação de dados: as dúvidas mais frequentes sobre o software de gestão Podoraa.',
     ogLocale: 'pt_PT',
   },
   fr: {
     title: 'Questions fréquentes sur Podoraa | Logiciel de podologie',
     description:
-      'Tarifs, offres, rôles, essai gratuit, WhatsApp, sécurité et export des données : les questions les plus fréquentes sur le logiciel de gestion Podoraa.',
+      'Tarifs, offres, rôles, réservation en ligne, WhatsApp, sécurité et export des données : les questions les plus fréquentes sur le logiciel de gestion Podoraa.',
     ogLocale: 'fr_FR',
   },
 };
@@ -166,11 +167,15 @@ export function buildSeoHeadTags(lang: Language = DEFAULT_LANG, page: SeoPage = 
     `<meta property="og:image" content="${ogImage}" />`,
     `<meta property="og:image:width" content="1200" />`,
     `<meta property="og:image:height" content="630" />`,
+    // La tarjeta de og-image.png es texto sobre fondo oscuro: sin `alt` no hay forma de
+    // saber qué anuncia cuando el enlace se comparte en un lector de pantalla.
+    `<meta property="og:image:alt" content="${esc(meta.title)}" />`,
     // Twitter / X
     `<meta name="twitter:card" content="summary_large_image" />`,
     `<meta name="twitter:title" content="${esc(meta.title)}" />`,
     `<meta name="twitter:description" content="${esc(meta.description)}" />`,
     `<meta name="twitter:image" content="${ogImage}" />`,
+    `<meta name="twitter:image:alt" content="${esc(meta.title)}" />`,
   ].join('\n\t\t');
 }
 
@@ -215,6 +220,10 @@ export function buildJsonLd(lang: Language = DEFAULT_LANG, page: SeoPage = 'home
     description: plan.tagline,
     price: plan.price.replace(/[^0-9.]/g, ''),
     priceCurrency: 'USD',
+    // Sin `availability` Google trata la oferta como incompleta y no la muestra; sin
+    // `seller` no queda claro que la vende Podoraa y no un revendedor.
+    availability: 'https://schema.org/InStock',
+    seller: { '@id': `${SITE_URL}/#organization` },
     url: `${SITE_URL}/#pricing`,
   }));
 
@@ -227,6 +236,18 @@ export function buildJsonLd(lang: Language = DEFAULT_LANG, page: SeoPage = 'home
       logo: `${SITE_URL}/favicon.png`,
       email: SUPPORT_EMAIL,
       description: SEO_META[lang].description,
+      // Los cuatro idiomas del producto declarados como dato, no solo como copy: es lo
+      // que permite a un buscador ofrecer Podoraa a quien no busca en español.
+      contactPoint: {
+        '@type': 'ContactPoint',
+        contactType: 'customer support',
+        email: SUPPORT_EMAIL,
+        availableLanguage: ['es', 'en', 'pt', 'fr'],
+      },
+      // México es el mercado al que apunta el producto y el único país con plazo de
+      // conservación configurado (`CLINICAL_RETENTION_YEARS_BY_COUNTRY`). Declararlo evita
+      // que el buscador tenga que deducirlo de la copy.
+      areaServed: { '@type': 'Country', name: 'México' },
     },
     {
       '@type': 'WebSite',
@@ -245,7 +266,7 @@ export function buildJsonLd(lang: Language = DEFAULT_LANG, page: SeoPage = 'home
       '@id': `${SITE_URL}/#software`,
       name: 'Podoraa',
       applicationCategory: 'BusinessApplication',
-      applicationSubCategory: 'Medical practice management software',
+      applicationSubCategory: 'Podiatry practice management software',
       operatingSystem: 'Web',
       url: `${SITE_URL}/`,
       description: meta.description,
@@ -253,6 +274,7 @@ export function buildJsonLd(lang: Language = DEFAULT_LANG, page: SeoPage = 'home
       audience: {
         '@type': 'Audience',
         audienceType: l.audiencePodiatristTitle,
+        geographicArea: { '@type': 'Country', name: 'México' },
       },
       featureList: [
         l.featureCalendarTitle,
@@ -267,7 +289,34 @@ export function buildJsonLd(lang: Language = DEFAULT_LANG, page: SeoPage = 'home
     });
   }
 
-  if (page === 'faq') graph.push(faqPageNode(lang));
+  if (page === 'faq') {
+    graph.push(faqPageNode(lang));
+    // La miga de pan le dice al buscador que /faq cuelga de la raíz y no es una página
+    // suelta; es lo que hace que en el resultado aparezca "podoraa.com > Preguntas
+    // frecuentes" en vez de la URL cruda.
+    graph.push({
+      '@type': 'BreadcrumbList',
+      '@id': `${SITE_URL}/faq#breadcrumb`,
+      itemListElement: [
+        { '@type': 'ListItem', position: 1, name: 'Podoraa', item: `${SITE_URL}/` },
+        { '@type': 'ListItem', position: 2, name: l.faqPageTitle, item: `${SITE_URL}/faq` },
+      ],
+    });
+  }
+
+  // Nodo de la página en sí: sin él, `description` e `inLanguage` solo describen el sitio
+  // entero y ninguna URL concreta queda descrita en los datos estructurados.
+  graph.push({
+    '@type': 'WebPage',
+    '@id': `${SITE_URL}${PAGE_PATH[page]}#webpage`,
+    url: `${SITE_URL}${PAGE_PATH[page]}`,
+    name: meta.title,
+    description: meta.description,
+    inLanguage: lang,
+    isPartOf: { '@id': `${SITE_URL}/#website` },
+    about: { '@id': `${SITE_URL}/#organization` },
+    primaryImageOfPage: `${SITE_URL}/og-image.png`,
+  });
 
   const jsonLd = { '@context': 'https://schema.org', '@graph': graph };
 
@@ -323,8 +372,16 @@ export function buildPrerenderedLanding(lang: Language = DEFAULT_LANG): string {
     block(l.featureSettingsTitle, l.featureSettingsDesc, l.featureSettingsDetails),
   ].join('');
 
+  // Las capturas de los pasos son las únicas imágenes de contenido del sitio. Si solo
+  // existen después de que monte React, para un crawler que no ejecuta JS la landing no
+  // tiene ni una imagen: nada que indexar en búsqueda de imágenes y ningún `alt` que leer.
   const steps = `<ol>${l.steps
-    .map((s) => `<li><h3>${esc(s.title)}</h3><p>${esc(s.description)}</p></li>`)
+    .map((step, i) => {
+      const media = STEP_MEDIA[i];
+      const alt = l.stepsMediaAlt[i];
+      const img = media && alt ? `<img src="${media.poster}" alt="${esc(alt)}" />` : '';
+      return `<li><h3>${esc(step.title)}</h3><p>${esc(step.description)}</p>${img}</li>`;
+    })
     .join('')}</ol>`;
 
   const audience = [
@@ -359,23 +416,25 @@ export function buildPrerenderedLanding(lang: Language = DEFAULT_LANG): string {
   return [
     '<div id="seo-prerender">',
     '<header><p>Podoraa</p><nav>',
-    `<a href="/#solutions">${esc(l.navSolutions)}</a>`,
-    `<a href="/#features">${esc(l.navFeatures)}</a>`,
-    `<a href="/#pricing">${esc(l.navPricing)}</a>`,
     `<a href="/#audience">${esc(l.navAudience)}</a>`,
+    `<a href="/#solutions">${esc(l.navSolutions)}</a>`,
+    `<a href="/#pricing">${esc(l.navPricing)}</a>`,
+    `<a href="/#features">${esc(l.navFeatures)}</a>`,
     `<a href="/#steps">${esc(l.navSteps)}</a>`,
     `<a href="/faq">${esc(l.navFaq)}</a>`,
     '</nav></header>',
     '<main>',
     `<h1>${esc(l.heroTitle)} ${esc(l.heroTitleBold)}</h1>`,
     `<p>${esc(l.heroSubtitle)}</p>`,
-    // Mismo orden que la landing: promesa, qué hace, cuánto cuesta, para quién, qué
-    // esfuerzo, objeción frente a Excel y guía larga. Las preguntas frecuentes ya no
-    // están acá: viven en /faq, que tiene su propio documento pre-renderizado.
-    section('solutions', l.solutionsTitle, l.solutionsSubtitle, solutions),
-    section('features', l.featuresTitle, l.featuresSubtitle, features),
-    section('pricing', l.pricingTitle, l.pricingSubtitle, pricing),
+    // Mismo orden que el JSX de landing-page.tsx, y por el mismo motivo: para quién es →
+    // qué resuelve → cuánto cuesta → qué trae → qué esfuerzo → objeción frente a Excel →
+    // guía larga. El orden de los encabezados es lo primero que lee un buscador, así que
+    // si acá se invierte, el resumen que se hace del sitio deja de ser el de la página.
+    // Las preguntas frecuentes ya no están acá: viven en /faq, con documento propio.
     section('audience', l.audienceTitle, l.audienceSubtitle, audience),
+    section('solutions', l.solutionsTitle, l.solutionsSubtitle, solutions),
+    section('pricing', l.pricingTitle, l.pricingSubtitle, pricing),
+    section('features', l.featuresTitle, l.featuresSubtitle, features),
     section('steps', l.stepsTitle, l.stepsBadge, steps),
     section('comparison', l.comparisonTitle, l.comparisonSubtitle, comparison),
     section('guide', l.guideTitle, l.guideSubtitle, guide),

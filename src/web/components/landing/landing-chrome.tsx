@@ -46,10 +46,10 @@ export function LandingHeader({ onLanding = false }: { onLanding?: boolean }) {
   const anchor = (id: string) => (onLanding ? `#${id}` : `/#${id}`);
 
   const sections = [
-    { id: "solutions", label: l.navSolutions },
-    { id: "features", label: l.navFeatures },
-    { id: "pricing", label: l.navPricing },
     { id: "audience", label: l.navAudience },
+    { id: "solutions", label: l.navSolutions },
+    { id: "pricing", label: l.navPricing },
+    { id: "features", label: l.navFeatures },
     { id: "steps", label: l.navSteps },
   ];
 
@@ -116,7 +116,7 @@ export function LandingFooter() {
 
   return (
     <footer className="border-t border-brand-border bg-brand-surface px-4 sm:px-6 py-8">
-      <div className="mx-auto max-w-6xl flex flex-col sm:flex-row items-center justify-between gap-4 text-sm text-brand-muted">
+      <div className="mx-auto max-w-6xl flex flex-col flex-wrap sm:flex-row items-center justify-between gap-4 text-sm text-brand-muted">
         <div className="flex items-center gap-2">
           <img src="/favicon.svg" alt="" className="h-6 w-6" />
           <Wordmark className="text-base font-light" />
@@ -135,6 +135,15 @@ export function LandingFooter() {
             {l.footerContact}
           </Link>
         </div>
+        <p className="flex flex-wrap items-center justify-center gap-x-2 gap-y-1 text-xs">
+          <span>{l.footerStatDigital}</span>
+          <span aria-hidden className="text-brand-border">·</span>
+          <span>{l.footerStatAccess}</span>
+          <span aria-hidden className="text-brand-border">·</span>
+          <span>{l.footerStatSecure}</span>
+          <span aria-hidden className="text-brand-border">·</span>
+          <span>{l.footerStatTwoFactor}</span>
+        </p>
         <p className="text-xs sm:text-sm">
           © {new Date().getFullYear()} Podoraa. {l.footerRights}
         </p>

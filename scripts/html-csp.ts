@@ -10,6 +10,9 @@ export function buildHtmlCspMetaContent(): string {
       'https://js.hcaptcha.com',
       'https://www.google.com',
       'https://www.gstatic.com',
+      // Beacon de Cloudflare Web Analytics: lo inyecta el proxy, y sin esta entrada la
+      // propia CSP lo bloquea y el sitio deja de medir visitas sin avisar.
+      'https://static.cloudflareinsights.com',
     ].join(' '),
     "style-src 'self' 'unsafe-inline'",
     "img-src 'self' data: blob: https:",
@@ -26,6 +29,8 @@ export function buildHtmlCspMetaContent(): string {
       'https://hcaptcha.com',
       'https://*.hcaptcha.com',
       'https://www.google.com',
+      // Destino al que el beacon manda la medición (/cdn-cgi/rum).
+      'https://cloudflareinsights.com',
     ].join(' '),
     [
       "frame-src 'self'",

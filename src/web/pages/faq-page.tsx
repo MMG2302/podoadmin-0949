@@ -90,14 +90,14 @@ const FaqPage = () => {
           </div>
         </section>
 
-        <section className="px-4 pb-12 sm:px-6">
+        <section id="faq-general" className="px-4 pb-12 sm:px-6">
           <div className="mx-auto max-w-3xl">
             <h2 className="mb-6 text-xl font-semibold text-brand-ink">{l.faqPageGeneralHeading}</h2>
             <FaqList items={l.faqItems} />
           </div>
         </section>
 
-        <section className="px-4 py-12 sm:px-6 bg-brand-surface border-y border-brand-border">
+        <section id="faq-sistema" className="px-4 py-12 sm:px-6 bg-brand-surface border-y border-brand-border">
           <div className="mx-auto max-w-3xl">
             <h2 className="mb-6 text-xl font-semibold text-brand-ink">{l.faqPageSystemHeading}</h2>
             <FaqList items={l.faqSystemItems} />

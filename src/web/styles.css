@@ -74,6 +74,53 @@
   --color-whatsapp-muted: var(--whatsapp-muted);
 }
 
+@theme {
+  --animate-marquee: marquee 45s linear infinite;
+  --animate-badge-ping: badge-ping 1.1s linear infinite;
+}
+
+/* Cinta de "para quién es" de la landing. El carril repite la lista y se
+   desplaza media pista: al cerrar el ciclo cae justo donde empezó y el
+   salto no se ve. Se detiene con el puntero encima y con motion-reduce. */
+@keyframes marquee {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+/* Halo del distintivo "Recomendado" del plan destacado. Un latido por segundo:
+   el anillo se expande y se apaga durante el 70% del ciclo y la pausa queda en
+   tres decimas. No subir mas la frecuencia — por encima de tres destellos por
+   segundo esto pasa a ser contenido parpadeante y deja de ser accesible.
+   Tiempo lineal a proposito — con ease-out el anillo se comia todo su recorrido
+   en la primera decima de segundo y el destello no llegaba a verse.
+   El color lo pone --badge-halo desde el componente, porque el distintivo
+   puede ir sobre la tarjeta oscura o sobre una clara, y el distintivo cruza el
+   borde de la tarjeta: la mitad de arriba del halo cae sobre el fondo claro de
+   la seccion y solo se ve la de abajo. */
+@keyframes badge-ping {
+  0% {
+    box-shadow: 0 0 0 0 var(--badge-halo, rgb(255 255 255 / 0.9));
+    transform: scale(1);
+  }
+  12% {
+    box-shadow: 0 0 0 6px var(--badge-halo, rgb(255 255 255 / 0.9));
+    transform: scale(1.12);
+  }
+  70% {
+    box-shadow: 0 0 0 22px transparent;
+    transform: scale(1);
+  }
+  71%,
+  100% {
+    box-shadow: 0 0 0 0 transparent;
+    transform: scale(1);
+  }
+}
+
 :root {
   --radius: 0.625rem;
   --background: oklch(1 0 0);

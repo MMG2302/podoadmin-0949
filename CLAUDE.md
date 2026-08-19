@@ -57,7 +57,8 @@ Las secciones de abajo vienen de los demás documentos de seguridad ya existente
 - Logout debe invalidar el token de inmediato vía blacklist (`src/api/utils/token-blacklist.ts`), no solo borrar la cookie del lado del cliente.
 - Cuentas baneadas/bloqueadas/deshabilitadas: si se agrega un nuevo middleware de autorización que dependa de `resolveSystemAccess`, debe seguir revisando `isBanned`/`isBlocked`/`disabledAt` (esto ya fue un finding del escaneo — ver F9/F10 en el reporte).
 - **2FA** (`src/api/utils/two-factor-auth.ts`): el secreto TOTP y los códigos de respaldo se generan con `crypto.getRandomValues()`, nunca `Math.random()`. Los códigos de respaldo se guardan **hasheados** (SHA-256 del código normalizado), nunca en claro: son credenciales equivalentes a una contraseña. SHA-256 y no bcrypt a propósito — son valores aleatorios de 60 bits, no contraseñas elegidas por una persona, y hay que comparar contra diez de ellos en cada intento. Un fallo de 2FA en el login **debe** contar para `recordFailedAttemptD1` y `recordLoginIPFailedAttemptD1` igual que una contraseña fallida; si no, quien ya tiene la contraseña agota un TOTP de 6 dígitos por fuerza bruta.
-  - Pendiente: el secreto TOTP se guarda en claro (existe `encryptSecret`/`decryptSecret` en `field-encryption.ts` para esto), `/2fa/enable` acepta el secreto desde el cuerpo de la petición en vez de guardarlo en servidor entre `setup` y `enable`, y **no hay interfaz en el frontend**: el API existe pero nada en `src/web/` lo llama.
+  - Pendiente: el secreto TOTP se guarda en claro (existe `encryptSecret`/`decryptSecret` en `field-encryption.ts` para esto) y `/2fa/enable` acepta el secreto desde el cuerpo de la petición en vez de guardarlo en servidor entre `setup` y `enable`.
+  - Ya no es cierto que falte la interfaz (verificado el 2026-08-18): la sección de activación vive en `src/web/components/settings/two-factor-settings-section.tsx`, montada en la pestaña de seguridad de `settings-page.tsx`, y `login.tsx` resuelve el desafío `requires2FA`. El pie de la landing anuncia 2FA como garantía pública, así que si alguna vez se desmonta esa interfaz hay que sacar también `footerStatTwoFactor` de `landing-i18n.ts`.
 - Login: rate limit progresivo por `email:IP` — 3 fallos → 5s, 5 fallos → 30s, 10 fallos → bloqueo 15 min — más tope de 50 fallos/hora por IP (`rate-limit-d1.ts`). No debilitar ni quitar estos límites al tocar `auth.ts`.
 
 ## CSRF
@@ -95,3 +96,64 @@ No desplegar a producción sin definir (como Secrets de Cloudflare Workers, no e
 - Si hay registro público habilitado: proveedor de email (Resend/SendGrid/SES) + CAPTCHA configurados — sin esto, no dejar `publicRegistrationEnabled: true` en producción.
 - No usar `IP_WHITELIST` con rangos CIDR amplios en producción — además `isIPWhitelisted()` en `src/api/utils/ip-tracking.ts` compara por *prefijo de texto*, no por máscara real, así que un rango CIDR puede matchear IPs que no debería (bug pendiente de arreglar, no solo de configurar con cuidado).
 - Rutas de solo-desarrollo (`/api/test/*`, `/api/auth/clear-ip-block`) deben seguir exigiendo `requireNonProductionDev` — nunca quitar ese guard para "probar algo rápido" en un entorno accesible desde internet.
+
+---
+
+# Landing pública (`/landing` y `/faq`)
+
+Esta sección no viene del escaneo de seguridad: son las convenciones de la web pública, para
+no tener que redescubrirlas leyendo el JSX cada vez.
+
+- **Todo el texto vive en `src/web/i18n/landing-i18n.ts`, en cuatro idiomas (es/en/pt/fr).**
+  No hay copy suelto en el JSX. Cualquier cambio de texto se hace en los cuatro bloques, o el
+  idioma que falte rompe el tipo `LandingI18n`.
+- **El orden en pantalla es el orden del código**, a propósito: las secciones van en el orden
+  del JSX de `src/web/pages/landing-page.tsx` y los planes en el orden del array
+  `pricingPlans` de cada idioma. No invertir ni reordenar al renderizar — lo que se lee en el
+  archivo es lo que se ve, y así un plan nuevo cae donde lo pusiste. Hoy: hero (quiénes
+  somos) → `#audience` (para quién es) → `#solutions` (qué resuelve) → `#pricing` (cuánto
+  cuesta, del más caro al más barato) → `#features` → `#steps` → `#comparison` → `#guide` →
+  enlace a FAQ → CTA.
+- **`sections` en `src/web/components/landing/landing-chrome.tsx` tiene que seguir ese mismo
+  orden.** Es el nav de la cabecera y son anclas por `id`: si se mueve una sección y el nav
+  no, los enlaces siguen funcionando pero mandan al visitante hacia atrás.
+- **Cabecera y pie son compartidos con `/faq`** y viven en `landing-chrome.tsx`. No
+  duplicarlos en `landing-page.tsx`: el día que se agregue un enlace queda en una sola de las
+  dos páginas.
+- **Los fondos alternan**: banda gris (`bg-brand-surface border-y border-brand-border`) y
+  banda clara, una sí y una no. Al cambiar una sección de lugar hay que intercambiar esas
+  clases con su nueva vecina o quedan dos bandas iguales pegadas.
+- **La cinta de `#audience`** se mueve con `animate-marquee` (definida en
+  `src/web/styles.css`). Tres invariantes la sostienen y romper cualquiera se ve como un
+  salto: la lista va repetida **cuatro** veces y el keyframe desplaza `-50%` (media pista
+  tiene que ser más ancha que la pantalla o aparece el hueco del final del carril); la
+  separación entre tarjetas es `mr-4` **en la tarjeta** y no `gap` en el carril (con `gap` el
+  patrón que se repite no es exacto y el bucle salta medio hueco); y el ancho de la tarjeta es
+  fijo, porque si no el carril mide distinto en cada idioma. Las copias 2-4 van `aria-hidden`,
+  y la cinta se detiene con el puntero encima y con `motion-reduce`.
+- **Los clips de `#steps`** están grabados con la interfaz en inglés a propósito: un solo
+  juego de capturas para los cuatro idiomas en vez de cuatro juegos que mantener. Su
+  contenedor lleva fondo blanco fijo, no `bg-brand-canvas`, porque con `object-contain` el
+  sobrante quedaba como franja oscura en tema oscuro.
+- **El HTML pre-renderizado de `scripts/seo.ts` tiene que ir en el mismo orden que el JSX.**
+  Es lo que leen Google y las IAs, y es un archivo aparte: al mover una sección en
+  `landing-page.tsx` hay que moverla también en `buildPrerenderedLanding()` y en su `<nav>`,
+  o el resumen que se hace del sitio deja de ser el de la página.
+- **Las rutas de los clips viven en `src/web/components/landing/step-media.ts`**, no en el
+  `.tsx`: las importa también `scripts/seo.ts`, que corre en Node y no puede cargar React.
+  Su texto alternativo es copy y va traducido en `stepsMediaAlt` (`landing-i18n.ts`),
+  indexado por posición igual que `steps`. Son las únicas imágenes de contenido del sitio:
+  sin `alt` no hay nada que indexar en ellas.
+- **El bloque `es` está escrito en español de México**, no de España: `consultorio` (no
+  `consulta`), `expediente clínico` (no `historia clínica`), `celular` (no `móvil`),
+  `citas en línea`. No es estilo: `expediente clínico` es el término de la NOM-004 y es lo
+  que se teclea en México. Al agregar copy en `es`, seguir ese vocabulario. `enlace de
+  reservas` se queda como está: es el nombre de la función.
+- **`faqItems` puede tener distinto largo en cada idioma.** Las preguntas sobre NOM-004,
+  CURP, CFDI y "¿me hacen una página web?" existen solo en `es` a propósito: hablan del
+  mercado mexicano y no le dicen nada a quien lee en inglés, portugués o francés. Es un
+  array, así que no rompe el tipo `LandingI18n`.
+- **Sobre la NOM-004 se describe lo que hace el producto, no se afirma cumplimiento.** La
+  copy dice qué guarda cada nota de evolución y cuántos años se conserva el expediente;
+  no dice "Podoraa cumple la NOM-004". Es una afirmación normativa que necesita respaldo
+  legal, no una decisión de redacción.

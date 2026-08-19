@@ -41,10 +41,6 @@ export type LandingI18n = {
   heroTitleBold: string;
   heroSubtitle: string;
   heroCtaPrimary: string;
-  heroCtaSecondary: string;
-  heroStatDigital: string;
-  heroStatAccess: string;
-  heroStatSecure: string;
   solutionsTitle: string;
   solutionsSubtitle: string;
   solutionAbsences: LandingSolution;
@@ -75,6 +71,13 @@ export type LandingI18n = {
   stepsTitle: string;
   stepsBadge: string;
   steps: LandingStep[];
+  /**
+   * Texto alternativo de los clips de `#steps`. Va aparte de `steps` porque
+   * `LandingStep` lo comparte `guideItems`, que no lleva imagen. Describe lo que se ve en
+   * la captura, no el paso: es lo único que un buscador (y un lector de pantalla con
+   * `motion-reduce`) puede leer de estas imágenes.
+   */
+  stepsMediaAlt: string[];
   audienceTitle: string;
   audienceSubtitle: string;
   audiencePodiatristTitle: string;
@@ -131,6 +134,10 @@ export type LandingI18n = {
   /** Asunto y encabezado del cuerpo del mailto. */
   contactMailSubject: string;
   contactMailFrom: string;
+  footerStatDigital: string;
+  footerStatAccess: string;
+  footerStatSecure: string;
+  footerStatTwoFactor: string;
   footerTerms: string;
   footerPrivacy: string;
   /** Enlace del pie a la sección de contacto de /faq. */
@@ -147,17 +154,13 @@ const es: LandingI18n = {
   navFaq: "Preguntas",
   navLogin: "Iniciar sesión",
   navRegister: "Crear cuenta",
-  heroTitle: "Organiza tu consulta",
+  heroTitle: "Organiza tu consultorio de podología",
   heroTitleBold: "sin cambiar tu forma de trabajar",
   heroSubtitle:
-    "Podoraa reúne tu agenda, la historia clínica y los pagos en un solo lugar. Tú sigues atendiendo como siempre: la plataforma se encarga de lo repetitivo.",
+    "Podoraa reúne tu agenda, el expediente clínico y los pagos en un solo lugar. Tú sigues atendiendo como siempre: la plataforma se encarga de lo repetitivo.",
   heroCtaPrimary: "Crear cuenta",
-  heroCtaSecondary: "Ya tengo cuenta",
-  heroStatDigital: "Digital",
-  heroStatAccess: "Acceso 24/7",
-  heroStatSecure: "Seguro",
   solutionsTitle: "Menos tiempo organizando. Más tiempo con tus pacientes.",
-  solutionsSubtitle: "Podoraa convierte la administración de tu consulta en algo simple y ordenado: recuerda las citas, mantiene el seguimiento al día y deja cada cosa registrada. Sin que cambies tu manera de atender.",
+  solutionsSubtitle: "Podoraa convierte la administración de tu consultorio en algo simple y ordenado: recuerda las citas, mantiene el seguimiento al día y deja cada cosa registrada. Sin que cambies tu manera de atender.",
   solutionAbsences: {
     problem: "Agenda llena y citas confirmadas",
     solution: "Recordatorios y confirmación automática por WhatsApp, sin límite de mensajes, para que cada hueco de tu agenda se aproveche.",
@@ -168,14 +171,14 @@ const es: LandingI18n = {
   },
   solutionTime: {
     problem: "Más tiempo para atender",
-    solution: "Agenda, historia clínica y registro de pagos en un solo flujo, con recepcionistas ilimitadas que absorben el papeleo, para que tu energía vaya a los pacientes.",
+    solution: "Agenda, expediente clínico y registro de pagos en un solo flujo, con recepcionistas ilimitadas que absorben el papeleo, para que tu energía vaya a los pacientes.",
   },
   solutionDecisions: {
     problem: "Decisiones con datos, crecimiento con rumbo",
     solution: "Analíticas de ventas, rentabilidad y ocupación para invertir con confianza donde más rinde.",
   },
-  featuresTitle: "Todo lo que necesitas en consulta",
-  featuresSubtitle: "Y detrás de cada función, un objetivo: menos tareas administrativas, más tiempo con tus pacientes y el control de tu consulta siempre en tus manos.",
+  featuresTitle: "Todo lo que necesitas en el consultorio",
+  featuresSubtitle: "Y detrás de cada función, un objetivo: menos tareas administrativas, más tiempo con tus pacientes y el control de tu consultorio siempre en tus manos.",
   featureHoverHint: "Toca o pasa el cursor para ver el detalle",
   featureCalendarTitle: "Agenda inteligente",
   featureCalendarDesc: "Calendario por profesional, citas, ocupación y métricas de agenda en tiempo real.",
@@ -185,13 +188,13 @@ const es: LandingI18n = {
     "Ocupación y huecos libres de un vistazo",
   ],
   featurePatientsTitle: "Pacientes",
-  featurePatientsDesc: "Ficha completa, antecedentes, demografía y seguimiento del vínculo con tu consulta.",
+  featurePatientsDesc: "Ficha completa, antecedentes, demografía y seguimiento del vínculo con tu consultorio.",
   featurePatientsDetails: [
     "Antecedentes médicos y podológicos",
     "Historial de visitas y evolución",
     "Búsqueda rápida y demografía",
   ],
-  featureSessionsTitle: "Historia clínica podológica",
+  featureSessionsTitle: "Expediente clínico podológico",
   featureSessionsDesc: "Sesiones estructuradas, plantillas personalizables, exploración y documentos clínicos.",
   featureSessionsDetails: [
     "Plantillas de sesión configurables",
@@ -199,7 +202,7 @@ const es: LandingI18n = {
     "Consentimientos e informes listos para imprimir",
   ],
   featureCheckoutTitle: "Pagos y control financiero",
-  featureCheckoutDesc: "Registro automático de tratamientos y pagos, estado de cuenta del paciente y cierres diarios de la consulta.",
+  featureCheckoutDesc: "Registro automático de tratamientos y pagos, estado de cuenta del paciente y cierres diarios del consultorio.",
   featureCheckoutDetails: [
     "Registro de pago y traspaso a recepción",
     "Ventas por servicio y por profesional",
@@ -213,8 +216,8 @@ const es: LandingI18n = {
     "Seguimiento por grupos de pacientes",
     "WhatsApp Web y API de Meta",
   ],
-  featureSettingsTitle: "Tu marca, tu consulta",
-  featureSettingsDesc: "Logo, impresión, paleta de colores, layout clínico y watermark del workspace.",
+  featureSettingsTitle: "Tu marca, tu consultorio",
+  featureSettingsDesc: "Logo, impresión, paleta de colores, diseño de la ficha clínica y marca de agua en todo tu espacio de trabajo.",
   featureSettingsDetails: [
     "Logo y marca de agua propios",
     "Paleta de colores personalizable",
@@ -224,7 +227,7 @@ const es: LandingI18n = {
   stepsBadge: "Sin instalar nada y sin migrar de golpe: empiezas con lo que ya tienes, a tu ritmo.",
   steps: [
     {
-      title: "Carga tu consulta como ya la tienes",
+      title: "Carga tu consultorio como ya lo tienes",
       description:
         "Tu logo, tus colores y los horarios que ya manejas. Sumas a tu recepcionista sin costo adicional y la agenda queda igual a como la llevas hoy.",
     },
@@ -244,8 +247,14 @@ const es: LandingI18n = {
         "Ventas, rentabilidad, ocupación de agenda y a qué pacientes hace tiempo que no ves. Los datos ya están ahí el día que los necesites.",
     },
   ],
-  audienceTitle: "Diseñado para adaptarse a tu consulta",
-  audienceSubtitle: "Cada perfil ve lo que necesita: desde el podólogo en consulta hasta la recepción y la dirección de clínica.",
+  stepsMediaAlt: [
+    "Panel de Podoraa con el menú lateral, los botones y las tarjetas tomando el logo y los colores de la clínica.",
+    "Lista de próximas citas en Podoraa, con la fecha, el paciente, la hora y el podólogo asignado a cada una.",
+    "Historial de sesiones clínicas completadas en Podoraa, con el motivo de consulta y el botón para imprimir el informe.",
+    "Tarjeta de ventas del mes en el panel de Podoraa, con el total facturado y el acceso al detalle.",
+  ],
+  audienceTitle: "Diseñado para adaptarse a tu consultorio",
+  audienceSubtitle: "Cada perfil ve lo que necesita: desde el podólogo en consultorio hasta la recepción y la dirección de clínica.",
   audiencePodiatristTitle: "Podólogos",
   audiencePodiatristDesc: "Agenda, sesiones clínicas, herramientas podológicas e informes listos para imprimir. Suma a tu recepcionista sin costo adicional.",
   audienceClinicTitle: "Clínicas",
@@ -255,53 +264,6 @@ const es: LandingI18n = {
   pricingTitle: "Precios simples y transparentes",
   pricingSubtitle: "Empieza con lo esencial y activa las funciones de crecimiento cuando las necesites.",
   pricingPlans: [
-    {
-      name: "ESSENTIAL",
-      tagline: "Para el podólogo que trabaja solo: todo lo necesario día a día.",
-      price: "$25",
-      period: "/mes por profesional",
-      cta: "Elegir",
-      features: [
-        "Agenda y calendario operativo",
-        "Pacientes e historia clínica",
-        "Sesiones y plantillas clínicas",
-        "Registro de pagos y cierres diarios",
-        "WhatsApp Web con recordatorios ilimitados",
-        "Recepcionista sin costo adicional",
-        "Personalización de marca",
-        "Sube a Premium o a Clínica cuando crezcas",
-      ],
-    },
-    {
-      name: "ESSENTIAL PRO",
-      tagline: "Para el podólogo que quiere crecer con datos.",
-      price: "$40",
-      period: "/mes por profesional",
-      cta: "Elegir",
-      features: [
-        "Todo lo de ESSENTIAL",
-        "Analíticas: ventas, pagos y rentabilidad",
-        "Métricas avanzadas de agenda y cierres",
-        "Herramientas clínicas avanzadas",
-        "Seguimiento de pacientes por WhatsApp",
-        "Pasa a plan Clínica cuando sumes equipo",
-      ],
-    },
-    {
-      name: "CLINIC",
-      tagline: "Para equipos: la operación diaria de toda la clínica.",
-      price: "$100",
-      period: "/mes por clínica",
-      cta: "Elegir",
-      features: [
-        "Todo lo de ESSENTIAL",
-        "5 podólogos incluidos",
-        "Podólogo adicional: $10/mes",
-        "Recepcionistas ilimitadas",
-        "Recepción y registro de pagos compartido",
-        "Soporte prioritario",
-      ],
-    },
     {
       name: "CLINIC PRO",
       tagline: "Para clínicas que quieren crecer y medir el negocio.",
@@ -320,6 +282,53 @@ const es: LandingI18n = {
         "Seguimiento de pacientes por WhatsApp",
       ],
     },
+    {
+      name: "CLINIC",
+      tagline: "Para equipos: la operación diaria de toda la clínica.",
+      price: "$100",
+      period: "/mes por clínica",
+      cta: "Elegir",
+      features: [
+        "Todo lo de ESSENTIAL",
+        "5 podólogos incluidos",
+        "Podólogo adicional: $10/mes",
+        "Recepcionistas ilimitadas",
+        "Recepción y registro de pagos compartido",
+        "Soporte prioritario",
+      ],
+    },
+    {
+      name: "ESSENTIAL PRO",
+      tagline: "Para el podólogo que quiere crecer con datos.",
+      price: "$40",
+      period: "/mes por profesional",
+      cta: "Elegir",
+      features: [
+        "Todo lo de ESSENTIAL",
+        "Analíticas: ventas, pagos y rentabilidad",
+        "Métricas avanzadas de agenda y cierres",
+        "Herramientas clínicas avanzadas",
+        "Seguimiento de pacientes por WhatsApp",
+        "Pasa a plan Clínica cuando sumes equipo",
+      ],
+    },
+    {
+      name: "ESSENTIAL",
+      tagline: "Para el podólogo que trabaja solo: todo lo necesario día a día.",
+      price: "$25",
+      period: "/mes por profesional",
+      cta: "Elegir",
+      features: [
+        "Agenda y calendario operativo",
+        "Pacientes y expediente clínico",
+        "Sesiones y plantillas clínicas",
+        "Registro de pagos y cierres diarios",
+        "WhatsApp Web con recordatorios ilimitados",
+        "Recepcionista sin costo adicional",
+        "Personalización de marca",
+        "Sube a Premium o a Clínica cuando crezcas",
+      ],
+    },
   ],
   pricingNote: "Recordatorios de WhatsApp sin límites* en todos los planes. Precios en USD.",
   pricingNoteDisclaimer:
@@ -333,12 +342,12 @@ const es: LandingI18n = {
     { role: "Admin de clínica", cost: "Incluido", note: "1 por clínica (el titular)" },
   ],
   ctaTitle: "Trabaja como siempre, con menos esfuerzo",
-  ctaSubtitle: "Regístrate en minutos. Tu consulta sigue siendo tuya: Podoraa solo se encarga de lo repetitivo.",
+  ctaSubtitle: "Regístrate en minutos. Tu consultorio sigue siendo tuyo: Podoraa solo se encarga de lo repetitivo.",
   ctaButton: "Crear mi cuenta",
   ctaLogin: "Iniciar sesión",
   guideTitle: "Qué mirar al elegir un software para podología",
   guideSubtitle:
-    "Diez puntos que conviene revisar antes de decidirte, trabajes solo en tu consulta o lleves una clínica podológica con varios profesionales.",
+    "Diez puntos que conviene revisar antes de decidirte, trabajes solo en tu consultorio o lleves una clínica podológica con varios profesionales.",
   guideItems: [
     {
       title: "Agenda",
@@ -346,9 +355,9 @@ const es: LandingI18n = {
         "Una agenda para podólogos no es un calendario genérico: necesita duración por tipo de tratamiento, varios profesionales en paralelo y ver de un vistazo los huecos libres de la semana. Si tienes que cuadrar a mano quién atiende a quién, la agenda no está haciendo su trabajo.",
     },
     {
-      title: "Historia clínica",
+      title: "Expediente clínico",
       description:
-        "La historia clínica podológica tiene su propia estructura: exploración del pie, lesiones, tratamientos aplicados, imágenes de cada sesión y evolución en el tiempo. Un campo de notas libre no sirve para consultar el histórico de un paciente tres años después.",
+        "El expediente clínico podológico tiene su propia estructura: exploración del pie, lesiones, tratamientos aplicados, imágenes de cada sesión y evolución en el tiempo. Un campo de notas libre no sirve para consultar el histórico de un paciente tres años después.",
     },
     {
       title: "Seguimiento",
@@ -358,7 +367,7 @@ const es: LandingI18n = {
     {
       title: "Pagos",
       description:
-        "Control financiero podológico: qué se cobró, qué queda pendiente, cuánto entró hoy y qué tratamientos son los que sostienen la consulta. Si los cobros viven en un cuaderno aparte, cerrar el mes se convierte en un trabajo de reconstrucción.",
+        "Control financiero podológico: qué se cobró, qué queda pendiente, cuánto entró hoy y qué tratamientos son los que sostienen el consultorio. Si los cobros viven en un cuaderno aparte, cerrar el mes se convierte en un trabajo de reconstrucción.",
     },
     {
       title: "WhatsApp",
@@ -383,7 +392,7 @@ const es: LandingI18n = {
     {
       title: "Seguridad",
       description:
-        "Son datos de salud. Pregunta por cifrado, control de acceso por rol, registro de auditoría, política de retención y qué pasa con la información si un día te vas. Guardar historias clínicas en una hoja de cálculo compartida no cumple con nada de esto.",
+        "Son datos de salud. Pregunta por cifrado, control de acceso por rol, registro de auditoría, política de retención y qué pasa con la información si un día te vas. Guardar expedientes clínicos en una hoja de cálculo compartida no cumple con nada de esto.",
     },
     {
       title: "Personalización",
@@ -391,16 +400,16 @@ const es: LandingI18n = {
         "Tu logo en los informes que imprimes y en la página donde reservan tus pacientes. La marca que ve el paciente debe ser la tuya, no la del proveedor del software.",
     },
   ],
-  comparisonTitle: "Por qué no alcanza con Excel, Word o la agenda del móvil",
+  comparisonTitle: "Por qué no alcanza con Excel, Word o la agenda del celular",
   comparisonSubtitle:
-    "No es que esas herramientas estén mal hechas: es que no fueron pensadas para una consulta de podología, y el trabajo de sostenerlas lo terminas haciendo tú.",
+    "No es que esas herramientas estén mal hechas: es que no fueron pensadas para un consultorio de podología, y el trabajo de sostenerlas lo terminas haciendo tú.",
   comparisonRows: [
     {
       alternative: "Excel o Word",
       problem:
         "La ficha del paciente vive en archivos sueltos que se duplican, se pisan entre versiones y solo abre quien tiene el archivo. Buscar la evolución de una lesión implica abrir documentos uno por uno.",
       podoraa:
-        "Historia clínica podológica estructurada, con imágenes por sesión y el histórico completo de cada paciente en una sola ficha.",
+        "Expediente clínico podológico estructurado, con imágenes por sesión y el histórico completo de cada paciente en una sola ficha.",
     },
     {
       alternative: "Agenda de Google o agenda de papel",
@@ -414,14 +423,21 @@ const es: LandingI18n = {
       problem:
         "Está construido para medicina general: campos que no usas, y ninguno para la exploración podológica, el mapa del pie o el seguimiento de una onicocriptosis.",
       podoraa:
-        "Pensado para podología, podiatría y pedicuría: plantillas clínicas del área, informes listos para imprimir y las métricas de una consulta podológica.",
+        "Pensado para podología, podiatría y pedicuría: plantillas clínicas del área, informes listos para imprimir y las métricas de un consultorio podológico.",
+    },
+    {
+      alternative: "Agenda para salones o spas",
+      problem:
+        "Gestiona citas y cobros, pero no es un expediente clínico: no guarda exploración, ni evolución, ni imágenes por sesión, y no está pensada para los plazos de conservación que exigen los datos de salud.",
+      podoraa:
+        "La misma agilidad para agendar y cobrar, pero encima de un expediente podológico que sí conserva y demuestra lo que hiciste en cada sesión.",
     },
   ],
   faqItems: [
     {
       question: "¿Qué es un software de gestión podológica?",
       answer:
-        "Es el sistema donde una consulta de podología lleva su operación diaria: agenda de citas, historia clínica podológica de cada paciente, reservas online, recordatorios de citas, registro de cobros y las métricas del negocio. Sustituye la combinación de agenda, hoja de cálculo y cuaderno de cobros que suele usarse al principio.",
+        "Es el sistema donde un consultorio de podología lleva su operación diaria: agenda de citas, expediente clínico podológico de cada paciente, citas en línea, recordatorios de citas, registro de cobros y las métricas del negocio. Sustituye la combinación de agenda, hoja de cálculo y cuaderno de cobros que suele usarse al principio.",
     },
     {
       question: "¿Sirve para podiatras y pedicuristas, o solo para podólogos?",
@@ -429,12 +445,12 @@ const es: LandingI18n = {
         "Sirve para las tres. La estructura de la ficha clínica, los tratamientos y los informes son los del cuidado del pie, así que se adapta igual a un podólogo, a un podiatra o a un profesional de pedicuría clínica, trabaje solo o dentro de una clínica podológica.",
     },
     {
-      question: "¿Puedo llevar la historia clínica y las imágenes de cada sesión?",
+      question: "¿Puedo llevar el expediente clínico y las imágenes de cada sesión?",
       answer:
-        "Sí. Cada paciente tiene su historia clínica podológica con antecedentes, exploración, tratamientos aplicados e imágenes asociadas a la sesión en que se tomaron, de modo que la evolución se lee en orden cronológico. Los informes salen listos para imprimir con tu marca.",
+        "Sí. Cada paciente tiene su expediente clínico podológico con antecedentes, exploración, tratamientos aplicados e imágenes asociadas a la sesión en que se tomaron, de modo que la evolución se lee en orden cronológico. Los informes salen listos para imprimir con tu marca.",
     },
     {
-      question: "¿Mis pacientes pueden reservar online?",
+      question: "¿Mis pacientes pueden agendar su cita en línea?",
       answer:
         "Sí. Compartes tu enlace de reservas y el paciente elige entre los huecos reales de tu agenda, viendo la marca de tu clínica. La cita entra directamente en el calendario del profesional que corresponda.",
     },
@@ -446,7 +462,57 @@ const es: LandingI18n = {
     {
       question: "¿Es seguro guardar datos clínicos de mis pacientes?",
       answer:
-        "Los datos viajan cifrados, cada usuario ve solo lo que le corresponde por su rol — una recepcionista no accede a la información clínica — y las acciones sensibles quedan registradas en un log de auditoría. Hay política de retención y los datos de tu consulta son tuyos y exportables.",
+        "Los datos viajan cifrados, cada usuario ve solo lo que le corresponde por su rol — una recepcionista no accede a la información clínica — y las acciones sensibles quedan registradas en un log de auditoría. Hay política de retención y los datos de tu consultorio son tuyos y exportables.",
+    },
+    {
+      question: "¿Cuánto cuesta un software de gestión para podología?",
+      answer:
+        "En Podoraa, desde $25 al mes por profesional (ESSENTIAL) hasta $160 al mes por clínica (CLINIC PRO), en dólares y sin permanencia. No se cobra por paciente, por cita ni por mensaje enviado, y las recepcionistas no ocupan licencia: son gratis y sin límite en todos los planes. Al comparar precios, la cifra que importa no es la cuota de entrada, sino cuánto cuesta el plan con los profesionales y el volumen reales de tu consultorio.",
+    },
+    {
+      question: "¿Qué debo mirar al elegir un software para podología?",
+      answer:
+        "Cuatro cosas, por orden: que el expediente clínico esté pensado para el pie y no sea una ficha médica genérica; que la agenda y los recordatorios reduzcan de verdad las ausencias; que cada rol vea solo lo que le corresponde, porque estás guardando datos de salud; y que puedas llevarte tus datos el día que quieras irte. Si un software falla en lo último, lo demás importa menos de lo que parece.",
+    },
+    {
+      question: "¿Cómo paso a Podoraa lo que llevo en Excel, en papel o en la agenda del celular?",
+      answer:
+        "Sin migrar todo de golpe. Cargas tus horarios, tus servicios y tu logo, y agendas el mismo día; cada paciente se da de alta la primera vez que lo atiendes, con lo que ya sabes de él. En unas semanas de trabajo normal tienes dentro la parte que de verdad usas, y el historial antiguo lo consultas donde está hasta que deje de hacer falta.",
+    },
+    {
+      question: "¿Es legal guardar los expedientes clínicos de mis pacientes en la nube?",
+      answer:
+        "En general sí, y es lo habitual: la normativa no exige que el dato viva en tu consultorio, sino que esté protegido y sea trazable. Podoraa cifra los datos en tránsito, limita por rol quién accede a la información clínica, registra las acciones sensibles en un log de auditoría, aplica política de retención y te permite exportar todo. Ahora bien, el responsable de los datos de tus pacientes sigues siendo tú: revisa qué te pide la normativa de tu país sobre consentimiento, plazos de conservación e información al paciente.",
+    },
+    {
+      question: "¿Sirve si trabajo solo, sin recepción, o si atiendo a domicilio?",
+      answer:
+        "Sí. Un profesional solo trabaja con el plan ESSENTIAL y lleva agenda, pacientes y expediente clínico sin nadie más en la cuenta; los recordatorios y las citas en línea cubren el trabajo que haría una recepción. Y como funciona en el navegador del celular o la tablet, en las visitas a domicilio registras la sesión y el cobro en el momento, sin volver al consultorio a pasarlo a limpio.",
+    },
+    {
+      question: "¿Podoraa le hace una página web a mi consultorio?",
+      answer:
+        "No, y es la confusión más común. Podoraa no es un creador de sitios web ni una agencia de marketing: es la plataforma donde llevas la operación clínica del consultorio, es decir agenda, expediente, tratamientos, cobros y recordatorios. Lo que tu paciente sí ve con tu marca es el enlace de reservas y los documentos que imprimes, que llevan tu logo y tus colores. No sustituyen una página web ni necesitas tener una para usar Podoraa.",
+    },
+    {
+      question: "¿El expediente clínico sigue lo que pide la NOM-004?",
+      answer:
+        "Está construido sobre esa estructura. Las notas de evolución se guardan con su fecha y con el nombre y la cédula del profesional que las firma, y salen en un informe de evolución clínica listo para imprimir. El expediente se conserva cinco años desde el último acto, que es el mínimo que fija la NOM-004-SSA3-2012, y el sistema bloquea el borrado mientras ese plazo siga corriendo. La ficha del paciente incluye CURP, que queda fija una vez guardada. El cumplimiento final depende también de cómo registres tú cada consulta: lo que hace la herramienta es no obligarte a salirte de la norma.",
+    },
+    {
+      question: "¿En qué se diferencia de un software médico general o de una agenda para salones?",
+      answer:
+        "En para qué fue hecho. Un software médico general te da los campos de medicina general y ninguno para la exploración del pie, el mapa podal o el seguimiento de una onicocriptosis. Una agenda de salones o spas resuelve citas y cobros, pero no es un expediente clínico y no está pensada para guardar datos de salud con los plazos y los controles de acceso que eso exige. Podoraa está en medio a propósito: expediente podológico de verdad, con la rapidez de agenda y cobro que necesita un consultorio que atiende a un paciente detrás de otro.",
+    },
+    {
+      question: "¿Sirve para un consultorio de podología en México?",
+      answer:
+        "Está pensado para eso. La zona horaria, el formato de fecha y el registro de cobros salen en horario y pesos mexicanos sin que configures nada; la ficha del paciente tiene CURP; el expediente respeta el plazo de conservación de la NOM-004; y los recordatorios van por WhatsApp, que es por donde de verdad contesta el paciente. Ten en cuenta que la suscripción a Podoraa se cobra en dólares a través de Stripe, así que la conversión a pesos la hace tu banco o tu tarjeta.",
+    },
+    {
+      question: "¿Emiten factura fiscal (CFDI) por la suscripción?",
+      answer:
+        "Todavía no. La suscripción se cobra por Stripe y recibes de Stripe el comprobante del cargo con su detalle, que sirve para tu control interno pero no es un CFDI. Es algo que está en el plan de trabajo y preferimos no darte una fecha antes de tenerlo resuelto. Si necesitas la factura fiscal para deducir el gasto, escríbenos antes de contratar y te decimos cómo está en ese momento.",
     },
   ],
   faqSystemItems: [
@@ -458,7 +524,7 @@ const es: LandingI18n = {
     {
       question: "¿Qué planes hay y en qué se diferencian?",
       answer:
-        "Cuatro, todos en USD. ESSENTIAL ($25/mes por profesional) trae la operación diaria: agenda, pacientes, historia clínica, pagos y recordatorios. ESSENTIAL PRO ($40) añade analíticas de ventas y rentabilidad, métricas avanzadas y herramientas clínicas avanzadas. CLINIC ($100/mes por clínica) incluye 5 podólogos, recepción compartida y soporte prioritario. CLINIC PRO ($160) incluye 8 podólogos y todo lo de PRO. Puedes cambiar de plan cuando crezcas.",
+        "Cuatro, todos en USD. ESSENTIAL ($25/mes por profesional) trae la operación diaria: agenda, pacientes, expediente clínico, pagos y recordatorios. ESSENTIAL PRO ($40) añade analíticas de ventas y rentabilidad, métricas avanzadas y herramientas clínicas avanzadas. CLINIC ($100/mes por clínica) incluye 5 podólogos, recepción compartida y soporte prioritario. CLINIC PRO ($160) incluye 8 podólogos y todo lo de PRO. Puedes cambiar de plan cuando crezcas.",
     },
     {
       question: "¿Cuánto cuesta sumar personas a mi equipo?",
@@ -468,7 +534,7 @@ const es: LandingI18n = {
     {
       question: "¿Cuántos pacientes puedo registrar?",
       answer:
-        "Los que necesites: no hay tope de pacientes, de citas ni de sesiones clínicas en ningún plan. Lo que cambia de un plan a otro es cuántos profesionales trabajan en la cuenta y qué analíticas ves, no el volumen de tu consulta.",
+        "Los que necesites: no hay tope de pacientes, de citas ni de sesiones clínicas en ningún plan. Lo que cambia de un plan a otro es cuántos profesionales trabajan en la cuenta y qué analíticas ves, no el volumen de tu consultorio.",
     },
     {
       question: "¿Sirve si tengo más de un consultorio o sucursal?",
@@ -476,9 +542,9 @@ const es: LandingI18n = {
         "Una cuenta de clínica gestiona una clínica —con su dirección, su equipo y su marca— y dentro de ella tantos profesionales como necesites, cada uno con su agenda. Si llevas varias sucursales, escríbenos antes de contratar y vemos cómo montarlo en tu caso.",
     },
     {
-      question: "¿Qué ve cada rol? ¿La recepcionista entra a la historia clínica?",
+      question: "¿Qué ve cada rol? ¿La recepcionista entra al expediente clínico?",
       answer:
-        "No. La recepcionista trabaja con el calendario, la ficha administrativa del paciente y los mensajes, sin acceso a los datos clínicos. El podólogo ve a sus pacientes y sus sesiones; el administrador de la clínica, la visión del equipo y la facturación. Además, los datos de una clínica no se cruzan con los de otra: cada consulta solo ve lo suyo.",
+        "No. La recepcionista trabaja con el calendario, la ficha administrativa del paciente y los mensajes, sin acceso a los datos clínicos. El podólogo ve a sus pacientes y sus sesiones; el administrador de la clínica, la visión del equipo y la facturación. Además, los datos de una clínica no se cruzan con los de otra: cada consultorio solo ve lo suyo.",
     },
     {
       question: "¿Qué pasa si un paciente cancela o quiere cambiar su cita?",
@@ -503,10 +569,10 @@ const es: LandingI18n = {
     {
       question: "¿Puedo activar la verificación en dos pasos?",
       answer:
-        "Sí, desde Ajustes → Seguridad. Se activa con una app de autenticación (Google Authenticator, Authy o similar) que genera un código de seis dígitos, y al activarla recibes códigos de respaldo de un solo uso. Guárdalos fuera del móvil: son la forma de entrar si pierdes el teléfono.",
+        "Sí, desde Ajustes → Seguridad. Se activa con una app de autenticación (Google Authenticator, Authy o similar) que genera un código de seis dígitos, y al activarla recibes códigos de respaldo de un solo uso. Guárdalos fuera del celular: son la forma de entrar si pierdes el teléfono.",
     },
     {
-      question: "Perdí el móvil del segundo factor o la contraseña. ¿Cómo recupero el acceso?",
+      question: "Perdí el celular del segundo factor o la contraseña. ¿Cómo recupero el acceso?",
       answer:
         "Si es la contraseña, el enlace «¿Olvidaste tu contraseña?» del login te envía un correo para restablecerla. Si es el segundo factor, entra con uno de tus códigos de respaldo; si tampoco los tienes, escríbenos a soporte@podoraa.com desde el correo de la cuenta y el equipo de Podoraa reinicia el segundo factor tras verificar tu identidad.",
     },
@@ -533,17 +599,17 @@ const es: LandingI18n = {
     {
       question: "¿Puedo llevarme mis datos si dejo de usar Podoraa?",
       answer:
-        "Sí. Cada paciente se exporta en un archivo portable con su ficha e historial, y la agenda sale en formato .ics para abrirla en otro calendario. Los datos clínicos de tu consulta son tuyos; se conservan según la política de retención y se eliminan cuando esa política lo permite.",
+        "Sí. Cada paciente se exporta en un archivo portable con su ficha e historial, y la agenda sale en formato .ics para abrirla en otro calendario. Los datos clínicos de tu consultorio son tuyos; se conservan según la política de retención y se eliminan cuando esa política lo permite.",
     },
     {
       question: "¿Qué necesito instalar y en qué idiomas está?",
       answer:
-        "Nada: funciona en el navegador, también desde el móvil o la tablet, y se actualiza sola. La interfaz está en español, inglés, portugués y francés, y se cambia desde el selector de idioma en cualquier momento.",
+        "Nada: funciona en el navegador, también desde el celular o la tablet, y se actualiza sola. La interfaz está en español, inglés, portugués y francés, y se cambia desde el selector de idioma en cualquier momento.",
     },
   ],
   faqPageTitle: "Preguntas frecuentes",
   faqPageSubtitle:
-    "Lo que más nos preguntan antes de empezar y lo que resuelve Podoraa una vez que la consulta ya está funcionando. Si falta la tuya, escríbenos al final de la página.",
+    "Lo que más nos preguntan antes de empezar y lo que resuelve Podoraa una vez que el consultorio ya está funcionando. Si falta la tuya, escríbenos al final de la página.",
   faqPageGeneralHeading: "Antes de empezar",
   faqPageSystemHeading: "Sobre el uso de Podoraa",
   faqPageBack: "Volver al inicio",
@@ -561,6 +627,10 @@ const es: LandingI18n = {
   contactDirect: "O escríbenos directamente a",
   contactMailSubject: "Consulta desde las preguntas frecuentes",
   contactMailFrom: "Mi correo",
+  footerStatDigital: "100% digital",
+  footerStatAccess: "Acceso 24/7",
+  footerStatSecure: "Conexión SSL",
+  footerStatTwoFactor: "Doble factor (2FA)",
   footerTerms: "Términos",
   footerPrivacy: "Privacidad",
   footerContact: "Contacto",
@@ -581,10 +651,6 @@ const en: LandingI18n = {
   heroSubtitle:
     "Podoraa brings your schedule, clinical records and payments into one place. You keep working the way you always have — the platform takes care of the repetitive part.",
   heroCtaPrimary: "Create account",
-  heroCtaSecondary: "I already have an account",
-  heroStatDigital: "Digital",
-  heroStatAccess: "24/7 access",
-  heroStatSecure: "Secure",
   solutionsTitle: "Less time on admin. More time with your patients.",
   solutionsSubtitle: "Podoraa turns running your practice into something simple and organised: it remembers appointments, keeps follow-up on track and records every step. Without changing how you care for patients.",
   solutionAbsences: {
@@ -673,6 +739,12 @@ const en: LandingI18n = {
         "Revenue, profitability, schedule occupancy and which patients you haven't seen in a while. The data is already there the day you need it.",
     },
   ],
+  stepsMediaAlt: [
+    "Podoraa dashboard with the sidebar, buttons and cards picking up the clinic's logo and colours.",
+    "List of upcoming appointments in Podoraa, showing the date, patient, time and assigned podiatrist.",
+    "History of completed clinical sessions in Podoraa, with the reason for the visit and the button to print the report.",
+    "Monthly sales card on the Podoraa dashboard, with the total billed and a link to the breakdown.",
+  ],
   audienceTitle: "Built to fit your practice",
   audienceSubtitle: "Each profile sees what they need—from the consulting podiatrist to reception and clinic management.",
   audiencePodiatristTitle: "Podiatrists",
@@ -685,35 +757,21 @@ const en: LandingI18n = {
   pricingSubtitle: "Start with the essentials and turn on growth features when you need them.",
   pricingPlans: [
     {
-      name: "ESSENTIAL",
-      tagline: "For the solo podiatrist: everything you need day to day.",
-      price: "$25",
-      period: "/mo per professional",
+      name: "CLINIC PRO",
+      tagline: "For clinics that want to grow and measure the business.",
+      price: "$160",
+      period: "/mo per clinic",
       cta: "Choose",
+      badge: "Recommended",
+      highlighted: true,
       features: [
-        "Scheduling and operational calendar",
-        "Patients and clinical records",
-        "Sessions and clinical templates",
-        "Operational checkout (billing)",
-        "WhatsApp Web with unlimited reminders",
-        "Receptionist at no extra cost",
-        "Brand customization",
-        "Upgrade to Premium or Clinic as you grow",
-      ],
-    },
-    {
-      name: "ESSENTIAL PRO",
-      tagline: "For the podiatrist who wants to grow with data.",
-      price: "$40",
-      period: "/mo per professional",
-      cta: "Choose",
-      features: [
-        "Everything in ESSENTIAL",
+        "Everything in CLINIC",
+        "8 podiatrists included",
+        "Extra podiatrist: $10/mo",
         "Analytics: Sales, Collections and Profitability",
         "Advanced agenda metrics and closes",
         "Advanced clinical tools",
         "WhatsApp campaigns",
-        "Move to a Clinic plan when you add a team",
       ],
     },
     {
@@ -732,21 +790,35 @@ const en: LandingI18n = {
       ],
     },
     {
-      name: "CLINIC PRO",
-      tagline: "For clinics that want to grow and measure the business.",
-      price: "$160",
-      period: "/mo per clinic",
+      name: "ESSENTIAL PRO",
+      tagline: "For the podiatrist who wants to grow with data.",
+      price: "$40",
+      period: "/mo per professional",
       cta: "Choose",
-      badge: "Recommended",
-      highlighted: true,
       features: [
-        "Everything in CLINIC",
-        "8 podiatrists included",
-        "Extra podiatrist: $10/mo",
+        "Everything in ESSENTIAL",
         "Analytics: Sales, Collections and Profitability",
         "Advanced agenda metrics and closes",
         "Advanced clinical tools",
         "WhatsApp campaigns",
+        "Move to a Clinic plan when you add a team",
+      ],
+    },
+    {
+      name: "ESSENTIAL",
+      tagline: "For the solo podiatrist: everything you need day to day.",
+      price: "$25",
+      period: "/mo per professional",
+      cta: "Choose",
+      features: [
+        "Scheduling and operational calendar",
+        "Patients and clinical records",
+        "Sessions and clinical templates",
+        "Operational checkout (billing)",
+        "WhatsApp Web with unlimited reminders",
+        "Receptionist at no extra cost",
+        "Brand customization",
+        "Upgrade to Premium or Clinic as you grow",
       ],
     },
   ],
@@ -845,6 +917,13 @@ const en: LandingI18n = {
       podoraa:
         "Built for podiatry and chiropody: clinical templates for the field, print-ready reports and the metrics a foot-care practice actually needs.",
     },
+    {
+      alternative: "A salon or spa booking app",
+      problem:
+        "It handles appointments and payments, but it is not a clinical record: no assessment, no progress notes, no images per session, and it is not built for the retention periods health data requires.",
+      podoraa:
+        "The same speed for booking and charging, on top of a podiatry clinical record that can keep and evidence what you did in each session.",
+    },
   ],
   faqItems: [
     {
@@ -876,6 +955,31 @@ const en: LandingI18n = {
       question: "Is it safe to store my patients' clinical data?",
       answer:
         "Data travels encrypted, each user sees only what their role allows — a receptionist has no access to clinical information — and sensitive actions are written to an audit log. There is a retention policy, and your practice's data is yours and exportable.",
+    },
+    {
+      question: "How much does podiatry practice management software cost?",
+      answer:
+        "With Podoraa, from $25 a month per practitioner (ESSENTIAL) up to $160 a month per clinic (CLINIC PRO), in US dollars and with no lock-in. There is no charge per patient, per appointment or per message sent, and receptionists do not take up a licence: they are free and unlimited on every plan. When you compare prices, the figure that matters is not the entry fee but what the plan costs with the practitioners and the volume your practice actually has.",
+    },
+    {
+      question: "What should I look for when choosing podiatry software?",
+      answer:
+        "Four things, in this order: that the clinical record is designed for the foot rather than being a generic medical form; that the schedule and reminders genuinely cut no-shows; that each role only sees what it should, because you are storing health data; and that you can take your data with you the day you decide to leave. If a product fails on the last one, the other three matter less than they seem.",
+    },
+    {
+      question: "How do I move what I keep in a spreadsheet, on paper or in my phone diary?",
+      answer:
+        "Without migrating everything at once. You load your hours, your services and your logo, and you are booking the same day; each patient is created the first time you treat them, with what you already know about them. After a few weeks of normal practice the part you actually use is in there, and you keep consulting the old records where they are until you no longer need them.",
+    },
+    {
+      question: "Is it legal to keep my patients clinical records in the cloud?",
+      answer:
+        "Generally yes, and it is the norm: regulations do not require the data to live in your practice, they require it to be protected and traceable. Podoraa encrypts data in transit, limits by role who reaches clinical information, records sensitive actions in an audit log, applies a retention policy and lets you export everything. That said, you remain the controller of your patients data: check what your country rules require on consent, retention periods and informing the patient.",
+    },
+    {
+      question: "Does it work if I practise alone, with no reception, or if I visit patients at home?",
+      answer:
+        "Yes. A solo practitioner works on the ESSENTIAL plan and keeps schedule, patients and clinical records with nobody else on the account; reminders and online booking cover the work a receptionist would do. And since it runs in the browser on your phone or tablet, on home visits you record the session and the payment on the spot, without going back to the practice to write it up.",
     },
   ],
   faqSystemItems: [
@@ -990,6 +1094,10 @@ const en: LandingI18n = {
   contactDirect: "Or write to us directly at",
   contactMailSubject: "Question from the FAQ page",
   contactMailFrom: "My email",
+  footerStatDigital: "100% digital",
+  footerStatAccess: "24/7 access",
+  footerStatSecure: "SSL connection",
+  footerStatTwoFactor: "Two-factor (2FA)",
   footerTerms: "Terms",
   footerPrivacy: "Privacy",
   footerContact: "Contact",
@@ -1010,10 +1118,6 @@ const pt: LandingI18n = {
   heroSubtitle:
     "Podoraa reúne a sua agenda, o historial clínico e os pagamentos num só lugar. Continua a atender como sempre: a plataforma trata do que é repetitivo.",
   heroCtaPrimary: "Criar conta",
-  heroCtaSecondary: "Já tenho conta",
-  heroStatDigital: "Digital",
-  heroStatAccess: "Acesso 24/7",
-  heroStatSecure: "Seguro",
   solutionsTitle: "Menos tempo a organizar. Mais tempo com os seus pacientes.",
   solutionsSubtitle: "A Podoraa transforma a gestão da sua consulta em algo simples e organizado: lembra as consultas, mantém o seguimento em dia e regista cada passo. Sem mudar a sua forma de atender.",
   solutionAbsences: {
@@ -1072,7 +1176,7 @@ const pt: LandingI18n = {
     "WhatsApp Web e API da Meta",
   ],
   featureSettingsTitle: "A sua marca, a sua consulta",
-  featureSettingsDesc: "Logo, impressão, paleta de cores, layout clínico e watermark do workspace.",
+  featureSettingsDesc: "Logótipo, impressão, paleta de cores, esquema da ficha clínica e marca de água em todo o seu espaço de trabalho.",
   featureSettingsDetails: [
     "Logo e marca de água próprios",
     "Paleta de cores personalizável",
@@ -1102,6 +1206,12 @@ const pt: LandingI18n = {
         "Vendas, rentabilidade, ocupação da agenda e que pacientes há muito não vê. Os dados já lá estão no dia em que precisar deles.",
     },
   ],
+  stepsMediaAlt: [
+    "Painel da Podoraa com o menu lateral, os botões e os cartões a assumir o logótipo e as cores da clínica.",
+    "Lista das próximas consultas na Podoraa, com a data, o paciente, a hora e o podólogo atribuído.",
+    "Histórico de sessões clínicas concluídas na Podoraa, com o motivo da consulta e o botão para imprimir o relatório.",
+    "Cartão de vendas do mês no painel da Podoraa, com o total faturado e o acesso ao detalhe.",
+  ],
   audienceTitle: "Feito para se adaptar à sua consulta",
   audienceSubtitle: "Cada perfil vê o que precisa: do podólogo em consulta à receção e direção da clínica.",
   audiencePodiatristTitle: "Podólogos",
@@ -1114,35 +1224,21 @@ const pt: LandingI18n = {
   pricingSubtitle: "Comece com o essencial e ative as funções de crescimento quando precisar.",
   pricingPlans: [
     {
-      name: "ESSENTIAL",
-      tagline: "Para o podólogo que trabalha sozinho: tudo o que precisa no dia a dia.",
-      price: "$25",
-      period: "/mês por profissional",
+      name: "CLINIC PRO",
+      tagline: "Para clínicas que querem crescer e medir o negócio.",
+      price: "$160",
+      period: "/mês por clínica",
       cta: "Escolher",
+      badge: "Recomendado",
+      highlighted: true,
       features: [
-        "Agenda e calendário operacional",
-        "Pacientes e história clínica",
-        "Sessões e modelos clínicos",
-        "Checkout operacional (cobranças)",
-        "WhatsApp Web com lembretes ilimitados",
-        "Rececionista sem custo adicional",
-        "Personalização de marca",
-        "Suba para Premium ou Clínica quando crescer",
-      ],
-    },
-    {
-      name: "ESSENTIAL PRO",
-      tagline: "Para o podólogo que quer crescer com dados.",
-      price: "$40",
-      period: "/mês por profissional",
-      cta: "Escolher",
-      features: [
-        "Tudo do ESSENTIAL",
+        "Tudo do CLINIC",
+        "8 podólogos incluídos",
+        "Podólogo adicional: $10/mês",
         "Analíticas: Vendas, Cobranças e Rentabilidade",
         "Métricas avançadas de agenda e fechos",
         "Ferramentas clínicas avançadas",
         "Campanhas de WhatsApp",
-        "Mude para o plano Clínica quando somar equipa",
       ],
     },
     {
@@ -1161,21 +1257,35 @@ const pt: LandingI18n = {
       ],
     },
     {
-      name: "CLINIC PRO",
-      tagline: "Para clínicas que querem crescer e medir o negócio.",
-      price: "$160",
-      period: "/mês por clínica",
+      name: "ESSENTIAL PRO",
+      tagline: "Para o podólogo que quer crescer com dados.",
+      price: "$40",
+      period: "/mês por profissional",
       cta: "Escolher",
-      badge: "Recomendado",
-      highlighted: true,
       features: [
-        "Tudo do CLINIC",
-        "8 podólogos incluídos",
-        "Podólogo adicional: $10/mês",
+        "Tudo do ESSENTIAL",
         "Analíticas: Vendas, Cobranças e Rentabilidade",
         "Métricas avançadas de agenda e fechos",
         "Ferramentas clínicas avançadas",
         "Campanhas de WhatsApp",
+        "Mude para o plano Clínica quando somar equipa",
+      ],
+    },
+    {
+      name: "ESSENTIAL",
+      tagline: "Para o podólogo que trabalha sozinho: tudo o que precisa no dia a dia.",
+      price: "$25",
+      period: "/mês por profissional",
+      cta: "Escolher",
+      features: [
+        "Agenda e calendário operacional",
+        "Pacientes e história clínica",
+        "Sessões e modelos clínicos",
+        "Checkout operacional (cobranças)",
+        "WhatsApp Web com lembretes ilimitados",
+        "Rececionista sem custo adicional",
+        "Personalização de marca",
+        "Suba para Premium ou Clínica quando crescer",
       ],
     },
   ],
@@ -1274,6 +1384,13 @@ const pt: LandingI18n = {
       podoraa:
         "Pensado para podologia e pedicura clínica: modelos clínicos da área, relatórios prontos a imprimir e as métricas de uma consulta de podologia.",
     },
+    {
+      alternative: "Agenda para salões ou spas",
+      problem:
+        "Gere marcações e pagamentos, mas não é um processo clínico: não guarda exploração, nem evolução, nem imagens por sessão, e não foi pensada para os prazos de conservação que os dados de saúde exigem.",
+      podoraa:
+        "A mesma agilidade para marcar e cobrar, mas sobre um processo clínico podológico que conserva e comprova o que fez em cada sessão.",
+    },
   ],
   faqItems: [
     {
@@ -1305,6 +1422,31 @@ const pt: LandingI18n = {
       question: "É seguro guardar dados clínicos dos meus pacientes?",
       answer:
         "Os dados viajam cifrados, cada utilizador vê apenas o que lhe compete pelo seu perfil — uma rececionista não acede à informação clínica — e as ações sensíveis ficam registadas num log de auditoria. Há política de retenção e os dados da sua consulta são seus e exportáveis.",
+    },
+    {
+      question: "Quanto custa um software de gestão para podologia?",
+      answer:
+        "Na Podoraa, desde 25 $ por mês por profissional (ESSENTIAL) até 160 $ por mês por clínica (CLINIC PRO), em dólares e sem fidelização. Não se cobra por paciente, por consulta nem por mensagem enviada, e as rececionistas não ocupam licença: são gratuitas e sem limite em todos os planos. Ao comparar preços, o número que interessa não é a mensalidade de entrada, mas quanto custa o plano com os profissionais e o volume reais da sua consulta.",
+    },
+    {
+      question: "Em que devo reparar ao escolher um software de podologia?",
+      answer:
+        "Quatro coisas, por esta ordem: que o histórico clínico seja pensado para o pé e não uma ficha médica genérica; que a agenda e os lembretes reduzam mesmo as faltas; que cada perfil veja só o que lhe compete, porque está a guardar dados de saúde; e que possa levar os seus dados no dia em que quiser sair. Se um software falha no último ponto, o resto conta menos do que parece.",
+    },
+    {
+      question: "Como passo para a Podoraa o que tenho em Excel, em papel ou na agenda do telemóvel?",
+      answer:
+        "Sem migrar tudo de uma vez. Carrega os seus horários, os seus serviços e o seu logótipo, e marca consultas no próprio dia; cada paciente é criado na primeira vez que o atende, com o que já sabe dele. Ao fim de umas semanas de consulta normal já lá está a parte que usa de facto, e o histórico antigo consulta-o onde está até deixar de fazer falta.",
+    },
+    {
+      question: "É legal guardar os históricos clínicos dos meus pacientes na nuvem?",
+      answer:
+        "Em geral sim, e é o habitual: a lei não exige que o dado viva no seu consultório, exige que esteja protegido e seja rastreável. A Podoraa cifra os dados em trânsito, limita por perfil quem acede à informação clínica, regista as ações sensíveis num log de auditoria, aplica política de retenção e permite exportar tudo. Dito isto, o responsável pelos dados dos seus pacientes continua a ser você: verifique o que a legislação do seu país exige sobre consentimento, prazos de conservação e informação ao paciente.",
+    },
+    {
+      question: "Serve se trabalho sozinho, sem receção, ou se atendo ao domicílio?",
+      answer:
+        "Sim. Um profissional sozinho trabalha com o plano ESSENTIAL e leva agenda, pacientes e histórico clínico sem mais ninguém na conta; os lembretes e as marcações online cobrem o trabalho que faria uma receção. E como funciona no navegador do telemóvel ou do tablet, nas visitas ao domicílio regista a sessão e o pagamento na hora, sem voltar ao consultório para passar a limpo.",
     },
   ],
   faqSystemItems: [
@@ -1419,6 +1561,10 @@ const pt: LandingI18n = {
   contactDirect: "Ou escreva-nos diretamente para",
   contactMailSubject: "Dúvida a partir das perguntas frequentes",
   contactMailFrom: "O meu email",
+  footerStatDigital: "100% digital",
+  footerStatAccess: "Acesso 24/7",
+  footerStatSecure: "Ligação SSL",
+  footerStatTwoFactor: "Duplo fator (2FA)",
   footerTerms: "Termos",
   footerPrivacy: "Privacidade",
   footerContact: "Contacto",
@@ -1439,10 +1585,6 @@ const fr: LandingI18n = {
   heroSubtitle:
     "Podoraa réunit votre agenda, le dossier clinique et les paiements en un seul endroit. Vous continuez à travailler comme toujours : la plateforme s'occupe du répétitif.",
   heroCtaPrimary: "Créer un compte",
-  heroCtaSecondary: "J'ai déjà un compte",
-  heroStatDigital: "Numérique",
-  heroStatAccess: "Accès 24/7",
-  heroStatSecure: "Sécurisé",
   solutionsTitle: "Moins de temps à organiser. Plus de temps avec vos patients.",
   solutionsSubtitle: "Podoraa transforme la gestion de votre cabinet en quelque chose de simple et d'organisé : il rappelle les rendez-vous, garde le suivi à jour et enregistre chaque étape. Sans changer votre façon de soigner.",
   solutionAbsences: {
@@ -1501,7 +1643,7 @@ const fr: LandingI18n = {
     "WhatsApp Web et API Meta",
   ],
   featureSettingsTitle: "Votre marque, votre cabinet",
-  featureSettingsDesc: "Logo, impression, palette de couleurs, layout clinique et filigrane.",
+  featureSettingsDesc: "Logo, impression, palette de couleurs, mise en page du dossier clinique et filigrane sur tout votre espace de travail.",
   featureSettingsDetails: [
     "Votre propre logo et filigrane",
     "Palette de couleurs personnalisable",
@@ -1531,6 +1673,12 @@ const fr: LandingI18n = {
         "Ventes, rentabilité, taux de remplissage et patients que vous n'avez pas vus depuis longtemps. Les données sont déjà là le jour où vous en avez besoin.",
     },
   ],
+  stepsMediaAlt: [
+    "Tableau de bord Podoraa avec le menu latéral, les boutons et les cartes reprenant le logo et les couleurs du cabinet.",
+    "Liste des prochains rendez-vous dans Podoraa, avec la date, le patient, l’heure et le podologue attribué.",
+    "Historique des séances cliniques terminées dans Podoraa, avec le motif de consultation et le bouton pour imprimer le rapport.",
+    "Carte des ventes du mois sur le tableau de bord Podoraa, avec le total facturé et l’accès au détail.",
+  ],
   audienceTitle: "Conçu pour s'adapter à votre cabinet",
   audienceSubtitle: "Chaque profil voit ce dont il a besoin : du podologue en consultation à l'accueil et la direction.",
   audiencePodiatristTitle: "Podologues",
@@ -1543,35 +1691,21 @@ const fr: LandingI18n = {
   pricingSubtitle: "Commencez avec l'essentiel et activez les fonctions de croissance au besoin.",
   pricingPlans: [
     {
-      name: "ESSENTIAL",
-      tagline: "Pour le podologue en solo : tout le nécessaire au quotidien.",
-      price: "$25",
-      period: "/mois par praticien",
+      name: "CLINIC PRO",
+      tagline: "Pour les cliniques qui veulent croître et mesurer l'activité.",
+      price: "$160",
+      period: "/mois par clinique",
       cta: "Choisir",
+      badge: "Recommandé",
+      highlighted: true,
       features: [
-        "Agenda et calendrier opérationnel",
-        "Patients et dossier clinique",
-        "Séances et modèles cliniques",
-        "Checkout opérationnel (encaissements)",
-        "WhatsApp Web avec rappels illimités",
-        "Réceptionniste sans coût supplémentaire",
-        "Personnalisation de marque",
-        "Passez à Premium ou Clinique quand vous grandissez",
-      ],
-    },
-    {
-      name: "ESSENTIAL PRO",
-      tagline: "Pour le podologue qui veut croître avec des données.",
-      price: "$40",
-      period: "/mois par praticien",
-      cta: "Choisir",
-      features: [
-        "Tout d'ESSENTIAL",
+        "Tout de CLINIC",
+        "8 podologues inclus",
+        "Podologue supplémentaire : $10/mois",
         "Analytiques : Ventes, Encaissements et Rentabilité",
         "Métriques avancées d'agenda et clôtures",
         "Outils cliniques avancés",
         "Campagnes WhatsApp",
-        "Passez au forfait Clinique quand votre équipe s'agrandit",
       ],
     },
     {
@@ -1590,21 +1724,35 @@ const fr: LandingI18n = {
       ],
     },
     {
-      name: "CLINIC PRO",
-      tagline: "Pour les cliniques qui veulent croître et mesurer l'activité.",
-      price: "$160",
-      period: "/mois par clinique",
+      name: "ESSENTIAL PRO",
+      tagline: "Pour le podologue qui veut croître avec des données.",
+      price: "$40",
+      period: "/mois par praticien",
       cta: "Choisir",
-      badge: "Recommandé",
-      highlighted: true,
       features: [
-        "Tout de CLINIC",
-        "8 podologues inclus",
-        "Podologue supplémentaire : $10/mois",
+        "Tout d'ESSENTIAL",
         "Analytiques : Ventes, Encaissements et Rentabilité",
         "Métriques avancées d'agenda et clôtures",
         "Outils cliniques avancés",
         "Campagnes WhatsApp",
+        "Passez au forfait Clinique quand votre équipe s'agrandit",
+      ],
+    },
+    {
+      name: "ESSENTIAL",
+      tagline: "Pour le podologue en solo : tout le nécessaire au quotidien.",
+      price: "$25",
+      period: "/mois par praticien",
+      cta: "Choisir",
+      features: [
+        "Agenda et calendrier opérationnel",
+        "Patients et dossier clinique",
+        "Séances et modèles cliniques",
+        "Checkout opérationnel (encaissements)",
+        "WhatsApp Web avec rappels illimités",
+        "Réceptionniste sans coût supplémentaire",
+        "Personnalisation de marque",
+        "Passez à Premium ou Clinique quand vous grandissez",
       ],
     },
   ],
@@ -1703,6 +1851,13 @@ const fr: LandingI18n = {
       podoraa:
         "Pensé pour la podologie et les soins du pied : modèles cliniques du métier, comptes rendus prêts à imprimer et les indicateurs d'un cabinet de podologie.",
     },
+    {
+      alternative: "Un agenda pour salons ou spas",
+      problem:
+        "Il gère les rendez-vous et les encaissements, mais ce n'est pas un dossier clinique : ni examen, ni suivi, ni images par séance, et il n'est pas conçu pour les durées de conservation qu'imposent les données de santé.",
+      podoraa:
+        "La même rapidité pour planifier et encaisser, mais sur un dossier clinique podologique qui conserve et prouve ce que vous avez fait à chaque séance.",
+    },
   ],
   faqItems: [
     {
@@ -1734,6 +1889,31 @@ const fr: LandingI18n = {
       question: "Est-ce sûr de conserver les données cliniques de mes patients ?",
       answer:
         "Les données circulent chiffrées, chaque utilisateur ne voit que ce que son rôle autorise — une secrétaire n'accède pas aux informations cliniques — et les actions sensibles sont inscrites dans un journal d'audit. Il existe une politique de conservation, et les données de votre cabinet vous appartiennent et sont exportables.",
+    },
+    {
+      question: "Combien coûte un logiciel de gestion pour la podologie ?",
+      answer:
+        "Chez Podoraa, à partir de 25 $ par mois et par praticien (ESSENTIAL) et jusqu'à 160 $ par mois et par cabinet (CLINIC PRO), en dollars et sans engagement. Rien n'est facturé au patient, au rendez-vous ni au message envoyé, et les secrétaires ne consomment pas de licence : elles sont gratuites et illimitées sur toutes les offres. Quand vous comparez, le chiffre qui compte n'est pas le tarif d'entrée mais le coût de l'offre avec les praticiens et le volume réels de votre cabinet.",
+    },
+    {
+      question: "Que regarder au moment de choisir un logiciel de podologie ?",
+      answer:
+        "Quatre points, dans cet ordre : que le dossier clinique soit conçu pour le pied et non une fiche médicale générique ; que l'agenda et les rappels réduisent vraiment les absences ; que chaque profil ne voie que ce qui le concerne, puisque vous conservez des données de santé ; et que vous puissiez repartir avec vos données le jour où vous le déciderez. Si un logiciel échoue sur ce dernier point, le reste compte moins qu'il n'y paraît.",
+    },
+    {
+      question: "Comment transférer ce que je tiens sur un tableur, sur papier ou dans l'agenda du téléphone ?",
+      answer:
+        "Sans tout migrer d'un coup. Vous chargez vos horaires, vos actes et votre logo, et vous prenez des rendez-vous le jour même ; chaque patient est créé la première fois que vous le recevez, avec ce que vous savez déjà de lui. Au bout de quelques semaines d'activité normale, la partie que vous utilisez vraiment est en place, et vous consultez l'ancien historique là où il se trouve tant que c'est utile.",
+    },
+    {
+      question: "Est-il légal de conserver les dossiers cliniques de mes patients dans le cloud ?",
+      answer:
+        "En général oui, et c'est l'usage : la réglementation n'exige pas que la donnée reste dans votre cabinet, elle exige qu'elle soit protégée et traçable. Podoraa chiffre les données en transit, limite par rôle l'accès à l'information clinique, consigne les actions sensibles dans un journal d'audit, applique une politique de conservation et vous laisse tout exporter. Cela dit, le responsable des données de vos patients, c'est vous : vérifiez ce qu'impose la réglementation de votre pays en matière de consentement, de durées de conservation et d'information du patient.",
+    },
+    {
+      question: "Est-ce adapté si j'exerce seul, sans secrétariat, ou si je fais des visites à domicile ?",
+      answer:
+        "Oui. Un praticien seul travaille avec l'offre ESSENTIAL et tient agenda, patients et dossiers cliniques sans personne d'autre sur le compte ; les rappels et la réservation en ligne couvrent le travail que ferait un secrétariat. Et comme tout fonctionne dans le navigateur du téléphone ou de la tablette, en visite à domicile vous enregistrez la séance et l'encaissement sur place, sans repasser au cabinet pour tout ressaisir.",
     },
   ],
   faqSystemItems: [
@@ -1848,6 +2028,10 @@ const fr: LandingI18n = {
   contactDirect: "Ou écrivez-nous directement à",
   contactMailSubject: "Question depuis la page des questions fréquentes",
   contactMailFrom: "Mon e-mail",
+  footerStatDigital: "100% numérique",
+  footerStatAccess: "Accès 24/7",
+  footerStatSecure: "Connexion SSL",
+  footerStatTwoFactor: "Double facteur (2FA)",
   footerTerms: "Conditions",
   footerPrivacy: "Confidentialité",
   footerContact: "Contact",

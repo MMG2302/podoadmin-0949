@@ -4,7 +4,7 @@ import { cloudflare } from "@cloudflare/vite-plugin";
 import tailwind from "@tailwindcss/vite"
 import fs from "fs";
 import path from "path";
-import { buildHtmlCspMetaContent } from "./scripts/html-csp";
+import { buildAssetHeaders, buildHtmlCspMetaContent } from "./scripts/html-csp";
 import {
         DEFAULT_LANG,
         buildFaqPageDocument,
@@ -67,6 +67,9 @@ function seoPlugin(): Plugin {
                                 "robots.txt": buildRobotsTxt(),
                                 "sitemap.xml": buildSitemapXml(),
                                 "llms.txt": buildLlmsTxt(),
+                                // Cabeceras de seguridad y caché de los assets: el Worker no las
+                                // puede poner porque solo corre para /api/*.
+                                _headers: buildAssetHeaders(),
                         };
 
                         // /faq necesita su propio documento: el shell de la SPA lleva la landing

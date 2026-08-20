@@ -88,5 +88,15 @@ export function buildAssetHeaders(): string {
     '/landing/*',
     '  Cache-Control: public, max-age=86400',
     '',
+    // Iconos y la imagen de compartir: tampoco llevan hash, mismo criterio.
+    '/favicon.*',
+    '  Cache-Control: public, max-age=86400',
+    '',
+    '/apple-touch-icon.png',
+    '  Cache-Control: public, max-age=86400',
+    '',
+    '/og-image.png',
+    '  Cache-Control: public, max-age=86400',
+    '',
   ].join('\n');
 }

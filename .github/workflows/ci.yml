@@ -13,3 +13,7 @@ jobs:
       - uses: oven-sh/setup-bun@v2
       - run: bun install --frozen-lockfile
       - run: bun run check
+      # Las pruebas no corrían en CI. Entre ellas está la que verifica que
+      # src/spa-routes.ts sigue siendo espejo del router: sin este paso, una ruta nueva
+      # sin su entrada en el espejo llegaría a producción devolviendo un 404 real.
+      - run: bun run test

@@ -87,11 +87,29 @@ sirve solo archivos reales y **todo lo demás cae en el Worker**, que decide con
 `isKnownSpaRoute()` (`src/spa-routes.ts`) entre servir el shell con 200 o devolver un 404
 de verdad con `404.html`. Antes cualquier URL inventada respondía 200 con la landing entera.
 
-- **`src/spa-routes.ts` es un espejo manual de los `<Route>` de `src/web/App.tsx` y
-  `src/web/pages/dashboard.tsx`.** Si se agrega una ruta en el router y no ahí, esa
-  pantalla deja de cargar en producción: el visitante recibe un 404 real. No hay forma de
-  derivarla en compilación — el Worker no puede importar `.tsx`. **Al tocar el router, tocar
-  también ese archivo.**
+### La regla
+
+**Toda ruta nueva de la SPA se declara en dos archivos, no en uno.** Primero el `<Route>`
+en `src/web/App.tsx` o `src/web/pages/dashboard.tsx`, como siempre; y además una entrada en
+`src/spa-routes.ts` — en `EXACT` si es una ruta fija, o en `PREFIXES` si lleva parámetro
+(`/patients/:id`). Sí se pueden crear todas las rutas que haga falta: lo único que cambia es
+que hay que declararlas en los dos sitios.
+
+Si se omite la segunda, esa pantalla **deja de cargar en producción**: el visitante recibe
+un 404 real. No es una convención de estilo, es un fallo funcional. Y no se puede derivar en
+compilación: el Worker corre en workerd y no puede importar `.tsx`.
+
+No hace falta confiar en la memoria de nadie: `src/spa-routes.test.ts` lee los dos routers,
+extrae cada `path="…"` y falla nombrando la ruta y el archivo que falta. Corre en CI
+(`bun run test`). Si esa prueba se pone en rojo, el arreglo es agregar la ruta al espejo —
+nunca relajar la prueba.
+
+```bash
+npx vitest run src/spa-routes.test.ts
+```
+
+### Lo demás que sostiene esto
+
 - Los enlaces que se mandan al paciente por WhatsApp llevan el token **en la query**
   (`/reserva/agendar?t=…`, `/reserva/confirmar?token=…`), no en la ruta. Por eso las cinco
   rutas `/reserva/*` entran como exactas. Si alguna vez un token pasa a ser segmento de

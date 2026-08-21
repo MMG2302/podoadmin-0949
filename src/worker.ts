@@ -4,6 +4,8 @@
  */
 import * as Sentry from '@sentry/cloudflare';
 import app from './api/index';
+import { env as workerEnv } from 'cloudflare:workers';
+import { isKnownSpaRoute } from './spa-routes';
 import { getDeletionThresholdMs } from './api/utils/user-retention';
 import { deleteUserCascade } from './api/utils/delete-user-cascade';
 import { database } from './api/database';
@@ -56,27 +58,48 @@ async function runRateLimitCleanup(): Promise<void> {
   });
 }
 
-// Wrapper que redirige URLs sin trailing slash a versiones con trailing slash
-const trailingSlashMiddleware = (fetch: typeof app.fetch) => {
+/**
+ * Resuelve todo lo que no es `/api/*` y que el asset handler no encontró como archivo.
+ *
+ * Con `not_found_handling: "none"` en wrangler.json, el asset handler ya no inventa un
+ * index.html para cualquier ruta: sirve archivos reales y deja pasar el resto hasta acá.
+ * Eso permite distinguir dos casos que antes se confundían en un mismo 200:
+ *
+ *   - Ruta que la SPA sabe renderizar (`/settings`, `/patients/123`) -> index.html con 200.
+ *   - Cualquier otra cosa (`/loquesea`) -> 404 de verdad, que es lo que un buscador
+ *     necesita para no tratar la URL como una página real.
+ *
+ * Acá vivía un `trailingSlashMiddleware` que redirigía toda ruta sin barra final a la
+ * versión con barra. Era código muerto —el Worker solo recibía `/api/*`— y al empezar a
+ * recibir el resto se habría vuelto un bucle infinito contra el `html_handling:
+ * "drop-trailing-slash"` del asset handler, que redirige justo al revés. Por eso se retira.
+ */
+const handleNonApiRequest = async (request: Request): Promise<Response> => {
+  const url = new URL(request.url);
+  const assets = workerEnv.ASSETS;
+
+  if (isKnownSpaRoute(url.pathname)) {
+    const shell = await assets.fetch(new URL('/index.html', url.origin));
+    // `assets.fetch` devuelve la respuesta del archivo; se reenvía tal cual para conservar
+    // sus cabeceras (las de `_headers`, entre ellas la CSP).
+    return new Response(shell.body, {
+      status: 200,
+      headers: shell.headers,
+    });
+  }
+
+  const notFound = await assets.fetch(new URL('/404.html', url.origin));
+  return new Response(notFound.body, {
+    status: 404,
+    headers: notFound.headers,
+  });
+};
+
+const requestHandler = (apiFetch: typeof app.fetch) => {
   return async (request: Request): Promise<Response> => {
-    const url = new URL(request.url);
-    const pathname = url.pathname;
-
-    // Si no es una API route, no es la raíz, no termina en /, y no es un archivo
-    if (
-      !pathname.startsWith('/api/') &&
-      pathname !== '/' &&
-      !pathname.endsWith('/') &&
-      !pathname.match(/\.\w+$/) // No termina con extensión de archivo
-    ) {
-      url.pathname = pathname + '/';
-      return new Response(null, {
-        status: 301,
-        headers: { Location: url.toString() },
-      });
-    }
-
-    return fetch(request);
+    const { pathname } = new URL(request.url);
+    if (pathname.startsWith('/api/')) return apiFetch(request);
+    return handleNonApiRequest(request);
   };
 };
 
@@ -94,7 +117,7 @@ async function runD1BackupCron(env: D1BackupEnv): Promise<void> {
 }
 
 const workerHandler = {
-  fetch: trailingSlashMiddleware(app.fetch),
+  fetch: requestHandler(app.fetch),
 
   async queue(
     batch: MessageBatch<NotificationJob>,

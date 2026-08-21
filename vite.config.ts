@@ -11,6 +11,7 @@ import {
         buildJsonLd,
         buildLlmsTxt,
         buildPrerenderedLanding,
+        build404Html,
         buildRobotsTxt,
         buildSeoHeadTags,
         buildSitemapXml,
@@ -70,6 +71,7 @@ function seoPlugin(): Plugin {
                                 // Cabeceras de seguridad y caché de los assets: el Worker no las
                                 // puede poner porque solo corre para /api/*.
                                 _headers: buildAssetHeaders(),
+                                "404.html": build404Html(),
                         };
 
                         // /faq necesita su propio documento: el shell de la SPA lleva la landing

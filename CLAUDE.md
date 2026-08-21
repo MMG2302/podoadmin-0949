@@ -80,6 +80,36 @@ Las secciones de abajo vienen de los demás documentos de seguridad ya existente
 - La CSP de `/api/*` vive en `src/api/middleware/csp.ts`. Las **páginas HTML** las sirve el asset handler sin pasar por el Worker, así que sus cabeceras salen del archivo `_headers` que genera `buildAssetHeaders()` (`scripts/html-csp.ts`) y emite el build en `dist/client`. Ahí van CSP real, `X-Frame-Options: DENY`, HSTS, `nosniff`, `Referrer-Policy` y `Permissions-Policy`. Esto cierra el finding F17: hasta el 2026-08-19 esas páginas se servían sin ninguna cabecera de seguridad. Dos cosas que no hay que romper: la política CSP sale de `buildHtmlCspMetaContent()` para que el header y el `<meta>` no se desincronicen, y `_headers` tiene que seguir llegando a `dist/client` — si se toca `writeBundle` en `vite.config.ts` y deja de emitirse, las cabeceras desaparecen sin que falle nada. Comprobar con `curl -sI https://podoraa.com/ | grep -i x-frame`.
 - **Sigue abierto:** `index.html` (y `scripts/html-csp.ts`) declaran `script-src 'self' 'unsafe-inline' 'unsafe-eval'` en la CSP del frontend — esto debilita la protección XSS. No es algo ya resuelto; si se edita esa CSP, el objetivo es sacar `unsafe-inline`/`unsafe-eval` (nonces o hashes), no ampliarla más.
 
+## Rutas: 404 reales y el espejo de `src/spa-routes.ts`
+
+`not_found_handling` está en `"none"`, no en `"single-page-application"`. El asset handler
+sirve solo archivos reales y **todo lo demás cae en el Worker**, que decide con
+`isKnownSpaRoute()` (`src/spa-routes.ts`) entre servir el shell con 200 o devolver un 404
+de verdad con `404.html`. Antes cualquier URL inventada respondía 200 con la landing entera.
+
+- **`src/spa-routes.ts` es un espejo manual de los `<Route>` de `src/web/App.tsx` y
+  `src/web/pages/dashboard.tsx`.** Si se agrega una ruta en el router y no ahí, esa
+  pantalla deja de cargar en producción: el visitante recibe un 404 real. No hay forma de
+  derivarla en compilación — el Worker no puede importar `.tsx`. **Al tocar el router, tocar
+  también ese archivo.**
+- Los enlaces que se mandan al paciente por WhatsApp llevan el token **en la query**
+  (`/reserva/agendar?t=…`, `/reserva/confirmar?token=…`), no en la ruta. Por eso las cinco
+  rutas `/reserva/*` entran como exactas. Si alguna vez un token pasa a ser segmento de
+  ruta, hay que agregar el prefijo a `PREFIXES` o esos enlaces empiezan a dar 404.
+- No volver a meter un middleware de trailing slash en `src/worker.ts`. Había uno, muerto
+  (el Worker solo recibía `/api/*`), y al empezar a recibir el resto habría entrado en
+  bucle infinito contra el `html_handling: "drop-trailing-slash"` del asset handler, que
+  redirige justo al revés.
+- Comprobación rápida tras cualquier cambio de rutas: una ruta real debe dar 200 y una
+  inventada 404.
+
+  ```bash
+  curl -s -o /dev/null -w "%{http_code}
+" https://podoraa.com/settings   # 200
+  curl -s -o /dev/null -w "%{http_code}
+" https://podoraa.com/loquesea   # 404
+  ```
+
 ## Cumplimiento y retención de datos clínicos
 
 - Antes de borrar un paciente, sesión clínica o cualquier registro con retención legal, comprobar que no tenga un **legal hold** activo (`src/api/utils/legal-hold.ts`) — un hold activo bloquea el borrado automático, sin excepción.

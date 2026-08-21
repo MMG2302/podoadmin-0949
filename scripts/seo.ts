@@ -553,6 +553,48 @@ export function buildRobotsTxt(): string {
   return lines.join('\n');
 }
 
+/**
+ * Página 404 real.
+ *
+ * La sirve el Worker (con estado 404) cuando la ruta no está en `src/spa-routes.ts`.
+ * Es HTML plano y autocontenido a propósito: si dependiera de la SPA, cargar 2 MB de
+ * JavaScript para decir "esto no existe" sería absurdo, y un buscador solo necesita el
+ * código de estado.
+ */
+export function build404Html(): string {
+  const l = landingByLang[DEFAULT_LANG];
+  return `<!doctype html>
+<html lang="${DEFAULT_LANG}">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="robots" content="noindex, follow" />
+<title>Página no encontrada | Podoraa</title>
+<style>
+  body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;
+    background:#f9fafb;color:#1a1a1a;
+    font-family:ui-sans-serif,system-ui,-apple-system,'Segoe UI',sans-serif;padding:24px}
+  main{max-width:32rem;text-align:center}
+  h1{font-size:1.75rem;font-weight:600;margin:0 0 .75rem;letter-spacing:-.02em}
+  p{color:#6b7280;line-height:1.6;margin:0 0 2rem}
+  a{display:inline-block;background:#1a1a1a;color:#fff;text-decoration:none;
+    padding:.85rem 1.5rem;border-radius:.5rem;font-size:.875rem;font-weight:500}
+  @media (prefers-color-scheme:dark){
+    body{background:#0f172a;color:#f9fafb}p{color:#9ca3af}
+    a{background:#fff;color:#111}}
+</style>
+</head>
+<body>
+  <main>
+    <h1>Esta página no existe</h1>
+    <p>El enlace que seguiste no lleva a ningún lado, o la página cambió de sitio.</p>
+    <a href="/">${esc(l.faqPageBack)}</a>
+  </main>
+</body>
+</html>
+`;
+}
+
 export function buildSitemapXml(): string {
   const lastmod = new Date().toISOString().slice(0, 10);
   const urls = INDEXABLE_PATHS.map((p) => {
